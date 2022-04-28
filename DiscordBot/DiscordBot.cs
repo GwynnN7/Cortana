@@ -42,7 +42,7 @@ namespace DiscordBot
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                Game Activity = new Game("Cortana Raspberry Pi", ActivityType.Competing, ActivityProperties.None, "Hi, I'm Cortana");
+                Game Activity = new Game("Cortana RPi", ActivityType.Playing);
                 await client.SetActivityAsync(Activity);
 
                 FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
