@@ -58,11 +58,11 @@ namespace DiscordBot
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
             {
-                Console.WriteLine(guild);
                 await Modules.AudioHandler.Play("ShutDown", guild.Key, Modules.AudioHandler.AudioIn.Local);
-                Modules.AudioHandler.Disconnect(guild.Key);
+                await Task.Delay(1000);
+                Modules.AudioHandler.Disconnect(guild.Key);          
             }
-            
+            await Task.Delay(1000);
             await Cortana.StopAsync();
             await Cortana.LogoutAsync();
         }

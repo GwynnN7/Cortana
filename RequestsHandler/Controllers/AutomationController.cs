@@ -25,5 +25,12 @@ namespace RequestsHandler.Controllers
             HardwareDriver.Driver.SwitchPC(state);
             return "Relay attivato";
         }
+
+        [HttpGet("led")]
+        public string LED(string state)
+        {
+            HardwareDriver.Driver.SwitchLED(state);
+            return "Led attivato";
+        }
     }
 }

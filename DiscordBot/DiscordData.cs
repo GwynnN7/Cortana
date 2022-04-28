@@ -67,7 +67,6 @@ namespace DiscordBot
             Dictionary<ulong, GuildUsersData>? userDataResult = null;
             if(File.Exists("Data/Discord/GuildUserData.json"))
             {
-                Console.WriteLine(Directory.GetCurrentDirectory());
                 var file = File.ReadAllText("Data/Discord/GuildUserData.json");
 
                 userDataResult = JsonConvert.DeserializeObject<Dictionary<ulong, GuildUsersData>>(file);

@@ -15,8 +15,8 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task LightToggle()
         {
-            string result = await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "light-toggle");
-            Embed embed = DiscordData.CreateEmbed(Title: result);
+            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "light-toggle");
+            Embed embed = DiscordData.CreateEmbed(Title: "Luce attivata");
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
@@ -24,8 +24,17 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task PCPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
         {
-            string result = await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
-            Embed embed = DiscordData.CreateEmbed(Title: result);
+            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
+            Embed embed = DiscordData.CreateEmbed(Title: "Alimentazione PC modificata");
+            await RespondAsync(embed: embed, ephemeral: true);
+        }
+
+        [SlashCommand("led", "Accendi o spegni il led")]
+        [RequireOwner]
+        public async Task LedPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
+        {
+             await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "led", $"state={action}");
+            Embed embed = DiscordData.CreateEmbed(Title: "Stato del led modificato");
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
