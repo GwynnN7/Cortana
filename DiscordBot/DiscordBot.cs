@@ -58,6 +58,7 @@ namespace DiscordBot
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
             {
+                Console.WriteLine(guild);
                 await Modules.AudioHandler.Play("ShutDown", guild.Key, Modules.AudioHandler.AudioIn.Local);
                 Modules.AudioHandler.Disconnect(guild.Key);
             }
@@ -117,7 +118,7 @@ namespace DiscordBot
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
                 await Task.Delay(2000);
-                await Modules.AudioHandler.Play(DiscordData.GetRandomGreetings(), NewState.VoiceChannel.Guild.Id, Modules.AudioHandler.AudioIn.Local);
+                await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, Modules.AudioHandler.AudioIn.Local);
             }
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
             {

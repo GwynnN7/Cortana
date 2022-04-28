@@ -34,7 +34,6 @@ namespace DiscordBot
             DiscordSettings? discordSettings = null;
             if (File.Exists("Data/Discord/GuildConfig.json"))
             {
-                Console.WriteLine(Directory.GetCurrentDirectory());
                 var file = File.ReadAllText("Data/Discord/GuildConfig.json");
 
                 discordSettings = JsonConvert.DeserializeObject<DiscordSettings>(file);

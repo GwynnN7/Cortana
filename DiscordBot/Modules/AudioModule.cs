@@ -87,8 +87,8 @@ namespace DiscordBot.Modules
             var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
             AudioClients[GuildID] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
-            await Play(DiscordData.GetRandomGreetings(), GuildID, AudioIn.Local);
-            await Play("Cortana_0", GuildID, AudioIn.Local);
+            await Play("Hello", GuildID, AudioIn.Local);
+            await Play("Cortana_1", GuildID, AudioIn.Local);
         }
 
         private static async void DisconnectFromVoice(SocketVoiceChannel VoiceChannel)

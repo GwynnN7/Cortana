@@ -20,7 +20,7 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
-        [SlashCommand("pc-power", "Accendi o spegni la luce")]
+        [SlashCommand("pc-power", "Accendi o spegni l'alimentazione del pc")]
         [RequireOwner]
         public async Task PCPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
         {
