@@ -10,7 +10,7 @@ namespace DiscordBot
     {
         public static void BootDiscordBot() => new DiscordBot().MainAsync().GetAwaiter().GetResult();
 
-        public static SocketSelfUser? Cortana;
+        public static DiscordSocketClient Cortana;
         public async Task MainAsync()
         {
             var client = new DiscordSocketClient(ConfigureSocket());
@@ -32,17 +32,17 @@ namespace DiscordBot
 
             client.Ready += async () =>
             {
-                Cortana = client.CurrentUser;
+                Cortana = client;
 
                 DiscordData.InitSettings(client.Guilds);
                 DiscordData.LoadData(client.Guilds);
-                DiscordData.CortanaUser = Cortana;
+                DiscordData.CortanaUser = Cortana.CurrentUser;
 
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID, true);
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                Game Activity = new Game("Cortana AI", ActivityType.Competing, ActivityProperties.None, "Hi, I'm Cortana");
+                Game Activity = new Game("Cortana Raspberry Pi", ActivityType.Competing, ActivityProperties.None, "Hi, I'm Cortana");
                 await client.SetActivityAsync(Activity);
 
                 FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
@@ -52,6 +52,18 @@ namespace DiscordBot
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
+        }
+
+        public static async Task Disconnect()
+        {
+            foreach(var guild in Modules.AudioHandler.AudioClients)
+            {
+                await Modules.AudioHandler.Play("ShutDown", guild.Key, Modules.AudioHandler.AudioIn.Local);
+                Modules.AudioHandler.Disconnect(guild.Key);
+            }
+            
+            await Cortana.StopAsync();
+            await Cortana.LogoutAsync();
         }
 
         void FindChannelToJoin(SocketGuild Guild)

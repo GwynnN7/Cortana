@@ -29,6 +29,16 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
+        [SlashCommand("shutdown", "Vado offline su discord")]
+        [RequireOwner]
+        public async Task Shutdown()
+        {
+            Embed embed = DiscordData.CreateEmbed(Title: "Mi sto spegnendo");
+            await RespondAsync(embed: embed, ephemeral: true);
+
+            await DiscordBot.Disconnect();
+        }
+
         [SlashCommand("tempo-in-voicechat", "Da quanto tempo state in chat vocale?")]
         public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? User = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
         {

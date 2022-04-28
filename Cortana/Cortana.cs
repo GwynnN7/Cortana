@@ -60,6 +60,8 @@ namespace Cortana
 
             } while (SubFunctionIndex != -1);
 
+            await Handler.StopFunctions();
+
             return Task.CompletedTask;
 
         }

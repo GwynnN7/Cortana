@@ -17,6 +17,7 @@ namespace Cortana
         }
 
         private Dictionary<ESubFunctions, Thread> SubFunctionThreads;
+        private static WebApplication CortanaAPI;
 
         public SubFunctionsHandler()
         {
@@ -56,12 +57,19 @@ namespace Cortana
             builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
             builder.Services.AddControllers();
 
-            var app = builder.Build();
-            app.UsePathBase("/cortana-api");
-            app.UseAuthorization();
-            app.MapControllers();
-    
-            app.Run();
+            CortanaAPI = builder.Build();
+            CortanaAPI.UsePathBase("/cortana-api");
+            CortanaAPI.UseAuthorization();
+            CortanaAPI.MapControllers();
+
+            CortanaAPI.Run();
+        }
+
+        public static async Task StopFunctions()
+        {
+            await DiscordBot.Disconnect();
+            await CortanaAPI.StopAsync();
+
         }
     }
 }

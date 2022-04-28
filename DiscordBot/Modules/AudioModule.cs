@@ -49,7 +49,7 @@ namespace DiscordBot.Modules
         }
 
         private static Dictionary<ulong, List<QueueStructure>> Queue = new Dictionary<ulong, List<QueueStructure>>();
-        private static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
+        public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
         
         private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
@@ -248,7 +248,17 @@ namespace DiscordBot.Modules
                 bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, AudioHandler.AudioIn.Youtube);
                 if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
                 
-            }       
+            }
+
+            [SlashCommand("metti-in-locale", "Metti qualcosa in locale", runMode: RunMode.Async)]
+            [RequireOwner]
+            public async Task PlayLocal([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+            {
+                await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + text), ephemeral: Ephemeral == EAnswer.Si);
+
+                bool status = await AudioHandler.Play(text, Context.Guild.Id, AudioHandler.AudioIn.Local);
+                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
+            }
 
             [SlashCommand("skippa", "Skippa quello che sto dicendo")]
             public async Task Skip([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
