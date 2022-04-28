@@ -65,7 +65,7 @@ namespace Cortana
             CortanaAPI.Run();
         }
 
-        public static async Task StopFunctions()
+        public async Task StopFunctions()
         {
             await DiscordBot.Disconnect();
             await CortanaAPI.StopAsync();

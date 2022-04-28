@@ -88,6 +88,7 @@ namespace DiscordBot.Modules
             AudioClients[GuildID] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
             await Play(DiscordData.GetRandomGreetings(), GuildID, AudioIn.Local);
+            await Play("Cortana_0", GuildID, AudioIn.Local);
         }
 
         private static async void DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
@@ -252,12 +253,12 @@ namespace DiscordBot.Modules
 
             [SlashCommand("metti-in-locale", "Metti qualcosa in locale", runMode: RunMode.Async)]
             [RequireOwner]
-            public async Task PlayLocal([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+            public async Task PlayLocal([Summary("file", "Nome del file")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
             {
                 await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + text), ephemeral: Ephemeral == EAnswer.Si);
 
                 bool status = await AudioHandler.Play(text, Context.Guild.Id, AudioHandler.AudioIn.Local);
-                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
+                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso far partire l'audio");
             }
 
             [SlashCommand("skippa", "Skippa quello che sto dicendo")]
