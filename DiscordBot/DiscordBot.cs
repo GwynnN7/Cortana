@@ -3,6 +3,9 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Iot.Device.CpuTemperature;
+using System;
+using System.Threading;
 
 namespace DiscordBot
 {
@@ -42,8 +45,16 @@ namespace DiscordBot
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                Game Activity = new Game("Cortana RPi", ActivityType.Playing);
-                await client.SetActivityAsync(Activity);
+                Timer ActivityTimer = new Timer( async (object? data) =>
+                {
+                    using CpuTemperature cpuTemperature = new CpuTemperature();
+                    var temperatures = cpuTemperature.ReadTemperatures();
+                    double average = 0;
+                    foreach(var temp in temperatures) average += temp.Temperature.DegreesCelsius;
+                    average /= temperatures.Count;
+                    Game Activity = new Game($"Cortana RPi at {Math.Round(average, 1)}°C", ActivityType.Playing);
+                    await client.SetActivityAsync(Activity);
+                }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 
                 FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
             };
@@ -79,13 +90,13 @@ namespace DiscordBot
                 {
                     if (voiceChannel.Id == DiscordData.DiscordIDs.CortanaChannelID)
                     {
-                        if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.ToDictionary(x => x.Id).ContainsKey(DiscordData.DiscordIDs.CortanaID)) canMove = false;
+                        if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) canMove = false;
                         AvailableChannel.Add(voiceChannel);
                         continue;
                     }
-                    if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.ToDictionary(x => x.Id).ContainsKey(DiscordData.DiscordIDs.CortanaID)) AvailableChannel.Add(voiceChannel);
+                    if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) AvailableChannel.Add(voiceChannel);
 
-                    else if (voiceChannel.Users.Count > 1 && voiceChannel.Users.ToDictionary(x => x.Id).ContainsKey(DiscordData.DiscordIDs.CortanaID)) canMove = false;
+                    else if (voiceChannel.Users.Count > 1 && voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) canMove = false;
                 }
                 if (AvailableChannel.Count > 1) AvailableChannel.Remove(Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID));
                 if (canMove) Modules.AudioHandler.JoinChannel(AvailableChannel[0]);

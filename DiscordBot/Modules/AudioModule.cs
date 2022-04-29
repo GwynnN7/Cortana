@@ -79,7 +79,10 @@ namespace DiscordBot.Modules
             if (VoiceChannel == null) return;
 
             ulong GuildID = VoiceChannel.Guild.Id;
-            if(AudioClients.ContainsKey(GuildID)) AudioClients.Remove(GuildID);
+            if (AudioClients.ContainsKey(GuildID))
+            
+                await DisconnectFromVoice(AudioClients[GuildID].VoiceChannel);
+
             var NewPair = new ChannelClient(VoiceChannel);
             AudioClients.Add(GuildID, NewPair);
 
@@ -91,17 +94,18 @@ namespace DiscordBot.Modules
             await Play("Cortana_1", GuildID, AudioIn.Local);
         }
 
-        private static async void DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
+        private static async Task DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
         {
             if (VoiceChannel == null) return;
 
             ulong GuildID = VoiceChannel.Guild.Id;
             if (AudioClients.ContainsKey(GuildID))
             {
-                await AudioClients[GuildID].AudioStream.DisposeAsync();
+                if(AudioClients[GuildID].AudioStream != null) await AudioClients[GuildID].AudioStream.DisposeAsync();
+                if (AudioClients[GuildID].AudioClient != null) AudioClients[GuildID].AudioClient.Dispose();
                 AudioClients.Remove(GuildID);
             }
-            await VoiceChannel.DisconnectAsync();
+            if(VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
         }
 
         public static async Task<bool> Play(string audio, ulong GuildID, AudioIn Path)
