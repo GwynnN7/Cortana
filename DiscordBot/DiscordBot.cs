@@ -70,6 +70,7 @@ namespace DiscordBot
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
             {
+                DiscordData.GuildSettings[guild.Key].AutoJoin = false;
                 await Modules.AudioHandler.Play("ShutDown", guild.Key, Modules.AudioHandler.AudioIn.Local);
                 await Task.Delay(1500);
                 Modules.AudioHandler.Disconnect(guild.Key);          
