@@ -14,7 +14,7 @@ namespace HardwareDriver
         private static int LEDPin = 3;
         private static int PCPin = 2;
 
-        private static bool PCState = false;
+        private static bool PCPowerState = true;
         private static bool LEDState = false;
         public static void ToggleLight()
         {
@@ -26,7 +26,7 @@ namespace HardwareDriver
             controller.Write(LightRelayPin, PinValue.Low);
         }
 
-        public static void SwitchPC(string state)
+        public static string SwitchPC(string state)
         {
             var enumState = state switch
             {
@@ -36,14 +36,28 @@ namespace HardwareDriver
                 _ => State.On
             };
 
+            if (enumState == State.On && PCPowerState == true) return "PC già alimentato";
+            else if (enumState == State.Off && PCPowerState == false) return "PC già spento";
+
             using var controller = new GpioController();
             controller.OpenPin(PCPin, PinMode.Output);
 
-            if(enumState == State.On) controller.Write(PCPin, PinValue.High);
-            else if(enumState == State.Off) controller.Write(PCPin, PinValue.Low);
-            else controller.Write(PCPin, PCState ? PinValue.Low : PinValue.High);
-
-            PCState = !PCState;
+            if (enumState == State.On)
+            {
+                controller.Write(PCPin, PinValue.High);
+                PCPowerState = true;
+            }
+            else if (enumState == State.Off)
+            {
+                controller.Write(PCPin, PinValue.Low);
+                PCPowerState = false;
+            }
+            else
+            {
+                controller.Write(PCPin, PCPowerState ? PinValue.Low : PinValue.High);
+                PCPowerState = !PCPowerState;
+            }
+            return "done";
         }
 
         public static void SwitchLED(string state)

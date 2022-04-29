@@ -1,6 +1,9 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 
 namespace DiscordBot.Modules
 {
@@ -20,11 +23,32 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
-        [SlashCommand("pc-power", "Accendi o spegni l'alimentazione del pc")]
+        [SlashCommand("pc-power", "Accendi o spegni il pc")]
         [RequireOwner]
-        public async Task PCPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
+        public async Task PCPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")] string action, [Summary("full", "Vuoi che accenda o spenga sia l'alimentazione che il pc?")] EAnswer full = EAnswer.Si)
         {
-            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
+            if(action == "on")
+            {
+                string result = await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
+                if(result == "done") await Task.Delay(2000);
+                if(full == EAnswer.Si)
+                {
+                    PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    var header = Enumerable.Repeat(byte.MaxValue, 6);
+                    var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
+
+                    var magicPacket = header.Concat(data).ToArray();
+
+                    using var client = new UdpClient();
+
+                    client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
+                }
+            }
+            else
+            {
+               await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
+            }
+            
             Embed embed = DiscordData.CreateEmbed(Title: "Alimentazione PC modificata");
             await RespondAsync(embed: embed, ephemeral: true);
         }
@@ -33,7 +57,7 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task LedPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
         {
-             await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "led", $"state={action}");
+            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "led", $"state={action}");
             Embed embed = DiscordData.CreateEmbed(Title: "Stato del led modificato");
             await RespondAsync(embed: embed, ephemeral: true);
         }

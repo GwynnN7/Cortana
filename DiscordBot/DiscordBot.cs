@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Iot.Device.CpuTemperature;
 using System;
 using System.Threading;
+using System.Globalization;
 
 namespace DiscordBot
 {
@@ -52,7 +53,7 @@ namespace DiscordBot
                     double average = 0;
                     foreach(var temp in temperatures) average += temp.Temperature.DegreesCelsius;
                     average /= temperatures.Count;
-                    Game Activity = new Game($"Cortana RPi at {Math.Round(average, 1)}°C", ActivityType.Playing);
+                    Game Activity = new Game($" on Raspberry at {Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C", ActivityType.Playing);
                     await client.SetActivityAsync(Activity);
                 }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
 

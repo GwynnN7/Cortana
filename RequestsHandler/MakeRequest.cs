@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Newtonsoft.Json;
+using System.ComponentModel;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
@@ -24,10 +25,6 @@ namespace RequestsHandler
         {
             if (client == null)
             {
-                HttpClientHandler handler = new HttpClientHandler()
-                {
-                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-                };
                 client = new HttpClient();
 
                 string publicIP = GetPublicIP();
@@ -71,11 +68,11 @@ namespace RequestsHandler
                 string url = GetSubdomain(Type) + Command;
                 if (GetData != "") url += "?" + GetData;
                 var response = await client.GetAsync(url);
-                response.EnsureSuccessStatusCode();
                 if (response.IsSuccessStatusCode)
                 {
                     string stringResult = await response.Content.ReadAsStringAsync();
-                    return stringResult;
+                    var content = JsonConvert.DeserializeObject<Dictionary<string, string>>(stringResult);
+                    return content["data"];
                 }
                 else return $"Errore {response.StatusCode}";
             }

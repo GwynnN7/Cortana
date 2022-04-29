@@ -7,30 +7,30 @@ namespace RequestsHandler.Controllers
     public class AutomationController : ControllerBase
     {
         [HttpGet]
-        public string[] Get()
+        public Dictionary<string, string> Get()
         {
-            return new string[] { "light-toggle" };
+            return new Dictionary<string, string>() { { "data", "Automation API" } };
         }
 
         [HttpGet("light-toggle")]
-        public string LightToggle()
+        public Dictionary<string, string> LightToggle()
         {
             HardwareDriver.Driver.ToggleLight();
-            return "Relay attivato";
+            return new Dictionary<string, string>() { { "data", "Relay Attivato" } };
         }
 
         [HttpGet("pc-power")]
-        public string PCPower(string state)
+        public Dictionary<string, string> PCPower(string state)
         {
-            HardwareDriver.Driver.SwitchPC(state);
-            return "Relay attivato";
+            string result = HardwareDriver.Driver.SwitchPC(state);
+            return new Dictionary<string, string>() { { "data", result } };
         }
 
         [HttpGet("led")]
-        public string LED(string state)
+        public Dictionary<string, string> LED(string state)
         {
             HardwareDriver.Driver.SwitchLED(state);
-            return "Led attivato";
+            return new Dictionary<string, string>() { { "data", "Fatto" } };
         }
     }
 }

@@ -7,9 +7,9 @@ namespace RequestsHandler.Controllers
     public class DefaultController : ControllerBase
     {
         [HttpGet]
-        public string Get()
+        public Dictionary<string, string> Get()
         {
-            return "Hi, I'm Cortana";
+            return new Dictionary<string, string>() { { "data", "Hi, I'm Cortana" } };
         }
     }
 }
