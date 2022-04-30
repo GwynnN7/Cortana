@@ -11,8 +11,8 @@ namespace HardwareDriver
     public static class Driver
     {
         private static int LightRelayPin = 4;
-        private static int LEDPin = 3;
-        private static int PCPin = 2;
+        private static int LEDPin = 27;
+        private static int PCPin = 17;
 
         private static bool PCPowerState = true;
         private static bool LEDState = false;
