@@ -4,8 +4,6 @@ using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Iot.Device.CpuTemperature;
-using System;
-using System.Threading;
 using System.Globalization;
 
 namespace DiscordBot
@@ -15,6 +13,7 @@ namespace DiscordBot
         public static void BootDiscordBot() => new DiscordBot().MainAsync().GetAwaiter().GetResult();
 
         public static DiscordSocketClient Cortana;
+        public static System.Timers.Timer ActivityTimer = new System.Timers.Timer();
         public async Task MainAsync()
         {
             var client = new DiscordSocketClient(ConfigureSocket());
@@ -46,16 +45,9 @@ namespace DiscordBot
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                Timer ActivityTimer = new Timer( async (object? data) =>
-                {
-                    using CpuTemperature cpuTemperature = new CpuTemperature();
-                    var temperatures = cpuTemperature.ReadTemperatures();
-                    double average = 0;
-                    foreach(var temp in temperatures) average += temp.Temperature.DegreesCelsius;
-                    average /= temperatures.Count;
-                    Game Activity = new Game($" on Raspberry at {Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C", ActivityType.Playing);
-                    await client.SetActivityAsync(Activity);
-                }, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+                ActivityTimer.Interval = 10000;
+                ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElased);
+                ActivityTimer.Start();
 
                 FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
             };
@@ -66,6 +58,16 @@ namespace DiscordBot
             await Task.Delay(Timeout.Infinite);
         }
 
+        private static async void ActivityTimerElased(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            using CpuTemperature cpuTemperature = new CpuTemperature();
+            var temperatures = cpuTemperature.ReadTemperatures();
+            double average = 0;
+            foreach (var temp in temperatures) average += temp.Temperature.DegreesCelsius;
+            average /= temperatures.Count;
+            Game Activity = new Game($"on Raspberry at {Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C", ActivityType.Playing);
+            await Cortana.SetActivityAsync(Activity);
+        }
         public static async Task Disconnect()
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
