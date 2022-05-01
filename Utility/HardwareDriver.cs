@@ -106,7 +106,7 @@ namespace Utility
                 OLEDState = EBooleanState.Off;
                 return "Display Spento";
             }
-            else return SwitchLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchOutlets(EHardwareTrigger state)
