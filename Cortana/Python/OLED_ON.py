@@ -10,7 +10,7 @@ i2c = board.I2C()
 oled = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c, addr=0x3C, reset=oled_reset)
 oled.poweron()
 
-image = Image.open("Images/3.png")
+image = Image.open("../Assets/OLED.png")
 image = image.resize((128, 32))
 frame_image = Image.new("1", (128, 32))
 thresh = 50

@@ -91,20 +91,20 @@ namespace Utility
             {
                 new Process()
                 {
-                    StartInfo = new ProcessStartInfo() { FileName = "/bin/bash", Arguments = "python Python/OLED_ON.py", }
+                    StartInfo = new ProcessStartInfo() { FileName = "/bin/python Python/OLED_ON.py" }
                 }.Start();
 
                 OLEDState = EBooleanState.On;
-                return "Led Acceso";
+                return "Display Acceso";
             }
             if (state == EHardwareTrigger.Off)
             {
                 new Process()
                 {
-                    StartInfo = new ProcessStartInfo() { FileName = "/bin/bash", Arguments = "python Python/OLED_OFF.py", }
+                    StartInfo = new ProcessStartInfo() { FileName = "/bin/python Python/OLED_OFF.py" }
                 }.Start();
                 OLEDState = EBooleanState.Off;
-                return "Led Spento";
+                return "Display Spento";
             }
             else return SwitchLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
