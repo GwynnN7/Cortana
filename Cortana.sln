@@ -4,13 +4,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.1.32407.343
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DiscordBot", "DiscordBot\DiscordBot.csproj", "{59A12B4A-A6D7-4769-AE83-6527E7B653E7}"
-	ProjectSection(ProjectDependencies) = postProject
-		{14DC3278-E390-4561-95A3-6D65B0E931B3} = {14DC3278-E390-4561-95A3-6D65B0E931B3}
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TelegramBot", "TelegramBot\TelegramBot.csproj", "{C0C8B142-A9E6-43EA-9FC6-490FAF6B9970}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CortanaAPI", "RequestsHandler\CortanaAPI.csproj", "{AF34FFB9-FFE5-4761-A5E0-2B7335B35DF2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CortanaAPI", "CortanaAPI\CortanaAPI.csproj", "{AF34FFB9-FFE5-4761-A5E0-2B7335B35DF2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Cortana", "Cortana\Cortana.csproj", "{8A8D9B6F-869B-42C3-B8A2-4646C3B27286}"
 EndProject

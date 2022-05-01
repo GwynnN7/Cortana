@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\DiscordBot\DiscordBot.csproj" />
-    <ProjectReference Include="..\RequestsHandler\CortanaAPI.csproj" />
+    <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj" />
     <ProjectReference Include="..\TelegramBot\TelegramBot.csproj" />
     <ProjectReference Include="..\Utility\Utility.csproj" />
   </ItemGroup>
