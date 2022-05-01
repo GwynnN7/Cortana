@@ -3,8 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Iot.Device.CpuTemperature;
-using System.Globalization;
 
 namespace DiscordBot
 {
@@ -46,7 +44,7 @@ namespace DiscordBot
                 //await commands.RegisterCommandsGloballyAsync(true);
 
                 ActivityTimer.Interval = 10000;
-                ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElased);
+                ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElapsed);
                 ActivityTimer.Start();
 
                 FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
@@ -58,22 +56,19 @@ namespace DiscordBot
             await Task.Delay(Timeout.Infinite);
         }
 
-        private static async void ActivityTimerElased(object? sender, System.Timers.ElapsedEventArgs e)
+        private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            using CpuTemperature cpuTemperature = new CpuTemperature();
-            var temperatures = cpuTemperature.ReadTemperatures();
-            double average = 0;
-            foreach (var temp in temperatures) average += temp.Temperature.DegreesCelsius;
-            average /= temperatures.Count;
-            Game Activity = new Game($"on Raspberry at {Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C", ActivityType.Playing);
+            string Temp = Utility.HardwareDriver.GetCPUTemperature();
+            Game Activity = new Game($"on Raspberry at {Temp}", ActivityType.Playing);
             await Cortana.SetActivityAsync(Activity);
         }
+
         public static async Task Disconnect()
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
             {
                 DiscordData.GuildSettings[guild.Key].AutoJoin = false;
-                await Modules.AudioHandler.Play("ShutDown", guild.Key, Modules.AudioHandler.AudioIn.Local);
+                await Modules.AudioHandler.Play("Shutdown", guild.Key, EAudioSource.Local);
                 await Task.Delay(1500);
                 Modules.AudioHandler.Disconnect(guild.Key);          
             }
@@ -124,7 +119,7 @@ namespace DiscordBot
             if (OldState.VoiceChannel == null && NewState.VoiceChannel != null)
             {
                 var DisplayName = NewState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"{RequestsHandler.Functions.RandomOption(new string[]{ "Ciao", "Benvenuto", "Salve" })}  {DisplayName}";
+                string Title = $"{Utility.Functions.RandomOption(new string[]{ "Ciao", "Benvenuto", "Salve" })}  {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Sei entrato alle:" });
 
                 await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
@@ -133,12 +128,12 @@ namespace DiscordBot
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
                 await Task.Delay(2000);
-                await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, Modules.AudioHandler.AudioIn.Local);
+                await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
             {
                 var DisplayName = OldState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"{RequestsHandler.Functions.RandomOption(new string[] { "Adios", "A Miaokai", "A dopo" })}  {DisplayName}";
+                string Title = $"{Utility.Functions.RandomOption(new string[] { "Adios", "A Miaokai", "A dopo" })}  {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Sei uscito alle:" });
                 await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 

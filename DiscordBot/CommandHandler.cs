@@ -36,19 +36,19 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnmetPrecondition", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnknownCommand", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: BadArgs", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Exception", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Unsuccessful", ephemeral: true);
                         break;
                     default:
                         break;
@@ -65,19 +65,19 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnmetPrecondition", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnknownCommand", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: BadArgs", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Exception", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Unsuccessful", ephemeral: true);
                         break;
                     default:
                         break;
@@ -94,19 +94,19 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnmetPrecondition", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: UnknownCommand", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: BadArgs", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Exception", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        // implement
+                        arg2.Interaction.RespondAsync("C'è stato un problema: Unsuccessful", ephemeral: true);
                         break;
                     default:
                         break;

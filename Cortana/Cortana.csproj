@@ -16,14 +16,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DiscordBot\DiscordBot.csproj" />
-    <ProjectReference Include="..\HardwareDriver\HardwareDriver.csproj" />
-    <ProjectReference Include="..\RequestsHandler\RequestsHandler.csproj" />
+    <ProjectReference Include="..\RequestsHandler\CortanaAPI.csproj" />
     <ProjectReference Include="..\TelegramBot\TelegramBot.csproj" />
+    <ProjectReference Include="..\Utility\Utility.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,10 +45,6 @@
     <None Update="Assets\cortanaLogo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Sound\" />
   </ItemGroup>
 
 </Project>

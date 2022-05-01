@@ -6,47 +6,38 @@ namespace Cortana
 
         async Task<Task> BootCortana()
         {
-            SubFunctionsHandler Handler = new SubFunctionsHandler();
-            Handler.BootSubFunction(SubFunctionsHandler.ESubFunctions.HardwareDriver);
+            Console.Clear();
+
+            CortanaCore Handler = new CortanaCore();
 
             int SubFunctionIndex = -1;
             do
             {
+                Console.Clear();
                 Console.WriteLine("Choose the subordinate function to boot Chief\n0-Cortana API\n1-Discord Bot\n2-Telegram Bot");
-                try
-                {
-                    SubFunctionIndex = Convert.ToInt32(Console.ReadLine());
-                }
-                catch
-                {
-                    Console.Clear();
-                    continue;
-                }
 
-                int ThreadID = -1;
+                try {SubFunctionIndex = Convert.ToInt32(Console.ReadLine());}
+                catch {continue;}
+
+                int ThreadID;
                 switch (SubFunctionIndex)
                 {
                     case 0:
                         Console.WriteLine("Booting Cortana API subordinate function...");
-                        ThreadID = Handler.BootSubFunction(SubFunctionsHandler.ESubFunctions.CortanaAPI);
-                        await Task.Delay(1000);
-                        Console.WriteLine("Checking API Status");
-                        await Task.Delay(500);
-                        Console.WriteLine(await RequestsHandler.MakeRequest.Check());
+                        ThreadID = Handler.BootSubFunction(ESubFunctions.CortanaAPI);
                         await Task.Delay(1000);
                         Console.WriteLine($"Done, Cortana API working on Thread {ThreadID}");
                         break;
                     case 1:
                         Console.WriteLine("Booting Discord Bot subordinate function...");
-                        await Task.Delay(500);
-                        ThreadID = Handler.BootSubFunction(SubFunctionsHandler.ESubFunctions.DiscordBot);
-                        await Task.Delay(500);
+                        ThreadID = Handler.BootSubFunction(ESubFunctions.DiscordBot);
+                        await Task.Delay(1000);
                         Console.WriteLine($"Done, DiscordBot working on Thread {ThreadID}");
                         break;
                     case 2:
                         Console.WriteLine("Booting TelegramBot subordinate function...");
-                        await Task.Delay(500);
-                        ThreadID = Handler.BootSubFunction(SubFunctionsHandler.ESubFunctions.TelegramBot);
+                        await Task.Delay(1000);
+                        ThreadID = Handler.BootSubFunction(ESubFunctions.TelegramBot);
                         break;
                     case -1:
                         Console.WriteLine("Shutting Down");

@@ -15,22 +15,36 @@ namespace RequestsHandler.Controllers
         [HttpGet("light-toggle")]
         public Dictionary<string, string> LightToggle()
         {
-            HardwareDriver.Driver.ToggleLight();
-            return new Dictionary<string, string>() { { "data", "Relay Attivato" } };
+            string result = Utility.HardwareDriver.ToggleLamp();
+            return new Dictionary<string, string>() { { "data", result } };
         }
 
         [HttpGet("pc-power")]
         public Dictionary<string, string> PCPower(string state)
         {
-            string result = HardwareDriver.Driver.SwitchPC(state);
+            string result = Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
             return new Dictionary<string, string>() { { "data", result } };
         }
 
-        [HttpGet("led")]
-        public Dictionary<string, string> LED(string state)
+        [HttpGet("led-power")]
+        public Dictionary<string, string> LEDPower(string state)
         {
-            HardwareDriver.Driver.SwitchLED(state);
-            return new Dictionary<string, string>() { { "data", "Fatto" } };
+            string result = Utility.HardwareDriver.SwitchLED(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
+        [HttpGet("oled-power")]
+        public Dictionary<string, string> OledPower(string state)
+        {
+            string result = Utility.HardwareDriver.SwitchOLED(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
+        [HttpGet("oled-power")]
+        public Dictionary<string, string> OutletsPower(string state)
+        {
+            string result = Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
         }
     }
 }

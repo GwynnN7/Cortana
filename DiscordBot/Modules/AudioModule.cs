@@ -8,15 +8,8 @@ using Discord;
 
 namespace DiscordBot.Modules
 {
-
     public static class AudioHandler
     {
-        public enum AudioIn
-        {
-            Youtube,
-            Local
-        }
-
         public struct ChannelClient
         {
             public SocketVoiceChannel VoiceChannel { get; set; }
@@ -90,8 +83,8 @@ namespace DiscordBot.Modules
             var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
             AudioClients[GuildID] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
-            await Play("Hello", GuildID, AudioIn.Local);
-            await Play("Cortana_1", GuildID, AudioIn.Local);
+            await Play("Hello", GuildID, EAudioSource.Local);
+            await Play("Cortana_1", GuildID, EAudioSource.Local);
         }
 
         private static async Task DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
@@ -108,17 +101,17 @@ namespace DiscordBot.Modules
             if(VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
         }
 
-        public static async Task<bool> Play(string audio, ulong GuildID, AudioIn Path)
+        public static async Task<bool> Play(string audio, ulong GuildID, EAudioSource Path)
         {
             if (!AudioClients.ContainsKey(GuildID) || (AudioClients.ContainsKey(GuildID) && AudioClients[GuildID].AudioStream == null)) return false;
 
             MemoryStream MemoryStream = new MemoryStream();
-            if (Path == AudioIn.Youtube)
+            if (Path == EAudioSource.Youtube)
             {
                 var Stream = await GetYoutubeAudioStream(audio);
                 MemoryStream = await ExecuteFFMPEG(VideoStream: Stream);
             }
-            else if (Path == AudioIn.Local)
+            else if (Path == EAudioSource.Local)
             {
                 audio = $"Sound/{audio}.mp3";
                 MemoryStream = await ExecuteFFMPEG(FilePath: audio);
@@ -250,7 +243,7 @@ namespace DiscordBot.Modules
 
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
 
-                bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, AudioHandler.AudioIn.Youtube);
+                bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
                 if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
                 
             }
@@ -261,7 +254,7 @@ namespace DiscordBot.Modules
             {
                 await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + text), ephemeral: Ephemeral == EAnswer.Si);
 
-                bool status = await AudioHandler.Play(text, Context.Guild.Id, AudioHandler.AudioIn.Local);
+                bool status = await AudioHandler.Play(text, Context.Guild.Id, EAudioSource.Local);
                 if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso far partire l'audio");
             }
 

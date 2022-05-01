@@ -1,11 +1,10 @@
 ﻿using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
 
-namespace RequestsHandler
+namespace Utility
 {
-    static public class Functions
+    public static class Functions
     {
-
         public static Stream CreateQRCode(string content, bool useNormalColors, bool useBorders)
         {
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
@@ -58,6 +57,13 @@ namespace RequestsHandler
         {
             string randomNumber = Convert.ToString(new Random().Next(min, max));
             return randomNumber;
+        }
+
+        public static EHardwareTrigger TriggerStateFromString(string state)
+        {
+            state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
+            Enum.TryParse(state, out EHardwareTrigger Status);
+            return Status;
         }
     }
 }

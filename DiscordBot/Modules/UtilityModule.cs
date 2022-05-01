@@ -1,9 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 
 namespace DiscordBot.Modules
 {
@@ -18,47 +15,26 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task LightToggle()
         {
-            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "light-toggle");
-            Embed embed = DiscordData.CreateEmbed(Title: "Luce attivata");
+            string result = Utility.HardwareDriver.ToggleLamp();
+            Embed embed = DiscordData.CreateEmbed(Title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
-        [SlashCommand("pc-power", "Accendi o spegni il pc")]
+        [SlashCommand("hardware", "Interagisci con l'hardware in camera")]
         [RequireOwner]
-        public async Task PCPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")] string action, [Summary("full", "Vuoi che accenda o spenga sia l'alimentazione che il pc?")] EAnswer full = EAnswer.Si)
+        public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
-            if(action == "on")
+            string result = element switch
             {
-                string result = await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
-                if(result == "done") await Task.Delay(2000);
-                if(full == EAnswer.Si)
-                {
-                    PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
-                    var header = Enumerable.Repeat(byte.MaxValue, 6);
-                    var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
+                EHardwareElements.Lamp => Utility.HardwareDriver.ToggleLamp(),
+                EHardwareElements.PC => Utility.HardwareDriver.SwitchPC(trigger),
+                EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
+                EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),
+                EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
+                _ => "Dispositivo hardware non presente"
+            };
 
-                    var magicPacket = header.Concat(data).ToArray();
-
-                    using var client = new UdpClient();
-
-                    client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
-                }
-            }
-            else
-            {
-               await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "pc-power", $"state={action}");
-            }
-            
-            Embed embed = DiscordData.CreateEmbed(Title: "Alimentazione PC modificata");
-            await RespondAsync(embed: embed, ephemeral: true);
-        }
-
-        [SlashCommand("led", "Accendi o spegni il led")]
-        [RequireOwner]
-        public async Task LedPower([Summary("state", "Cosa vuoi fare?")][Choice("Accendi", "on")][Choice("Spegni", "off")][Choice("Toggle", "toggle")] string action)
-        {
-            await RequestsHandler.MakeRequest.Execute(RequestsHandler.ERequestsType.Automation, "led", $"state={action}");
-            Embed embed = DiscordData.CreateEmbed(Title: "Stato del led modificato");
+            Embed embed = DiscordData.CreateEmbed(Title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
@@ -66,7 +42,7 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task Shutdown()
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Mi sto spegnendo");
+            Embed embed = DiscordData.CreateEmbed(Title: "Shutting Down Chief");
             await RespondAsync(embed: embed, ephemeral: true);
 
             await DiscordBot.Disconnect();
@@ -97,7 +73,7 @@ namespace DiscordBot.Modules
         [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
         public async Task CreateQR([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer NormalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer QuietZones = EAnswer.Si)
         {
-            var ImageStream = RequestsHandler.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
+            var ImageStream = Utility.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
 
             await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
         }
@@ -121,7 +97,7 @@ namespace DiscordBot.Modules
             [SlashCommand("numero", "Genero un numero random")]
             public async Task RandomNumber([Summary("minimo", "Minimo [0 default]")] int min = 0, [Summary("massimo", "Massimo [100 default]")] int max = 100, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string randomNumber = RequestsHandler.Functions.RandomNumber(min, max);
+                string randomNumber = Utility.Functions.RandomNumber(min, max);
                 Embed embed = DiscordData.CreateEmbed(Title: randomNumber);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -129,7 +105,7 @@ namespace DiscordBot.Modules
             [SlashCommand("dado", "Lancio uno o più dadi")]
             public async Task Dice([Summary("dadi", "Numero di dadi [default 1]")] int dices = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string dicesResults = RequestsHandler.Functions.RandomDice(dices);
+                string dicesResults = Utility.Functions.RandomDice(dices);
                 Embed embed = DiscordData.CreateEmbed(Title: dicesResults);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -137,7 +113,7 @@ namespace DiscordBot.Modules
             [SlashCommand("moneta", "Lancio una moneta")]
             public async Task Coin([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string result = RequestsHandler.Functions.TOC();
+                string result = Utility.Functions.TOC();
                 Embed embed = DiscordData.CreateEmbed(Title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -145,7 +121,7 @@ namespace DiscordBot.Modules
             [SlashCommand("opzione", "Scelgo un'opzione tra quelle che mi date")]
             public async Task RandomChoice([Summary("opzioni", "Opzioni separate dallo spazio")] string options, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string result = RequestsHandler.Functions.RandomOption(options);
+                string result = Utility.Functions.RandomOption(options);
                 Embed embed = DiscordData.CreateEmbed(Title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }

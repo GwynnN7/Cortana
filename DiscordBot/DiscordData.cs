@@ -6,18 +6,6 @@ using System.Data;
 
 namespace DiscordBot
 {
-    public enum EAnswer
-    {
-        Si,
-        No
-    }
-
-    public enum Action
-    {
-        Crea,
-        Elimina
-    }
-
     public static class DiscordData
     {
         private static DiscordSettings LastLoadedSettings;
@@ -151,18 +139,6 @@ namespace DiscordBot
             if (!WithoutAuthor) EmbedBuilder.WithAuthor(User.Username, User.GetAvatarUrl());
             if (Footer != null) EmbedBuilder.WithFooter(Footer);
             return EmbedBuilder.Build();
-        }
-
-        static public string GetRandomGreetings()
-        {
-            var choices = new string[]
-            {
-                "Hi",
-                "Hello",
-                "Welcome",
-                "Good to see you"
-            };
-            return RequestsHandler.Functions.RandomOption(choices);
         }
     }
 

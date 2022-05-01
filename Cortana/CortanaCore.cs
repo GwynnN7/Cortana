@@ -5,22 +5,14 @@ namespace Cortana
     using DiscordBot;
     using TelegramBot;
 
-    public class SubFunctionsHandler
+    public class CortanaCore
     {
-        public enum ESubFunctions
-        {
-            CortanaAPI,
-            DiscordBot,
-            TelegramBot,
-            RequestsHandler,
-            HardwareDriver
-        }
-
         private Dictionary<ESubFunctions, Thread> SubFunctionThreads;
         private static WebApplication CortanaAPI;
 
-        public SubFunctionsHandler()
+        public CortanaCore()
         {
+            
             SubFunctionThreads = new Dictionary<ESubFunctions, Thread>();
         }
 
@@ -38,9 +30,6 @@ namespace Cortana
                 case ESubFunctions.TelegramBot:
                     SubFunctionThread = new Thread(() => TelegramBot.BootTelegramBot());
                     break;
-                case ESubFunctions.HardwareDriver:
-                    HardwareDriver.Driver.BlinkLED();
-                    return -1;
                 default:
                     return -1;
             }
@@ -53,7 +42,7 @@ namespace Cortana
         {
             var builder = WebApplication.CreateBuilder();
 
-            Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("RequestsHandler"));
+            Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
             builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
             builder.Services.AddControllers();
 
@@ -69,7 +58,6 @@ namespace Cortana
         {
             await DiscordBot.Disconnect();
             await CortanaAPI.StopAsync();
-
         }
     }
 }
