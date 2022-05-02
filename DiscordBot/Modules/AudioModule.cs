@@ -99,27 +99,31 @@ namespace DiscordBot.Modules
             if(VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
         }
 
-        public static async Task CheckConnection(SocketGuild Guild)
+        public static void CheckConnection(SocketGuild Guild)
         {
-            foreach(var VoiceChannel in Guild.VoiceChannels)
+            Task.Run(async () =>
             {
-                if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID))
+                await Task.Delay(1000);
+                foreach (var VoiceChannel in Guild.VoiceChannels)
                 {
-                    if (AudioClients.ContainsKey(Guild.Id))
+                    if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID))
                     {
-                        if (AudioClients[Guild.Id].VoiceChannel != VoiceChannel || AudioClients[Guild.Id].VoiceChannel == null)
+                        if (AudioClients.ContainsKey(Guild.Id))
                         {
-                            await DisconnectFromVoice(AudioClients[Guild.Id].VoiceChannel);
-                            await ConnectToVoice(VoiceChannel);
+                            if (AudioClients[Guild.Id].VoiceChannel != VoiceChannel || AudioClients[Guild.Id].VoiceChannel == null)
+                            {
+                                await DisconnectFromVoice(AudioClients[Guild.Id].VoiceChannel);
+                                await ConnectToVoice(VoiceChannel);
+                            }
                         }
+                        else await ConnectToVoice(VoiceChannel);
                     }
-                    else await ConnectToVoice(VoiceChannel);
+                    else
+                    {
+                        if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel) await DisconnectFromVoice(VoiceChannel);
+                    }
                 }
-                else
-                {
-                    if(AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel) await DisconnectFromVoice(VoiceChannel);
-                }
-            }
+            });
         }
 
         public static async Task<bool> Play(string audio, ulong GuildID, EAudioSource Path)

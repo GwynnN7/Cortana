@@ -112,7 +112,7 @@ namespace DiscordBot
                 await NewState.VoiceChannel.Guild.GetUser(User.Id).ModifyAsync(x => x.ChannelId = NewState.VoiceChannel.Guild.VoiceChannels.FirstOrDefault()?.Id);
             }
 
-            if (User.Id == DiscordData.DiscordIDs.CortanaID) await Modules.AudioHandler.CheckConnection(Guild);
+            if (User.Id == DiscordData.DiscordIDs.CortanaID) Modules.AudioHandler.CheckConnection(Guild);
             if (User.Id == 306402234135085067) return;
             if (User.IsBot) return;
 
