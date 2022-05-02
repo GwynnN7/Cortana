@@ -234,6 +234,7 @@ namespace DiscordBot.Modules
         {
             Console.WriteLine("Enter");
             if (Channel == null) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id) return;
             Console.WriteLine("Exit");
             JoinChannel(Channel);
         }
