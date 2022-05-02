@@ -72,9 +72,7 @@ namespace DiscordBot.Modules
             if (VoiceChannel == null) return;
 
             ulong GuildID = VoiceChannel.Guild.Id;
-            if (AudioClients.ContainsKey(GuildID))
-            
-                await DisconnectFromVoice(AudioClients[GuildID].VoiceChannel);
+            if (AudioClients.ContainsKey(GuildID)) await DisconnectFromVoice(AudioClients[GuildID].VoiceChannel);
 
             var NewPair = new ChannelClient(VoiceChannel);
             AudioClients.Add(GuildID, NewPair);
@@ -99,6 +97,29 @@ namespace DiscordBot.Modules
                 AudioClients.Remove(GuildID);
             }
             if(VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
+        }
+
+        public static async Task CheckConnection(SocketGuild Guild)
+        {
+            foreach(var VoiceChannel in Guild.VoiceChannels)
+            {
+                if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID))
+                {
+                    if (AudioClients.ContainsKey(Guild.Id))
+                    {
+                        if (AudioClients[Guild.Id].VoiceChannel != VoiceChannel || AudioClients[Guild.Id].VoiceChannel == null)
+                        {
+                            await DisconnectFromVoice(AudioClients[Guild.Id].VoiceChannel);
+                            await ConnectToVoice(VoiceChannel);
+                        }
+                    }
+                    else await ConnectToVoice(VoiceChannel);
+                }
+                else
+                {
+                    if(AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel) await DisconnectFromVoice(VoiceChannel);
+                }
+            }
         }
 
         public static async Task<bool> Play(string audio, ulong GuildID, EAudioSource Path)

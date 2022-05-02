@@ -33,36 +33,29 @@ namespace Utility
 
         public static string SwitchPC(EHardwareTrigger state)
         {
-            string result = "";
-            switch(state)
+            if(state == EHardwareTrigger.On)
+            {
+                if (OutletsState == EBooleanState.Off)
                 {
-                    case EHardwareTrigger.On:
-                    {
-                        if(OutletsState == EBooleanState.Off)
-                        {
-                            SwitchOutlets(EHardwareTrigger.On);
-                            Thread.Sleep(2000);
-                        }
-                        PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
-                        var header = Enumerable.Repeat(byte.MaxValue, 6);
-                        var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
-                        var magicPacket = header.Concat(data).ToArray();
-                        using var client = new UdpClient();
-                        client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
-
-                        PCState = EBooleanState.On;
-                        result = "PC in accensione";
-                        break;
-                    }
-                    case EHardwareTrigger.Off:
-                        PCState = EBooleanState.Off;
-                        result = "Ancora non posso spegnere il pc";
-                        break;
-                    case EHardwareTrigger.Toggle:
-                        return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+                    SwitchOutlets(EHardwareTrigger.On);
+                    Thread.Sleep(2000);
                 }
+                PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                var header = Enumerable.Repeat(byte.MaxValue, 6);
+                var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
+                var magicPacket = header.Concat(data).ToArray();
+                using var client = new UdpClient();
+                client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
 
-            return result;
+                PCState = EBooleanState.On;
+                return "PC in accensione";
+            }
+            else if(state == EHardwareTrigger.Off)
+            {
+                PCState = EBooleanState.Off;
+                return "Ancora non posso spegnere il pc";
+            }
+            else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchLED(EHardwareTrigger state)

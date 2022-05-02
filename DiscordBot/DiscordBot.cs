@@ -104,17 +104,19 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
+            var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
+
             //NOMEN-ONLY
             if (NewState.VoiceChannel != null && NewState.VoiceChannel.Id == DiscordData.DiscordIDs.CortanaChannelID && User.Id != DiscordData.DiscordIDs.CortanaID)
             {
                 await NewState.VoiceChannel.Guild.GetUser(User.Id).ModifyAsync(x => x.ChannelId = NewState.VoiceChannel.Guild.VoiceChannels.FirstOrDefault()?.Id);
             }
 
-            FindChannelToJoin((NewState.VoiceChannel ?? OldState.VoiceChannel).Guild);
-
+            if (User.Id == DiscordData.DiscordIDs.CortanaID) await Modules.AudioHandler.CheckConnection(Guild);
+            if (User.Id == 306402234135085067) return;
             if (User.IsBot) return;
 
-            var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
+            FindChannelToJoin((NewState.VoiceChannel ?? OldState.VoiceChannel).Guild);
 
             if (OldState.VoiceChannel == null && NewState.VoiceChannel != null)
             {
