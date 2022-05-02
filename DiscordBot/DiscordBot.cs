@@ -47,7 +47,8 @@ namespace DiscordBot
                 ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElapsed);
                 ActivityTimer.Start();
 
-                FindChannelToJoin(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
+                var channel = GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
+                if (channel != null) Modules.AudioHandler.JoinChannel(channel);
             };
 
             await client.LoginAsync(TokenType.Bot, config["token"]);
@@ -77,29 +78,31 @@ namespace DiscordBot
             await Cortana.LogoutAsync();
         }
 
-        void FindChannelToJoin(SocketGuild Guild)
+        private static bool ShouldCortanaStay(SocketGuild Guild)
         {
-            if (!DiscordData.GuildSettings[Guild.Id].AutoJoin) return;
-            //NOMEN-ONLY
-            if (Guild.Id == DiscordData.DiscordIDs.NoMenID)
+            foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                List<SocketVoiceChannel> AvailableChannel = new List<SocketVoiceChannel>();
-                bool canMove = true;
-                foreach (var voiceChannel in Guild.VoiceChannels)
-                {
-                    if (voiceChannel.Id == DiscordData.DiscordIDs.CortanaChannelID)
-                    {
-                        if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) canMove = false;
-                        AvailableChannel.Add(voiceChannel);
-                        continue;
-                    }
-                    if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) AvailableChannel.Add(voiceChannel);
-
-                    else if (voiceChannel.Users.Count > 1 && voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) canMove = false;
-                }
-                if (AvailableChannel.Count > 1) AvailableChannel.Remove(Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID));
-                if (canMove) Modules.AudioHandler.JoinChannel(AvailableChannel[0]);
+                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Users.Count > 1) return true;
             }
+            return false;
+        }
+
+        private static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
+        {
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+            }
+            return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
+        }
+
+        private static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
+        {
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+            }
+            return null;
         }
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
@@ -112,11 +115,19 @@ namespace DiscordBot
                 await NewState.VoiceChannel.Guild.GetUser(User.Id).ModifyAsync(x => x.ChannelId = NewState.VoiceChannel.Guild.VoiceChannels.FirstOrDefault()?.Id);
             }
 
-            if (User.Id == DiscordData.DiscordIDs.CortanaID) Modules.AudioHandler.CheckConnection(Guild);
-            if (User.Id == 306402234135085067) return;
-            if (User.IsBot) return;
+            if (!ShouldCortanaStay(Guild))
+            {
+                if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
+                {
+                    var channel = GetAvailableChannel(Guild);
+                    if (channel == null) Modules.AudioHandler.Disconnect(Guild.Id);
+                    else Modules.AudioHandler.JoinChannel(channel);
+                }
+                else Modules.AudioHandler.Disconnect(Guild.Id);
+            }
+            else Modules.AudioHandler.EnsureChannel(GetCurrentCortanaChannel(Guild));
 
-            FindChannelToJoin((NewState.VoiceChannel ?? OldState.VoiceChannel).Guild);
+            if (User.Id == DiscordData.DiscordIDs.CortanaID) return;
 
             if (OldState.VoiceChannel == null && NewState.VoiceChannel != null)
             {

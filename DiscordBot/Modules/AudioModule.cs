@@ -43,6 +43,7 @@ namespace DiscordBot.Modules
 
         private static Dictionary<ulong, List<QueueStructure>> Queue = new Dictionary<ulong, List<QueueStructure>>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
+        private static CancellationTokenSource? JoinRegulator = null;
         
         private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
@@ -68,68 +69,62 @@ namespace DiscordBot.Modules
 
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
         {
-            await Task.Delay(500);
-            if (VoiceChannel == null) return;
+            try
+            {
+                await Task.Delay(500);
+                if (VoiceChannel == null) return;
 
-            ulong GuildID = VoiceChannel.Guild.Id;
-            if (AudioClients.ContainsKey(GuildID)) await DisconnectFromVoice(AudioClients[GuildID].VoiceChannel);
+                ulong GuildID = VoiceChannel.Guild.Id;
+                DisposeConnection(GuildID);
 
-            var NewPair = new ChannelClient(VoiceChannel);
-            AudioClients.Add(GuildID, NewPair);
+                var NewPair = new ChannelClient(VoiceChannel);
+                AudioClients.Add(GuildID, NewPair);
 
-            var AudioClient = await VoiceChannel.ConnectAsync();
-            var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
-            AudioClients[GuildID] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
+                var AudioClient = await VoiceChannel.ConnectAsync();
+                var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
+                AudioClients[GuildID] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
-            await Play("Hello", GuildID, EAudioSource.Local);
-            await Play("Cortana_1", GuildID, EAudioSource.Local);
+                await Play("Hello", GuildID, EAudioSource.Local);
+                await Play("Cortana_1", GuildID, EAudioSource.Local);
+            }
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("ciao");
+            }
+            finally
+            {
+                DisposeJoinRegulator();
+            }
         }
 
         private static async Task DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
         {
-            if (VoiceChannel == null) return;
+            try
+            {
+                if (VoiceChannel == null) return;
 
-            ulong GuildID = VoiceChannel.Guild.Id;
+                ulong GuildID = VoiceChannel.Guild.Id;
+                DisposeConnection(GuildID);
+
+                if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
+            }
+            catch (OperationCanceledException) 
+            {
+                Console.WriteLine("ciao2");
+            }
+            finally { 
+                DisposeJoinRegulator(); 
+            }
+        }
+
+        private static void DisposeConnection(ulong GuildID)
+        {
             if (AudioClients.ContainsKey(GuildID))
             {
-                if(AudioClients[GuildID].AudioStream != null) await AudioClients[GuildID].AudioStream.DisposeAsync();
+                if (AudioClients[GuildID].AudioStream != null) AudioClients[GuildID].AudioStream.Dispose();
                 if (AudioClients[GuildID].AudioClient != null) AudioClients[GuildID].AudioClient.Dispose();
                 AudioClients.Remove(GuildID);
             }
-            if(VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
-        }
-
-        public static void CheckConnection(SocketGuild Guild)
-        {
-            Task.Run(async () =>
-            {
-                await Task.Delay(2000);
-                try{
-                    foreach (var VoiceChannel in Guild.VoiceChannels)
-                    {
-                        if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID))
-                        {
-                            if (AudioClients.ContainsKey(Guild.Id))
-                            {
-                                if (AudioClients[Guild.Id].VoiceChannel != VoiceChannel || AudioClients[Guild.Id].VoiceChannel == null)
-                                {
-                                    await DisconnectFromVoice(AudioClients[Guild.Id].VoiceChannel);
-                                    await ConnectToVoice(VoiceChannel);
-                                }
-                            }
-                            else await ConnectToVoice(VoiceChannel);
-                        }
-                        else
-                        {
-                            if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel) await DisconnectFromVoice(VoiceChannel);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.GetBaseException().ToString());
-                }
-            });
         }
 
         public static async Task<bool> Play(string audio, ulong GuildID, EAudioSource Path)
@@ -215,7 +210,9 @@ namespace DiscordBot.Modules
                     break;
                 }
             }
-            Task.Run(() => ConnectToVoice(Channel));
+            DisposeJoinRegulator();
+            JoinRegulator = new CancellationTokenSource();
+            Task.Run(() => ConnectToVoice(Channel), JoinRegulator.Token);
             return Text;
         }
 
@@ -225,11 +222,30 @@ namespace DiscordBot.Modules
             {
                 if (Client.Key == GuildID)
                 {
-                    Task.Run(() => DisconnectFromVoice(Client.Value.VoiceChannel));
+                    DisposeJoinRegulator();
+                    JoinRegulator = new CancellationTokenSource();
+                    Task.Run(() => DisconnectFromVoice(Client.Value.VoiceChannel), JoinRegulator.Token);
                     return "Mi sto disconnettendo";
                 }
             }
             return "Non sono connessa a nessun canale";
+        }
+
+        public static void EnsureChannel(SocketVoiceChannel? Channel)
+        {
+            if (Channel == null) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel == Channel) return;
+            JoinChannel(Channel);
+        }
+
+        private static void DisposeJoinRegulator()
+        {
+            if (JoinRegulator != null)
+            {
+                JoinRegulator.Cancel();
+                JoinRegulator.Dispose();
+                JoinRegulator = null;
+            }
         }
     }
 
