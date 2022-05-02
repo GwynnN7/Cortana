@@ -45,24 +45,23 @@ namespace DiscordBot.Modules
         private static Dictionary<ulong, CancellationTokenSource> JoinRegulators = new Dictionary<ulong, CancellationTokenSource>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
         
-        private static async Task<MemoryStream> ExecuteFFMPEG(ulong GuildID, Stream? VideoStream = null, string FilePath = "")
+        private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
             var memoryStream = new MemoryStream();
             await Cli.Wrap("ffmpeg")
                 .WithArguments($" -hide_banner -loglevel panic -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
                 .WithStandardInputPipe((VideoStream != null ? PipeSource.FromStream(VideoStream) : PipeSource.Null))
                 .WithStandardOutputPipe(PipeTarget.ToStream(memoryStream))
-                .ExecuteAsync(JoinRegulators.ContainsKey(GuildID) ? JoinRegulators[GuildID].Token : default);
+                .ExecuteAsync();
             return memoryStream;
         }
 
-        private static async Task<Stream> GetYoutubeAudioStream(string url, ulong GuildID)
+        private static async Task<Stream> GetYoutubeAudioStream(string url)
         {
             YoutubeClient youtube = new YoutubeClient();
-            var token = JoinRegulators.ContainsKey(GuildID) ? JoinRegulators[GuildID].Token : default;
-            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url, token);
+            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
             var StreamInfo = StreamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo, token);
+            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
             return Stream;
         }
 
@@ -74,7 +73,7 @@ namespace DiscordBot.Modules
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-                await Task.Delay(1000);
+                await Task.Delay(800);
 
                 DisposeConnection(GuildID);
 
@@ -133,13 +132,13 @@ namespace DiscordBot.Modules
             MemoryStream MemoryStream = new MemoryStream();
             if (Path == EAudioSource.Youtube)
             {
-                var Stream = await GetYoutubeAudioStream(audio, GuildID);
-                MemoryStream = await ExecuteFFMPEG(VideoStream: Stream, GuildID: GuildID);
+                var Stream = await GetYoutubeAudioStream(audio);
+                MemoryStream = await ExecuteFFMPEG(VideoStream: Stream);
             }
             else if (Path == EAudioSource.Local)
             {
                 audio = $"Sound/{audio}.mp3";
-                MemoryStream = await ExecuteFFMPEG(FilePath: audio, GuildID: GuildID);
+                MemoryStream = await ExecuteFFMPEG(FilePath: audio);
             }
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
@@ -232,10 +231,8 @@ namespace DiscordBot.Modules
 
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
-            Console.WriteLine("Enter");
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id) return;
-            Console.WriteLine("Exit");
             JoinChannel(Channel);
         }
 
@@ -243,6 +240,7 @@ namespace DiscordBot.Modules
         {
             if (JoinRegulators.ContainsKey(GuildID))
             {
+                Clear(GuildID);
                 JoinRegulators[GuildID].Cancel();
                 JoinRegulators[GuildID].Dispose();
                 JoinRegulators.Remove(GuildID);

@@ -91,7 +91,8 @@ namespace DiscordBot
         {
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+                bool bSafety = voiceChannel.Users.Count == 1 && voiceChannel.Users.First().Id == 306402234135085067;
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && !bSafety) return voiceChannel;
             }
             return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
         }
@@ -140,7 +141,7 @@ namespace DiscordBot
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
-                await Task.Delay(2000);
+                await Task.Delay(1500);
                 await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
