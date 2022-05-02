@@ -42,26 +42,27 @@ namespace DiscordBot.Modules
         }
 
         private static Dictionary<ulong, List<QueueStructure>> Queue = new Dictionary<ulong, List<QueueStructure>>();
+        private static Dictionary<ulong, CancellationTokenSource> JoinRegulators = new Dictionary<ulong, CancellationTokenSource>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
-        private static CancellationTokenSource? JoinRegulator = null;
         
-        private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
+        private static async Task<MemoryStream> ExecuteFFMPEG(ulong GuildID, Stream? VideoStream = null, string FilePath = "")
         {
             var memoryStream = new MemoryStream();
             await Cli.Wrap("ffmpeg")
                 .WithArguments($" -hide_banner -loglevel panic -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
                 .WithStandardInputPipe((VideoStream != null ? PipeSource.FromStream(VideoStream) : PipeSource.Null))
                 .WithStandardOutputPipe(PipeTarget.ToStream(memoryStream))
-                .ExecuteAsync(JoinRegulator.Token);
+                .ExecuteAsync(JoinRegulators.ContainsKey(GuildID) ? JoinRegulators[GuildID].Token : default);
             return memoryStream;
         }
 
-        private static async Task<Stream> GetYoutubeAudioStream(string url)
+        private static async Task<Stream> GetYoutubeAudioStream(string url, ulong GuildID)
         {
             YoutubeClient youtube = new YoutubeClient();
-            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url, JoinRegulator.Token);
+            var token = JoinRegulators.ContainsKey(GuildID) ? JoinRegulators[GuildID].Token : default;
+            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url, token);
             var StreamInfo = StreamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo, JoinRegulator.Token);
+            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo, token);
             return Stream;
         }
 
@@ -69,11 +70,12 @@ namespace DiscordBot.Modules
 
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
         {
+            if (VoiceChannel == null) return;
+            ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-                if (VoiceChannel == null) return;
+                await Task.Delay(1000);
 
-                ulong GuildID = VoiceChannel.Guild.Id;
                 DisposeConnection(GuildID);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -92,24 +94,25 @@ namespace DiscordBot.Modules
             }
             finally
             {
-                DisposeJoinRegulator();
+                DisposeJoinRegulator(GuildID);
             }
         }
 
         private static async Task DisconnectFromVoice(SocketVoiceChannel VoiceChannel)
         {
+            if (VoiceChannel == null) return;
+            ulong GuildID = VoiceChannel.Guild.Id;
+
             try
             {
-                if (VoiceChannel == null) return;
-
-                ulong GuildID = VoiceChannel.Guild.Id;
                 DisposeConnection(GuildID);
 
                 if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
             }
             catch (OperationCanceledException) {}
-            finally { 
-                DisposeJoinRegulator(); 
+            finally 
+            { 
+                DisposeJoinRegulator(GuildID); 
             }
         }
 
@@ -130,13 +133,13 @@ namespace DiscordBot.Modules
             MemoryStream MemoryStream = new MemoryStream();
             if (Path == EAudioSource.Youtube)
             {
-                var Stream = await GetYoutubeAudioStream(audio);
-                MemoryStream = await ExecuteFFMPEG(VideoStream: Stream);
+                var Stream = await GetYoutubeAudioStream(audio, GuildID);
+                MemoryStream = await ExecuteFFMPEG(VideoStream: Stream, GuildID: GuildID);
             }
             else if (Path == EAudioSource.Local)
             {
                 audio = $"Sound/{audio}.mp3";
-                MemoryStream = await ExecuteFFMPEG(FilePath: audio);
+                MemoryStream = await ExecuteFFMPEG(FilePath: audio, GuildID: GuildID);
             }
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
@@ -206,9 +209,9 @@ namespace DiscordBot.Modules
                     break;
                 }
             }
-            DisposeJoinRegulator();
-            JoinRegulator = new CancellationTokenSource();
-            Task.Run(() => ConnectToVoice(Channel), JoinRegulator.Token);
+            DisposeJoinRegulator(Channel.Guild.Id);
+            JoinRegulators.Add(Channel.Guild.Id, new CancellationTokenSource());
+            Task.Run(() => ConnectToVoice(Channel), JoinRegulators[Channel.Guild.Id].Token);
             return Text;
         }
 
@@ -218,9 +221,9 @@ namespace DiscordBot.Modules
             {
                 if (Client.Key == GuildID)
                 {
-                    DisposeJoinRegulator();
-                    JoinRegulator = new CancellationTokenSource();
-                    Task.Run(() => DisconnectFromVoice(Client.Value.VoiceChannel), JoinRegulator.Token);
+                    DisposeJoinRegulator(GuildID);
+                    JoinRegulators.Add(GuildID, new CancellationTokenSource());
+                    Task.Run(() => DisconnectFromVoice(Client.Value.VoiceChannel), JoinRegulators[GuildID].Token);
                     return "Mi sto disconnettendo";
                 }
             }
@@ -230,17 +233,17 @@ namespace DiscordBot.Modules
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
             if (Channel == null) return;
-            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel == Channel) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id) return;
             JoinChannel(Channel);
         }
 
-        private static void DisposeJoinRegulator()
+        private static void DisposeJoinRegulator(ulong GuildID)
         {
-            if (JoinRegulator != null)
+            if (JoinRegulators.ContainsKey(GuildID))
             {
-                JoinRegulator.Cancel();
-                JoinRegulator.Dispose();
-                JoinRegulator = null;
+                JoinRegulators[GuildID].Cancel();
+                JoinRegulators[GuildID].Dispose();
+                JoinRegulators.Remove(GuildID);
             }
         }
     }
