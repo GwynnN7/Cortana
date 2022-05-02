@@ -36,23 +36,25 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync("C'è stato un problema: UnmetPrecondition", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync("C'è stato un problema: UnknownCommand", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync("C'è stato un problema: BadArgs", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync("C'è stato un problema: Exception", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync("C'è stato un problema: Unsuccessful", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     default:
                         break;
                 }
+                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
             }
 
             return Task.CompletedTask;
@@ -65,23 +67,25 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     default:
                         break;
                 }
+                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
             }
 
             return Task.CompletedTask;
@@ -94,23 +98,25 @@ namespace DiscordBot
                 switch (arg3.Error)
                 {
                     case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
                         break;
                     case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ephemeral: true);
+                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
                     default:
                         break;
                 }
+                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
             }
 
             return Task.CompletedTask;
