@@ -52,16 +52,16 @@ namespace DiscordBot.Modules
                 .WithArguments($" -hide_banner -loglevel panic -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
                 .WithStandardInputPipe((VideoStream != null ? PipeSource.FromStream(VideoStream) : PipeSource.Null))
                 .WithStandardOutputPipe(PipeTarget.ToStream(memoryStream))
-                .ExecuteAsync();
+                .ExecuteAsync(JoinRegulator.Token);
             return memoryStream;
         }
 
         private static async Task<Stream> GetYoutubeAudioStream(string url)
         {
             YoutubeClient youtube = new YoutubeClient();
-            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
+            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url, JoinRegulator.Token);
             var StreamInfo = StreamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
+            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo, JoinRegulator.Token);
             return Stream;
         }
 
@@ -71,7 +71,6 @@ namespace DiscordBot.Modules
         {
             try
             {
-                await Task.Delay(500);
                 if (VoiceChannel == null) return;
 
                 ulong GuildID = VoiceChannel.Guild.Id;
@@ -89,7 +88,7 @@ namespace DiscordBot.Modules
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine("ciao");
+                Console.WriteLine("Connection shifted");
             }
             finally
             {
@@ -108,10 +107,7 @@ namespace DiscordBot.Modules
 
                 if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
             }
-            catch (OperationCanceledException) 
-            {
-                Console.WriteLine("ciao2");
-            }
+            catch (OperationCanceledException) {}
             finally { 
                 DisposeJoinRegulator(); 
             }
