@@ -65,5 +65,12 @@ namespace Utility
             Enum.TryParse(state, out EHardwareTrigger Status);
             return Status;
         }
+
+        public static async Task<string> GetPublicIP()
+        {
+            using var client = new HttpClient();
+            var ip = await client.GetStringAsync("https://api.ipify.org");
+            return ip;
+        }
     }
 }

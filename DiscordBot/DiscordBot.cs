@@ -10,6 +10,7 @@ namespace DiscordBot
     {
         public static void BootDiscordBot() => new DiscordBot().MainAsync().GetAwaiter().GetResult();
 
+        private static List<string> Logs = new List<string>();
         public static DiscordSocketClient Cortana;
         public static System.Timers.Timer ActivityTimer = new System.Timers.Timer();
         public static System.Timers.Timer StatusTimer = new System.Timers.Timer();
@@ -101,7 +102,9 @@ namespace DiscordBot
         {
             Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
             var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendMessageAsync(embed: embed);
+            string value = "";
+            Logs.ForEach(log => value += log + "\n");
+            await Chief.SendMessageAsync(text: value, embed: embed);
         }
 
         public static async Task Disconnect()
@@ -189,17 +192,11 @@ namespace DiscordBot
             return Task.CompletedTask;
         }
 
-        static async Task LogAsync(LogMessage message)
+        static Task LogAsync(LogMessage message)
         {
-            try
-            {
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("Log:" + message.Message);
-            }
-            catch
-            {
-                Console.WriteLine("Log:" + message.Message);
-            }
+            Logs.Add(message.Message);
+            Console.WriteLine("Log:" + message.Message);
+            return Task.CompletedTask;
         }
 
         private DiscordSocketConfig ConfigureSocket()

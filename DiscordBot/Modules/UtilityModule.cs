@@ -45,6 +45,14 @@ namespace DiscordBot.Modules
             else await RespondAsync($"L'IP {ip} non ha risposto al ping");
         }
 
+        [SlashCommand("ip", "Ti dico il mio IP pubblico", runMode: RunMode.Async)]
+        [RequireOwner]
+        public async Task GetIP()
+        {
+            var ip = await Utility.Functions.GetPublicIP();
+            await RespondAsync($"L'IP pubblic è {ip}", ephemeral: true);
+        }
+
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
         [RequireOwner]
         public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
