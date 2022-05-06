@@ -67,13 +67,71 @@ namespace DiscordBot.Modules
 
         public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url) => await new YoutubeClient().Videos.GetAsync(url);
 
+        private static bool ShouldCortanaStay(SocketGuild Guild)
+        {
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Users.Count > 1) return true;
+            }
+            return false;
+        }
+
+        public static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
+        {
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+            }
+            return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
+        }
+
+        private static List<SocketVoiceChannel> GetAvailableChannels(SocketGuild Guild)
+        {
+            List<SocketVoiceChannel> channels = new List<SocketVoiceChannel>();
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) channels.Add(voiceChannel);
+            }
+            if(Guild.Id == DiscordData.DiscordIDs.NoMenID) if (channels.Count == 0) channels.Add(Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID));
+            return channels;
+        }
+
+        private static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
+        {
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+            }
+            return null;
+        }
+
+        public static void TryConnection(SocketGuild Guild)
+        {
+            if (!ShouldCortanaStay(Guild))
+            {
+                if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
+                {
+                    var channel = GetAvailableChannel(Guild);
+                    if (channel == null) Disconnect(Guild.Id);
+                    else JoinChannel(channel);
+                }
+                else Disconnect(Guild.Id);
+            }
+            else EnsureChannel(GetCurrentCortanaChannel(Guild));
+        }
+
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
         {
             if (VoiceChannel == null) return;
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-                await Task.Delay(800);
+                await Task.Delay(1500);
+                if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel))
+                {
+                    TryConnection(VoiceChannel.Guild);
+                    return;
+                }
 
                 DisposeConnection(GuildID);
 
@@ -87,10 +145,7 @@ namespace DiscordBot.Modules
                 await Play("Hello", GuildID, EAudioSource.Local);
                 await Play("Cortana_1", GuildID, EAudioSource.Local);
             }
-            catch (OperationCanceledException)
-            {
-                Console.WriteLine("Connection shifted");
-            }
+            catch (OperationCanceledException){}
             finally
             {
                 DisposeJoinRegulator(GuildID);
@@ -256,16 +311,15 @@ namespace DiscordBot.Modules
             [SlashCommand("connetti", "Entro nel canale dove sono stata chiamata")]
             public async Task Join([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                var Text = "C'è stato un problema :/";
-                Context.Guild.VoiceChannels.ToList().ForEach(x =>
+                var Text = "Non posso connettermi se non sei in un canale";
+                foreach(var voiceChannel in Context.Guild.VoiceChannels)
                 {
-                    if (x.Users.Contains(Context.User))
+                    if (voiceChannel.Users.Contains(Context.User))
                     {
-                        Text = AudioHandler.JoinChannel(x);
-                        return;
+                        Text = AudioHandler.JoinChannel(voiceChannel);
+                        break;
                     }
                 }
-                );
                 await RespondAsync(Text, ephemeral: Ephemeral == EAnswer.Si);
             }
 

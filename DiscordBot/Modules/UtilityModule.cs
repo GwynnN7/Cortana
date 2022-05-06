@@ -20,7 +20,39 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
-        [SlashCommand("hardware", "Interagisci con l'hardware in camera")]
+        [SlashCommand("room", "Accendi o spegni l'hardware fondamentale", runMode: RunMode.Async)]
+        [RequireOwner]
+        public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
+        {
+            Embed embed = DiscordData.CreateEmbed(Title: "Procedo");
+            await RespondAsync(embed: embed, ephemeral: true);
+
+            Utility.HardwareDriver.ToggleLamp();
+            Utility.HardwareDriver.SwitchPC(trigger);
+            Utility.HardwareDriver.SwitchOLED(trigger);
+            Utility.HardwareDriver.SwitchLED(trigger);
+        }
+
+        [SlashCommand("status", "Come sta andando sul raspberry")]
+        [RequireOwner]
+        public async Task Status()
+        {
+            var image = Utility.Functions.Screenshot();
+            await RespondWithFileAsync(image, "Ecco la situazione");
+        }
+
+        [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
+        public async Task Ping([Summary("ip", "IP da pingare")] string ip)
+        {
+            bool result;
+            if (ip == "pc") result = Utility.HardwareDriver.PingPC();
+            else result = Utility.HardwareDriver.Ping(ip);
+
+            if (result) await RespondAsync("L'IP ha risposto");
+            else await RespondAsync("L'IP non ha risposto");
+        }
+
+        [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
         [RequireOwner]
         public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {

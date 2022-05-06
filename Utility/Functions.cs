@@ -65,5 +65,14 @@ namespace Utility
             Enum.TryParse(state, out EHardwareTrigger Status);
             return Status;
         }
+
+        public static Stream Screenshot()
+        {
+            System.Drawing.Image screen = Pranas.ScreenshotCapture.TakeScreenshot(true);
+            var ImageStream = new MemoryStream();
+            screen.Save(ImageStream, screen.RawFormat);
+
+            return ImageStream;
+        }
     }
 }

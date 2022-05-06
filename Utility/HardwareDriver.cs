@@ -1,6 +1,8 @@
 ﻿using Iot.Device.CpuTemperature;
+using Renci.SshNet;
 using System.Device.Gpio;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -35,25 +37,35 @@ namespace Utility
         {
             if(state == EHardwareTrigger.On)
             {
+                PCState = EBooleanState.On;
                 if (OutletsState == EBooleanState.Off)
                 {
                     SwitchOutlets(EHardwareTrigger.On);
-                    Thread.Sleep(2000);
+                    return "PC e Ciabatta in accensione";
                 }
-                PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
-                var header = Enumerable.Repeat(byte.MaxValue, 6);
-                var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
-                var magicPacket = header.Concat(data).ToArray();
-                using var client = new UdpClient();
-                client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
+                else
+                {
+                    PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    var header = Enumerable.Repeat(byte.MaxValue, 6);
+                    var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
+                    var magicPacket = header.Concat(data).ToArray();
+                    using var client = new UdpClient();
+                    client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Broadcast, 9));
 
-                PCState = EBooleanState.On;
-                return "PC in accensione";
+                    return "PC in accensione";
+                }
+                
             }
             else if(state == EHardwareTrigger.Off)
             {
+                using (var client = new SshClient("192.168.1.17", "matteo", "Gwynbleidd"))
+                {
+                    client.Connect();
+                    client.RunCommand("shutdown /s /t 0");
+                    client.Disconnect();
+                }
                 PCState = EBooleanState.Off;
-                return "Ancora non posso spegnere il pc";
+                return "PC in spegnimento";
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -110,6 +122,16 @@ namespace Utility
             }
             if (state == EHardwareTrigger.Off)
             {
+                if(PCState == EBooleanState.On)
+                {
+                    Task.Run(() =>
+                    {
+                        SwitchPC(EHardwareTrigger.Off);
+                        Thread.Sleep(10000);
+                        controller.Write(OutletsPin, PinValue.Low);
+                    });
+                    return "PC e Ciabatta in spegnimento";
+                }
                 controller.Write(OutletsPin, PinValue.Low);
                 OutletsState = EBooleanState.Off;
                 return "Ciabatta Spenta";
@@ -126,6 +148,22 @@ namespace Utility
             average /= temperatures.Count;
             string tempFormat = $"{Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C";
             return tempFormat;
+        }
+
+        public static bool PingPC()
+        {
+            using Ping pingSender = new Ping();
+            PingReply reply = pingSender.Send("192.168.1.17", 1000);
+
+            return reply.Status == IPStatus.Success;
+        }
+
+        public static bool Ping(string ip)
+        {
+            using Ping pingSender = new Ping();
+            PingReply reply = pingSender.Send(ip, 2000);
+
+            return reply.Status == IPStatus.Success;
         }
     }
 }

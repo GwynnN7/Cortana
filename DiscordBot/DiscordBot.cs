@@ -23,6 +23,8 @@ namespace DiscordBot
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
             client.Log += LogAsync;
+            client.Disconnected += Client_Disconnected;
+            client.Connected += Client_Connected;
             client.UserVoiceStateUpdated += OnUserVoiceStateUpdate;
             client.JoinedGuild += OnServerJoin;
             client.LeftGuild += OnServerLeave;
@@ -47,7 +49,7 @@ namespace DiscordBot
                 ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElapsed);
                 ActivityTimer.Start();
 
-                var channel = GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
+                var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
             };
 
@@ -55,6 +57,32 @@ namespace DiscordBot
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
+        }
+
+        private static async Task Client_Connected()
+        {
+            try
+            {
+                var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.Result.SendMessageAsync("Connessione avventua");
+            }
+            catch
+            {
+                Console.WriteLine("Connessione avvenuta");
+            }
+        }
+
+        private static async Task Client_Disconnected(Exception arg)
+        {
+            try
+            {
+                var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.Result.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
+            }
+            catch
+            {
+                Console.WriteLine($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
+            }
         }
 
         private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -78,36 +106,11 @@ namespace DiscordBot
             await Cortana.LogoutAsync();
         }
 
-        private static bool ShouldCortanaStay(SocketGuild Guild)
-        {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Users.Count > 1) return true;
-            }
-            return false;
-        }
-
-        private static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
-        {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                bool bSafety = voiceChannel.Users.Count == 1 && voiceChannel.Users.First().Id == 306402234135085067;
-                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && !bSafety) return voiceChannel;
-            }
-            return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
-        }
-
-        private static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
-        {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
-            }
-            return null;
-        }
-
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
+            var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+            await Chief.Result.SendMessageAsync($"{User.Username} ha richiamato OnVoiceStateUpdate");
+
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
             //NOMEN-ONLY
@@ -116,17 +119,7 @@ namespace DiscordBot
                 await NewState.VoiceChannel.Guild.GetUser(User.Id).ModifyAsync(x => x.ChannelId = NewState.VoiceChannel.Guild.VoiceChannels.FirstOrDefault()?.Id);
             }
 
-            if (!ShouldCortanaStay(Guild))
-            {
-                if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
-                {
-                    var channel = GetAvailableChannel(Guild);
-                    if (channel == null) Modules.AudioHandler.Disconnect(Guild.Id);
-                    else Modules.AudioHandler.JoinChannel(channel);
-                }
-                else Modules.AudioHandler.Disconnect(Guild.Id);
-            }
-            else Modules.AudioHandler.EnsureChannel(GetCurrentCortanaChannel(Guild));
+            Modules.AudioHandler.TryConnection(Guild);
 
             if (User.Id == DiscordData.DiscordIDs.CortanaID) return;
 

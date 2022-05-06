@@ -46,5 +46,18 @@ namespace RequestsHandler.Controllers
             string result = Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
             return new Dictionary<string, string>() { { "data", result } };
         }
+
+        [HttpGet("everything")]
+        public Dictionary<string, string> EverythingPower(string state)
+        {
+            var trigger = Utility.Functions.TriggerStateFromString(state);
+
+            Utility.HardwareDriver.ToggleLamp();
+            Utility.HardwareDriver.SwitchPC(trigger);
+            Utility.HardwareDriver.SwitchOLED(trigger);
+            Utility.HardwareDriver.SwitchLED(trigger);
+
+            return new Dictionary<string, string>() { { "data", "Done" } };
+        }
     }
 }
