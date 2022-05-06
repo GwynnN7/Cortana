@@ -99,10 +99,9 @@ namespace DiscordBot
 
         private static async void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            var Image = await Utility.Functions.Screenshot();
             Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
             var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendFileAsync(stream: Image, filename: "Screenshot", embed: embed);
+            await Chief.SendMessageAsync(embed: embed);
         }
 
         public static async Task Disconnect()
@@ -121,8 +120,8 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
-            var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.Result.SendMessageAsync($"{User.Username} ha richiamato OnVoiceStateUpdate");
+            var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+            await Chief.SendMessageAsync($"{User.Username} ha richiamato OnVoiceStateUpdate");
 
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
@@ -190,10 +189,17 @@ namespace DiscordBot
             return Task.CompletedTask;
         }
 
-        static Task LogAsync(LogMessage message)
+        static async Task LogAsync(LogMessage message)
         {
-            Console.WriteLine("Log:" + message.Message);
-            return Task.CompletedTask;
+            try
+            {
+                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync("Log:" + message.Message);
+            }
+            catch
+            {
+                Console.WriteLine("Log:" + message.Message);
+            }
         }
 
         private DiscordSocketConfig ConfigureSocket()

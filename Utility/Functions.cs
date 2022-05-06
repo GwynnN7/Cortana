@@ -1,5 +1,4 @@
-﻿using Plugin.Screenshot;
-using QRCoder;
+﻿using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
 
 namespace Utility
@@ -65,12 +64,6 @@ namespace Utility
             state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
             Enum.TryParse(state, out EHardwareTrigger Status);
             return Status;
-        }
-
-        public static async Task<Stream> Screenshot()
-        {
-            var stream = new MemoryStream(await CrossScreenshot.Current.CaptureAsync());
-            return stream;
         }
     }
 }

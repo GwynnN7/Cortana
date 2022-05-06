@@ -33,14 +33,6 @@ namespace DiscordBot.Modules
             Utility.HardwareDriver.SwitchLED(trigger);
         }
 
-        [SlashCommand("status", "Come sta andando sul raspberry")]
-        [RequireOwner]
-        public async Task Status()
-        {
-            var Image = await Utility.Functions.Screenshot();
-            Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
-            await RespondWithFileAsync(fileStream: Image, fileName: "Screenshot", embed: embed);
-        }
 
         [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
         public async Task Ping([Summary("ip", "IP da pingare")] string ip)
