@@ -58,7 +58,14 @@ namespace Utility
             }
             else if(state == EHardwareTrigger.Off)
             {
-                using (var client = new SshClient("192.168.1.17", "matteo", "Gwynbleidd"))
+                var keyFiles = new[] { new PrivateKeyFile("/home/cortana/.ssh/id_rsa", "Gwynbleidd") };
+
+                var methods = new List<AuthenticationMethod>();
+                methods.Add(new PasswordAuthenticationMethod("matteo", "Gwynbleidd"));
+                methods.Add(new PrivateKeyAuthenticationMethod("matteo", keyFiles));
+                var con = new ConnectionInfo("192.168.1.17", 22, "matteo", methods.ToArray());
+
+                using (var client = new SshClient(con))
                 {
                     client.Connect();
                     client.RunCommand("shutdown /s /t 0");
@@ -127,7 +134,8 @@ namespace Utility
                     Task.Run(() =>
                     {
                         SwitchPC(EHardwareTrigger.Off);
-                        Thread.Sleep(10000);
+                        while (PingPC()) { Task.Delay(1000); };
+                        Task.Delay(1000);
                         controller.Write(OutletsPin, PinValue.Low);
                     });
                     return "PC e Ciabatta in spegnimento";

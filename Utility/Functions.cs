@@ -1,4 +1,5 @@
-﻿using QRCoder;
+﻿using Plugin.Screenshot;
+using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
 
 namespace Utility
@@ -66,13 +67,10 @@ namespace Utility
             return Status;
         }
 
-        public static Stream Screenshot()
+        public static async Task<Stream> Screenshot()
         {
-            System.Drawing.Image screen = Pranas.ScreenshotCapture.TakeScreenshot(true);
-            var ImageStream = new MemoryStream();
-            screen.Save(ImageStream, screen.RawFormat);
-
-            return ImageStream;
+            var stream = new MemoryStream(await CrossScreenshot.Current.CaptureAsync());
+            return stream;
         }
     }
 }

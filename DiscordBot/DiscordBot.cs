@@ -12,6 +12,7 @@ namespace DiscordBot
 
         public static DiscordSocketClient Cortana;
         public static System.Timers.Timer ActivityTimer = new System.Timers.Timer();
+        public static System.Timers.Timer StatusTimer = new System.Timers.Timer();
         public async Task MainAsync()
         {
             var client = new DiscordSocketClient(ConfigureSocket());
@@ -49,6 +50,10 @@ namespace DiscordBot
                 ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElapsed);
                 ActivityTimer.Start();
 
+                StatusTimer.Interval = 8000000;
+                StatusTimer.Elapsed += new System.Timers.ElapsedEventHandler(StatusTimerElapsed);
+                StatusTimer.Start();
+
                 var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
             };
@@ -63,8 +68,8 @@ namespace DiscordBot
         {
             try
             {
-                var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.Result.SendMessageAsync("Connessione avventua");
+                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync("Connessione avventua");
             }
             catch
             {
@@ -76,8 +81,8 @@ namespace DiscordBot
         {
             try
             {
-                var Chief = Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.Result.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
+                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
             }
             catch
             {
@@ -90,6 +95,14 @@ namespace DiscordBot
             string Temp = Utility.HardwareDriver.GetCPUTemperature();
             Game Activity = new Game($"on Raspberry at {Temp}", ActivityType.Playing);
             await Cortana.SetActivityAsync(Activity);
+        }
+
+        private static async void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            var Image = await Utility.Functions.Screenshot();
+            Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
+            var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+            await Chief.SendFileAsync(stream: Image, filename: "Screenshot", embed: embed);
         }
 
         public static async Task Disconnect()

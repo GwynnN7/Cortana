@@ -47,7 +47,7 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
-        [HttpGet("everything")]
+        [HttpGet("all")]
         public Dictionary<string, string> EverythingPower(string state)
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);

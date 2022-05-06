@@ -37,8 +37,9 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task Status()
         {
-            var image = Utility.Functions.Screenshot();
-            await RespondWithFileAsync(image, "Ecco la situazione");
+            var Image = await Utility.Functions.Screenshot();
+            Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
+            await RespondWithFileAsync(fileStream: Image, fileName: "Screenshot", embed: embed);
         }
 
         [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
@@ -48,8 +49,8 @@ namespace DiscordBot.Modules
             if (ip == "pc") result = Utility.HardwareDriver.PingPC();
             else result = Utility.HardwareDriver.Ping(ip);
 
-            if (result) await RespondAsync("L'IP ha risposto");
-            else await RespondAsync("L'IP non ha risposto");
+            if (result) await RespondAsync($"L'IP {ip} ha risposto al ping");
+            else await RespondAsync($"L'IP {ip} non ha risposto al ping");
         }
 
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
