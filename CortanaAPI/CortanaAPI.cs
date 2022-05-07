@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace CortanaAPI
 {
@@ -9,6 +10,10 @@ namespace CortanaAPI
         public static void BootCortanaAPI()
         {
             var builder = WebApplication.CreateBuilder(new[] { "--urls=http://192.168.1.117:5000/" });
+            builder.Logging.Services.Clear();
+
+            Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
+            builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
             builder.Services.AddControllers();
 
             CortanaWebAPI = builder.Build();
