@@ -58,19 +58,12 @@ namespace Utility
             }
             else if(state == EHardwareTrigger.Off)
             {
-                var keyFiles = new[] { new PrivateKeyFile("/home/cortana/.ssh/id_rsa", "Gwynbleidd") };
-
-                var methods = new List<AuthenticationMethod>();
-                methods.Add(new PasswordAuthenticationMethod("matteo", "Gwynbleidd"));
-                methods.Add(new PrivateKeyAuthenticationMethod("matteo", keyFiles));
-                var con = new ConnectionInfo("192.168.1.17", 22, "matteo", methods.ToArray());
-
-                using (var client = new SshClient(con))
+                try
                 {
-                    client.Connect();
-                    client.RunCommand("shutdown /s /t 0");
-                    client.Disconnect();
+                    using var client = new HttpClient();
+                    client.GetAsync("http://192.168.1.17:5000/cortana-pc/shutdown");
                 }
+                catch { }
                 PCState = EBooleanState.Off;
                 return "PC in spegnimento";
             }

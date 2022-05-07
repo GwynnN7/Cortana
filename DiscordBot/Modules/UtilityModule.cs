@@ -33,7 +33,6 @@ namespace DiscordBot.Modules
             Utility.HardwareDriver.SwitchLED(trigger);
         }
 
-
         [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
         public async Task Ping([Summary("ip", "IP da pingare")] string ip)
         {
@@ -49,8 +48,9 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task GetIP()
         {
+            await DeferAsync(ephemeral: true);
             var ip = await Utility.Functions.GetPublicIP();
-            await RespondAsync($"L'IP pubblic è {ip}", ephemeral: true);
+            await FollowupAsync($"L'IP pubblic è {ip}", ephemeral: true);
         }
 
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]

@@ -10,7 +10,6 @@ namespace DiscordBot
     {
         public static void BootDiscordBot() => new DiscordBot().MainAsync().GetAwaiter().GetResult();
 
-        private static List<string> Logs = new List<string>();
         public static DiscordSocketClient Cortana;
         public static System.Timers.Timer ActivityTimer = new System.Timers.Timer();
         public static System.Timers.Timer StatusTimer = new System.Timers.Timer();
@@ -71,6 +70,8 @@ namespace DiscordBot
             {
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
                 await Chief.SendMessageAsync("Connessione avventua");
+
+                foreach (var guild in Modules.AudioHandler.AudioClients) Modules.AudioHandler.Disconnect(guild.Key); //Reconnect if AutoJoin is true and if she was connected
             }
             catch
             {
@@ -83,7 +84,7 @@ namespace DiscordBot
             try
             {
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
+                await Chief.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException()}");
             }
             catch
             {
@@ -100,11 +101,9 @@ namespace DiscordBot
 
         private static async void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Status Report", Description: Utility.HardwareDriver.GetCPUTemperature());
+            Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
             var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            string value = "";
-            Logs.ForEach(log => value += log + "\n");
-            await Chief.SendMessageAsync(text: value, embed: embed);
+            await Chief.SendMessageAsync(embed: embed);
         }
 
         public static async Task Disconnect()
@@ -123,8 +122,11 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
-            var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendMessageAsync($"{User.Username} ha richiamato OnVoiceStateUpdate");
+            if (User.Id == DiscordData.DiscordIDs.CortanaID)
+            {
+                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync("Ho richiamato OnVoiceStateUpdate");
+            }
 
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
@@ -194,7 +196,6 @@ namespace DiscordBot
 
         static Task LogAsync(LogMessage message)
         {
-            Logs.Add(message.Message);
             Console.WriteLine("Log:" + message.Message);
             return Task.CompletedTask;
         }
