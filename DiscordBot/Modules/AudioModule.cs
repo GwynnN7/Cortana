@@ -333,6 +333,8 @@ namespace DiscordBot.Modules
             [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
             public async Task Play([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
+                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
                 var result = await AudioHandler.GetYoutubeVideoInfos(text);
                 TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
                 Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
@@ -341,7 +343,7 @@ namespace DiscordBot.Modules
                 .WithThumbnailUrl(result.Thumbnails.Last().Url)
                 .Build();
 
-                await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+                await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
 
                 bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
                 if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");

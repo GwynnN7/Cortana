@@ -50,7 +50,7 @@ namespace DiscordBot.Modules
         {
             await DeferAsync(ephemeral: true);
             var ip = await Utility.Functions.GetPublicIP();
-            await FollowupAsync($"L'IP pubblic è {ip}", ephemeral: true);
+            await FollowupAsync($"L'IP pubblico è {ip}", ephemeral: true);
         }
 
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
