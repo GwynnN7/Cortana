@@ -61,7 +61,7 @@ namespace Utility
                 try
                 {
                     using var client = new HttpClient();
-                    client.GetAsync("http://192.168.1.17:5000/cortana-pc/shutdown");
+                    client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown");
                 }
                 catch { }
                 PCState = EBooleanState.Off;
