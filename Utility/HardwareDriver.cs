@@ -58,14 +58,21 @@ namespace Utility
             }
             else if(state == EHardwareTrigger.Off)
             {
+                string text = "PC in spegnimento";
                 try
                 {
                     using var client = new HttpClient();
                     client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown");
                 }
-                catch { }
-                PCState = EBooleanState.Off;
-                return "PC in spegnimento";
+                catch 
+                {
+                    text = "PC già spento";
+                }
+                finally
+                {
+                    PCState = EBooleanState.Off;
+                }
+                return text;
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
