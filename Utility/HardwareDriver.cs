@@ -62,7 +62,7 @@ namespace Utility
                 try
                 {
                     using var client = new HttpClient();
-                    client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown");
+                    _ = client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown").Result;
                 }
                 catch 
                 {
