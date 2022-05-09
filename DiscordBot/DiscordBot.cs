@@ -69,7 +69,7 @@ namespace DiscordBot
             try
             {
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("Connessione avventua");
+                await Chief.SendMessageAsync("Reconnected");
 
                 foreach (var guild in Modules.AudioHandler.AudioClients) Modules.AudioHandler.Disconnect(guild.Key); //Reconnect if AutoJoin is true and if she was connected
             }
@@ -79,17 +79,10 @@ namespace DiscordBot
             }
         }
 
-        private static async Task Client_Disconnected(Exception arg)
+        private static Task Client_Disconnected(Exception arg)
         {
-            try
-            {
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync($"Disconnessione avventua con il seguente errore: {arg.GetBaseException()}");
-            }
-            catch
-            {
-                Console.WriteLine($"Disconnessione avventua con il seguente errore: {arg.GetBaseException().ToString()}");
-            }
+            Console.WriteLine($"Disconnessione avventua alle {DateTime.Now} con il seguente errore: {arg.GetBaseException()}");
+            return Task.CompletedTask;
         }
 
         private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -122,12 +115,6 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
-            if (User.Id == DiscordData.DiscordIDs.CortanaID)
-            {
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("Ho richiamato OnVoiceStateUpdate");
-            }
-
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
             //NOMEN-ONLY
@@ -151,7 +138,7 @@ namespace DiscordBot
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
-                await Task.Delay(1500);
+                await Task.Delay(500);
                 await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)

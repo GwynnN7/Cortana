@@ -3,6 +3,7 @@ using Discord.Audio;
 using Discord.Interactions;
 using Discord.WebSocket;
 using YoutubeExplode;
+using YoutubeExplode.Common;
 using YoutubeExplode.Videos.Streams;
 using Discord;
 
@@ -65,7 +66,24 @@ namespace DiscordBot.Modules
             return Stream;
         }
 
-        public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url) => await new YoutubeClient().Videos.GetAsync(url);
+        public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url)
+        {
+            var youtube = new YoutubeClient();
+
+            var link = url.Split("&").First();
+            var substrings = new[] { "https://www.youtube.com/watch?v=", "https://youtu.be/" };
+            string? result = null;
+            foreach (var sub in substrings)
+            {
+                if (link.StartsWith(sub)) result = link.Substring(sub.Length);
+            }
+            if(result == null)
+            {
+                var videos = await youtube.Search.GetVideosAsync(url);
+                result = videos.First().Id;
+            }
+            return await youtube.Videos.GetAsync(result);
+        }
 
         private static bool ShouldCortanaStay(SocketGuild Guild)
         {
@@ -347,7 +365,22 @@ namespace DiscordBot.Modules
 
                 bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
                 if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
-                
+            }
+
+            [SlashCommand("cerca-video", "Cerca un video su youtube", runMode: RunMode.Async)]
+            public async Task SearchVideo([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
+                var result = await AudioHandler.GetYoutubeVideoInfos(text);
+                TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+                Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
+                embed = embed.ToEmbedBuilder()
+                .WithUrl(result.Url)
+                .WithThumbnailUrl(result.Thumbnails.Last().Url)
+                .Build();
+
+                await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
             [SlashCommand("metti-in-locale", "Metti qualcosa in locale", runMode: RunMode.Async)]

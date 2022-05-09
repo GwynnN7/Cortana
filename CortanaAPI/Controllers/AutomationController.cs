@@ -15,7 +15,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("lamp")]
         public Dictionary<string, string> LightToggle()
         {
-            string result = Utility.HardwareDriver.ToggleLamp();
+            string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
             return new Dictionary<string, string>() { { "data", result } };
         }
 
@@ -52,7 +52,7 @@ namespace RequestsHandler.Controllers
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);
 
-            Utility.HardwareDriver.ToggleLamp();
+            Utility.HardwareDriver.SwitchLamp(trigger);
             if(trigger == EHardwareTrigger.On) Utility.HardwareDriver.SwitchPC(trigger);
             else Utility.HardwareDriver.SwitchOutlets(trigger);
             Utility.HardwareDriver.SwitchOLED(trigger);

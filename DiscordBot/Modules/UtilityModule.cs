@@ -15,7 +15,7 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task LightToggle()
         {
-            string result = Utility.HardwareDriver.ToggleLamp();
+            string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
             Embed embed = DiscordData.CreateEmbed(Title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
@@ -27,7 +27,7 @@ namespace DiscordBot.Modules
             Embed embed = DiscordData.CreateEmbed(Title: "Procedo");
             await RespondAsync(embed: embed, ephemeral: true);
 
-            Utility.HardwareDriver.ToggleLamp();
+            Utility.HardwareDriver.SwitchLamp(trigger);
             Utility.HardwareDriver.SwitchPC(trigger);
             Utility.HardwareDriver.SwitchOLED(trigger);
             Utility.HardwareDriver.SwitchLED(trigger);
@@ -59,7 +59,7 @@ namespace DiscordBot.Modules
         {
             string result = element switch
             {
-                EHardwareElements.Lamp => Utility.HardwareDriver.ToggleLamp(),
+                EHardwareElements.Lamp => Utility.HardwareDriver.SwitchLamp(trigger),
                 EHardwareElements.PC => Utility.HardwareDriver.SwitchPC(trigger),
                 EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
                 EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),

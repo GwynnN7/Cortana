@@ -12,25 +12,40 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private static int LightRelayPin = 4;
+        private static int LampPin = 4;
         private static int LEDPin = 27;
         private static int OutletsPin = 17;
 
         private static EBooleanState OutletsState = EBooleanState.On;
         private static EBooleanState PCState = EBooleanState.On;
-        private static EBooleanState LEDState = EBooleanState.Off;
-        private static EBooleanState OLEDState = EBooleanState.Off;
+        private static EBooleanState LEDState = EBooleanState.On;
+        private static EBooleanState OLEDState = EBooleanState.On;
+        private static EBooleanState LampState = EBooleanState.Off;
 
-        public static string ToggleLamp()
+        private static void ToggleLamp()
         {
             using var controller = new GpioController();
-            controller.OpenPin(LightRelayPin, PinMode.Output);
-
-            controller.Write(LightRelayPin, PinValue.High);
+            controller.OpenPin(LampPin, PinMode.Output);
+            controller.Write(LampPin, PinValue.High);
             Thread.Sleep(100);
-            controller.Write(LightRelayPin, PinValue.Low);
+            controller.Write(LampPin, PinValue.Low);
+        }
 
-            return "Lampada attivata";
+        public static string SwitchLamp(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                if (LampState == EBooleanState.Off) ToggleLamp();
+                LampState = EBooleanState.On;
+                return "Lampada Accesa";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                if (LampState == EBooleanState.On) ToggleLamp();
+                LampState = EBooleanState.Off;
+                return "Lampada Spenta";
+            }
+            else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchPC(EHardwareTrigger state)
@@ -41,7 +56,7 @@ namespace Utility
                 if (OutletsState == EBooleanState.Off)
                 {
                     SwitchOutlets(EHardwareTrigger.On);
-                    return "PC e Ciabatta in accensione";
+                    return "PC e ciabatta in accensione";
                 }
                 else
                 {
@@ -62,7 +77,8 @@ namespace Utility
                 try
                 {
                     using var client = new HttpClient();
-                    _ = client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown").Result;
+                    var result = client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown").Result;
+                    if(!result.IsSuccessStatusCode) text = "PC già spento";
                 }
                 catch 
                 {
@@ -88,7 +104,7 @@ namespace Utility
                 LEDState = EBooleanState.On;
                 return "Led Acceso";
             }
-            if (state == EHardwareTrigger.Off)
+            else if (state == EHardwareTrigger.Off)
             {
                 controller.Write(LEDPin, PinValue.Low);
                 LEDState = EBooleanState.Off;
@@ -106,7 +122,7 @@ namespace Utility
                 OLEDState = EBooleanState.On;
                 return "Display Acceso";
             }
-            if (state == EHardwareTrigger.Off)
+            else if (state == EHardwareTrigger.Off)
             {
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_OFF.py" });
 
@@ -127,16 +143,16 @@ namespace Utility
                 OutletsState = EBooleanState.On;
                 return "Ciabatta Accesa";
             }
-            if (state == EHardwareTrigger.Off)
+            else if (state == EHardwareTrigger.Off)
             {
-                if(PCState == EBooleanState.On)
+                if (PCState == EBooleanState.On)
                 {
                     Task.Run(() =>
                     {
                         SwitchPC(EHardwareTrigger.Off);
-                        while (PingPC()) { Task.Delay(1000); };
-                        Task.Delay(1000);
-                        controller.Write(OutletsPin, PinValue.Low);
+                        while (PingPC()) Task.Delay(1000);
+                        Task.Delay(500);
+                        SwitchOutlets(EHardwareTrigger.Off);
                     });
                     return "PC e Ciabatta in spegnimento";
                 }
@@ -144,7 +160,7 @@ namespace Utility
                 OutletsState = EBooleanState.Off;
                 return "Ciabatta Spenta";
             }
-            else return SwitchLED(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string GetCPUTemperature()
