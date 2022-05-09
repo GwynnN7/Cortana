@@ -138,7 +138,7 @@ namespace DiscordBot
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
-                await Task.Delay(500);
+                await Task.Delay(1000);
                 await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)

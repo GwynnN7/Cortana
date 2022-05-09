@@ -37,13 +37,13 @@ namespace Utility
             {
                 if (LampState == EBooleanState.Off) ToggleLamp();
                 LampState = EBooleanState.On;
-                return "Lampada Accesa";
+                return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
                 if (LampState == EBooleanState.On) ToggleLamp();
                 LampState = EBooleanState.Off;
-                return "Lampada Spenta";
+                return "Lampada spenta";
             }
             else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -102,13 +102,13 @@ namespace Utility
             {
                 controller.Write(LEDPin, PinValue.High);
                 LEDState = EBooleanState.On;
-                return "Led Acceso";
+                return "Led acceso";
             }
             else if (state == EHardwareTrigger.Off)
             {
                 controller.Write(LEDPin, PinValue.Low);
                 LEDState = EBooleanState.Off;
-                return "Led Spento";
+                return "Led spento";
             }
             else return SwitchLED(LEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -120,14 +120,14 @@ namespace Utility
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_ON.py" });
 
                 OLEDState = EBooleanState.On;
-                return "Display Acceso";
+                return "Display acceso";
             }
             else if (state == EHardwareTrigger.Off)
             {
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_OFF.py" });
 
                 OLEDState = EBooleanState.Off;
-                return "Display Spento";
+                return "Display spento";
             }
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -141,7 +141,7 @@ namespace Utility
             {
                 controller.Write(OutletsPin, PinValue.High);
                 OutletsState = EBooleanState.On;
-                return "Ciabatta Accesa";
+                return "Ciabatta accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
@@ -151,14 +151,14 @@ namespace Utility
                     {
                         SwitchPC(EHardwareTrigger.Off);
                         while (PingPC()) Task.Delay(1000);
-                        Task.Delay(500);
+                        Task.Delay(1000);
                         SwitchOutlets(EHardwareTrigger.Off);
                     });
-                    return "PC e Ciabatta in spegnimento";
+                    return "PC e ciabatta in spegnimento";
                 }
                 controller.Write(OutletsPin, PinValue.Low);
                 OutletsState = EBooleanState.Off;
-                return "Ciabatta Spenta";
+                return "Ciabatta spenta";
             }
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }

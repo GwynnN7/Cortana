@@ -79,7 +79,7 @@ namespace DiscordBot.Modules
             }
             if(result == null)
             {
-                var videos = await youtube.Search.GetVideosAsync(url);
+                var videos = await youtube.Search.GetVideosAsync(url).CollectAsync(1);
                 result = videos.First().Id;
             }
             return await youtube.Videos.GetAsync(result);
@@ -323,7 +323,7 @@ namespace DiscordBot.Modules
 
     public class AudioModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [Group("audio", "Gestione audio")]
+        [Group("media", "Gestione audio")]
         public class Audio : InteractionModuleBase<SocketInteractionContext>
         {
             [SlashCommand("connetti", "Entro nel canale dove sono stata chiamata")]
@@ -349,7 +349,7 @@ namespace DiscordBot.Modules
             }
 
             [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
-            public async Task Play([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
 
@@ -368,7 +368,7 @@ namespace DiscordBot.Modules
             }
 
             [SlashCommand("cerca-video", "Cerca un video su youtube", runMode: RunMode.Async)]
-            public async Task SearchVideo([Summary("url", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            public async Task SearchVideo([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
 
