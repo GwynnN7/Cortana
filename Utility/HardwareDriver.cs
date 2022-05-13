@@ -151,7 +151,7 @@ namespace Utility
                     {
                         SwitchPC(EHardwareTrigger.Off);
                         while (PingPC()) Task.Delay(1000);
-                        Task.Delay(1000);
+                        Task.Delay(2500);
                         SwitchOutlets(EHardwareTrigger.Off);
                     });
                     return "PC e ciabatta in spegnimento";

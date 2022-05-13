@@ -24,6 +24,7 @@ namespace DiscordBot
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
             client.Log += LogAsync;
+            client.MessageReceived += Client_MessageReceived;
             client.Disconnected += Client_Disconnected;
             client.Connected += Client_Connected;
             client.UserVoiceStateUpdated += OnUserVoiceStateUpdate;
@@ -64,19 +65,32 @@ namespace DiscordBot
             await Task.Delay(Timeout.Infinite);
         }
 
-        private static async Task Client_Connected()
+        private async Task Client_MessageReceived(SocketMessage arg)
         {
-            try
-            {
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("Reconnected");
+            var message = arg.Content.ToLower();
 
-                foreach (var guild in Modules.AudioHandler.AudioClients) Modules.AudioHandler.Disconnect(guild.Key); //Reconnect if AutoJoin is true and if she was connected
-            }
-            catch
+            if (arg.Channel.GetChannelType() != ChannelType.DM)
             {
-                Console.WriteLine("Connessione avvenuta");
+                List<string> BannedWords = new() {"yuumi", "yummi", "seraphine", "teemo", "fortnite"};
+                foreach(string word in BannedWords)
+                {
+                    if (message.Contains(word))
+                    {
+                        await arg.Channel.SendMessageAsync("Ho trovato una parola non consentita e sono costretta ad eliminare il messaggio");
+                        await arg.DeleteAsync();
+                        return;
+                    }
+                }
             }
+
+            if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
+            else if(message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
+        }
+
+        private static Task Client_Connected()
+        {
+            Console.WriteLine($"Connessione avvenuta alle {DateTime.Now}");
+            return Task.CompletedTask;
         }
 
         private static Task Client_Disconnected(Exception arg)

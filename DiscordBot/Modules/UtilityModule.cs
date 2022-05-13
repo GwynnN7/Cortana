@@ -1,128 +1,191 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using MailKit;
+using MailKit.Net.Imap;
 
 namespace DiscordBot.Modules
 {
     public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
     {
-        public InteractionService Commands { get; set; }
-        private CommandHandler handler;
-
-        public UtilityModule(CommandHandler handler) => this.handler = handler;
-
-        [SlashCommand("light", "Accendi o spegni la luce")]
-        [RequireOwner]
-        public async Task LightToggle()
+        [Group("utility", "Generatore di cose random")]
+        public class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-            Embed embed = DiscordData.CreateEmbed(Title: result);
-            await RespondAsync(embed: embed, ephemeral: true);
-        }
-
-        [SlashCommand("room", "Accendi o spegni l'hardware fondamentale", runMode: RunMode.Async)]
-        [RequireOwner]
-        public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
-        {
-            Embed embed = DiscordData.CreateEmbed(Title: "Procedo");
-            await RespondAsync(embed: embed, ephemeral: true);
-
-            Utility.HardwareDriver.SwitchLamp(trigger);
-            Utility.HardwareDriver.SwitchPC(trigger);
-            Utility.HardwareDriver.SwitchOLED(trigger);
-            Utility.HardwareDriver.SwitchLED(trigger);
-        }
-
-        [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
-        public async Task Ping([Summary("ip", "IP da pingare")] string ip)
-        {
-            bool result;
-            if (ip == "pc") result = Utility.HardwareDriver.PingPC();
-            else result = Utility.HardwareDriver.Ping(ip);
-
-            if (result) await RespondAsync($"L'IP {ip} ha risposto al ping");
-            else await RespondAsync($"L'IP {ip} non ha risposto al ping");
-        }
-
-        [SlashCommand("ip", "Ti dico il mio IP pubblico", runMode: RunMode.Async)]
-        [RequireOwner]
-        public async Task GetIP()
-        {
-            await DeferAsync(ephemeral: true);
-            var ip = await Utility.Functions.GetPublicIP();
-            await FollowupAsync($"L'IP pubblico è {ip}", ephemeral: true);
-        }
-
-        [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
-        [RequireOwner]
-        public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
-        {
-            string result = element switch
+            [SlashCommand("tempo-in-voicechat", "Da quanto tempo state in chat vocale?")]
+            public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? User = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                EHardwareElements.Lamp => Utility.HardwareDriver.SwitchLamp(trigger),
-                EHardwareElements.PC => Utility.HardwareDriver.SwitchPC(trigger),
-                EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
-                EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),
-                EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
-                _ => "Dispositivo hardware non presente"
-            };
+                if (User == null) User = Context.User;
+                if (DiscordData.TimeConnected.ContainsKey(User.Id))
+                {
+                    var DeltaTime = DateTime.Now.Subtract(DiscordData.TimeConnected[User.Id]);
+                    string ConnectionTime = "Sei connesso da";
+                    if (DeltaTime.Hours > 0) ConnectionTime += $" {DeltaTime.Hours} ore";
+                    if (DeltaTime.Minutes > 0) ConnectionTime += $" {DeltaTime.Minutes} minuti";
+                    if (DeltaTime.Seconds > 0) ConnectionTime += $" {DeltaTime.Seconds} secondi";
 
-            Embed embed = DiscordData.CreateEmbed(Title: result);
-            await RespondAsync(embed: embed, ephemeral: true);
-        }
+                    var embed = DiscordData.CreateEmbed(Title: ConnectionTime, User: User);
+                    await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+                }
+                else
+                {
+                    var embed = DiscordData.CreateEmbed(Title: "Non connesso alla chat vocale", User: User);
+                    await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+                }
+            }
 
-        [SlashCommand("shutdown", "Vado offline su discord")]
-        [RequireOwner]
-        public async Task Shutdown()
-        {
-            Embed embed = DiscordData.CreateEmbed(Title: "Shutting Down Chief");
-            await RespondAsync(embed: embed, ephemeral: true);
-
-            await DiscordBot.Disconnect();
-        }
-
-        [SlashCommand("tempo-in-voicechat", "Da quanto tempo state in chat vocale?")]
-        public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? User = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
-        {
-            if (User == null) User = Context.User;
-            if (DiscordData.TimeConnected.ContainsKey(User.Id))
+            [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
+            public async Task CreateQR([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer NormalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer QuietZones = EAnswer.Si)
             {
-                var DeltaTime = DateTime.Now.Subtract(DiscordData.TimeConnected[User.Id]);
-                string ConnectionTime = "Sei connesso da";
-                if (DeltaTime.Hours > 0) ConnectionTime += $" {DeltaTime.Hours} ore";
-                if (DeltaTime.Minutes > 0) ConnectionTime += $" {DeltaTime.Minutes} minuti";
-                if (DeltaTime.Seconds > 0) ConnectionTime += $" {DeltaTime.Seconds} secondi";
+                var ImageStream = Utility.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
 
-                var embed = DiscordData.CreateEmbed(Title: ConnectionTime, User: User);
+                await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
+            }
+
+            [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
+            public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                Embed embed = DiscordData.CreateEmbed("Conta Parole");
+                embed = embed.ToEmbedBuilder()
+                    .AddField("Parole", content.Split(" ").Length)
+                    .AddField("Caratteri", content.Replace(" ", "").Length)
+                    .AddField("Caratteri con spazi", content.Length)
+                    .Build();
+
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
-            else
+
+            [SlashCommand("turno", "Vi dico a chi tocca scegliere")]
+            public async Task Turn()
             {
-                var embed = DiscordData.CreateEmbed(Title: "Non connesso alla chat vocale", User: User);
-                await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+                if(Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
+                {
+                    await RespondAsync("Questo server non può usare questo comando");
+                    return;
+                }
+                SocketGuildUser user = Context.Guild.GetUser(DiscordData.DiscordIDs.CortanaID);
+                var today = DateTime.Today.DayOfWeek;
+                switch(today)
+                {
+                    case DayOfWeek.Monday:
+                    case DayOfWeek.Thursday:
+                        user = Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID);
+                        break;
+                    case DayOfWeek.Tuesday:
+                    case DayOfWeek.Friday:
+                        user = Context.Guild.GetUser(306402234135085067);
+                        break;
+                    case DayOfWeek.Wednesday:
+                    case DayOfWeek.Saturday:
+                        user = Context.Guild.GetUser(648939655579828226);
+                        break;
+                    default:
+                        break;
+                }
+                await RespondAsync($"Oggi tocca a {user.Mention}");
+            }
+
+
+            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
+            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user)
+            {
+                var url = user.GetAvatarUrl();
+                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
+                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
+                await RespondAsync(embed: embed);
+            }
+
+            [SlashCommand("scrivi", "Scrivo qualcosa al posto vostro")]
+            public async Task WriteSomething([Summary("testo", "Cosa vuoi che dica?")] string text, [Summary("canale", "In che canale vuoi che scriva?")] SocketTextChannel channel)
+            {
+                try
+                {
+                    await channel.SendMessageAsync(text);
+                    await RespondAsync("Fatto", ephemeral: true);
+                }
+                catch
+                {
+                    await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: true);
+                }
+            }
+
+            [SlashCommand("scrivi-in-privato", "Scrivo in privato qualcosa a chi volete")]
+            public async Task WriteSomethingInDM([Summary("testo", "Cosa vuoi che dica?")] string text, [Summary("user", "Vuoi mandarlo in privato a qualcuno?")] SocketUser user)
+            {
+                try
+                {
+                    await user.SendMessageAsync(text);
+                    await RespondAsync("Fatto", ephemeral: true);
+                }
+                catch
+                {
+                    await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: true);
+                }
+            }
+
+            [SlashCommand("codice", "Conveto un messaggio sotto forma di codice")]
+            public async Task ToCode([Summary("testo", "Cosa vuoi convertire?")] string text, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                try
+                {
+                    await RespondAsync($"```{text}```", ephemeral: Ephemeral == EAnswer.Si);
+                }
+                catch
+                {
+                    await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: Ephemeral == EAnswer.Si);
+                }
+            }
+
+            [SlashCommand("links", "Vi mando dei link utili")]
+            public async Task SendLinks([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                Embed ShortcutsEmbed = DiscordData.CreateEmbed("Shorcuts");
+                ShortcutsEmbed = ShortcutsEmbed.ToEmbedBuilder()
+                    .AddField("Google", "[Vai al sito](https://www.google.com)")
+                    .AddField("Youtube", "[Vai al sito](https://youtube.com)")
+                    .AddField("Reddit", "[Vai al sito](https://www.reddit.com)")
+                    .AddField("Twitch", "[Vai al sito](http://www.twitch.tv)")
+                    .AddField("Instagram", "[Vai al sito](http://www.instagram.com)")
+                    .AddField("Twitter", "[Vai al sito](https://www.twitter.com)")
+                    .AddField("Pinterest", "[Vai al sito](https://www.pinterest.com)")
+                    .AddField("Deviantart", "[Vai al sito](https://www.deviantart.com)")
+                    .AddField("Artstation", "[Vai al sito](https://www.artstation.com)")
+                    .AddField("Speedtest", "[Vai al sito](https://www.speedtest.net/it)")
+                    .AddField("Google Drive", "[Vai al sito](https://drive.google.com)")
+                    .AddField("Gmail", "[Vai al sito](https://mail.google.com)")
+                    .Build();
+                await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
+            }
+
+            [SlashCommand("mail", "Check Mail", runMode: RunMode.Async)]
+            [RequireOwner]
+            public async Task CheckMail()
+            {
+                Dictionary<string, string> mail = new Dictionary<string, string>()
+                {
+                    {"mattcheru03@gmail.com", "MATTCHERU03_PASSWORD" },
+                    {"mattgaming11000@gmail.com", "MATTGAMING11000_PASSWORD" },
+                    {"cherubini.matteo.03@majoranaorvieto.org", "SCHOOL_MAIL_PASSWORD"}
+                };
+
+                var embed = DiscordData.CreateEmbed("Recap Email").ToEmbedBuilder();
+
+                var index = 0;
+                foreach(var mailItem in mail)
+                {
+                    using (var client = new ImapClient())
+                    {
+                        client.Connect("imap.gmail.com", 993, true);
+                        client.Authenticate(mailItem.Key, mailItem.Value);
+                        var unreadMessages = client.Inbox.Unread;
+                        embed.AddField($"{unreadMessages} email non lette", string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", mailItem.Key, index));
+                        client.Disconnect(true);
+                        index++;
+                    }
+                }
+                await Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID).SendMessageAsync(embed: embed.Build());
             }
         }
-
-        [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
-        public async Task CreateQR([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer NormalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer QuietZones = EAnswer.Si)
-        {
-            var ImageStream = Utility.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
-
-            await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
-        }
-
-        [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
-        public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
-        {
-            Embed embed = DiscordData.CreateEmbed("Conta Parole");
-            embed = embed.ToEmbedBuilder()
-                .AddField("Parole", content.Split(" ").Length)
-                .AddField("Caratteri", content.Replace(" ", "").Length)
-                .AddField("Caratteri con spazi", content.Length)
-                .Build();
-
-            await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
-        }
+            
 
         [Group("random", "Generatore di cose random")]
         public class RandomGroup : InteractionModuleBase<SocketInteractionContext>
