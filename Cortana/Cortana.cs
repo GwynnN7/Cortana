@@ -9,6 +9,7 @@ namespace Cortana
             Console.Clear();
 
             CortanaCore Handler = new CortanaCore();
+            Utility.EmailHandler.Init();
 
             int SubFunctionIndex = -1;
             do
@@ -52,7 +53,7 @@ namespace Cortana
             } while (SubFunctionIndex != -1);
 
             await Handler.StopFunctions();
-
+            
             return Task.CompletedTask;
 
         }

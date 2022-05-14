@@ -12,7 +12,7 @@ namespace Utility
         static List<EmailStructure> EmailStructures;
         public static List<Func<string, string, string, Task>> Callbacks;
 
-        static EmailHandler()
+        public static void Init()
         {
             Callbacks = new();
             Emails = new Dictionary<MailServer, MailClient>();
@@ -32,7 +32,7 @@ namespace Utility
                 oServer.SSLConnection = true;
                 oServer.Port = 993;
 
-                MailClient oClient = new MailClient(email.Name);
+                MailClient oClient = new MailClient("TryIt");
                 oClient.Connect(oServer);
                 oClient.GetMailInfosParam.Reset();
                 oClient.GetMailInfosParam.GetMailInfosOptions = GetMailInfosOptionType.NewOnly;
