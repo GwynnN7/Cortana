@@ -122,6 +122,13 @@ namespace DiscordBot
                 await Task.Delay(1500);
                 Modules.AudioHandler.Disconnect(guild.Key);          
             }
+
+            ActivityTimer.Stop();
+            ActivityTimer.Dispose();
+
+            StatusTimer.Stop();
+            StatusTimer.Dispose();
+
             await Task.Delay(1000);
             await Cortana.StopAsync();
             await Cortana.LogoutAsync();

@@ -134,17 +134,17 @@ namespace DiscordBot.Modules
 
                 [InputLabel("Cosa vuoi convertire?")]
                 [ModalTextInput("text", TextInputStyle.Paragraph, placeholder: "Scrivi qui...")]
-                public string? Text { get; set; }
+                public string Text { get; set; }
             }
 
             [ModalInteraction("to-code", true)]
             public async Task CodeModalResponse(CodeModal modal)
             {
-                var text = "```" + modal.Text + "```";
-                if(text.Length >= 2000)
+                string text = modal.Text;
+                if (text.Length >= 1500)
                 {
-                    await RespondAsync(text.Substring(0, 1000));
-                    await Context.Channel.SendMessageAsync(text.Substring(1000));
+                    await RespondAsync("```" + text.Substring(0, 1000) + "```");
+                    await Context.Channel.SendMessageAsync("```"+ text.Substring(1000) + "```");
                 }
                 else await RespondAsync(text);
             }
@@ -170,15 +170,15 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
-            [SlashCommand("mail", "Check Mail", runMode: RunMode.Async)]
+            [SlashCommand("email", "Controllo se ci sono email non lette", runMode: RunMode.Async)]
             [RequireOwner]
             public async Task CheckMail()
             {
                 Dictionary<string, string> mail = new Dictionary<string, string>()
                 {
                     {"mattcheru03@gmail.com", "GwynbleiddN7" },
-                    {"mattgaming11000@gmail.com", "GwynbleiddN7" },
-                    {"cherubini.matteo.03@majoranaorvieto.org", "mafinofo"}
+                    {"cherubini.matteo.03@majoranaorvieto.org", "mafinofo"},
+                    {"mattgaming11000@gmail.com", "GwynbleiddN7" }
                 };
 
                 var embed = DiscordData.CreateEmbed("Recap Email").ToEmbedBuilder();
@@ -196,7 +196,7 @@ namespace DiscordBot.Modules
                         index++;
                     }
                 }
-                await Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID).SendMessageAsync(embed: embed.Build());
+                await RespondAsync(embed: embed.Build());
             }
 
             [SlashCommand("kick", "Kicko un utente dal server")]
@@ -207,7 +207,7 @@ namespace DiscordBot.Modules
                 else 
                 {
                     await user.KickAsync();
-                    await RespondAsync("Fatto");
+                    await RespondAsync("Utente kickato");
                 }
             }
         }
