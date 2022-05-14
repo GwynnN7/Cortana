@@ -122,21 +122,10 @@ namespace DiscordBot.Modules
                 }
             }
 
-            [SlashCommand("codice", "Conveto un messaggio sotto forma di codice")]
-            public async Task ToCode([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            [SlashCommand("code", "Conveto un messaggio sotto forma di codice")]
+            public async Task ToCode()
             {
-                var eph = new SelectMenuBuilder()
-                    .AddOption("Ephemeral", "true")
-                    .AddOption("Non Ephemeral", "false", isDefault: true)
-                    .WithCustomId("ephemeral")
-                    .Build();
-                var modal = new ModalBuilder()
-                    .WithTitle("Codice")
-                    .WithCustomId("to-code")
-                    .AddTextInput("Cosa vuoi convertire?", "text", TextInputStyle.Paragraph, "Scrivi qui...", required: true)
-                    .AddComponents(new List<IMessageComponent>() { eph }, 1)
-                    .Build();
-                await RespondWithModalAsync(modal);
+                await RespondWithModalAsync<CodeModal>("to-code");
             }
 
             public class CodeModal : IModal
@@ -145,13 +134,19 @@ namespace DiscordBot.Modules
 
                 [InputLabel("Cosa vuoi convertire?")]
                 [ModalTextInput("text", TextInputStyle.Paragraph, placeholder: "Scrivi qui...")]
-                public string Text { get; set; }
+                public string? Text { get; set; }
             }
 
             [ModalInteraction("to-code", true)]
-            public async Task CodeModalResponse(Modal modal)
+            public async Task CodeModalResponse(CodeModal modal)
             {
-                await RespondAsync(modal.Title);
+                var text = "```" + modal.Text + "```";
+                if(text.Length >= 2000)
+                {
+                    await RespondAsync(text.Substring(0, 1000));
+                    await Context.Channel.SendMessageAsync(text.Substring(1000));
+                }
+                else await RespondAsync(text);
             }
 
             [SlashCommand("links", "Vi mando dei link utili")]
@@ -170,7 +165,7 @@ namespace DiscordBot.Modules
                     .AddField("Artstation", "[Vai al sito](https://www.artstation.com)", inline: true)
                     .AddField("Speedtest", "[Vai al sito](https://www.speedtest.net/it)", inline: true)
                     .AddField("Google Drive", "[Vai al sito](https://drive.google.com)", inline: true)
-                    .AddField("Gmail", "[Vai al sito](https://mail.google.com)")
+                    .AddField("Gmail", "[Vai al sito](https://mail.google.com)", inline: true)
                     .Build();
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -181,9 +176,9 @@ namespace DiscordBot.Modules
             {
                 Dictionary<string, string> mail = new Dictionary<string, string>()
                 {
-                    {"mattcheru03@gmail.com", "MATTCHERU03_PASSWORD" },
-                    {"mattgaming11000@gmail.com", "MATTGAMING11000_PASSWORD" },
-                    {"cherubini.matteo.03@majoranaorvieto.org", "SCHOOL_MAIL_PASSWORD"}
+                    {"mattcheru03@gmail.com", "GwynbleiddN7" },
+                    {"mattgaming11000@gmail.com", "GwynbleiddN7" },
+                    {"cherubini.matteo.03@majoranaorvieto.org", "mafinofo"}
                 };
 
                 var embed = DiscordData.CreateEmbed("Recap Email").ToEmbedBuilder();
@@ -202,6 +197,18 @@ namespace DiscordBot.Modules
                     }
                 }
                 await Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID).SendMessageAsync(embed: embed.Build());
+            }
+
+            [SlashCommand("kick", "Kicko un utente dal server")]
+            public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user)
+            {
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                else 
+                {
+                    await user.KickAsync();
+                    await RespondAsync("Fatto");
+                }
             }
         }
             
