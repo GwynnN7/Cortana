@@ -1,8 +1,6 @@
 ﻿using Iot.Device.CpuTemperature;
-using Renci.SshNet;
 using System.Device.Gpio;
 using System.Diagnostics;
-using System.Drawing;
 using System.Globalization;
 using System.Net;
 using System.Net.NetworkInformation;

@@ -58,9 +58,11 @@ namespace DiscordBot
                 var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
 
-                Console.WriteLine("Ready Chief");
+                Console.WriteLine("I'm ready Chief");
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("I'm reay Chief!");
+                await Chief.SendMessageAsync("I'm ready Chief!");
+
+                Utility.EmailHandler.Callbacks.Add(ReceiveMail);
             };
 
             await client.LoginAsync(TokenType.Bot, config["token"]);
@@ -89,6 +91,12 @@ namespace DiscordBot
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
             else if(message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
+        }
+
+        public static async Task ReceiveMail(Utility.UnreadEmailStructure email)
+        {
+            var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+            await Chief.SendMessageAsync(email.Email + " " + email.FromName + " " + email.FromAddress + " " + email.Subject);
         }
 
         private static Task Client_Connected()

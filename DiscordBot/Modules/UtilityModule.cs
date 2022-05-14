@@ -168,20 +168,6 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
-            public static async Task ReceiveMail(string email, string From, string Subject)
-            {
-                var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync(email + " " + From + " " + Subject);
-            }
-
-            [SlashCommand("email", "Controllo se ci sono email non lette", runMode: RunMode.Async)]
-            [RequireOwner]
-            public async Task CheckMail()
-            {
-                Utility.EmailHandler.Callbacks.Add(ReceiveMail);
-                await RespondAsync("Callback impostato");
-            }
-
             [SlashCommand("kick", "Kicko un utente dal server")]
             public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user)
             {

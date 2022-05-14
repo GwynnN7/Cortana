@@ -1,21 +1,15 @@
 ﻿using EAGetMail;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using System.Data;
-
 
 namespace Utility
 {
     public static class EmailHandler
     {
-        static Dictionary<MailServer, MailClient> Emails;
-        static List<EmailStructure> EmailStructures;
-        public static List<Func<string, string, string, Task>> Callbacks;
+        public static List<Func<UnreadEmailStructure, Task>> Callbacks;
 
         public static void Init()
         {
             Callbacks = new();
-            Emails = new Dictionary<MailServer, MailClient>();
 
             List<EmailStructure>? emailData = null;
             if (File.Exists("Data/Email.json"))
@@ -32,26 +26,48 @@ namespace Utility
                 oServer.SSLConnection = true;
                 oServer.Port = 993;
 
-                MailClient oClient = new MailClient("TryIt");
-                oClient.Connect(oServer);
-                oClient.GetMailInfosParam.Reset();
-                oClient.GetMailInfosParam.GetMailInfosOptions = GetMailInfosOptionType.NewOnly;
+                new Thread(() =>
+                {
+                    MailClient? oClient = null;
+                    while (true)
+                    {
+                        try
+                        {
+                            if (oClient == null) throw new Exception();
 
-                Emails.Add(oServer, oClient);
+                            oClient.WaitNewEmail(-1);
+
+                            Mail oMail = oClient.GetMail(oClient.GetMailInfos().First());
+                            foreach (var callback in Callbacks)
+                            {
+                                var result = new UnreadEmailStructure();
+                                result.Email = email;
+                                result.FromName = oMail.From.Name;
+                                result.FromAddress = oMail.From.Address;
+                                result.Subject = oMail.Subject;
+                                callback(result);
+                            }
+                        }
+                        catch
+                        {
+                            oClient = new MailClient("TryIt");
+                            oClient.Connect(oServer);
+                            oClient.GetMailInfosParam.Reset();
+                            oClient.GetMailInfosParam.GetMailInfosOptions = GetMailInfosOptionType.NewOnly;
+                        }
+                    }
+                }).Start();
             }
-
-            EmailStructures = emailData;
-
-            StartWaitingThreads();
         }
 
+        /*
         public static List<UnreadEmailStructure> GetEmails()
         {
             var UnreadEmails = new List<UnreadEmailStructure>();
             foreach(var email in Emails)
             {
                 UnreadEmailStructure newUnread = new UnreadEmailStructure();
-                newUnread.Email = EmailStructures.Find(x => x.Email == email.Key.User) ?? EmailStructures.First();
+                newUnread.Email = Emails.Find(x => x.Email == email.Key.User) ?? EmailStructures.First();
 
                 MailInfo[] infos = email.Value.GetMailInfos();
                 newUnread.Number = infos.Length;
@@ -62,15 +78,13 @@ namespace Utility
                     newUnread.From = oMail.From.Address;
                     newUnread.Subject = oMail.Subject;
 
-                    
-
                     if (!info.Read) email.Value.MarkAsRead(info, true);
                 }
                 UnreadEmails.Add(newUnread);
             }
             return UnreadEmails;
         }
-
+        
         private static void StartWaitingThreads()
         {
             foreach(var email in Emails)
@@ -89,7 +103,8 @@ namespace Utility
                 }).Start();
             }
             
-        }
+        }*/
+
     }
 
     public class EmailStructure
@@ -104,8 +119,8 @@ namespace Utility
     public class UnreadEmailStructure
     {
         public EmailStructure Email { get; set; }
-        public int Number { get; set; }
-        public string From { get; set; }
+        public string FromName { get; set; }
+        public string FromAddress { get; set; }
         public string Subject { get; set; }
     }
 }
