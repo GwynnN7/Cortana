@@ -71,7 +71,7 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task Shutdown()
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Shutting Down Chief");
+            Embed embed = DiscordData.CreateEmbed(Title: "Shutting down Chief");
             await RespondAsync(embed: embed, ephemeral: true);
 
             await DiscordBot.Disconnect();

@@ -23,6 +23,7 @@ namespace DiscordBot
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
+            client.Ready += Client_Ready;
             client.Log += LogAsync;
             client.MessageReceived += Client_MessageReceived;
             client.Disconnected += Client_Disconnected;
@@ -63,6 +64,14 @@ namespace DiscordBot
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
+        }
+
+        private async Task Client_Ready()
+        {
+            Console.WriteLine("Ready Chief");
+
+            var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+            await Chief.SendMessageAsync("I'm reay Chief!");
         }
 
         private async Task Client_MessageReceived(SocketMessage arg)

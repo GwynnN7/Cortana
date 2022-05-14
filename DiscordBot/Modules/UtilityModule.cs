@@ -146,7 +146,7 @@ namespace DiscordBot.Modules
                     await RespondAsync("```" + text.Substring(0, 1000) + "```");
                     await Context.Channel.SendMessageAsync("```"+ text.Substring(1000) + "```");
                 }
-                else await RespondAsync(text);
+                else await RespondAsync("```" + text + "```");
             }
 
             [SlashCommand("links", "Vi mando dei link utili")]
@@ -174,6 +174,7 @@ namespace DiscordBot.Modules
             [RequireOwner]
             public async Task CheckMail()
             {
+                await DeferAsync();
                 Dictionary<string, string> mail = new Dictionary<string, string>()
                 {
                     {"mattcheru03@gmail.com", "GwynbleiddN7" },
@@ -196,7 +197,7 @@ namespace DiscordBot.Modules
                         index++;
                     }
                 }
-                await RespondAsync(embed: embed.Build());
+                await FollowupAsync(embed: embed.Build());
             }
 
             [SlashCommand("kick", "Kicko un utente dal server")]
