@@ -36,15 +36,17 @@ namespace Utility
                             if (oClient == null) throw new Exception();
 
                             oClient.WaitNewEmail(-1);
+                            MailInfo mailInfo = oClient.GetMailInfos().First();
+                            Mail mailData = oClient.GetMail(mailInfo);
+                            oClient.MarkAsRead(mailInfo, true);
 
-                            Mail oMail = oClient.GetMail(oClient.GetMailInfos().First());
                             foreach (var callback in Callbacks)
                             {
                                 var result = new UnreadEmailStructure();
                                 result.Email = email;
-                                result.FromName = oMail.From.Name;
-                                result.FromAddress = oMail.From.Address;
-                                result.Subject = oMail.Subject;
+                                result.FromName = mailData.From.Name;
+                                result.FromAddress = mailData.From.Address;
+                                result.Subject = mailData.Subject;
                                 callback(result);
                             }
                         }
@@ -59,52 +61,6 @@ namespace Utility
                 }).Start();
             }
         }
-
-        /*
-        public static List<UnreadEmailStructure> GetEmails()
-        {
-            var UnreadEmails = new List<UnreadEmailStructure>();
-            foreach(var email in Emails)
-            {
-                UnreadEmailStructure newUnread = new UnreadEmailStructure();
-                newUnread.Email = Emails.Find(x => x.Email == email.Key.User) ?? EmailStructures.First();
-
-                MailInfo[] infos = email.Value.GetMailInfos();
-                newUnread.Number = infos.Length;
-
-                foreach (var info in infos)
-                {
-                    Mail oMail = email.Value.GetMail(info);
-                    newUnread.From = oMail.From.Address;
-                    newUnread.Subject = oMail.Subject;
-
-                    if (!info.Read) email.Value.MarkAsRead(info, true);
-                }
-                UnreadEmails.Add(newUnread);
-            }
-            return UnreadEmails;
-        }
-        
-        private static void StartWaitingThreads()
-        {
-            foreach(var email in Emails)
-            {
-                new Thread(() =>
-                {
-                    while (true)
-                    {
-                        email.Value.WaitNewEmail(-1);
-                        Mail oMail = email.Value.GetMail(email.Value.GetMailInfos().First());
-                        foreach(var callback in Callbacks)
-                        {
-                            callback(email.Key.User, oMail.From.Address, oMail.Subject);
-                        }
-                    }
-                }).Start();
-            }
-            
-        }*/
-
     }
 
     public class EmailStructure

@@ -58,9 +58,9 @@ namespace DiscordBot
                 var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
 
-                Console.WriteLine("I'm ready Chief");
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
                 await Chief.SendMessageAsync("I'm ready Chief!");
+                Console.WriteLine("I'm ready Chief");
 
                 Utility.EmailHandler.Callbacks.Add(ReceiveMail);
             };
@@ -95,8 +95,15 @@ namespace DiscordBot
 
         public static async Task ReceiveMail(Utility.UnreadEmailStructure email)
         {
+            if (!email.Email.Log) return;
+            var embed = DiscordData.CreateEmbed("Hai ricevuto una Email", Description: string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", email.Email.Email, email.Email.Id));
+            embed = embed.ToEmbedBuilder()
+                .AddField("Nome mittente", email.FromName)
+                .AddField("Email mittente", email.FromAddress)
+                .AddField("Oggetto", email.Subject.Replace(" (Trial Version)",""))
+                .Build();
             var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendMessageAsync(email.Email + " " + email.FromName + " " + email.FromAddress + " " + email.Subject);
+            await Chief.SendMessageAsync(embed: embed);
         }
 
         private static Task Client_Connected()
