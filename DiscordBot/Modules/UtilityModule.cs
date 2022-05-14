@@ -1,8 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using MailKit;
-using MailKit.Net.Imap;
 
 namespace DiscordBot.Modules
 {
@@ -170,34 +168,18 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
+            public static async Task ReceiveMail(string email, string From, string Subject)
+            {
+                var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync(email + " " + From + " " + Subject);
+            }
+
             [SlashCommand("email", "Controllo se ci sono email non lette", runMode: RunMode.Async)]
             [RequireOwner]
             public async Task CheckMail()
             {
-                await DeferAsync();
-                Dictionary<string, string> mail = new Dictionary<string, string>()
-                {
-                    {"mattcheru03@gmail.com", "GwynbleiddN7" },
-                    {"cherubini.matteo.03@majoranaorvieto.org", "mafinofo"},
-                    {"mattgaming11000@gmail.com", "GwynbleiddN7" }
-                };
-
-                var embed = DiscordData.CreateEmbed("Recap Email").ToEmbedBuilder();
-
-                var index = 0;
-                foreach(var mailItem in mail)
-                {
-                    using (var client = new ImapClient())
-                    {
-                        client.Connect("imap.gmail.com", 993, true);
-                        client.Authenticate(mailItem.Key, mailItem.Value);
-                        var unreadMessages = client.Inbox.Unread;
-                        embed.AddField($"{unreadMessages} email non lette", string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", mailItem.Key, index));
-                        client.Disconnect(true);
-                        index++;
-                    }
-                }
-                await FollowupAsync(embed: embed.Build());
+                Utility.EmailHandler.Callbacks.Add(ReceiveMail);
+                await RespondAsync("Callback impostato");
             }
 
             [SlashCommand("kick", "Kicko un utente dal server")]

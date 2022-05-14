@@ -10,7 +10,7 @@ namespace DiscordBot
     {
         private static DiscordSettings LastLoadedSettings;
 
-        public static SocketSelfUser? CortanaUser;
+        public static DiscordSocketClient Cortana;
         public static Dictionary<ulong, DateTime> TimeConnected = new Dictionary<ulong, DateTime>();
 
         public static DiscordIDs DiscordIDs;
@@ -129,7 +129,7 @@ namespace DiscordBot
         static public Embed CreateEmbed(string Title, SocketUser? User = null, string Description = "", Color? EmbedColor = null, EmbedFooterBuilder? Footer = null, bool WithTimeStamp = true, bool WithoutAuthor = false)
         {
             Color Color = (Color)(EmbedColor == null ? Color.Blue : EmbedColor);
-            if (User == null) User = CortanaUser;
+            if (User == null) User = Cortana.CurrentUser;
 
             var EmbedBuilder = new EmbedBuilder()
                 .WithTitle(Title)

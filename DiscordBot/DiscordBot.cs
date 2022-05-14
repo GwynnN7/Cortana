@@ -41,7 +41,7 @@ namespace DiscordBot
 
                 DiscordData.InitSettings(client.Guilds);
                 DiscordData.LoadData(client.Guilds);
-                DiscordData.CortanaUser = Cortana.CurrentUser;
+                DiscordData.Cortana = Cortana;
 
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID, true);
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
