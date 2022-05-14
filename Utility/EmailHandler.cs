@@ -22,10 +22,6 @@ namespace Utility
 
             foreach(var email in emailData)
             {
-                MailServer oServer = new MailServer("imap.gmail.com", email.Email, email.Password, ServerProtocol.Imap4);
-                oServer.SSLConnection = true;
-                oServer.Port = 993;
-
                 new Thread(() =>
                 {
                     MailClient? oClient = null;
@@ -52,6 +48,10 @@ namespace Utility
                         }
                         catch
                         {
+                            MailServer oServer = new MailServer("imap.gmail.com", email.Email, email.Password, ServerProtocol.Imap4);
+                            oServer.SSLConnection = true;
+                            oServer.Port = 993;
+
                             oClient = new MailClient("TryIt");
                             oClient.Connect(oServer);
                             oClient.GetMailInfosParam.Reset();
