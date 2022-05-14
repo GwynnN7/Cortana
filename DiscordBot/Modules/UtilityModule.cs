@@ -123,16 +123,35 @@ namespace DiscordBot.Modules
             }
 
             [SlashCommand("codice", "Conveto un messaggio sotto forma di codice")]
-            public async Task ToCode([Summary("testo", "Cosa vuoi convertire?")] string text, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            public async Task ToCode([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                try
-                {
-                    await RespondAsync($"```{text}```", ephemeral: Ephemeral == EAnswer.Si);
-                }
-                catch
-                {
-                    await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: Ephemeral == EAnswer.Si);
-                }
+                var eph = new SelectMenuBuilder()
+                    .AddOption("Ephemeral", "true")
+                    .AddOption("Non Ephemeral", "false", isDefault: true)
+                    .WithCustomId("ephemeral")
+                    .Build();
+                var modal = new ModalBuilder()
+                    .WithTitle("Codice")
+                    .WithCustomId("to-code")
+                    .AddTextInput("Cosa vuoi convertire?", "text", TextInputStyle.Paragraph, "Scrivi qui...", required: true)
+                    .AddComponents(new List<IMessageComponent>() { eph }, 1)
+                    .Build();
+                await RespondWithModalAsync(modal);
+            }
+
+            public class CodeModal : IModal
+            {
+                public string Title => "Codice";
+
+                [InputLabel("Cosa vuoi convertire?")]
+                [ModalTextInput("text", TextInputStyle.Paragraph, placeholder: "Scrivi qui...")]
+                public string Text { get; set; }
+            }
+
+            [ModalInteraction("to-code", true)]
+            public async Task CodeModalResponse(Modal modal)
+            {
+                await RespondAsync(modal.Title);
             }
 
             [SlashCommand("links", "Vi mando dei link utili")]
@@ -140,17 +159,17 @@ namespace DiscordBot.Modules
             {
                 Embed ShortcutsEmbed = DiscordData.CreateEmbed("Shorcuts");
                 ShortcutsEmbed = ShortcutsEmbed.ToEmbedBuilder()
-                    .AddField("Google", "[Vai al sito](https://www.google.com)")
-                    .AddField("Youtube", "[Vai al sito](https://youtube.com)")
-                    .AddField("Reddit", "[Vai al sito](https://www.reddit.com)")
-                    .AddField("Twitch", "[Vai al sito](http://www.twitch.tv)")
-                    .AddField("Instagram", "[Vai al sito](http://www.instagram.com)")
-                    .AddField("Twitter", "[Vai al sito](https://www.twitter.com)")
-                    .AddField("Pinterest", "[Vai al sito](https://www.pinterest.com)")
-                    .AddField("Deviantart", "[Vai al sito](https://www.deviantart.com)")
-                    .AddField("Artstation", "[Vai al sito](https://www.artstation.com)")
-                    .AddField("Speedtest", "[Vai al sito](https://www.speedtest.net/it)")
-                    .AddField("Google Drive", "[Vai al sito](https://drive.google.com)")
+                    .AddField("Google", "[Vai al sito](https://www.google.com)", inline: true)
+                    .AddField("Youtube", "[Vai al sito](https://youtube.com)", inline: true)
+                    .AddField("Reddit", "[Vai al sito](https://www.reddit.com)", inline: true)
+                    .AddField("Twitch", "[Vai al sito](http://www.twitch.tv)", inline: true)
+                    .AddField("Instagram", "[Vai al sito](http://www.instagram.com)", inline: true)
+                    .AddField("Twitter", "[Vai al sito](https://www.twitter.com)", inline: true)
+                    .AddField("Pinterest", "[Vai al sito](https://www.pinterest.com)", inline: true)
+                    .AddField("Deviantart", "[Vai al sito](https://www.deviantart.com)", inline: true)
+                    .AddField("Artstation", "[Vai al sito](https://www.artstation.com)", inline: true)
+                    .AddField("Speedtest", "[Vai al sito](https://www.speedtest.net/it)", inline: true)
+                    .AddField("Google Drive", "[Vai al sito](https://drive.google.com)", inline: true)
                     .AddField("Gmail", "[Vai al sito](https://mail.google.com)")
                     .Build();
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
