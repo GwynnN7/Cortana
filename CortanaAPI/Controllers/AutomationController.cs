@@ -52,7 +52,6 @@ namespace RequestsHandler.Controllers
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);
 
-            Utility.HardwareDriver.SwitchLamp(trigger);
             if(trigger == EHardwareTrigger.On) Utility.HardwareDriver.SwitchPC(trigger);
             else Utility.HardwareDriver.SwitchOutlets(trigger);
             Utility.HardwareDriver.SwitchOLED(trigger);

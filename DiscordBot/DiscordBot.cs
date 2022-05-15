@@ -98,9 +98,9 @@ namespace DiscordBot
             if (!email.Email.Log) return;
             var embed = DiscordData.CreateEmbed("Hai ricevuto una mail", Description: string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", email.Email.Email, email.Email.Id));
             embed = embed.ToEmbedBuilder()
-                .AddField("Oggetto", email.Subject.Replace(" (Trial Version)", ""))
+                .AddField("Oggetto", email.Subject)
+                .AddField("Testo", email.Content)
                 .AddField($"Da {email.FromName}", email.FromAddress)
-                .WithFooter(email.Content)
                 .Build();
             var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
             await Chief.SendMessageAsync(embed: embed);
@@ -120,16 +120,31 @@ namespace DiscordBot
 
         private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            string Temp = Utility.HardwareDriver.GetCPUTemperature();
-            Game Activity = new Game($"on Raspberry at {Temp}", ActivityType.Playing);
-            await Cortana.SetActivityAsync(Activity);
+            try
+            {
+                string Temp = Utility.HardwareDriver.GetCPUTemperature();
+                Game Activity = new Game($"on Raspberry at {Temp}", ActivityType.Playing);
+                await Cortana.SetActivityAsync(Activity);
+            }
+            catch
+            {
+                Console.WriteLine($"Non riesco a leggere la temperatura: {DateTime.Now}");
+            }
+            
         }
 
         private static async void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
-            var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendMessageAsync(embed: embed);
+            try
+            {
+                Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
+                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.SendMessageAsync(embed: embed);
+            }
+            catch
+            {
+                Console.WriteLine($"Non riesco a leggere la temperatura: {DateTime.Now}");
+            }
         }
 
         public static async Task Disconnect()

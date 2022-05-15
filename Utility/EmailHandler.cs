@@ -42,8 +42,8 @@ namespace Utility
                                 result.Email = email;
                                 result.FromName = mailData.From.Name;
                                 result.FromAddress = mailData.From.Address;
-                                result.Subject = mailData.Subject;
-                                result.Content = mailData.TextBody.Length >= 2048 ? mailData.TextBody.Substring(0, 2048) :  mailData.TextBody;
+                                result.Subject = mailData.Subject.Replace(" (Trial Version)", "");
+                                result.Content = mailData.TextBody.Length >= 1024 ? mailData.TextBody.Substring(0, 1024) :  mailData.TextBody;
                                 callback(result);
                             }
                         }
