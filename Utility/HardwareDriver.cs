@@ -22,11 +22,14 @@ namespace Utility
 
         private static void ToggleLamp()
         {
-            using var controller = new GpioController();
-            controller.OpenPin(LampPin, PinMode.Output);
-            controller.Write(LampPin, PinValue.High);
-            Thread.Sleep(100);
-            controller.Write(LampPin, PinValue.Low);
+            Task.Run(async () =>
+            {
+                using var controller = new GpioController();
+                controller.OpenPin(LampPin, PinMode.Output);
+                controller.Write(LampPin, PinValue.High);
+                await Task.Delay(100);
+                controller.Write(LampPin, PinValue.Low);
+            });
         }
 
         public static string SwitchLamp(EHardwareTrigger state)
@@ -145,11 +148,11 @@ namespace Utility
             {
                 if (PCState == EBooleanState.On)
                 {
-                    Task.Run(() =>
+                    Task.Run(async () =>
                     {
                         SwitchPC(EHardwareTrigger.Off);
-                        while (PingPC()) Task.Delay(1000);
-                        Task.Delay(2500);
+                        while (PingPC()) await Task.Delay(500);
+                        await Task.Delay(2000);
                         SwitchOutlets(EHardwareTrigger.Off);
                     });
                     return "PC e ciabatta in spegnimento";

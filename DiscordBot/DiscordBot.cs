@@ -99,8 +99,8 @@ namespace DiscordBot
             var embed = DiscordData.CreateEmbed("Hai ricevuto una mail", Description: string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", email.Email.Email, email.Email.Id));
             embed = embed.ToEmbedBuilder()
                 .AddField("Oggetto", email.Subject.Replace(" (Trial Version)", ""))
-                .AddField("Nome mittente", email.FromName)
-                .AddField("Email mittente", email.FromAddress)
+                .AddField($"Da {email.FromName}", email.FromAddress)
+                .WithFooter(email.Content)
                 .Build();
             var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
             await Chief.SendMessageAsync(embed: embed);

@@ -22,7 +22,7 @@ namespace Utility
 
             foreach(var email in emailData)
             {
-                new Thread(() =>
+                Task.Run(() =>
                 {
                     MailClient? oClient = null;
                     while (true)
@@ -43,6 +43,7 @@ namespace Utility
                                 result.FromName = mailData.From.Name;
                                 result.FromAddress = mailData.From.Address;
                                 result.Subject = mailData.Subject;
+                                result.Content = mailData.TextBody.Length >= 2048 ? mailData.TextBody.Substring(0, 2048) :  mailData.TextBody;
                                 callback(result);
                             }
                         }
@@ -58,7 +59,7 @@ namespace Utility
                             oClient.GetMailInfosParam.GetMailInfosOptions = GetMailInfosOptionType.NewOnly;
                         }
                     }
-                }).Start();
+                });
             }
         }
     }
@@ -78,5 +79,7 @@ namespace Utility
         public string FromName { get; set; }
         public string FromAddress { get; set; }
         public string Subject { get; set; }
+
+        public string Content { get; set; }
     }
 }
