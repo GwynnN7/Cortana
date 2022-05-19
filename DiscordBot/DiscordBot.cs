@@ -158,10 +158,10 @@ namespace DiscordBot
             }
 
             ActivityTimer.Stop();
-            ActivityTimer.Close();
+            ActivityTimer.Dispose();
 
             StatusTimer.Stop();
-            StatusTimer.Close();
+            StatusTimer.Dispose();
 
             await Task.Delay(1000);
             await Cortana.StopAsync();
