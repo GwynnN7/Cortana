@@ -22,7 +22,7 @@ namespace Utility
 
         public static void HandleNight()
         {
-            new TimerHandler("night-handler", new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 0, 0), null, HandleNightCallback, ETimerLocation.Utility);
+            new TimerHandler("night-handler", new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 25, 0), null, HandleNightCallback, ETimerLocation.Utility);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
