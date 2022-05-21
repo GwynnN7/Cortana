@@ -14,6 +14,10 @@ namespace Cortana
             Utility.EmailHandler.Init();
             Console.WriteLine("Done");
 
+            Console.WriteLine("Starting Night Handler...");
+            Utility.HardwareDriver.HandleNight();
+            Console.WriteLine("Done");
+
             await Task.Delay(500);
 
             int ThreadID;

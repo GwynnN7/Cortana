@@ -11,8 +11,7 @@ namespace DiscordBot
         public static void BootDiscordBot() => new DiscordBot().MainAsync().GetAwaiter().GetResult();
 
         public static DiscordSocketClient Cortana;
-        public static System.Timers.Timer ActivityTimer = new System.Timers.Timer();
-        public static System.Timers.Timer StatusTimer = new System.Timers.Timer();
+
         public async Task MainAsync()
         {
             var client = new DiscordSocketClient(ConfigureSocket());
@@ -47,13 +46,8 @@ namespace DiscordBot
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                ActivityTimer.Interval = 10000;
-                ActivityTimer.Elapsed += new System.Timers.ElapsedEventHandler(ActivityTimerElapsed);
-                ActivityTimer.Start();
-
-                StatusTimer.Interval = 8000000;
-                StatusTimer.Elapsed += new System.Timers.ElapsedEventHandler(StatusTimerElapsed);
-                StatusTimer.Start();
+                var ActivityTimer = new Utility.TimerHandler("activity-timer", 10000, null, ActivityTimerElapsed, ETimerLocation.DiscordBot);
+                var StatusTimer = new Utility.TimerHandler("status-timer", 3, 30, 0, null, StatusTimerElapsed, ETimerLocation.DiscordBot);
 
                 var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
@@ -157,11 +151,7 @@ namespace DiscordBot
                 Modules.AudioHandler.Disconnect(guild.Key);          
             }
 
-            ActivityTimer.Stop();
-            ActivityTimer.Dispose();
-
-            StatusTimer.Stop();
-            StatusTimer.Dispose();
+            Utility.TimerHandler.RemoveTimers(ETimerLocation.DiscordBot);
 
             await Task.Delay(1000);
             await Cortana.StopAsync();

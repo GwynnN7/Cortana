@@ -20,6 +20,8 @@ namespace DiscordBot.Modules
         [RequireOwner]
         public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
+            await DeferAsync(ephemeral: true);
+
             string result = element switch
             {
                 EHardwareElements.Lamp => Utility.HardwareDriver.SwitchLamp(trigger),
@@ -31,7 +33,7 @@ namespace DiscordBot.Modules
             };
 
             Embed embed = DiscordData.CreateEmbed(Title: result);
-            await RespondAsync(embed: embed, ephemeral: true);
+            await FollowupAsync(embed: embed, ephemeral: true);
         }
 
         [SlashCommand("room", "Accendi o spegni l'hardware fondamentale", runMode: RunMode.Async)]

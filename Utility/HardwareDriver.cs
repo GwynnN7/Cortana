@@ -20,6 +20,38 @@ namespace Utility
         private static EBooleanState OLEDState = EBooleanState.On;
         private static EBooleanState LampState = EBooleanState.Off;
 
+        public static void HandleNight()
+        {
+            new TimerHandler("night-handler", new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 12, 0, 0), null, HandleNightCallback, ETimerLocation.Utility);
+        }
+
+        private static void HandleNightCallback(object? sender, EventArgs e)
+        {
+            using var client = new HttpClient();
+            var result = client.GetAsync("http://192.168.1.17:5000/cortana-pc/notify/night").Result;
+            if (!result.IsSuccessStatusCode)
+            {
+                SwitchLED(EHardwareTrigger.Off);
+                SwitchOLED(EHardwareTrigger.Off);
+                SwitchOutlets(EHardwareTrigger.Off);
+            }
+            SwitchLamp(EHardwareTrigger.Off);
+
+            try
+            {
+                if (sender == null) throw new Exception();
+                TimerHandler.RemoveTimer((TimerHandler)sender);
+            }
+            catch
+            {
+                TimerHandler.RemoveTimerByName("night-handler");
+            }
+            finally
+            {
+                HandleNight();
+            }
+        }
+
         private static void ToggleLamp()
         {
             Task.Run(async () =>

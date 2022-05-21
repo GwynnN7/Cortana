@@ -5,6 +5,15 @@
     TelegramBot,
 }
 
+public enum ETimerLocation
+{
+    Global,
+    CortanaAPI,
+    DiscordBot,
+    TelegramBot,
+    Utility
+}
+
 public enum EHardwareElements
 {
     LED,
