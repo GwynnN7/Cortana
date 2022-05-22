@@ -18,7 +18,7 @@ namespace Utility
         private static EBooleanState PCState = EBooleanState.On;
         private static EBooleanState LEDState = EBooleanState.On;
         private static EBooleanState OLEDState = EBooleanState.On;
-        private static EBooleanState LampState = EBooleanState.Off;
+        private static EBooleanState LampState = EBooleanState.On;
 
         public static void HandleNight()
         {

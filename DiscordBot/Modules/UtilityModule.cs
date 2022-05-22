@@ -84,9 +84,9 @@ namespace DiscordBot.Modules
 
 
             [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
-            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user)
+            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
             {
-                var url = user.GetAvatarUrl();
+                var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
                 Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
                 embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
                 await RespondAsync(embed: embed);
