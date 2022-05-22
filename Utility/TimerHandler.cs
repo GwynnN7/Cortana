@@ -114,7 +114,7 @@ namespace Utility
             if (TotalTimers == null) return;
             if (!TotalTimers.ContainsKey(Location)) return;
             
-            foreach(var LocationTimer in TotalTimers[Location])
+            foreach(var LocationTimer in TotalTimers[Location].ToList())
             {
                 RemoveTimer(LocationTimer);
             }
