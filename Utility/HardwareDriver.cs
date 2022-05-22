@@ -22,7 +22,7 @@ namespace Utility
 
         public static void HandleNight()
         {
-            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: false, AutoStart: true);
+            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: true);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
@@ -35,20 +35,6 @@ namespace Utility
                 SwitchOutlets(EHardwareTrigger.Off);
             }
             SwitchLamp(EHardwareTrigger.Off);
-
-            try
-            {
-                if (sender == null) throw new Exception();
-                TimerHandler.RemoveTimer((TimerHandler)sender);
-            }
-            catch
-            {
-                TimerHandler.RemoveTimerByName("night-handler");
-            }
-            finally
-            {
-                HandleNight();
-            }
         }
 
         private static void ToggleLamp()

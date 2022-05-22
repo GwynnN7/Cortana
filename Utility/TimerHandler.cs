@@ -5,31 +5,35 @@ namespace Utility
     public abstract class TimerHandler : System.Timers.Timer
     {
         public static Dictionary<ETimerLocation, List<TimerHandler>> TotalTimers;
+
+        protected string Name;
         public string? Text { get; set; }
-        private string timerName;
-        public DateTime TimerTargetTime;
-
-        public TimerHandler(string Name, string? NewText, double NewInterval, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop, bool AutoStart)
+        
+        public DateTime NextTargetTime;
+        public TimeSpan NextDeltaTime
         {
-            timerName = Name;
-            Interval = NewInterval;
-            TimerTargetTime = DateTime.Now.AddMilliseconds(Interval);
-            Text = NewText;
-            Elapsed += new ElapsedEventHandler(Callback);
-            AutoReset = Loop;
-            if (AutoStart) Start();
-
-            AddTimer(TimerLocation, this);
+            get{ return NextTargetTime.Subtract(DateTime.Now); }
         }
+        protected bool IsDailyTimer { get; set; }
+        protected bool IsLooping { get; set; }
+        protected Action<object?, ElapsedEventArgs> Callback;
+        protected ETimerLocation TimerLocation;
+        
 
-        public TimerHandler(string Name, string? NewText, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop, bool AutoStart)
+        public TimerHandler(string Name, string? Text, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop, bool AutoStart)
         {
-            timerName = Name;
-            Interval = (Hours * 3600 + Minutes * 60 + Seconds) * 1000;
-            TimerTargetTime = DateTime.Now.AddMilliseconds(Interval);
-            Text = NewText;
-            Elapsed += new ElapsedEventHandler(Callback);
-            AutoReset = Loop;
+            this.Name = Name;
+            this.Text = Text;
+            this.Interval = (Hours * 3600 + Minutes * 60 + Seconds) * 1000;
+            this.Callback = Callback;
+            this.TimerLocation = TimerLocation;
+
+            IsLooping = Loop;
+            IsDailyTimer = false;
+            NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+
+            Elapsed += new ElapsedEventHandler(TimerElapsed);
+            AutoReset = false;
             if (AutoStart) Start();
 
             AddTimer(TimerLocation, this);
@@ -37,15 +41,40 @@ namespace Utility
 
         public TimerHandler(string Name, string? NewText, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop, bool AutoStart)
         {
-            timerName = Name;
-            Interval = TargetTime.Subtract(DateTime.Now).Minutes <= 5 ? TargetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : TargetTime.Subtract(DateTime.Now).TotalMilliseconds;
-            TimerTargetTime = TargetTime;
-            Text = NewText;
-            Elapsed += new ElapsedEventHandler(Callback);
-            AutoReset = Loop;
+            this.Name = Name;
+            this.Text = Text;
+            this.Interval = TargetTime.Subtract(DateTime.Now).Minutes <= 5 ? TargetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : TargetTime.Subtract(DateTime.Now).TotalMilliseconds;
+            this.Callback = Callback;
+            this.TimerLocation = TimerLocation;
+
+            IsLooping = Loop;
+            IsDailyTimer = IsLooping;
+            NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+
+            Elapsed += new ElapsedEventHandler(TimerElapsed);
+            AutoReset = false;
             if (AutoStart) Start();
 
             AddTimer(TimerLocation, this);
+        }
+
+        private void TimerElapsed(object? sender, ElapsedEventArgs args)
+        {
+            if (IsLooping)
+            {
+                if (IsDailyTimer) NextTargetTime = DateTime.Now.AddDays(1);
+                else NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+
+                var newInterval = NextTargetTime.Subtract(DateTime.Now).TotalMilliseconds;
+
+                Interval = newInterval;
+                Enabled = true;
+                Start();
+            }
+
+            Callback.Invoke(sender, args);
+
+            if(!IsLooping) RemoveTimer(this);
         }
 
         private void Destroy()
@@ -74,7 +103,7 @@ namespace Utility
             {
                 foreach(var ListTimer in TimerList.Value)
                 {
-                    if(ListTimer.timerName == Timer.timerName)
+                    if(ListTimer.Name == Timer.Name)
                     {
                         TotalTimers[TimerList.Key].Remove(Timer);
                         Timer.Destroy();
@@ -104,7 +133,7 @@ namespace Utility
 
                 foreach (var LocationTimer in TotalTimers[Location.Value])
                 {
-                    if (LocationTimer.timerName == name)
+                    if (LocationTimer.Name == name)
                     {
                         RemoveTimer(LocationTimer);
                         return;
@@ -117,7 +146,7 @@ namespace Utility
                 {
                     foreach (var ListTimer in TimerList.Value)
                     {
-                        if (ListTimer.timerName == name)
+                        if (ListTimer.Name == name)
                         {
                             RemoveTimer(ListTimer);
                             return;
@@ -126,11 +155,6 @@ namespace Utility
                 }
             }
         }
-
-        public TimeSpan GetDeltaTime()
-        {
-            return TimerTargetTime.Subtract(DateTime.Now);
-        }
     }
 
     public class DiscordUserTimer : TimerHandler
@@ -138,43 +162,26 @@ namespace Utility
         public object Guild { get; set; }
         public object User { get; set; }
         public object? TextChannel { get; set; }
-        public DiscordUserTimer(object NewGuild, object NewUser, object? OptionalTextChannel, string Name, string? Text, double NewInterval, Action<object?, ElapsedEventArgs> Callback, bool Loop = true, bool AutoStart = true) : base(Name, Text, NewInterval, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
+
+        public DiscordUserTimer(object Guild, object User, object? TextChannel, string Name, string? Text, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, bool Loop = false, bool AutoStart = true) : base(Name, Text, TargetTime, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
         {
-            Guild = NewGuild;
-            User = NewUser;
-            TextChannel = OptionalTextChannel;
+            this.Guild = Guild;
+            this.User = User;
+            this.TextChannel = TextChannel;
         }
 
-        public DiscordUserTimer(object NewGuild, object NewUser, object? OptionalTextChannel, string Name, string? Text, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, bool Loop = false, bool AutoStart = true) : base(Name, Text, TargetTime, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
+        public DiscordUserTimer(object Guild, object User, object? TextChannel, string Name, string? Text, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, bool Loop = false, bool AutoStart = true) : base(Name, Text, Hours, Minutes, Seconds, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
         {
-            Guild = NewGuild;
-            User= NewUser;
-            TextChannel = OptionalTextChannel;
-        }
-
-        public DiscordUserTimer(object NewGuild, object NewUser, object? OptionalTextChannel, string Name, string? Text, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, bool Loop = false, bool AutoStart = true) : base(Name, Text, Hours, Minutes, Seconds, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
-        {
-            Guild = NewGuild;
-            User = NewUser;
-            TextChannel = OptionalTextChannel;
+            this.Guild = Guild;
+            this.User = User;
+            this.TextChannel = TextChannel;
         }
     }
 
     public class UtilityTimer : TimerHandler
     {
-        public UtilityTimer(string Name, double NewInterval, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop = true, bool AutoStart = true) : base(Name, null, NewInterval, Callback, TimerLocation, Loop, AutoStart)
-        {
+        public UtilityTimer(string Name, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop = false, bool AutoStart = true) : base(Name, null, TargetTime, Callback, TimerLocation, Loop, AutoStart) { }
+        public UtilityTimer(string Name, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop = false, bool AutoStart = true) : base(Name, null, Hours, Minutes, Seconds, Callback, TimerLocation, Loop, AutoStart) { }
 
-        }
-
-        public UtilityTimer(string Name, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop = false, bool AutoStart = true) : base(Name, null, TargetTime, Callback, TimerLocation, Loop, AutoStart)
-        {
-
-        }
-
-        public UtilityTimer(string Name, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, bool Loop = false, bool AutoStart = true) : base(Name, null, Hours, Minutes, Seconds, Callback, TimerLocation, Loop, AutoStart)
-        {
-
-        }
     }
 }
