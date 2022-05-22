@@ -22,14 +22,13 @@ namespace Utility
 
         public static void HandleNight()
         {
-            new TimerHandler("night-handler", new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), null, HandleNightCallback, ETimerLocation.Utility);
+            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: false, AutoStart: true);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
-            using var client = new HttpClient();
-            var result = client.GetAsync("http://192.168.1.17:5000/cortana-pc/notify/night").Result;
-            if (!result.IsSuccessStatusCode)
+            var result = Functions.RequestPC("notify/night");
+            if (!result)
             {
                 SwitchLED(EHardwareTrigger.Off);
                 SwitchOLED(EHardwareTrigger.Off);
@@ -109,9 +108,8 @@ namespace Utility
                 string text = "PC in spegnimento";
                 try
                 {
-                    using var client = new HttpClient();
-                    var result = client.GetAsync("http://192.168.1.17:5000/cortana-pc/hardware/shutdown").Result;
-                    if(!result.IsSuccessStatusCode) text = "PC già spento";
+                    var result = Functions.RequestPC("hardware/shutdown");
+                    if(!result) text = "PC già spento";
                 }
                 catch 
                 {

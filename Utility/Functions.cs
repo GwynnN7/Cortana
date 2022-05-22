@@ -72,5 +72,12 @@ namespace Utility
             var ip = await client.GetStringAsync("https://api.ipify.org");
             return ip;
         }
+
+        public static bool RequestPC(string url)
+        {
+            using var client = new HttpClient();
+            var result = client.GetAsync($"http://192.168.1.17:5000/cortana-pc/{url}").Result;
+            return result.IsSuccessStatusCode;
+        }
     }
 }
