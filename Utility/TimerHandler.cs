@@ -101,14 +101,10 @@ namespace Utility
         {
             foreach(var TimerList in TotalTimers)
             {
-                foreach(var ListTimer in TimerList.Value)
+                if (TimerList.Value.Contains(Timer))
                 {
-                    if(ListTimer.Name == Timer.Name)
-                    {
-                        TotalTimers[TimerList.Key].Remove(Timer);
-                        Timer.Destroy();
-                        return;
-                    }
+                    TotalTimers[TimerList.Key].Remove(Timer);
+                    Timer.Destroy();
                 }
             }
         }
