@@ -18,11 +18,11 @@ namespace Utility
         private static EBooleanState PCState = EBooleanState.On;
         private static EBooleanState LEDState = EBooleanState.On;
         private static EBooleanState OLEDState = EBooleanState.On;
-        private static EBooleanState LampState = EBooleanState.On;
+        private static EBooleanState LampState = EBooleanState.Off;
 
         public static void HandleNight()
         {
-            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: true);
+            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Intervallo);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
@@ -47,6 +47,14 @@ namespace Utility
                 await Task.Delay(100);
                 controller.Write(LampPin, PinValue.Low);
             });
+        }
+
+        public static void SwitchRoom(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On) SwitchPC(state);
+            else SwitchOutlets(state);
+            SwitchOLED(state);
+            SwitchLED(state);
         }
 
         public static string SwitchLamp(EHardwareTrigger state)

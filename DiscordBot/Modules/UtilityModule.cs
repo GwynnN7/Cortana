@@ -9,6 +9,17 @@ namespace DiscordBot.Modules
         [Group("utility", "Generatore di cose random")]
         public class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
         {
+            [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
+            public async Task Ping([Summary("ip", "IP da pingare")] string ip)
+            {
+                bool result;
+                if (ip == "pc") result = Utility.HardwareDriver.PingPC();
+                else result = Utility.HardwareDriver.Ping(ip);
+
+                if (result) await RespondAsync($"L'IP {ip} ha risposto al ping");
+                else await RespondAsync($"L'IP {ip} non ha risposto al ping");
+            }
+
             [SlashCommand("tempo-in-voicechat", "Da quanto tempo state in chat vocale?")]
             public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? User = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
@@ -37,6 +48,15 @@ namespace DiscordBot.Modules
                 var ImageStream = Utility.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
 
                 await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
+            }
+
+            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
+            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
+            {
+                var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
+                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
+                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
+                await RespondAsync(embed: embed);
             }
 
             [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
@@ -80,16 +100,6 @@ namespace DiscordBot.Modules
                         break;
                 }
                 await RespondAsync($"Oggi tocca a {user.Mention}");
-            }
-
-
-            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
-            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
-            {
-                var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
-                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
-                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
-                await RespondAsync(embed: embed);
             }
 
             [SlashCommand("scrivi", "Scrivo qualcosa al posto vostro")]

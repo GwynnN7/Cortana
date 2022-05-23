@@ -51,11 +51,7 @@ namespace RequestsHandler.Controllers
         public Dictionary<string, string> EverythingPower(string state)
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);
-
-            if(trigger == EHardwareTrigger.On) Utility.HardwareDriver.SwitchPC(trigger);
-            else Utility.HardwareDriver.SwitchOutlets(trigger);
-            Utility.HardwareDriver.SwitchOLED(trigger);
-            Utility.HardwareDriver.SwitchLED(trigger);
+            Utility.HardwareDriver.SwitchRoom(trigger);
 
             return new Dictionary<string, string>() { { "data", "Done" } };
         }
