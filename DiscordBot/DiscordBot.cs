@@ -22,6 +22,8 @@ namespace DiscordBot
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
+            client.LoggedOut += Client_LoggedOut;
+            client.LoggedIn += Client_LoggedIn;
             client.Log += LogAsync;
             client.MessageReceived += Client_MessageReceived;
             client.Disconnected += Client_Disconnected;
@@ -63,6 +65,18 @@ namespace DiscordBot
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
+        }
+
+        private Task Client_LoggedIn()
+        {
+            Console.WriteLine($"{DateTime.Now} boh2");
+            return Task.CompletedTask;
+        }
+
+        private Task Client_LoggedOut()
+        {
+            Console.WriteLine($"{DateTime.Now} boh");
+            return Task.CompletedTask;
         }
 
         private async Task Client_MessageReceived(SocketMessage arg)
@@ -160,6 +174,7 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
+            Console.WriteLine($"{DateTime.Now} dwpokapawo");
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
             //NOMEN-ONLY
@@ -228,7 +243,7 @@ namespace DiscordBot
 
         static Task LogAsync(LogMessage message)
         {
-            Console.WriteLine("Log:" + message.Message);
+            Console.WriteLine($"{DateTime.Now} Log:" + message.Message);
             return Task.CompletedTask;
         }
 

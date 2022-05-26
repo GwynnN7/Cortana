@@ -55,6 +55,8 @@ namespace Utility
             else SwitchOutlets(state);
             SwitchOLED(state);
             SwitchLED(state);
+
+            if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && state == EHardwareTrigger.Off) SwitchLamp(state);
         }
 
         public static string SwitchLamp(EHardwareTrigger state)
