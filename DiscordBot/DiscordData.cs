@@ -163,6 +163,7 @@ namespace DiscordBot
         public ulong CortanaChannelID { get; set; }
         public ulong NoMenID { get; set; }
         public ulong HomeID { get; set; }
+        public ulong GulagID { get; set; }
     }
 }
 
