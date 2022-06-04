@@ -50,6 +50,7 @@ namespace DiscordBot
 
                 var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
                 var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
+                var ConnectionTimer = new Utility.UtilityTimer(Name: "connection-timer", Hours: 0, Minutes: 30, Seconds: 0, Callback: ConnectionTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
 
                 var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
                 if (channel != null) Modules.AudioHandler.JoinChannel(channel);
@@ -69,13 +70,13 @@ namespace DiscordBot
 
         private Task Client_LoggedIn()
         {
-            Console.WriteLine($"{DateTime.Now} boh2");
+            Console.WriteLine($"{DateTime.Now} ClientLoggedIn");
             return Task.CompletedTask;
         }
 
         private Task Client_LoggedOut()
         {
-            Console.WriteLine($"{DateTime.Now} boh");
+            Console.WriteLine($"{DateTime.Now} ClientLoggedOut");
             return Task.CompletedTask;
         }
 
@@ -155,6 +156,15 @@ namespace DiscordBot
             }
         }
 
+        private static async void ConnectionTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        {
+            foreach(var guild in Cortana.Guilds)
+            {
+                Modules.AudioHandler.TryConnection(guild);
+                await Task.Delay(100);
+            }
+        }
+
         public static async Task Disconnect()
         {
             foreach(var guild in Modules.AudioHandler.AudioClients)
@@ -174,7 +184,7 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
-            Console.WriteLine($"{DateTime.Now} dwpokapawo");
+            Console.WriteLine($"{DateTime.Now} OnVoiceStateUpdate");
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
             //NOMEN-ONLY

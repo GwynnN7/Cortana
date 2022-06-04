@@ -98,7 +98,7 @@ namespace DiscordBot.Modules
         {
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Name != "Gulag") return voiceChannel;
             }
             return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
         }
@@ -305,7 +305,7 @@ namespace DiscordBot.Modules
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
             if (Channel == null) return;
-            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return;
             JoinChannel(Channel);
         }
 
@@ -403,6 +403,13 @@ namespace DiscordBot.Modules
 
             bool status = await AudioHandler.Play(text, Context.Guild.Id, EAudioSource.Local);
             if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso far partire l'audio");
-        } 
+        }
+
+        [SlashCommand("resetta-connessione", "Resetto la connessione al canale vocale", runMode: RunMode.Async)]
+        public async Task ResetConnection()
+        {
+            await RespondAsync(embed: DiscordData.CreateEmbed("Procedo a resettare la connessione"), ephemeral: true);
+            AudioHandler.TryConnection(Context.Guild);
+        }
     }
 }
