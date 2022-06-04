@@ -98,7 +98,7 @@ namespace DiscordBot.Modules
         {
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Name != "Gulag") return voiceChannel;
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Id != 799591451251441684) return voiceChannel;
             }
             return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
         }
