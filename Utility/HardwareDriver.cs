@@ -27,6 +27,8 @@ namespace Utility
 
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
+            SwitchLamp(EHardwareTrigger.Off);
+
             var result = Functions.RequestPC("notify/night");
             if (!result)
             {
@@ -34,7 +36,6 @@ namespace Utility
                 SwitchOLED(EHardwareTrigger.Off);
                 SwitchOutlets(EHardwareTrigger.Off);
             }
-            SwitchLamp(EHardwareTrigger.Off);
         }
 
         private static void ToggleLamp()

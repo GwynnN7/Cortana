@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-public enum ESubFunctions
+﻿public enum ESubFunctions
 {
     CortanaAPI,
     DiscordBot,
@@ -65,13 +63,9 @@ public enum EAudioSource
 
 public enum ETimerLoop
 {
-    [Description("Niente loop")]
     No,
-    [Description("In base all'intervallo messo")]
     Intervallo,
-    [Description("Ogni giorno alla stessa ora")]
     Quotidiano,
-    [Description("Ogni settimana allo stesso giorno")]
     Settimanalmente
 }
 

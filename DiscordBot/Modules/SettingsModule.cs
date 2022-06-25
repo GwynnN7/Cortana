@@ -21,6 +21,5 @@ namespace DiscordBot.Modules
             DiscordData.UpdateSettings();
             await RespondAsync("Ok farò come dite");
         }
-
     }
 }

@@ -108,7 +108,7 @@ namespace DiscordBot.Modules
             List<SocketVoiceChannel> channels = new List<SocketVoiceChannel>();
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) channels.Add(voiceChannel);
+                if (voiceChannel.Users.Count > 0 && !voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Id != DiscordData.DiscordIDs.GulagID) channels.Add(voiceChannel);
             }
             if(Guild.Id == DiscordData.DiscordIDs.NoMenID) if (channels.Count == 0) channels.Add(Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID));
             return channels;
@@ -125,6 +125,11 @@ namespace DiscordBot.Modules
 
         public static void TryConnection(SocketGuild Guild)
         {
+            if (ShouldCortanaStay(Guild)) Console.WriteLine("I SHOULD STAY");
+            foreach (var voiceChannel in Guild.VoiceChannels)
+            {
+                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) Console.WriteLine($"Cortana in {voiceChannel.Name}");
+            }
             if (!ShouldCortanaStay(Guild))
             {
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)

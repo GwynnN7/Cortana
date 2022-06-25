@@ -70,13 +70,13 @@ namespace DiscordBot
 
         private Task Client_LoggedIn()
         {
-            Console.WriteLine($"{DateTime.Now} ClientLoggedIn");
+            Console.WriteLine($"{DateTime.Now} Client Logged In");
             return Task.CompletedTask;
         }
 
         private Task Client_LoggedOut()
         {
-            Console.WriteLine($"{DateTime.Now} ClientLoggedOut");
+            Console.WriteLine($"{DateTime.Now} Client Logged Out");
             return Task.CompletedTask;
         }
 
@@ -184,7 +184,6 @@ namespace DiscordBot
 
         async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
         {
-            Console.WriteLine($"{DateTime.Now} OnVoiceStateUpdate");
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
             //NOMEN-ONLY
