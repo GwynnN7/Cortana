@@ -125,18 +125,13 @@ namespace DiscordBot.Modules
 
         public static void TryConnection(SocketGuild Guild)
         {
-            if (ShouldCortanaStay(Guild)) Console.WriteLine("I SHOULD STAY");
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) Console.WriteLine($"Cortana in {voiceChannel.Name}");
-            }
             if (!ShouldCortanaStay(Guild))
             {
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
                     var channel = GetAvailableChannel(Guild);
-                    if (channel == null) Disconnect(Guild.Id);
-                    else JoinChannel(channel);
+                    Disconnect(Guild.Id);
+                    if (channel != null) JoinChannel(channel);
                 }
                 else Disconnect(Guild.Id);
             }
