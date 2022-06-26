@@ -186,12 +186,6 @@ namespace DiscordBot
         {
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
-            //NOMEN-ONLY
-            if (NewState.VoiceChannel != null && NewState.VoiceChannel.Id == DiscordData.DiscordIDs.CortanaChannelID && User.Id != DiscordData.DiscordIDs.CortanaID)
-            {
-                await NewState.VoiceChannel.Guild.GetUser(User.Id).ModifyAsync(x => x.ChannelId = NewState.VoiceChannel.Guild.VoiceChannels.FirstOrDefault()?.Id);
-            }
-
             Modules.AudioHandler.TryConnection(Guild);
 
             if (User.Id == DiscordData.DiscordIDs.CortanaID) return;

@@ -87,22 +87,22 @@ namespace DiscordBot.Modules
 
         private static bool ShouldCortanaStay(SocketGuild Guild)
         {
-            return GetAvailableChannels(Guild).First() == GetCurrentCortanaChannel(Guild);
+            var CortanaChannel = GetCurrentCortanaChannel(Guild);
+            var AvailableChannels = GetAvailableChannels(Guild);
+
+            if(AvailableChannels.Count > 0)
+            {
+                if (CortanaChannel == null) return false;
+                else return AvailableChannels.Contains(CortanaChannel);
+            }
+            else return CortanaChannel == null;
         }
 
         public static bool IsChannelAvailable(SocketVoiceChannel Channel)
         {
             if (Channel.Id == DiscordData.DiscordIDs.GulagID) return false;
-            if(Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID))
-            {
-                if (Channel.Users.Count > 1) return true;
-                else return false;
-            }
-            else
-            {
-                if (Channel.Users.Count > 0) return true;
-                else return false;
-            }
+            if(Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.Users.Count > 1;
+            else return Channel.Users.Count > 0;
         }
 
         public static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
@@ -111,7 +111,7 @@ namespace DiscordBot.Modules
             {
                 if(IsChannelAvailable(voiceChannel)) return voiceChannel;
             }
-            return Guild.Id == DiscordData.DiscordIDs.NoMenID ? Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID) : null;
+            return null;
         }
 
         private static List<SocketVoiceChannel> GetAvailableChannels(SocketGuild Guild)
@@ -121,7 +121,6 @@ namespace DiscordBot.Modules
             {
                 if (IsChannelAvailable(voiceChannel)) channels.Add(voiceChannel);
             }
-            if(Guild.Id == DiscordData.DiscordIDs.NoMenID) if (channels.Count == 0) channels.Add(Guild.GetVoiceChannel(DiscordData.DiscordIDs.CortanaChannelID));
             return channels;
         }
 

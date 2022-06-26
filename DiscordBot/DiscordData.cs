@@ -160,7 +160,6 @@ namespace DiscordBot
     {
         public ulong CortanaID { get; set; }
         public ulong ChiefID { get; set; }
-        public ulong CortanaChannelID { get; set; }
         public ulong NoMenID { get; set; }
         public ulong HomeID { get; set; }
         public ulong GulagID { get; set; }
