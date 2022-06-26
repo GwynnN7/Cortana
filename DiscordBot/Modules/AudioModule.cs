@@ -318,11 +318,13 @@ namespace DiscordBot.Modules
         {
             foreach(var x in Tokens)
             {
-                if(x != null)
+                try
                 {
                     x.Cancel();
                     x.Dispose();
                 }
+                catch { }
+                
             }
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
