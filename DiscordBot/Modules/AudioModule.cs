@@ -47,7 +47,7 @@ namespace DiscordBot.Modules
         private static Dictionary<ulong, CancellationTokenSource> JoinRegulators = new Dictionary<ulong, CancellationTokenSource>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
 
-        public static CancellationTokenSource DIoPorco;
+        public static List<CancellationTokenSource> Tokens = new();
         
         private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
@@ -92,10 +92,6 @@ namespace DiscordBot.Modules
         {
             var CortanaChannel = GetCurrentCortanaChannel(Guild);
             var AvailableChannels = GetAvailableChannels(Guild);
-
-            Console.WriteLine("Cortana Channel: " + CortanaChannel);
-            Console.WriteLine("Available Channels: " + AvailableChannels.Count);
-            Console.WriteLine(CortanaChannel != null ? AvailableChannels.Contains(CortanaChannel) : "No");
 
             if (AvailableChannels.Count > 0)
             {
@@ -152,7 +148,7 @@ namespace DiscordBot.Modules
                 }
                 else Disconnect(Guild.Id);
             }
-           // else EnsureChannel(GetCurrentCortanaChannel(Guild));
+           else EnsureChannel(GetCurrentCortanaChannel(Guild));
         }
 
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
@@ -194,7 +190,6 @@ namespace DiscordBot.Modules
             try
             {
                 DisposeConnection(GuildID);
-
                 if (VoiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) await VoiceChannel.DisconnectAsync();
             }
             catch (OperationCanceledException) {}
@@ -230,10 +225,10 @@ namespace DiscordBot.Modules
                 MemoryStream = await ExecuteFFMPEG(FilePath: audio);
             }
 
-            Console.WriteLine(MemoryStream.Length);
-
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
-            var AudioQueueItem = new QueueStructure(MemoryStream, new CancellationTokenSource(), GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
+            var x = new CancellationTokenSource();
+            Tokens.Add(x);
+            var AudioQueueItem = new QueueStructure(MemoryStream, x, GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
             var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem));
             AudioQueueItem.CurrentTask = AudioTask;
             Queue[GuildID].Add(AudioQueueItem);
@@ -274,13 +269,10 @@ namespace DiscordBot.Modules
         {
             if (AudioQueueItem.TaskToAwait != null)
             {
-                Console.WriteLine("Awaiting Task " + AudioQueueItem.TaskToAwait.Id);
                 await AudioQueueItem.TaskToAwait;
             }
             try
             {
-                DIoPorco = AudioQueueItem.Token;
-                Console.WriteLine("Sending Buffer");
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.WriteAsync(AudioQueueItem.Data.GetBuffer(), AudioQueueItem.Token.Token);
             }
             catch(OperationCanceledException)
@@ -289,9 +281,9 @@ namespace DiscordBot.Modules
             }
             finally
             {
-                Console.WriteLine("end task " + AudioQueueItem.CurrentTask?.Id);
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.FlushAsync();
                 Queue[AudioQueueItem.GuildID].RemoveAt(0);
+                //AudioQueueItem.Token.Cancel();
                 AudioQueueItem.Token.Dispose();
             }
         }
@@ -305,12 +297,6 @@ namespace DiscordBot.Modules
             JoinRegulators.Add(Channel.Guild.Id, new CancellationTokenSource());
             Task.Run(() => ConnectToVoice(Channel), JoinRegulators[Channel.Guild.Id].Token);
             return Text;
-        }
-
-        public static void Move(SocketGuild guid)
-        {
-            Console.WriteLine("ciao");
-            DIoPorco.Cancel();
         }
 
         public static string Disconnect(ulong GuildID)
@@ -330,6 +316,14 @@ namespace DiscordBot.Modules
 
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
+            foreach(var x in Tokens)
+            {
+                if(x != null)
+                {
+                    x.Cancel();
+                    x.Dispose();
+                }
+            }
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
             JoinChannel(Channel);
@@ -436,8 +430,6 @@ namespace DiscordBot.Modules
         {
             await RespondAsync(embed: DiscordData.CreateEmbed("Procedo a resettare la connessione"), ephemeral: true);
             AudioHandler.TryConnection(Context.Guild);
-
-            AudioHandler.Move(Context.Guild);
         }
     }
 }
