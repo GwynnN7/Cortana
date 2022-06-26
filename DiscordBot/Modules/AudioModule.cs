@@ -89,8 +89,7 @@ namespace DiscordBot.Modules
         {
             var CortanaChannel = GetCurrentCortanaChannel(Guild);
             var AvailableChannels = GetAvailableChannels(Guild);
-            Console.WriteLine("CortanaChannel: " + CortanaChannel);
-            AvailableChannels.ForEach(x => Console.WriteLine("Av: " + x));
+
             if(AvailableChannels.Count > 0)
             {
                 if (CortanaChannel == null) return false;
@@ -120,7 +119,6 @@ namespace DiscordBot.Modules
             List<SocketVoiceChannel> channels = new List<SocketVoiceChannel>();
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                Console.WriteLine("Available: " + voiceChannel.Name);
                 if (IsChannelAvailable(voiceChannel)) channels.Add(voiceChannel);
             }
             return channels;
@@ -156,12 +154,14 @@ namespace DiscordBot.Modules
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
+                await Task.Delay(500);
+                /*
                 await Task.Delay(1500);
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel))
                 {
                     TryConnection(VoiceChannel.Guild);
                     return;
-                }
+                }*/
 
                 DisposeConnection(GuildID);
 
@@ -268,7 +268,11 @@ namespace DiscordBot.Modules
 
         private static async Task SendBuffer(QueueStructure AudioQueueItem)
         {
-            if (AudioQueueItem.TaskToAwait != null) await AudioQueueItem.TaskToAwait;
+            if (AudioQueueItem.TaskToAwait != null)
+            {
+                Console.WriteLine("Awaiting Task");
+                await AudioQueueItem.TaskToAwait;
+            }
             try
             {
                 Console.WriteLine("Sending Buffer");

@@ -160,7 +160,7 @@ namespace DiscordBot
         {
             foreach(var guild in Cortana.Guilds)
             {
-                Modules.AudioHandler.TryConnection(guild);
+              //  Modules.AudioHandler.TryConnection(guild);
                 await Task.Delay(100);
             }
         }
@@ -186,7 +186,7 @@ namespace DiscordBot
         {
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
-            Modules.AudioHandler.TryConnection(Guild);
+            if(User.Id != DiscordData.DiscordIDs.CortanaID) Modules.AudioHandler.TryConnection(Guild);
 
             if (User.Id == DiscordData.DiscordIDs.CortanaID) return;
 
