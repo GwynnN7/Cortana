@@ -90,7 +90,11 @@ namespace DiscordBot.Modules
             var CortanaChannel = GetCurrentCortanaChannel(Guild);
             var AvailableChannels = GetAvailableChannels(Guild);
 
-            if(AvailableChannels.Count > 0)
+            Console.WriteLine("Cortana Channel: " + CortanaChannel);
+            Console.WriteLine("Available Channels: " + AvailableChannels.Count);
+            Console.WriteLine(CortanaChannel != null ? AvailableChannels.Contains(CortanaChannel) : "No");
+
+            if (AvailableChannels.Count > 0)
             {
                 if (CortanaChannel == null) return false;
                 else return AvailableChannels.Contains(CortanaChannel);
@@ -145,7 +149,7 @@ namespace DiscordBot.Modules
                 }
                 else Disconnect(Guild.Id);
             }
-            else EnsureChannel(GetCurrentCortanaChannel(Guild));
+           // else EnsureChannel(GetCurrentCortanaChannel(Guild));
         }
 
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
@@ -154,13 +158,15 @@ namespace DiscordBot.Modules
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-       
+                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel))
                 {
+                    Console.WriteLine("ReChecking");
                     TryConnection(VoiceChannel.Guild);
                     return;
                 }
+                Console.WriteLine("Passed");
 
                 DisposeConnection(GuildID);
 
@@ -302,7 +308,8 @@ namespace DiscordBot.Modules
 
         public static void Move(SocketGuild guid)
         {
-            Queue[guid.Id].ForEach(x => x.Token.Cancel(true));
+            Console.WriteLine("ciao");
+            Queue[guid.Id].ForEach(x => x.TaskToAwait?.Dispose());
         }
 
         public static string Disconnect(ulong GuildID)
