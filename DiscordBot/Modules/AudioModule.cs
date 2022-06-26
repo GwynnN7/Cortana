@@ -130,6 +130,7 @@ namespace DiscordBot.Modules
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
                     var channel = GetAvailableChannel(Guild);
+                    Console.WriteLine(channel?.Name);
                     Disconnect(Guild.Id);
                     if (channel != null) JoinChannel(channel);
                 }
