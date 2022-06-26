@@ -234,7 +234,7 @@ namespace DiscordBot.Modules
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
             var AudioQueueItem = new QueueStructure(MemoryStream, new CancellationTokenSource(), GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
-            var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem), AudioQueueItem.Token.Token);
+            var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem));
             AudioQueueItem.CurrentTask = AudioTask;
             Queue[GuildID].Add(AudioQueueItem);
 
