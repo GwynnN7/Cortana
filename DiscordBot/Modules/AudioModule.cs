@@ -89,7 +89,8 @@ namespace DiscordBot.Modules
         {
             var CortanaChannel = GetCurrentCortanaChannel(Guild);
             var AvailableChannels = GetAvailableChannels(Guild);
-
+            Console.WriteLine("CortanaChannel: " + CortanaChannel);
+            AvailableChannels.ForEach(x => Console.WriteLine("Av: " + x));
             if(AvailableChannels.Count > 0)
             {
                 if (CortanaChannel == null) return false;
@@ -101,7 +102,7 @@ namespace DiscordBot.Modules
         public static bool IsChannelAvailable(SocketVoiceChannel Channel)
         {
             if (Channel.Id == DiscordData.DiscordIDs.GulagID) return false;
-            if(Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.Users.Count > 1;
+            if (Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.Users.Count > 1;
             else return Channel.Users.Count > 0;
         }
 
@@ -119,6 +120,7 @@ namespace DiscordBot.Modules
             List<SocketVoiceChannel> channels = new List<SocketVoiceChannel>();
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
+                Console.WriteLine("Available: " + voiceChannel.Name);
                 if (IsChannelAvailable(voiceChannel)) channels.Add(voiceChannel);
             }
             return channels;
@@ -140,7 +142,6 @@ namespace DiscordBot.Modules
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
                     var channel = GetAvailableChannel(Guild);
-                    Console.WriteLine(channel);
                     if (channel == null) Disconnect(Guild.Id);
                     else JoinChannel(channel);
                 }
@@ -288,7 +289,6 @@ namespace DiscordBot.Modules
         public static string JoinChannel(SocketVoiceChannel Channel)
         {
             string Text = "Arrivo";
-
             if(GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return "Sono già qui"; 
             
             DisposeJoinRegulator(Channel.Guild.Id);
