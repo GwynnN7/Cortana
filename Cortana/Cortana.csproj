@@ -42,7 +42,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
     <None Update="Data\Discord\GuildConfig.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="Data\Discord\GuildUserData.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>

@@ -50,7 +50,7 @@ namespace DiscordBot.Modules
         {
             var memoryStream = new MemoryStream();
             await Cli.Wrap("ffmpeg")
-                .WithArguments($" -hide_banner -loglevel panic -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
+                .WithArguments($" -hide_banner -loglevel debug -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
                 .WithStandardInputPipe((VideoStream != null ? PipeSource.FromStream(VideoStream) : PipeSource.Null))
                 .WithStandardOutputPipe(PipeTarget.ToStream(memoryStream))
                 .ExecuteAsync();
@@ -140,6 +140,7 @@ namespace DiscordBot.Modules
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
                     var channel = GetAvailableChannel(Guild);
+                    Console.WriteLine(channel);
                     if (channel == null) Disconnect(Guild.Id);
                     else JoinChannel(channel);
                 }
@@ -315,7 +316,7 @@ namespace DiscordBot.Modules
         {
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
-            //JoinChannel(Channel);
+            JoinChannel(Channel);
         }
 
         private static void DisposeJoinRegulator(ulong GuildID)
