@@ -160,7 +160,7 @@ namespace DiscordBot
         {
             foreach(var guild in Cortana.Guilds)
             {
-              //  Modules.AudioHandler.TryConnection(guild);
+                Modules.AudioHandler.TryConnection(guild);
                 await Task.Delay(100);
             }
         }

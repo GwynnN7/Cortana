@@ -154,14 +154,13 @@ namespace DiscordBot.Modules
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-                await Task.Delay(500);
-                /*
+       
                 await Task.Delay(1500);
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel))
                 {
                     TryConnection(VoiceChannel.Guild);
                     return;
-                }*/
+                }
 
                 DisposeConnection(GuildID);
 
@@ -301,6 +300,11 @@ namespace DiscordBot.Modules
             return Text;
         }
 
+        public static void Move(SocketGuild guid)
+        {
+            Queue[guid.Id].ForEach(x => x.Token.Cancel(true));
+        }
+
         public static string Disconnect(ulong GuildID)
         {
             foreach (var Client in AudioClients)
@@ -424,6 +428,8 @@ namespace DiscordBot.Modules
         {
             await RespondAsync(embed: DiscordData.CreateEmbed("Procedo a resettare la connessione"), ephemeral: true);
             AudioHandler.TryConnection(Context.Guild);
+
+            AudioHandler.Move(Context.Guild);
         }
     }
 }
