@@ -161,16 +161,12 @@ namespace DiscordBot.Modules
             ulong GuildID = VoiceChannel.Guild.Id;
             try
             {
-                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel))
                 {
-                    Console.WriteLine("ReChecking");
                     TryConnection(VoiceChannel.Guild);
                     return;
                 }
-                Console.WriteLine("Passed");
-
                 DisposeConnection(GuildID);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -238,7 +234,7 @@ namespace DiscordBot.Modules
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
             var AudioQueueItem = new QueueStructure(MemoryStream, new CancellationTokenSource(), GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
-            var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem));
+            var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem), AudioQueueItem.Token.Token);
             AudioQueueItem.CurrentTask = AudioTask;
             Queue[GuildID].Add(AudioQueueItem);
 
@@ -278,7 +274,7 @@ namespace DiscordBot.Modules
         {
             if (AudioQueueItem.TaskToAwait != null)
             {
-                Console.WriteLine("Awaiting Task");
+                Console.WriteLine("Awaiting Task " + AudioQueueItem.TaskToAwait.Id);
                 await AudioQueueItem.TaskToAwait;
             }
             try
@@ -293,10 +289,10 @@ namespace DiscordBot.Modules
             }
             finally
             {
+                Console.WriteLine("end task " + AudioQueueItem.CurrentTask?.Id);
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.FlushAsync();
                 Queue[AudioQueueItem.GuildID].RemoveAt(0);
                 AudioQueueItem.Token.Dispose();
-                DIoPorco = null;
             }
         }
 
