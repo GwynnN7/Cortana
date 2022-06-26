@@ -40,11 +40,14 @@ namespace DiscordBot.Modules
                 GuildID = NewGuildID;
                 TaskToAwait = NewTaskToAwait;
             }
+
         }
 
         private static Dictionary<ulong, List<QueueStructure>> Queue = new Dictionary<ulong, List<QueueStructure>>();
         private static Dictionary<ulong, CancellationTokenSource> JoinRegulators = new Dictionary<ulong, CancellationTokenSource>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
+
+        public static CancellationTokenSource DIoPorco;
         
         private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
@@ -280,6 +283,7 @@ namespace DiscordBot.Modules
             }
             try
             {
+                DIoPorco = AudioQueueItem.Token;
                 Console.WriteLine("Sending Buffer");
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.WriteAsync(AudioQueueItem.Data.GetBuffer(), AudioQueueItem.Token.Token);
             }
@@ -292,6 +296,7 @@ namespace DiscordBot.Modules
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.FlushAsync();
                 Queue[AudioQueueItem.GuildID].RemoveAt(0);
                 AudioQueueItem.Token.Dispose();
+                DIoPorco = null;
             }
         }
 
@@ -309,7 +314,7 @@ namespace DiscordBot.Modules
         public static void Move(SocketGuild guid)
         {
             Console.WriteLine("ciao");
-            Queue[guid.Id].ForEach(x => x.TaskToAwait?.Dispose());
+            DIoPorco.Cancel();
         }
 
         public static string Disconnect(ulong GuildID)

@@ -186,6 +186,7 @@ namespace DiscordBot
         {
             var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
 
+            Console.WriteLine("Madonnad iquella gran puttanas chifosaèpnoikgè<òoijksenaròàplmjkiozdxhnbfgt");
             Modules.AudioHandler.TryConnection(Guild);
 
             if (User.Id == DiscordData.DiscordIDs.CortanaID) return;
