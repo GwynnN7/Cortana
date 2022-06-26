@@ -125,14 +125,15 @@ namespace DiscordBot.Modules
 
         public static void TryConnection(SocketGuild Guild)
         {
-            if (!ShouldCortanaStay(Guild))
+            if (AudioClients.ContainsKey(Guild.Id) && (GetCurrentCortanaChannel(Guild) == null || GetCurrentCortanaChannel(Guild)?.Id != AudioClients[Guild.Id].VoiceChannel.Id)) DisposeConnection(Guild.Id);
+
+                if (!ShouldCortanaStay(Guild))
             {
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
                     var channel = GetAvailableChannel(Guild);
-                    Console.WriteLine(channel?.Name);
-                    Disconnect(Guild.Id);
-                    if (channel != null) JoinChannel(channel);
+                    if (channel == null) Disconnect(Guild.Id);
+                    else JoinChannel(channel);
                 }
                 else Disconnect(Guild.Id);
             }
@@ -214,6 +215,8 @@ namespace DiscordBot.Modules
                 audio = $"Sound/{audio}.mp3";
                 MemoryStream = await ExecuteFFMPEG(FilePath: audio);
             }
+
+            Console.WriteLine(MemoryStream.Length);
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
             var AudioQueueItem = new QueueStructure(MemoryStream, new CancellationTokenSource(), GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
