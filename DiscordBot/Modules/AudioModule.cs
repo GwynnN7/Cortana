@@ -125,9 +125,7 @@ namespace DiscordBot.Modules
 
         public static void TryConnection(SocketGuild Guild)
         {
-            if (AudioClients.ContainsKey(Guild.Id) && (GetCurrentCortanaChannel(Guild) == null || GetCurrentCortanaChannel(Guild)?.Id != AudioClients[Guild.Id].VoiceChannel.Id)) DisposeConnection(Guild.Id);
-
-                if (!ShouldCortanaStay(Guild))
+            if (!ShouldCortanaStay(Guild))
             {
                 if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
                 {
@@ -261,14 +259,16 @@ namespace DiscordBot.Modules
             if (AudioQueueItem.TaskToAwait != null) await AudioQueueItem.TaskToAwait;
             try
             {
+                Console.WriteLine("Sending Buffer");
                 await AudioClients[AudioQueueItem.GuildID].AudioStream.WriteAsync(AudioQueueItem.Data.GetBuffer(), AudioQueueItem.Token.Token);
             }
             catch(OperationCanceledException)
             {
-                await AudioClients[AudioQueueItem.GuildID].AudioStream.FlushAsync();
+                Console.WriteLine("Buffer interrupted");
             }
             finally
             {
+                await AudioClients[AudioQueueItem.GuildID].AudioStream.FlushAsync();
                 Queue[AudioQueueItem.GuildID].RemoveAt(0);
                 AudioQueueItem.Token.Dispose();
             }
@@ -277,14 +277,9 @@ namespace DiscordBot.Modules
         public static string JoinChannel(SocketVoiceChannel Channel)
         {
             string Text = "Arrivo";
-            foreach(var Client in AudioClients)
-            {
-                if(Client.Key == Channel.Guild.Id)
-                {
-                    if (Client.Value.VoiceChannel.Id == Channel.Id) return "Sono già qui"; 
-                    break;
-                }
-            }
+
+            if(GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return "Sono già qui"; 
+            
             DisposeJoinRegulator(Channel.Guild.Id);
             JoinRegulators.Add(Channel.Guild.Id, new CancellationTokenSource());
             Task.Run(() => ConnectToVoice(Channel), JoinRegulators[Channel.Guild.Id].Token);
@@ -309,7 +304,7 @@ namespace DiscordBot.Modules
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
             if (Channel == null) return;
-            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
             JoinChannel(Channel);
         }
 
