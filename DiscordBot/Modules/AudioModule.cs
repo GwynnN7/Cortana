@@ -315,7 +315,7 @@ namespace DiscordBot.Modules
         {
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
-            JoinChannel(Channel);
+            //JoinChannel(Channel);
         }
 
         private static void DisposeJoinRegulator(ulong GuildID)
