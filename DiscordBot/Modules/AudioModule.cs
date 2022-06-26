@@ -87,11 +87,7 @@ namespace DiscordBot.Modules
 
         private static bool ShouldCortanaStay(SocketGuild Guild)
         {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID) && voiceChannel.Users.Count > 1) return true;
-            }
-            return false;
+            return GetAvailableChannels(Guild).First() == GetCurrentCortanaChannel(Guild);
         }
 
         public static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
