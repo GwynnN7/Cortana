@@ -52,8 +52,11 @@ namespace DiscordBot
                 var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
                 var ConnectionTimer = new Utility.UtilityTimer(Name: "connection-timer", Hours: 0, Minutes: 30, Seconds: 0, Callback: ConnectionTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
 
-                var channel = Modules.AudioHandler.GetAvailableChannel(client.GetGuild(DiscordData.DiscordIDs.NoMenID));
-                if (channel != null) Modules.AudioHandler.Connect(channel);
+                foreach(var guild in Cortana.Guilds)
+                {
+                    var channel = Modules.AudioHandler.GetAvailableChannel(guild);
+                    if (channel != null) Modules.AudioHandler.Connect(channel);
+                }
 
                 var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
                 await Chief.SendMessageAsync("I'm ready Chief!");

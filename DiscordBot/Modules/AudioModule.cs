@@ -116,7 +116,7 @@ namespace DiscordBot.Modules
 
             var AudioQueueItem = new QueueStructure(new CancellationTokenSource(), MemoryStream, GuildID);
             if (AudioQueue.ContainsKey(GuildID)) AudioQueue[GuildID].Add(AudioQueueItem);
-            AudioQueue.Add(GuildID, new List<QueueStructure>() { AudioQueueItem });
+            else AudioQueue.Add(GuildID, new List<QueueStructure>() { AudioQueueItem });
 
             if (AudioQueue[GuildID].Count == 1) NextAudioQueue(GuildID);
             
@@ -132,7 +132,6 @@ namespace DiscordBot.Modules
                 AudioQueue[GuildID][0].Data.Dispose();
                 AudioQueue[GuildID].RemoveAt(0);
                 if (AudioQueue[GuildID].Count > 0) NextAudioQueue(GuildID);
-                Console.WriteLine("Entered in ContineuWith of NextAudioQueue");
             });
         }  
 
@@ -146,7 +145,6 @@ namespace DiscordBot.Modules
             finally
             {
                 await AudioClients[Item.GuildID].AudioStream.FlushAsync();
-                Console.WriteLine("Flushed Buffer");
             }
         }
 
@@ -260,6 +258,7 @@ namespace DiscordBot.Modules
 
         private static void AddToJoinQueue(Task TaskToAdd, ulong GuildID)
         {
+            Console.WriteLine("Added Task " + TaskToAdd.Id);
             var QueueItem = new JoinStructure(new CancellationTokenSource(), GuildID, TaskToAdd);
             if (JoinQueue.ContainsKey(GuildID)) JoinQueue[GuildID].Add(QueueItem);
             else JoinQueue.Add(GuildID, new List<JoinStructure>() { QueueItem });
@@ -269,7 +268,9 @@ namespace DiscordBot.Modules
 
         private static void NextJoinQueue(ulong GuildID)
         {
+            Console.WriteLine("Entered Next Queue");
             Clear(GuildID);
+
             JoinQueue[GuildID][0].Task.ContinueWith((t1) =>
             {
                 JoinQueue[GuildID][0].Token.Dispose();
@@ -277,10 +278,12 @@ namespace DiscordBot.Modules
                 if (JoinQueue[GuildID].Count > 0)
                 {
                     JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
+                    Console.WriteLine(JoinQueue[GuildID].Count);
                     NextJoinQueue(GuildID);
                 }
-                Console.WriteLine("Entered in ContineuWith of NextJoinQueue");
+                Console.WriteLine("Continued after Next Queue");
             });
+
             JoinQueue[GuildID][0].Task.Start();
         }
 
@@ -304,7 +307,7 @@ namespace DiscordBot.Modules
                 AudioClients[Guild.Id] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
                 await Play("Hello", Guild.Id, EAudioSource.Local);
-                await Play("Cortana_1", Guild.Id, EAudioSource.Local);
+                //await Play("Cortana_1", Guild.Id, EAudioSource.Local);
             }
             catch
             {
