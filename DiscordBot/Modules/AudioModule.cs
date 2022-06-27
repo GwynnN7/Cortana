@@ -172,14 +172,13 @@ namespace DiscordBot.Modules
                     bFoundStop = true;
                     if (AudioQueue[GuildID].IndexOf(QueueItem) == AudioQueue[GuildID].Count - 1)
                     {
-                        if(QueueItem.Token != null) QueueItem.Token.Cancel();
+                        QueueItem.Token.Cancel();
                         continue;
                     }
-                    if(QueueItem.Token != null)
-                    {
-                        QueueItem.Token.Cancel();
-                        QueueItem.Token.Dispose();
-                    }
+              
+                    QueueItem.Token.Cancel();
+                    QueueItem.Token.Dispose();
+                    
                     QueueItem.Data.Dispose();
                 }
                 AudioQueue[GuildID].Clear();
@@ -270,7 +269,7 @@ namespace DiscordBot.Modules
 
         private static async void NextJoinQueue(ulong GuildID)
         {
-            Clear(GuildID);
+            //Clear(GuildID);
 
             await JoinQueue[GuildID][0].Task();
 
