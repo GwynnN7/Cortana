@@ -43,9 +43,9 @@ namespace DiscordBot.Modules
         {
             public CancellationTokenSource Token { get; }
             public ulong GuildID { get; }
-            public Task Task { get; set; }
+            public Func<Task> Task { get; set; }
 
-            public JoinStructure(CancellationTokenSource NewToken, ulong NewGuildID, Task NewTask)
+            public JoinStructure(CancellationTokenSource NewToken, ulong NewGuildID, Func<Task> NewTask)
             {
                 Token = NewToken;
                 GuildID = NewGuildID;
@@ -257,37 +257,28 @@ namespace DiscordBot.Modules
             else EnsureChannel(GetCurrentCortanaChannel(Guild));
         }
 
-        private static void AddToJoinQueue(Task TaskToAdd, ulong GuildID)
+        private static void AddToJoinQueue(Func<Task> TaskToAdd, ulong GuildID)
         {
-            Console.WriteLine("Added Task " + TaskToAdd.Id);
             var QueueItem = new JoinStructure(new CancellationTokenSource(), GuildID, TaskToAdd);
             if (JoinQueue.ContainsKey(GuildID)) JoinQueue[GuildID].Add(QueueItem);
             else JoinQueue.Add(GuildID, new List<JoinStructure>() { QueueItem });
-            Console.WriteLine("dawdwa" + JoinQueue[GuildID].Count);
+
             if (JoinQueue[GuildID].Count == 1) NextJoinQueue(GuildID);
         }
 
         private static async void NextJoinQueue(ulong GuildID)
         {
-            Console.WriteLine("Entered Next Queue");
-            Console.WriteLine(JoinQueue[GuildID].Count);
             Clear(GuildID);
 
-            Console.WriteLine("Waiting Task");
-            await JoinQueue[GuildID][0].Task;
-            Console.WriteLine("Task waited");
-         
-            Console.WriteLine("FUAIJNEO");
+            await JoinQueue[GuildID][0].Task();
+
             JoinQueue[GuildID][0].Token.Dispose();
             JoinQueue[GuildID].RemoveAt(0);
             if (JoinQueue[GuildID].Count > 0)
             {
                 JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
-                Console.WriteLine(JoinQueue[GuildID].Count);
                 NextJoinQueue(GuildID);
             }
-            Console.WriteLine("Continued after Next Queue " + JoinQueue[GuildID][0].Task.Id);
-
         }
 
         private static async Task Join(SocketVoiceChannel VoiceChannel)
@@ -297,11 +288,9 @@ namespace DiscordBot.Modules
 
             try
             {
-                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
-                Console.WriteLine("Done Waiting");
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-                Console.WriteLine("Can continue");
+
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -310,10 +299,9 @@ namespace DiscordBot.Modules
                 var AudioClient = await VoiceChannel.ConnectAsync();
                 var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
                 AudioClients[Guild.Id] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
-                Console.WriteLine("Created Stream");
+
                 await Play("Hello", Guild.Id, EAudioSource.Local);
                 await Play("Cortana_1", Guild.Id, EAudioSource.Local);
-                Console.WriteLine("Talk");
             }
             catch
             {
@@ -352,7 +340,7 @@ namespace DiscordBot.Modules
         {
             if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
 
-            AddToJoinQueue(new Task(async () => await Join(Channel)), Channel.Guild.Id);
+            AddToJoinQueue() => Join(Channel), Channel.Guild.Id);
 
             return "Arrivo";
         }
@@ -363,7 +351,7 @@ namespace DiscordBot.Modules
             {
                 if (Client.Key == GuildID)
                 {
-                    AddToJoinQueue(new Task(async () => await Leave(Client.Value.VoiceChannel)), GuildID);
+                    AddToJoinQueue(() => Leave(Client.Value.VoiceChannel), GuildID);
 
                     return "Mi sto disconnettendo";
                 }
@@ -375,7 +363,7 @@ namespace DiscordBot.Modules
         {
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
-            AddToJoinQueue(new Task(async () => await Join(Channel)), Channel.Guild.Id);
+            AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
         }
 
         //-------------------------------------------------------------------------------------------
