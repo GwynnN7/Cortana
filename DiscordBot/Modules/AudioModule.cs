@@ -281,7 +281,7 @@ namespace DiscordBot.Modules
                     Console.WriteLine(JoinQueue[GuildID].Count);
                     NextJoinQueue(GuildID);
                 }
-                Console.WriteLine("Continued after Next Queue");
+                Console.WriteLine("Continued after Next Queue " + JoinQueue[GuildID][0].Task.Id);
             });
 
             JoinQueue[GuildID][0].Task.Start();
