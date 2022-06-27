@@ -270,8 +270,7 @@ namespace DiscordBot.Modules
         private static void NextJoinQueue(ulong GuildID)
         {
             Clear(GuildID);
-            var t = Task.Run(() => JoinQueue[GuildID][0].Task, JoinQueue[GuildID][0].Token.Token);
-            t.ContinueWith((t1) =>
+            JoinQueue[GuildID][0].Task.ContinueWith((t1) =>
             {
                 JoinQueue[GuildID][0].Token.Dispose();
                 JoinQueue[GuildID].RemoveAt(0);
@@ -282,6 +281,7 @@ namespace DiscordBot.Modules
                 }
                 Console.WriteLine("Entered in ContineuWith of NextJoinQueue");
             });
+            JoinQueue[GuildID][0].Task.Start();
         }
 
         private static async void Join(SocketVoiceChannel VoiceChannel)
@@ -291,11 +291,9 @@ namespace DiscordBot.Modules
 
             try
             {
-                Console.WriteLine("1");
                 await Task.Delay(1500);
-                Console.WriteLine("2");
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-                Console.WriteLine("3");
+
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
