@@ -170,7 +170,7 @@ namespace DiscordBot.Modules
                 foreach (var QueueItem in AudioQueue[GuildID])
                 {
                     bFoundStop = true;
-                    if (AudioQueue[GuildID].IndexOf(QueueItem) == 0)
+                    if (AudioQueue[GuildID].IndexOf(QueueItem) == AudioQueue[GuildID].Count - 1)
                     {
                         QueueItem.Token.Cancel();
                         continue;
