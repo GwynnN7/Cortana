@@ -340,7 +340,7 @@ namespace DiscordBot.Modules
         {
             if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
 
-            AddToJoinQueue() => Join(Channel), Channel.Guild.Id);
+            AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
 
             return "Arrivo";
         }
