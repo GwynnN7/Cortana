@@ -47,7 +47,7 @@ namespace DiscordBot.Modules
         private static Dictionary<ulong, CancellationTokenSource> JoinRegulators = new Dictionary<ulong, CancellationTokenSource>();
         public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
 
-        public static List<CancellationTokenSource> Tokens = new();
+        public static object test = new object();
         
         private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
         {
@@ -138,17 +138,21 @@ namespace DiscordBot.Modules
 
         public static void TryConnection(SocketGuild Guild)
         {
-            if (!ShouldCortanaStay(Guild))
+            lock(test)
             {
-                if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
+                if (!ShouldCortanaStay(Guild))
                 {
-                    var channel = GetAvailableChannel(Guild);
-                    if (channel == null) Disconnect(Guild.Id);
-                    else JoinChannel(channel);
+                    if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
+                    {
+                        var channel = GetAvailableChannel(Guild);
+                        if (channel == null) Disconnect(Guild.Id);
+                        else JoinChannel(channel);
+                    }
+                    else Disconnect(Guild.Id);
                 }
-                else Disconnect(Guild.Id);
+                else EnsureChannel(GetCurrentCortanaChannel(Guild));
             }
-           else EnsureChannel(GetCurrentCortanaChannel(Guild));
+            
         }
 
         private static async Task ConnectToVoice(SocketVoiceChannel VoiceChannel)
@@ -229,9 +233,7 @@ namespace DiscordBot.Modules
             }
 
             if (!Queue.ContainsKey(GuildID)) Queue.Add(GuildID, new List<QueueStructure>());
-            var x = new CancellationTokenSource();
-            Tokens.Add(x);
-            var AudioQueueItem = new QueueStructure(MemoryStream, x, GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
+            var AudioQueueItem = new QueueStructure(MemoryStream, new CancellationTokenSource(), GuildID, Queue[GuildID].Count > 0 ? Queue[GuildID].Last().CurrentTask : null);
             var AudioTask = Task.Run(() => SendBuffer(AudioQueueItem));
             AudioQueueItem.CurrentTask = AudioTask;
             Queue[GuildID].Add(AudioQueueItem);
@@ -319,16 +321,6 @@ namespace DiscordBot.Modules
 
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
-            foreach(var x in Tokens)
-            {
-                try
-                {
-                    x.Cancel();
-                    x.Dispose();
-                }
-                catch { }
-                
-            }
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild)?.Id == Channel.Id) return;
             JoinChannel(Channel);
