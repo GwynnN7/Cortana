@@ -175,6 +175,7 @@ namespace DiscordBot.Modules
                         QueueItem.Token.Cancel();
                         continue;
                     }
+
                     QueueItem.Data.Dispose();
                     QueueItem.Token.Cancel();
                     QueueItem.Token.Dispose();
@@ -294,9 +295,11 @@ namespace DiscordBot.Modules
 
             try
             {
+                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
+                Console.WriteLine("Done Waiting");
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-
+                Console.WriteLine("Can continue");
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -305,13 +308,14 @@ namespace DiscordBot.Modules
                 var AudioClient = await VoiceChannel.ConnectAsync();
                 var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
                 AudioClients[Guild.Id] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
-
+                Console.WriteLine("Created Stream");
                 await Play("Hello", Guild.Id, EAudioSource.Local);
-                //await Play("Cortana_1", Guild.Id, EAudioSource.Local);
+                await Play("Cortana_1", Guild.Id, EAudioSource.Local);
+                Console.WriteLine("Talk");
             }
             catch
             {
-                ////////////////
+                Console.WriteLine("Error");
             }
         }
 
