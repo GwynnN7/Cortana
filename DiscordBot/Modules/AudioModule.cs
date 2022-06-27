@@ -175,7 +175,10 @@ namespace DiscordBot.Modules
                 await Play("Hello", GuildID, EAudioSource.Local);
                 await Play("Cortana_1", GuildID, EAudioSource.Local);
             }
-            catch (OperationCanceledException){}
+            catch (OperationCanceledException)
+            {
+                Console.WriteLine("interrupt");
+            }
             finally
             {
                 DisposeJoinRegulator(GuildID);
