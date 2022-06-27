@@ -263,17 +263,19 @@ namespace DiscordBot.Modules
             var QueueItem = new JoinStructure(new CancellationTokenSource(), GuildID, TaskToAdd);
             if (JoinQueue.ContainsKey(GuildID)) JoinQueue[GuildID].Add(QueueItem);
             else JoinQueue.Add(GuildID, new List<JoinStructure>() { QueueItem });
-
+            Console.WriteLine("dawdwa" + JoinQueue[GuildID].Count);
             if (JoinQueue[GuildID].Count == 1) NextJoinQueue(GuildID);
         }
 
         private static void NextJoinQueue(ulong GuildID)
         {
             Console.WriteLine("Entered Next Queue");
+            Console.WriteLine(JoinQueue[GuildID].Count);
             Clear(GuildID);
 
             JoinQueue[GuildID][0].Task.ContinueWith((t1) =>
             {
+                Console.WriteLine("FUAIJNEO");
                 JoinQueue[GuildID][0].Token.Dispose();
                 JoinQueue[GuildID].RemoveAt(0);
                 if (JoinQueue[GuildID].Count > 0)
