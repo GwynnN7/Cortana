@@ -172,13 +172,15 @@ namespace DiscordBot.Modules
                     bFoundStop = true;
                     if (AudioQueue[GuildID].IndexOf(QueueItem) == AudioQueue[GuildID].Count - 1)
                     {
-                        QueueItem.Token.Cancel();
+                        if(QueueItem.Token != null) QueueItem.Token.Cancel();
                         continue;
                     }
-
+                    if(QueueItem.Token != null)
+                    {
+                        QueueItem.Token.Cancel();
+                        QueueItem.Token.Dispose();
+                    }
                     QueueItem.Data.Dispose();
-                    QueueItem.Token.Cancel();
-                    QueueItem.Token.Dispose();
                 }
                 AudioQueue[GuildID].Clear();
                 if (bFoundStop) return "Queue rimossa";
@@ -363,6 +365,7 @@ namespace DiscordBot.Modules
         {
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
+            Console.WriteLine("Porco dio");
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
         }
 
