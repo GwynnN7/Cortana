@@ -267,27 +267,27 @@ namespace DiscordBot.Modules
             if (JoinQueue[GuildID].Count == 1) NextJoinQueue(GuildID);
         }
 
-        private static void NextJoinQueue(ulong GuildID)
+        private static async void NextJoinQueue(ulong GuildID)
         {
             Console.WriteLine("Entered Next Queue");
             Console.WriteLine(JoinQueue[GuildID].Count);
             Clear(GuildID);
 
-            JoinQueue[GuildID][0].Task.ContinueWith((t1) =>
+            Console.WriteLine("Waiting Task");
+            await JoinQueue[GuildID][0].Task;
+            Console.WriteLine("Task waited");
+         
+            Console.WriteLine("FUAIJNEO");
+            JoinQueue[GuildID][0].Token.Dispose();
+            JoinQueue[GuildID].RemoveAt(0);
+            if (JoinQueue[GuildID].Count > 0)
             {
-                Console.WriteLine("FUAIJNEO");
-                JoinQueue[GuildID][0].Token.Dispose();
-                JoinQueue[GuildID].RemoveAt(0);
-                if (JoinQueue[GuildID].Count > 0)
-                {
-                    JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
-                    Console.WriteLine(JoinQueue[GuildID].Count);
-                    NextJoinQueue(GuildID);
-                }
-                Console.WriteLine("Continued after Next Queue " + JoinQueue[GuildID][0].Task.Id);
-            });
+                JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
+                Console.WriteLine(JoinQueue[GuildID].Count);
+                NextJoinQueue(GuildID);
+            }
+            Console.WriteLine("Continued after Next Queue " + JoinQueue[GuildID][0].Task.Id);
 
-            JoinQueue[GuildID][0].Task.Start();
         }
 
         private static async Task Join(SocketVoiceChannel VoiceChannel)
@@ -350,7 +350,7 @@ namespace DiscordBot.Modules
 
         public static string Connect(SocketVoiceChannel Channel)
         {
-            if(GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
+            if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
 
             AddToJoinQueue(new Task(async () => await Join(Channel)), Channel.Guild.Id);
 
