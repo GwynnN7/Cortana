@@ -162,26 +162,26 @@ namespace DiscordBot.Modules
 
         public static string Clear(ulong GuildID)
         {
-            if (AudioQueue.ContainsKey(GuildID))
+            if (AudioQueue.ContainsKey(GuildID) && AudioQueue[GuildID].Count > 0)
             {
-                bool bFoundStop = false;
-                AudioQueue[GuildID].Reverse();
-                foreach (var QueueItem in AudioQueue[GuildID])
+                for(int i = AudioQueue[GuildID].Count - 1; i >= 0; i--)
                 {
-                    bFoundStop = true;
-                    if (AudioQueue[GuildID].IndexOf(QueueItem) == AudioQueue[GuildID].Count - 1)
+                    if(i == 0)
                     {
-                        QueueItem.Token.Cancel();
+                        AudioQueue[GuildID][i].Token.Cancel();
                         continue;
                     }
-              
-                    QueueItem.Token.Cancel();
-                    QueueItem.Token.Dispose();
-                    
-                    QueueItem.Data.Dispose();
+
+                    AudioQueue[GuildID][i].Token.Cancel();
+                    AudioQueue[GuildID][i].Token.Dispose();
+
+                    AudioQueue[GuildID][i].Data.Dispose();
+
+                    AudioQueue[GuildID].RemoveAt(i);
                 }
+            
                 AudioQueue[GuildID].Clear();
-                if (bFoundStop) return "Queue rimossa";
+                return "Queue rimossa";
             }
             return "Non c'è niente in coda";
         }
@@ -238,6 +238,12 @@ namespace DiscordBot.Modules
             return null;
         }
 
+        private static bool IsConnected(SocketVoiceChannel VoiceChannel, SocketGuild Guild)
+        {
+            if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel && GetCurrentCortanaChannel(Guild) == VoiceChannel) return true;
+            return false;
+        }
+
         //-------------------------------------------------------------------------------------------
 
         //-------------------------- Connection Functions -------------------------------------------
@@ -268,8 +274,6 @@ namespace DiscordBot.Modules
 
         private static async void NextJoinQueue(ulong GuildID)
         {
-            //Clear(GuildID);
-
             await JoinQueue[GuildID][0].Task();
 
             JoinQueue[GuildID][0].Token.Dispose();
@@ -292,8 +296,9 @@ namespace DiscordBot.Modules
                 await Task.Delay(1500);
 
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-                else if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel && GetCurrentCortanaChannel(Guild) == VoiceChannel) return;
+                else if (IsConnected(VoiceChannel, Guild)) return;
 
+                Clear(Guild.Id);
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -304,14 +309,14 @@ namespace DiscordBot.Modules
                 AudioClients[Guild.Id] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
 
                 await Play("Hello", Guild.Id, EAudioSource.Local);
-                await Play("Cortana_1", Guild.Id, EAudioSource.Local);
             }
             catch
             {
-                Console.WriteLine("Error");
+                var Chief = DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.Result.SendMessageAsync("C'è stato un errore nel Join del canale vocale");
             }
         }
-        //////////////////////////////////////////////////////////////////////////////// FUNCTION TO CHECK CONNECTION
+
         private static async Task Leave(SocketVoiceChannel VoiceChannel)
         {
             if (VoiceChannel == null) return;
@@ -325,7 +330,8 @@ namespace DiscordBot.Modules
             }
             catch 
             {
-                ///////////////////
+                var Chief = DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
+                await Chief.Result.SendMessageAsync("C'è stato un errore nel Join del canale vocale");
             }
         }
 
@@ -364,7 +370,7 @@ namespace DiscordBot.Modules
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
             if (Channel == null) return;
-            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel == Channel && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
+            if (IsConnected(Channel, Channel.Guild)) return;
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
         }
 
