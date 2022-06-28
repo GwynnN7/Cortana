@@ -290,11 +290,11 @@ namespace DiscordBot.Modules
 
             try
             {
-                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
-                Console.WriteLine("Waited");
+
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-                Console.WriteLine("PAssed");
+                else if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel && GetCurrentCortanaChannel(Guild) == VoiceChannel) return;
+
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -365,7 +365,7 @@ namespace DiscordBot.Modules
         public static void EnsureChannel(SocketVoiceChannel? Channel)
         {
             if (Channel == null) return;
-            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
+            if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel == Channel && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
         }
 
