@@ -339,8 +339,9 @@ namespace DiscordBot.Modules
 
         public static string Connect(SocketVoiceChannel Channel)
         {
+            Console.WriteLine("Ciao");
             if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
-
+            Console.WriteLine("Ciao2");
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
 
             return "Arrivo";
@@ -348,10 +349,12 @@ namespace DiscordBot.Modules
 
         public static string Disconnect(ulong GuildID)
         {
+            Console.WriteLine("Cia3");
             foreach (var Client in AudioClients)
             {
                 if (Client.Key == GuildID)
                 {
+                    Console.WriteLine("caio5");
                     AddToJoinQueue(() => Leave(Client.Value.VoiceChannel), GuildID);
 
                     return "Mi sto disconnettendo";
