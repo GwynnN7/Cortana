@@ -270,7 +270,7 @@ namespace DiscordBot.Modules
         private static async void NextJoinQueue(ulong GuildID)
         {
             //Clear(GuildID);
-
+            Console.WriteLine("Etner");
             await JoinQueue[GuildID][0].Task();
 
             JoinQueue[GuildID][0].Token.Dispose();
@@ -278,6 +278,7 @@ namespace DiscordBot.Modules
             if (JoinQueue[GuildID].Count > 0)
             {
                 JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
+                Console.WriteLine("Done");
                 NextJoinQueue(GuildID);
             }
         }
@@ -289,9 +290,11 @@ namespace DiscordBot.Modules
 
             try
             {
+                Console.WriteLine("Waiting");
                 await Task.Delay(1500);
+                Console.WriteLine("Waited");
                 if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-
+                Console.WriteLine("PAssed");
                 DisposeConnection(Guild.Id);
 
                 var NewPair = new ChannelClient(VoiceChannel);
@@ -339,9 +342,7 @@ namespace DiscordBot.Modules
 
         public static string Connect(SocketVoiceChannel Channel)
         {
-            Console.WriteLine("Ciao");
             if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
-            Console.WriteLine("Ciao2");
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
 
             return "Arrivo";
@@ -349,12 +350,10 @@ namespace DiscordBot.Modules
 
         public static string Disconnect(ulong GuildID)
         {
-            Console.WriteLine("Cia3");
             foreach (var Client in AudioClients)
             {
                 if (Client.Key == GuildID)
                 {
-                    Console.WriteLine("caio5");
                     AddToJoinQueue(() => Leave(Client.Value.VoiceChannel), GuildID);
 
                     return "Mi sto disconnettendo";
@@ -367,7 +366,6 @@ namespace DiscordBot.Modules
         {
             if (Channel == null) return;
             if (AudioClients.ContainsKey(Channel.Guild.Id) && AudioClients[Channel.Guild.Id].VoiceChannel.Id == Channel.Id && GetCurrentCortanaChannel(Channel.Guild) == Channel) return;
-            Console.WriteLine("Porco dio");
             AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
         }
 
