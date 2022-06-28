@@ -137,7 +137,6 @@ namespace DiscordBot.Modules
 
         private static async Task SendBuffer(QueueStructure Item)
         {
-            if (JoinQueue[Item.GuildID].Count > 0) return;
             try
             {
                 await AudioClients[Item.GuildID].AudioStream.WriteAsync(Item.Data.GetBuffer(), Item.Token.Token);
@@ -270,7 +269,7 @@ namespace DiscordBot.Modules
         private static async void NextJoinQueue(ulong GuildID)
         {
             //Clear(GuildID);
-            Console.WriteLine("Etner");
+
             await JoinQueue[GuildID][0].Task();
 
             JoinQueue[GuildID][0].Token.Dispose();
@@ -278,7 +277,7 @@ namespace DiscordBot.Modules
             if (JoinQueue[GuildID].Count > 0)
             {
                 JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
-                Console.WriteLine("Done");
+
                 NextJoinQueue(GuildID);
             }
         }
@@ -312,7 +311,7 @@ namespace DiscordBot.Modules
                 Console.WriteLine("Error");
             }
         }
-
+        //////////////////////////////////////////////////////////////////////////////// FUNCTION TO CHECK CONNECTION
         private static async Task Leave(SocketVoiceChannel VoiceChannel)
         {
             if (VoiceChannel == null) return;
