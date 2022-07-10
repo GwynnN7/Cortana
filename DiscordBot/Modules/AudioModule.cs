@@ -229,7 +229,7 @@ namespace DiscordBot.Modules
             return channels;
         }
 
-        private static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
+        public static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
         {
             foreach (var voiceChannel in Guild.VoiceChannels)
             {

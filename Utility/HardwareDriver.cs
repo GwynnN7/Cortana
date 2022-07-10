@@ -28,14 +28,11 @@ namespace Utility
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
             SwitchLamp(EHardwareTrigger.Off);
+            
+            if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);  
+            else Functions.RequestPC("notify/night");
 
-            var result = Functions.RequestPC("notify/night");
-            if (!result)
-            {
-                SwitchLED(EHardwareTrigger.Off);
-                SwitchOLED(EHardwareTrigger.Off);
-                SwitchOutlets(EHardwareTrigger.Off);
-            }
+            if(DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         private static void ToggleLamp()

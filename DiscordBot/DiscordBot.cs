@@ -204,6 +204,8 @@ namespace DiscordBot
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
 
+                if (NewState.VoiceChannel != Modules.AudioHandler.GetCurrentCortanaChannel(Guild)) return;
+
                 await Task.Delay(1000);
                 await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
