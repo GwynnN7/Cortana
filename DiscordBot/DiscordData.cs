@@ -205,7 +205,7 @@ public class Statistics
 
 public class MemeJsonStructure
 {
-    public List<string> Aliases { get; set; } = new List<string>();
+    public List<string> Alias { get; set; } = new List<string>();
     public string Link { get; set; }
     public EMemeCategory Category { get; set; }
 }

@@ -389,11 +389,7 @@ namespace DiscordBot.Modules
             string title = "Rick Roll";
             foreach(var Meme in DiscordData.Memes)
             {
-                Console.WriteLine(name);
-                Console.WriteLine(Meme.Key);
-                Meme.Value.Aliases.ForEach(x => Console.WriteLine(x));
-                Console.WriteLine();
-                if (Meme.Value.Aliases.Contains(name))
+                if (Meme.Value.Alias.Contains(name))
                 {
                     link = Meme.Value.Link;
                     title = Meme.Key;
@@ -411,7 +407,7 @@ namespace DiscordBot.Modules
             await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
 
             bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
-            if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
+            if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
         }
 
         [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
