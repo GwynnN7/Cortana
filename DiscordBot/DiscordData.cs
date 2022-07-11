@@ -17,6 +17,8 @@ namespace DiscordBot
         public static Dictionary<ulong, GuildSettings> GuildSettings = new Dictionary<ulong, GuildSettings>();
         public static Dictionary<ulong, GuildUsersData> UserGuildData = new Dictionary<ulong, GuildUsersData>();
 
+        public static Dictionary<string, MemeJsonStructure> Memes = new Dictionary<string, MemeJsonStructure>();
+
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
             DiscordSettings? discordSettings = null;
@@ -82,6 +84,18 @@ namespace DiscordBot
                 UserGuildData.Add(Guild.Id, usersData);
             }
             UpdateUserGuildData();
+        }
+
+        static public void LoadMemes()
+        {
+            Dictionary<string, MemeJsonStructure>? memesDataResult = null;
+            if (File.Exists("Data/Discord/Memes.json"))
+            {
+                var file = File.ReadAllText("Data/Discord/Memes.json");
+
+                memesDataResult = JsonConvert.DeserializeObject<Dictionary<string, MemeJsonStructure>>(file);
+            }
+            if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
         }
 
         static public void AddGuildSettings(SocketGuild Guild)
@@ -187,4 +201,11 @@ public class Statistics
     public int SongPlayed { get; set; } = 0;
     public List<string> Projects { get; set; } = new List<string>();
     public string Image { get; set; } = "";
+}
+
+public class MemeJsonStructure
+{
+    public List<string> Aliases { get; set; } = new List<string>();
+    public string Link { get; set; }
+    public EMemeCategory Category { get; set; }
 }

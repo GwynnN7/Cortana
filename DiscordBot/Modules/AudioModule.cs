@@ -380,6 +380,36 @@ namespace DiscordBot.Modules
     [Group("media", "Gestione audio")]
     public class AudioModule : InteractionModuleBase<SocketInteractionContext>
     {
+        [SlashCommand("meme", "Metto un meme tra quelli disponibili", ignoreGroupNames: true)]
+        public async Task Meme([Summary("nome", "Nome del meme")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+        {
+            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
+            string link = "https://www.youtube.com/watch?v=xvFZjo5PgG0";
+            string title = "Rick Roll";
+            foreach(var Meme in DiscordData.Memes)
+            {
+                if (Meme.Value.Aliases.Contains(name))
+                {
+                    link = Meme.Value.Link;
+                    title = Meme.Key;
+                }
+            }
+
+            var result = await AudioHandler.GetYoutubeVideoInfos(link);
+            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+            Embed embed = DiscordData.CreateEmbed(title, Description: $"{duration:hh\\:mm\\:ss}");
+            embed = embed.ToEmbedBuilder()
+                .WithUrl(result.Url)
+                .WithThumbnailUrl(result.Thumbnails.Last().Url)
+                .Build();
+
+            await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+
+            bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
+            if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
+        }
+
         [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
         public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
         {

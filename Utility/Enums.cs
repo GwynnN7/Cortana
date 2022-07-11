@@ -80,3 +80,16 @@ public enum EWeek
     Saturday,
     Sunday
 }
+
+public enum EMemeCategory
+{
+    Games,
+    Anime,
+    Music,
+    SFX,
+    Short,
+    NotLong,
+    Long,
+    NotShort,
+    Default
+}
