@@ -477,6 +477,7 @@ namespace DiscordBot.Modules
                 {
                     if (meme.Value.Category == category) categoryString += $"[{meme.Key}]({meme.Value.Link})\n";
                 }
+                if (categoryString.Length == 0) continue;
                 temp_embed.AddField(category.ToString(), categoryString);
             }
             await RespondAsync(embed: temp_embed.Build(), ephemeral: Ephemeral == EAnswer.Si);
