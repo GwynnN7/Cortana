@@ -385,29 +385,29 @@ namespace DiscordBot.Modules
         {
             await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
 
-            string link = "https://www.youtube.com/watch?v=xvFZjo5PgG0";
-            string title = "Rick Roll";
             foreach(var Meme in DiscordData.Memes)
             {
                 if (Meme.Value.Alias.Contains(name))
                 {
-                    link = Meme.Value.Link;
-                    title = Meme.Key;
+                    string link = Meme.Value.Link;
+                    string title = Meme.Key;
+
+                    var result = await AudioHandler.GetYoutubeVideoInfos(link);
+                    TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+                    Embed embed = DiscordData.CreateEmbed(title, Description: $"{duration:hh\\:mm\\:ss}");
+                    embed = embed.ToEmbedBuilder()
+                        .WithUrl(result.Url)
+                        .WithThumbnailUrl(result.Thumbnails.Last().Url)
+                        .Build();
+
+                    await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+
+                    bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
+                    if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
+                    return;
                 }
             }
-
-            var result = await AudioHandler.GetYoutubeVideoInfos(link);
-            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-            Embed embed = DiscordData.CreateEmbed(title, Description: $"{duration:hh\\:mm\\:ss}");
-            embed = embed.ToEmbedBuilder()
-                .WithUrl(result.Url)
-                .WithThumbnailUrl(result.Thumbnails.Last().Url)
-                .Build();
-
-            await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
-
-            bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
-            if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
+            await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: Ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
@@ -465,6 +465,23 @@ namespace DiscordBot.Modules
             await RespondAsync(Text, ephemeral: Ephemeral == EAnswer.Si);
         }
 
+        [SlashCommand("elenco-meme", "Lista dei meme disponibili", ignoreGroupNames: true)]
+        public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+        {
+            Embed embed = DiscordData.CreateEmbed("Memes");
+            var temp_embed = embed.ToEmbedBuilder();
+            foreach (EMemeCategory category in Enum.GetValues(typeof(EMemeCategory)))
+            {
+                string categoryString = "";
+                foreach(var meme in DiscordData.Memes)
+                {
+                    if (meme.Value.Category == category) categoryString += $"[{meme.Key}]({meme.Value.Link})\n";
+                }
+                temp_embed.AddField(category.ToString(), categoryString);
+            }
+            await RespondAsync(embed: temp_embed.Build(), ephemeral: Ephemeral == EAnswer.Si);
+        }
+
         [SlashCommand("cerca-video", "Cerca un video su youtube", runMode: RunMode.Async)]
         public async Task SearchVideo([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
         {
@@ -483,19 +500,22 @@ namespace DiscordBot.Modules
 
         [SlashCommand("metti-in-locale", "Metti qualcosa in locale", runMode: RunMode.Async)]
         [RequireOwner]
-        public async Task PlayLocal([Summary("file", "Nome del file")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+        public async Task PlayLocal([Summary("nome", "Nome del file")] EPrivateSounds sound, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
         {
-            await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + text), ephemeral: Ephemeral == EAnswer.Si);
+            string name = sound switch
+            {
+                EPrivateSounds.Sorry => "Sorry",
+                EPrivateSounds.Shutdown => "Shutdown",
+                EPrivateSounds.Hello => "Hello",
+                EPrivateSounds.Cortana1 => "Cortana_0",
+                EPrivateSounds.Cortana2 => "Cortana_1",
+                EPrivateSounds.Cortana3 => "Cortana_2",
+                _ => "Hello"
+            };
+            await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + name), ephemeral: Ephemeral == EAnswer.Si);
 
-            bool status = await AudioHandler.Play(text, Context.Guild.Id, EAudioSource.Local);
+            bool status = await AudioHandler.Play(name, Context.Guild.Id, EAudioSource.Local);
             if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso far partire l'audio");
-        }
-
-        [SlashCommand("controlla-connessione", "Resetto la connessione al canale vocale", runMode: RunMode.Async)]
-        public async Task ResetConnection()
-        {
-            await RespondAsync(embed: DiscordData.CreateEmbed("Controllo la connessione"), ephemeral: true);
-            AudioHandler.HandleConnection(Context.Guild);
         }
     }
 }

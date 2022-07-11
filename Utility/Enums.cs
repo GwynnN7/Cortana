@@ -93,3 +93,13 @@ public enum EMemeCategory
     NotShort,
     Default
 }
+
+public enum EPrivateSounds
+{
+    Cortana1,
+    Cortana2,
+    Cortana3,
+    Hello,
+    Shutdown,
+    Sorry
+}
