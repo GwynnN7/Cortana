@@ -389,7 +389,7 @@ namespace DiscordBot.Modules
             string title = "Rick Roll";
             foreach(var Meme in DiscordData.Memes)
             {
-                if (Meme.Value.Aliases.Contains(name))
+                if (Meme.Value.Aliases.Contains(name.ToLower()))
                 {
                     link = Meme.Value.Link;
                     title = Meme.Key;
