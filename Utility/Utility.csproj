@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <PackageReference Include="EAGetMail" Version="5.2.2.5" />
-    <PackageReference Include="HashtagChris.DotNetBlueZ" Version="1.3.1" />
     <PackageReference Include="Iot.Device.Bindings" Version="2.1.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="QRCoder" Version="1.4.3" />

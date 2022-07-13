@@ -2,6 +2,7 @@
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO.Ports;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -19,6 +20,8 @@ namespace Utility
         private static EBooleanState LEDState = EBooleanState.On;
         private static EBooleanState OLEDState = EBooleanState.On;
         private static EBooleanState LampState = EBooleanState.Off;
+
+        private static SerialPort Fan;
 
         public static void HandleNight()
         {
@@ -213,6 +216,21 @@ namespace Utility
             PingReply reply = pingSender.Send(ip, 2000);
 
             return reply.Status == IPStatus.Success;
+        }
+
+        public static void SendCommandFan(string command)
+        {
+            if(Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+            try
+            {
+                Fan.Open();
+                Fan.Write(command);
+                Fan.Close();
+            }
+            catch
+            {
+                Console.WriteLine("Ciao");
+            }
         }
     }
 }
