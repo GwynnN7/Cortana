@@ -17,7 +17,7 @@ namespace Cortana
             Console.WriteLine("Starting Night Handler...");
             Utility.HardwareDriver.HandleNight();
             Console.WriteLine("Done");
-
+            Utility.Functions.Test();
             await Task.Delay(500);
 
             int ThreadID;
