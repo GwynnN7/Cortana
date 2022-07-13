@@ -1,5 +1,7 @@
 ﻿using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
+using HashtagChris.DotNetBlueZ;
+using HashtagChris.DotNetBlueZ.Extensions;
 
 namespace Utility
 {
@@ -78,6 +80,29 @@ namespace Utility
             using var client = new HttpClient();
             var result = client.GetAsync($"http://192.168.1.17:5000/cortana-pc/{url}").Result;
             return result.IsSuccessStatusCode;
+        }
+
+        public static async void Test()
+        {
+            var getadapter = await BlueZManager.GetAdaptersAsync();
+            var adapter = getadapter.FirstOrDefault();
+            adapter.DeviceFound += Adapter_DeviceFound;
+            IReadOnlyList<Device> devices = await adapter.GetDevicesAsync();
+            foreach (Device device in devices)
+            {
+                var x = await device.GetNameAsync();
+                Console.WriteLine("x " + x);
+            }
+            await adapter.StartDiscoveryAsync();
+
+
+        }
+
+        private static async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
+        {
+            var nawme = await sender.GetNameAsync();
+            Console.WriteLine(nawme);
+
         }
     }
 }

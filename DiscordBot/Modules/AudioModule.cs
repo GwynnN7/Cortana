@@ -499,7 +499,7 @@ namespace DiscordBot.Modules
             await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
         }
 
-        [SlashCommand("metti-in-locale", "Metti qualcosa in locale", runMode: RunMode.Async)]
+        [SlashCommand("metti-file", "Metti un file mp3 in locale", runMode: RunMode.Async)]
         [RequireOwner]
         public async Task PlayLocal([Summary("nome", "Nome del file")] EPrivateSounds sound, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
         {
