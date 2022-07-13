@@ -84,7 +84,7 @@ namespace Utility
 
         public static async void Test()
         {
-            var getadapter = await BlueZManager.GetAdaptersAsync();
+            var getadapter = await HashtagChris.DotNetBlueZ.BlueZManager.GetAdaptersAsync();
             var adapter = getadapter.FirstOrDefault();
             adapter.DeviceFound += Adapter_DeviceFound;
             IReadOnlyList<Device> devices = await adapter.GetDevicesAsync();
@@ -98,7 +98,7 @@ namespace Utility
 
         }
 
-        private static async Task Adapter_DeviceFound(Adapter sender, DeviceFoundEventArgs eventArgs)
+        private static async Task Adapter_DeviceFound(HashtagChris.DotNetBlueZ.Adapter sender, HashtagChris.DotNetBlueZ.DeviceFoundEventArgs eventArgs)
         {
             var nawme = await sender.GetNameAsync();
             Console.WriteLine(nawme);
