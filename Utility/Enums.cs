@@ -114,3 +114,9 @@ public enum EFanSpeeds
     Medium,
     High
 }
+
+public enum ECortanaChannels
+{
+    Cortana,
+    Log
+}

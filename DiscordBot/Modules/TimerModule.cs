@@ -59,8 +59,7 @@ namespace DiscordBot.Modules
             }
             catch
             {
-                var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("C'è stato un problema con un timer :/");
+                DiscordData.SendToChannel("C'è stato un problema con un timer :/", ECortanaChannels.Log);
             }
         }
     }

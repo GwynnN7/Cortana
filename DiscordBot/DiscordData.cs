@@ -154,6 +154,40 @@ namespace DiscordBot
             if (Footer != null) EmbedBuilder.WithFooter(Footer);
             return EmbedBuilder.Build();
         }
+
+        static public async void SendToUser(string text, ulong user_id)
+        {
+            var user = await Cortana.GetUserAsync(user_id);
+            await user.SendMessageAsync(text);
+        }
+
+        static public async void SendToUser(Embed embed, ulong user_id)
+        {
+            var user = await Cortana.GetUserAsync(user_id);
+            await user.SendMessageAsync(embed: embed);
+        }
+
+        static public async void SendToChannel(string text, ECortanaChannels channel)
+        {
+            var channelid = channel switch
+            {
+                ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
+                ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
+                _ => DiscordIDs.CortanaLogChannelID
+            };
+            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelid).SendMessageAsync(text);
+        }
+
+        static public async void SendToChannel(Embed embed, ECortanaChannels channel)
+        {
+            var channelid = channel switch
+            {
+                ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
+                ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
+                _ => DiscordIDs.CortanaLogChannelID
+            };
+            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelid).SendMessageAsync(embed: embed);
+        }
     }
 
     public class DiscordSettings
@@ -176,6 +210,8 @@ namespace DiscordBot
         public ulong ChiefID { get; set; }
         public ulong NoMenID { get; set; }
         public ulong HomeID { get; set; }
+        public ulong CortanaChannelID { get; set; }
+        public ulong CortanaLogChannelID { get; set; }
         public ulong GulagID { get; set; }
     }
 }

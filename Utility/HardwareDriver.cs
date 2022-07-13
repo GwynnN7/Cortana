@@ -22,7 +22,6 @@ namespace Utility
         private static EBooleanState LampState = EBooleanState.Off;
 
         private static EBooleanState FanState = EBooleanState.Off;
-        private static EFanSpeeds FanSpeed = EFanSpeeds.Low;
         private static SerialPort Fan;
 
         public static void HandleNight()
@@ -198,15 +197,15 @@ namespace Utility
         {
             if(state == EHardwareTrigger.On)
             {
-                bool result = SendFanCommand("1");
+                Task.Run(() => SendFanCommand("1"));
                 FanState = EBooleanState.On;
-                return result ? "Accendo il ventilatore" : "C'è stato un problema";
+                return "Accendo il ventilatore";
             }
             else if(state == EHardwareTrigger.Off)
             {
-                bool result = SendFanCommand("0");
-                FanState = EBooleanState.On;
-                return result ? "Spengo il ventilatore" : "C'è stato un problema";
+                Task.Run(() => SendFanCommand("0"));
+                FanState = EBooleanState.Off;
+                return "Spengo il ventilatore";
             }
             else return SwitchFan(FanState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -227,8 +226,8 @@ namespace Utility
                 FanState = EBooleanState.On;
                 command = $"1\n{command}";
             }
-            bool result = SendFanCommand(command);
-            return result ? "Fatto" : "C'è stato un problema";
+            Task.Run(() => SendFanCommand(command));
+            return "Comando inviato";
         }
 
         public static string GetCPUTemperature()
@@ -260,12 +259,14 @@ namespace Utility
 
         public static bool SendFanCommand(string command)
         {
-            if(Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
             try
             {
+                if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+
                 Fan.Open();
                 Fan.Write(command);
                 Fan.Close();
+
                 return true;
             }
             catch

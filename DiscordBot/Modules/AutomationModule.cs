@@ -21,6 +21,7 @@ namespace DiscordBot.Modules
         {
             string result = Utility.HardwareDriver.SetFanSpeed(speed);
             Embed embed = DiscordData.CreateEmbed(Title: result);
+
             await RespondAsync(embed: embed, ephemeral: true);
         }
 

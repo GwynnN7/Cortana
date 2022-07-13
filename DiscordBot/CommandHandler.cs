@@ -53,8 +53,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;
@@ -84,8 +83,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;
@@ -115,8 +113,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                var Chief = client.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                Chief.Result.SendMessageAsync($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}");
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;

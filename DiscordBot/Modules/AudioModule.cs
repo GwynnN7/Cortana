@@ -312,8 +312,7 @@ namespace DiscordBot.Modules
             }
             catch
             {
-                var Chief = DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.Result.SendMessageAsync("C'è stato un errore nel Join del canale vocale");
+                DiscordData.SendToChannel("C'è stato un errore nel Join del canale vocale", ECortanaChannels.Log);
             }
         }
 
@@ -330,8 +329,7 @@ namespace DiscordBot.Modules
             }
             catch 
             {
-                var Chief = DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.Result.SendMessageAsync("C'è stato un errore nel Join del canale vocale");
+                DiscordData.SendToChannel("C'è stato un errore nel Join del canale vocale", ECortanaChannels.Log);
             }
         }
 

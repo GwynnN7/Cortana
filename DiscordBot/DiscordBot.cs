@@ -59,8 +59,7 @@ namespace DiscordBot
                     if (channel != null) Modules.AudioHandler.Connect(channel);
                 }
 
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync("I'm ready Chief!");
+                DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
                 Console.WriteLine("I'm ready Chief");
 
                 Utility.EmailHandler.Callbacks.Add(ReceiveMail);
@@ -115,8 +114,7 @@ namespace DiscordBot
                 .AddField("Testo", email.Content)
                 .AddField($"Da {email.FromName}", email.FromAddress)
                 .Build();
-            var Chief = await DiscordData.Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-            await Chief.SendMessageAsync(embed: embed);
+            DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
         }
 
         private static Task Client_Connected()
@@ -151,8 +149,7 @@ namespace DiscordBot
             try
             {
                 Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
-                var Chief = await Cortana.GetUserAsync(DiscordData.DiscordIDs.ChiefID);
-                await Chief.SendMessageAsync(embed: embed);
+                DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
             }
             catch
             {
