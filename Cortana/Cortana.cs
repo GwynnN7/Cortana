@@ -17,10 +17,7 @@ namespace Cortana
             Console.WriteLine("Starting Night Handler...");
             Utility.HardwareDriver.HandleNight();
             Console.WriteLine("Done");
-            Utility.HardwareDriver.SendCommandFan("0");
             await Task.Delay(500);
-            Utility.HardwareDriver.SendCommandFan("1");
-            Utility.HardwareDriver.SendCommandFan("b");
 
             int ThreadID;
             Console.WriteLine("Booting Cortana API subordinate function...");

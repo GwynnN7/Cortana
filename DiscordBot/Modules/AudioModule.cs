@@ -387,7 +387,7 @@ namespace DiscordBot.Modules
 
             foreach(var Meme in DiscordData.Memes)
             {
-                if (Meme.Value.Alias.Contains(name))
+                if (Meme.Value.Alias.Contains(name.ToLower()))
                 {
                     string link = Meme.Value.Link;
                     string title = Meme.Key;

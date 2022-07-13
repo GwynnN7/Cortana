@@ -20,7 +20,8 @@ public enum EHardwareElements
     OLED,
     PC,
     Lamp,
-    Outlets
+    Outlets,
+    Fan
 }
 
 public enum EBooleanState
@@ -84,6 +85,7 @@ public enum EWeek
 public enum EMemeCategory
 {
     Games,
+    MoreGames,
     Anime,
     Music,
     SFX,
@@ -91,6 +93,7 @@ public enum EMemeCategory
     NotLong,
     Long,
     NotShort,
+    Skidaddle,
     Default
 }
 
@@ -102,4 +105,12 @@ public enum EPrivateSounds
     Hello,
     Shutdown,
     Sorry
+}
+
+public enum EFanSpeeds
+{
+    Off,
+    Low,
+    Medium,
+    High
 }

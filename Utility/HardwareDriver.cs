@@ -21,6 +21,8 @@ namespace Utility
         private static EBooleanState OLEDState = EBooleanState.On;
         private static EBooleanState LampState = EBooleanState.Off;
 
+        private static EBooleanState FanState = EBooleanState.Off;
+        private static EFanSpeeds FanSpeed = EFanSpeeds.Low;
         private static SerialPort Fan;
 
         public static void HandleNight()
@@ -56,6 +58,7 @@ namespace Utility
             else SwitchOutlets(state);
             SwitchOLED(state);
             SwitchLED(state);
+            SwitchFan(state);
 
             if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && state == EHardwareTrigger.Off) SwitchLamp(state);
         }
@@ -191,6 +194,43 @@ namespace Utility
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
+        public static string SwitchFan(EHardwareTrigger state)
+        {
+            if(state == EHardwareTrigger.On)
+            {
+                bool result = SendFanCommand("1");
+                FanState = EBooleanState.On;
+                return result ? "Accendo il ventilatore" : "C'è stato un problema";
+            }
+            else if(state == EHardwareTrigger.Off)
+            {
+                bool result = SendFanCommand("0");
+                FanState = EBooleanState.On;
+                return result ? "Spengo il ventilatore" : "C'è stato un problema";
+            }
+            else return SwitchFan(FanState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SetFanSpeed(EFanSpeeds speed)
+        {
+            if(speed == EFanSpeeds.Off) return SwitchFan(EHardwareTrigger.Off);
+            
+            var command = speed switch
+            {
+                EFanSpeeds.Low => "a",
+                EFanSpeeds.Medium => "b",
+                EFanSpeeds.High => "c",
+                _ => "a"
+            };
+            if (FanState == EBooleanState.Off)
+            {
+                FanState = EBooleanState.On;
+                command = $"1\n{command}";
+            }
+            bool result = SendFanCommand(command);
+            return result ? "Fatto" : "C'è stato un problema";
+        }
+
         public static string GetCPUTemperature()
         {
             using CpuTemperature cpuTemperature = new CpuTemperature();
@@ -218,7 +258,7 @@ namespace Utility
             return reply.Status == IPStatus.Success;
         }
 
-        public static void SendCommandFan(string command)
+        public static bool SendFanCommand(string command)
         {
             if(Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
             try
@@ -226,10 +266,11 @@ namespace Utility
                 Fan.Open();
                 Fan.Write(command);
                 Fan.Close();
+                return true;
             }
             catch
             {
-                Console.WriteLine("Ciao");
+                return false;
             }
         }
     }

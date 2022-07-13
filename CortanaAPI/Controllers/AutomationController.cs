@@ -47,6 +47,21 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
+        [HttpGet("fan")]
+        public Dictionary<string, string> FanPower(string state)
+        {
+            string result = Utility.HardwareDriver.SwitchFan(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
+        [HttpGet("fan_speed")]
+        public Dictionary<string, string> FanSpeed(string state)
+        {
+            string result = Utility.HardwareDriver.SetFanSpeed(Utility.Functions.FanSpeedFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
+
         [HttpGet("all")]
         public Dictionary<string, string> EverythingPower(string state)
         {

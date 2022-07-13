@@ -16,6 +16,14 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
+        [SlashCommand("fan", "Imposta la velocità del ventilatore")]
+        public async Task FanSpeed([Summary("speed", "Velocità ventola")] EFanSpeeds speed)
+        {
+            string result = Utility.HardwareDriver.SetFanSpeed(speed);
+            Embed embed = DiscordData.CreateEmbed(Title: result);
+            await RespondAsync(embed: embed, ephemeral: true);
+        }
+
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
         public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
@@ -28,6 +36,7 @@ namespace DiscordBot.Modules
                 EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
                 EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),
                 EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
+                EHardwareElements.Fan => Utility.HardwareDriver.SwitchFan(trigger),
                 _ => "Dispositivo hardware non presente"
             };
 
