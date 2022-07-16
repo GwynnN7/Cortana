@@ -9,9 +9,9 @@ namespace TelegramBot
 {
     public class TelegramBot
     {
-        public static void BootTelegramBot() => new TelegramBot().MainAsync().GetAwaiter().GetResult();
+        public static void BootTelegramBot() => new TelegramBot().Main();
 
-        public async Task MainAsync()
+        public void Main()
         {
             var config = ConfigurationBuilder();
             var botClient = new TelegramBotClient(config["token"]);
@@ -32,9 +32,7 @@ namespace TelegramBot
                 {
                     if(update.Message.Text.StartsWith("/"))
                     {
-                        var text = "Message: " + update.Message.Text + " from: " + update.Message.From?.Id;
                         var id = update.Message.Chat.Id;
-
                         var message = update.Message.Text.Substring(1);
 
                         switch (message)
@@ -44,7 +42,7 @@ namespace TelegramBot
                                 break;
                             case "ip":
                                 var ip = await Utility.Functions.GetPublicIP();
-                                await botClient.SendTextMessageAsync(id, text);
+                                await botClient.SendTextMessageAsync(id, $"IP: {ip}");
                                 break;
                         }
                     }
