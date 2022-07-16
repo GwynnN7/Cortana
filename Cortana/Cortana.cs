@@ -39,7 +39,7 @@ namespace Cortana
             await Task.Delay(500);
 
             Console.WriteLine("Booting Telegram Bot subordinate function...");
-            ThreadID = Handler.BootSubFunction(ESubFunctions.TelegramBot);
+            //ThreadID = Handler.BootSubFunction(ESubFunctions.TelegramBot);
             await Task.Delay(1000);
             Console.WriteLine($"Done, TelegramBot working on Task {ThreadID}");
 
