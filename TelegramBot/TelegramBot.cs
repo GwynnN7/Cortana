@@ -20,8 +20,8 @@ namespace TelegramBot
                 AllowedUpdates = Array.Empty<UpdateType>()
             };
             botClient.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
-
-            var me = await botClient.GetMeAsync();
+            
+            //var me = await botClient.GetMeAsync();
         }
 
         private async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
@@ -30,11 +30,24 @@ namespace TelegramBot
             {
                 if(update.Message?.Type == MessageType.Text)
                 {
-                    var text = "Message: " + update.Message.Text + " from: " + update.Message.From?.Id;
-                    var id = update.Message.Chat.Id;
-                    string? username = update.Message.Chat.Username;
+                    if(update.Message.Text.StartsWith("/"))
+                    {
+                        var text = "Message: " + update.Message.Text + " from: " + update.Message.From?.Id;
+                        var id = update.Message.Chat.Id;
 
-                    await botClient.SendTextMessageAsync(id, text);
+                        var message = update.Message.Text.Substring(1);
+
+                        switch (message)
+                        {
+                            case "light":
+                                Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                                break;
+                            case "ip":
+                                var ip = await Utility.Functions.GetPublicIP();
+                                await botClient.SendTextMessageAsync(id, text);
+                                break;
+                        }
+                    }
                 }
             }
         }
@@ -43,8 +56,7 @@ namespace TelegramBot
         {
             var ErrorMessage = exception switch
             {
-                ApiRequestException apiRequestException
-                    => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
+                ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
 
