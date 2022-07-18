@@ -27,25 +27,17 @@ namespace TelegramBot
 
         private async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            Console.WriteLine(update.ToString());
-            InlineKeyboardMarkup myInlineKeyboard = new InlineKeyboardMarkup(
-
-    new InlineKeyboardButton[][]
-    {
-        new InlineKeyboardButton[] // First row
-        {
-            InlineKeyboardButton.WithCallbackData( // First Column
-                "option1", // Button Name
-                "CallbackQuery1" // Answer you'll recieve
-            ),
-            InlineKeyboardButton.WithCallbackData( //Second column
-                "option2", // Button Name
-                "CallbackQuery2" // Answer you'll recieve
-            )
-        }
-    }
-);
-            if (update.Type == UpdateType.Message)
+            if(update.Type == UpdateType.CallbackQuery)
+            {
+                Console.WriteLine(update.CallbackQuery.Message.Text);
+                botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, update.CallbackQuery.Message.Text);
+            }
+            else if(update.Type == UpdateType.InlineQuery)
+            {
+                Console.WriteLine(update.InlineQuery.Query);
+               // botClient.AnswerInlineQueryAsync(update.InlineQuery.Id);
+            }
+            else if (update.Type == UpdateType.Message)
             {
                 if(update.Message?.Type == MessageType.Text)
                 {
@@ -60,11 +52,31 @@ namespace TelegramBot
                                 Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
                                 break;
                             case "ip":
-                                var ip = await Utility.Functions.GetPublicIP();
-                                await botClient.SendTextMessageAsync(id, $"IP: {ip}", replyMarkup: myInlineKeyboard);
+                                {
+                                    InlineKeyboardMarkup myInlineKeyboard = new InlineKeyboardMarkup(
 
-                                
-                                break;
+                                        new InlineKeyboardButton[][]
+                                        {
+                                            new InlineKeyboardButton[] // First row
+                                            {
+                                                InlineKeyboardButton.WithCallbackData( // First Column
+                                                    "option1", // Button Name
+                                                    "CallbackQuery1" // Answer you'll recieve
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData( //Second column
+                                                    "option2", // Button Name
+                                                    "CallbackQuery2" // Answer you'll recieve
+                                                )
+                                            }
+                                        }
+                                    );
+
+                                    var ip = await Utility.Functions.GetPublicIP();
+                                    await botClient.SendTextMessageAsync(id, $"IP: {ip}", replyMarkup: myInlineKeyboard);
+
+
+                                    break;
+                                }
                         }
                     }
                 }
