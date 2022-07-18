@@ -128,7 +128,10 @@ namespace TelegramBot
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-            TelegramData.SendToUser(TelegramData.ChiefID, ErrorMessage);
+            string path = "Telegram Log.txt";
+            using StreamWriter logFile = System.IO.File.Exists(path) ? System.IO.File.AppendText(path) : System.IO.File.CreateText(path);
+            logFile.WriteLine($"{DateTime.Now} Exception: " + ErrorMessage);
+
             return Task.CompletedTask;
         }
 

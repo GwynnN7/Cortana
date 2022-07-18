@@ -209,7 +209,7 @@ namespace DiscordBot
 
         static Task LogAsync(LogMessage message)
         {
-            string path = "DiscordLog.txt";
+            string path = "Discord Log.txt";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
             logFile.WriteLine($"{DateTime.Now} Log:" + message.Message);
 
