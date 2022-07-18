@@ -27,6 +27,7 @@ namespace TelegramBot
 
         private async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
+            Console.WriteLine(update.ToString());
             InlineKeyboardMarkup myInlineKeyboard = new InlineKeyboardMarkup(
 
     new InlineKeyboardButton[][]
@@ -61,6 +62,8 @@ namespace TelegramBot
                             case "ip":
                                 var ip = await Utility.Functions.GetPublicIP();
                                 await botClient.SendTextMessageAsync(id, $"IP: {ip}", replyMarkup: myInlineKeyboard);
+
+                                
                                 break;
                         }
                     }
