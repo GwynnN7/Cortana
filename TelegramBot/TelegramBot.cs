@@ -29,12 +29,12 @@ namespace TelegramBot
         {
             if(update.Type == UpdateType.CallbackQuery)
             {
-                Console.WriteLine(update.CallbackQuery.Message.Text);
-                botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, update.CallbackQuery.Message.Text);
+                Console.WriteLine("Callback: " + update.CallbackQuery.Message.Text);
+                await botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, update.CallbackQuery.Data);
             }
             else if(update.Type == UpdateType.InlineQuery)
             {
-                Console.WriteLine(update.InlineQuery.Query);
+                Console.WriteLine("Inline: " + update.InlineQuery.Query);
                // botClient.AnswerInlineQueryAsync(update.InlineQuery.Id);
             }
             else if (update.Type == UpdateType.Message)
