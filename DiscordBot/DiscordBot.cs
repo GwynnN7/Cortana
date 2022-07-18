@@ -22,12 +22,8 @@ namespace DiscordBot
 
             await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
-            client.LoggedOut += Client_LoggedOut;
-            client.LoggedIn += Client_LoggedIn;
             client.Log += LogAsync;
             client.MessageReceived += Client_MessageReceived;
-            client.Disconnected += Client_Disconnected;
-            client.Connected += Client_Connected;
             client.UserVoiceStateUpdated += OnUserVoiceStateUpdate;
             client.JoinedGuild += OnServerJoin;
             client.LeftGuild += OnServerLeave;
@@ -51,7 +47,6 @@ namespace DiscordBot
 
                 var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
                 var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
-                var ConnectionTimer = new Utility.UtilityTimer(Name: "connection-timer", Hours: 0, Minutes: 30, Seconds: 0, Callback: ConnectionTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
 
                 foreach(var guild in Cortana.Guilds)
                 {
@@ -59,28 +54,15 @@ namespace DiscordBot
                     if (channel != null) Modules.AudioHandler.Connect(channel);
                 }
 
-                DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
-                Console.WriteLine("I'm ready Chief");
-
                 Utility.EmailHandler.Callbacks.Add(ReceiveMail);
+
+                DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
             };
 
             await client.LoginAsync(TokenType.Bot, config["token"]);
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
-        }
-
-        private Task Client_LoggedIn()
-        {
-            Console.WriteLine($"{DateTime.Now} Client Logged In");
-            return Task.CompletedTask;
-        }
-
-        private Task Client_LoggedOut()
-        {
-            Console.WriteLine($"{DateTime.Now} Client Logged Out");
-            return Task.CompletedTask;
         }
 
         private async Task Client_MessageReceived(SocketMessage arg)
@@ -105,9 +87,8 @@ namespace DiscordBot
             else if(message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
         }
 
-        public static async Task ReceiveMail(Utility.UnreadEmailStructure email)
+        public static Task ReceiveMail(Utility.UnreadEmailStructure email)
         {
-            if (!email.Email.Log) return;
             var embed = DiscordData.CreateEmbed("Hai ricevuto una mail", Description: string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", email.Email.Email, email.Email.Id));
             embed = embed.ToEmbedBuilder()
                 .AddField("Oggetto", email.Subject)
@@ -115,17 +96,6 @@ namespace DiscordBot
                 .AddField($"Da {email.FromName}", email.FromAddress)
                 .Build();
             DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
-        }
-
-        private static Task Client_Connected()
-        {
-            Console.WriteLine($"Connessione avvenuta alle {DateTime.Now}");
-            return Task.CompletedTask;
-        }
-
-        private static Task Client_Disconnected(Exception arg)
-        {
-            Console.WriteLine($"Disconnessione avventua alle {DateTime.Now} con il seguente errore: {arg.GetBaseException()}");
             return Task.CompletedTask;
         }
 
@@ -139,12 +109,11 @@ namespace DiscordBot
             }
             catch
             {
-                Console.WriteLine($"Non riesco a leggere la temperatura: {DateTime.Now}");
+                DiscordData.SendToChannel(DiscordData.CreateEmbed("Non riesco a leggere la temperatura"), ECortanaChannels.Log);
             }
-            
         }
 
-        private static async void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
+        private static void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
             try
             {
@@ -153,16 +122,7 @@ namespace DiscordBot
             }
             catch
             {
-                Console.WriteLine($"Non riesco a leggere la temperatura: {DateTime.Now}");
-            }
-        }
-
-        private static async void ConnectionTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-        {
-            foreach(var guild in Cortana.Guilds)
-            {
-                Modules.AudioHandler.HandleConnection(guild);
-                await Task.Delay(100);
+                DiscordData.SendToChannel(DiscordData.CreateEmbed("Non riesco a leggere la temperatura"), ECortanaChannels.Log);
             }
         }
 
@@ -249,7 +209,10 @@ namespace DiscordBot
 
         static Task LogAsync(LogMessage message)
         {
-            Console.WriteLine($"{DateTime.Now} Log:" + message.Message);
+            string path = "DiscordLog.txt";
+            using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
+            logFile.WriteLine($"{DateTime.Now} Log:" + message.Message);
+
             return Task.CompletedTask;
         }
 

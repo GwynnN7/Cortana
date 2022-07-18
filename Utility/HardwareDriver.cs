@@ -22,7 +22,13 @@ namespace Utility
         private static EBooleanState LampState = EBooleanState.Off;
 
         private static EBooleanState FanState = EBooleanState.Off;
-        private static SerialPort Fan;
+        private static SerialPort? Fan;
+
+        public static void Init()
+        {
+            HandleNight();
+            Fan = new SerialPort("/dev/rfcomm0", 9600);
+        }
 
         public static void HandleNight()
         {
@@ -51,7 +57,7 @@ namespace Utility
             });
         }
 
-        public static void SwitchRoom(EHardwareTrigger state)
+        public static string SwitchRoom(EHardwareTrigger state)
         {
             if (state == EHardwareTrigger.On) SwitchPC(state);
             else SwitchOutlets(state);
@@ -60,6 +66,8 @@ namespace Utility
             SwitchFan(state);
 
             if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && state == EHardwareTrigger.Off) SwitchLamp(state);
+
+            return "Procedo";
         }
 
         public static string SwitchLamp(EHardwareTrigger state)

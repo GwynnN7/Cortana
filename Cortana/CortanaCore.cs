@@ -10,7 +10,6 @@
 
         public CortanaCore()
         {
-            
             SubFunctionTasks = new Dictionary<ESubFunctions, Task>();
         }
 
@@ -33,12 +32,6 @@
             }
             SubFunctionTasks.Add(SubFunction, SubFunctionTask);
             return SubFunctionTask.Id;
-        }
-
-        public async Task StopFunctions()
-        {
-            await DiscordBot.Disconnect();
-            await CortanaAPI.Disconnect();
         }
     }
 }

@@ -18,7 +18,6 @@ namespace RequestsHandler.Controllers
             var result = Utility.Functions.RequestPC("show");
             if(result) return new Dictionary<string, string>() { { "data", "Opening desktop application" } };
             else return new Dictionary<string, string>() { { "data", "Desktop application didn't respond" } };
-
         }
     }
 }

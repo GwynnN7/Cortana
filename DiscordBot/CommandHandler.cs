@@ -128,7 +128,7 @@ namespace DiscordBot
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.StackTrace);
+                DiscordData.SendToChannel($"C'è stato un problema in HandleInteraction: {ex.StackTrace}", ECortanaChannels.Log);
                 if (arg.Type == InteractionType.ApplicationCommand) await arg.GetOriginalResponseAsync().ContinueWith(async (msg) => await msg.Result.DeleteAsync());
             }
         }

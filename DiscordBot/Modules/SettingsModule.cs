@@ -19,7 +19,7 @@ namespace DiscordBot.Modules
         {
             DiscordData.GuildSettings[Context.Guild.Id].AutoJoin = answer == EAnswer.Si;
             DiscordData.UpdateSettings();
-            await RespondAsync("Ok farò come dite");
+            await RespondAsync("Ok farò come dici");
         }
     }
 }

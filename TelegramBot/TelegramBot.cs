@@ -15,178 +15,119 @@ namespace TelegramBot
         public void Main()
         {
             var config = ConfigurationBuilder();
-            var botClient = new TelegramBotClient(config["token"]);
+            var cortana = new TelegramBotClient(config["token"]);
             var receiverOptions = new ReceiverOptions
             {
                 AllowedUpdates = Array.Empty<UpdateType>()
             };
-            botClient.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
-            
-            //var me = await botClient.GetMeAsync();
+            cortana.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
+
+            TelegramData.Init(cortana);
         }
 
-        private async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
+        private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)
         {
-            if(update.Type == UpdateType.CallbackQuery)
+            switch (update.Type)
             {
-                string data = update.CallbackQuery.Data;
-                string type = data.Split("-").First();
-                string action = data.Split("-").Last();
-
-                EHardwareTrigger state = action == "on" ? EHardwareTrigger.On : EHardwareTrigger.Off;
-
-
-                string result = type switch
-                {
-                    "lamp" => Utility.HardwareDriver.SwitchLamp(state),
-                    "pc" => Utility.HardwareDriver.SwitchPC(state),
-                    "outlets" => Utility.HardwareDriver.SwitchOutlets(state),
-                    "oled" => Utility.HardwareDriver.SwitchOLED(state),
-                    "led" => Utility.HardwareDriver.SwitchLED(state),
-                    //"room" => Utility.HardwareDriver.SwitchRoom(state),
-                    _ => ""
-                };
-                if(type == "fan")
-                {
-                    EFanSpeeds fanSpeed = action switch
-                    {
-                        "off" => EFanSpeeds.Off,
-                        "low" => EFanSpeeds.Low,
-                        "medium" => EFanSpeeds.Medium,
-                        "high" => EFanSpeeds.High,
-                        _ => EFanSpeeds.Off
-                    };
-                    result = Utility.HardwareDriver.SetFanSpeed(fanSpeed);
-                }
-
-                await botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
+                case UpdateType.CallbackQuery:
+                    HandleCallback(Cortana, update);
+                    break;
+                case UpdateType.Message:
+                    HandleMessage(Cortana, update);
+                    break;
+                default:
+                    break;
             }
-            else if (update.Type == UpdateType.Message)
+
+            return Task.CompletedTask;
+        }
+
+        private async void HandleCallback(ITelegramBotClient Cortana, Update update)
+        {
+            if (update.CallbackQuery == null || update.CallbackQuery.Data == null) return;
+
+            string data = update.CallbackQuery.Data;
+
+            string result = data switch
             {
-                if(update.Message?.Type == MessageType.Text)
+                "lamp" => Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle),
+                "pc" => Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle),
+                "outlets" => Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle),
+                "oled" => Utility.HardwareDriver.SwitchOLED(EHardwareTrigger.Toggle),
+                "led" => Utility.HardwareDriver.SwitchLED(EHardwareTrigger.Toggle),
+                "fan" => Utility.HardwareDriver.SwitchFan(EHardwareTrigger.Toggle),
+                "room" => Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Toggle),
+                _ => ""
+            };
+            await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
+        }
+
+        private async void HandleMessage(ITelegramBotClient Cortana, Update update)
+        {
+            if (update.Message == null) return;
+
+            var ChatID = update.Message.Chat.Id;
+            if (update.Message.Type == MessageType.Text && update.Message.Text != null)
+            {
+                if (update.Message.Text.StartsWith("/"))
                 {
-                    if(update.Message.Text.StartsWith("/"))
+                    var message = update.Message.Text.Substring(1).Split(" ").First();
+
+                    switch (message)
                     {
-                        var id = update.Message.Chat.Id;
-                        var message = update.Message.Text.Substring(1);
-
-                        switch (message)
-                        {
-                            case "ip":
-                                var ip = await Utility.Functions.GetPublicIP();
-                                await botClient.SendTextMessageAsync(id, $"IP: {ip}");
-                                break;
-                            case "hardware":
-                                {
-                                    InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(
-
-                                        new InlineKeyboardButton[][]
-                                        {
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Lamp On",
-                                                    "lamp-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Lamp Off",
-                                                    "lamp-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "PC On",
-                                                    "pc-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "PC Off",
-                                                    "pc-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Outlets On",
-                                                    "outlets-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Outlets Off",
-                                                    "outlets-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "OLED On",
-                                                    "oled-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "OLED Off",
-                                                    "oled-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "LED On",
-                                                    "led-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "LED Off",
-                                                    "led-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Room On",
-                                                    "room-on"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Room Off",
-                                                    "room-off"
-                                                )
-                                            },
-                                            new InlineKeyboardButton[]
-                                            {
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Fan Off",
-                                                    "fan-off"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Fan Low",
-                                                    "fan-low"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Fan Medium",
-                                                    "fan-medium"
-                                                ),
-                                                InlineKeyboardButton.WithCallbackData(
-                                                    "Fan High",
-                                                    "fan-high"
-                                                )
-                                            }
-                                        }
-                                    );
-                                    await botClient.SendTextMessageAsync(id, "Hardware", replyMarkup: hardwareKeyboard);
-                                    break;
-                                }
-                        }
+                        case "ip":
+                            var ip = await Utility.Functions.GetPublicIP();
+                            await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
+                            break;
+                        case "hardware":
+                            await Cortana.SendTextMessageAsync(ChatID, "Gestisci il tuo hardware", replyMarkup: CreateHardwareButtons());
+                            break;
                     }
                 }
             }
         }
 
-        private Task ErrorHandler(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
+        private InlineKeyboardMarkup CreateHardwareButtons()
+        {
+            Dictionary<string, string> HardwareElements = new Dictionary<string, string>()
+            {
+                { "Lamp", "lamp" },
+                { "PC", "pc" },
+                { "Fan", "fan" },
+                { "Plugs", "outlets" },
+                { "OLED", "oled" },
+                { "LED", "led" },
+                { "Room", "room" }
+            };
+
+
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[7][];
+
+            for (int i = 0; i <= 6; i += 2)
+            {
+                int len = i == 6 ? 1 : 2;
+                var currentLine = new InlineKeyboardButton[len];
+
+                for (int j = 0; j < len; j++)
+                {
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);
+                }
+
+                Rows[i] = currentLine;
+            }
+
+            InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
+            return hardwareKeyboard;
+        }
+
+        private Task ErrorHandler(ITelegramBotClient Cortana, Exception exception, CancellationToken cancellationToken)
         {
             var ErrorMessage = exception switch
             {
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-
-            Console.WriteLine(ErrorMessage);
+            TelegramData.SendToUser(TelegramData.ChiefID, ErrorMessage);
             return Task.CompletedTask;
         }
 

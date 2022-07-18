@@ -9,44 +9,34 @@ namespace Cortana
             Console.Clear();
 
             Console.WriteLine("Booting up...");
-            CortanaCore Handler = new CortanaCore();
-            await Task.Delay(500);
-
-            Console.WriteLine("Booting Email handler...");
-            Utility.EmailHandler.Init();
-            Console.WriteLine("Done");
-            await Task.Delay(500);
-
-            Console.WriteLine("Starting Night Handler...");
-            Utility.HardwareDriver.HandleNight();
-            Console.WriteLine("Done");
-            await Task.Delay(500);
 
             int ThreadID;
+            CortanaCore Handler = new CortanaCore();
+            Console.WriteLine("Subfunctions Handler Ready");
 
-            Console.WriteLine("Booting Cortana API subordinate function...");
+            Utility.EmailHandler.Init();
+            Utility.HardwareDriver.Init();
+            Console.WriteLine("Hardware Driver & Email Handler Ready");
+
+            await Task.Delay(500);
+
             ThreadID = Handler.BootSubFunction(ESubFunctions.CortanaAPI);
-            await Task.Delay(1000);
-            Console.WriteLine($"Done, Cortana API working on Task {ThreadID}");
+            Console.WriteLine($"Cortana API Ready on Task {ThreadID}");
 
             await Task.Delay(500);
 
-            Console.WriteLine("Booting Discord Bot subordinate function...");
             ThreadID = Handler.BootSubFunction(ESubFunctions.DiscordBot);
-            await Task.Delay(1000);
-            Console.WriteLine($"Done, DiscordBot working on Task {ThreadID}");
+            Console.WriteLine($"Discord Bot booting on Task {ThreadID}, sending verification now...");
 
             await Task.Delay(500);
 
-            Console.WriteLine("Booting Telegram Bot subordinate function...");
             ThreadID = Handler.BootSubFunction(ESubFunctions.TelegramBot);
-            await Task.Delay(1000);
-            Console.WriteLine($"Done, TelegramBot working on Task {ThreadID}");
+            Console.WriteLine($"Telegram Bot booting on Task {ThreadID}, sending verification now...");
 
+            await Task.Delay(500);
+
+            Console.WriteLine("Booting Completed, I'm Ready Chief!");
             Console.Read();
-
-            Console.WriteLine("Shutting Down");
-            await Handler.StopFunctions();
 
             return Task.CompletedTask;
 
