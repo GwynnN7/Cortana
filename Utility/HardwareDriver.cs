@@ -65,7 +65,7 @@ namespace Utility
             SwitchLED(state);
             SwitchFan(state);
 
-            if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && state == EHardwareTrigger.Off) SwitchLamp(state);
+            if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && (state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On))) SwitchLamp(state);
 
             return "Procedo";
         }
