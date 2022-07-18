@@ -23,6 +23,8 @@ namespace TelegramBot
             cortana.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
 
             TelegramData.Init(cortana);
+
+            TelegramData.SendToUser(TelegramData.ChiefID, "I'm Ready Chief!");
         }
 
         private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)
@@ -101,7 +103,7 @@ namespace TelegramBot
             };
 
 
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[7][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
 
             for (int i = 0; i <= 6; i += 2)
             {
@@ -110,10 +112,9 @@ namespace TelegramBot
 
                 for (int j = 0; j < len; j++)
                 {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
                 }
-
-                Rows[i] = currentLine;
+                Rows[i % 2] = currentLine;
             }
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);

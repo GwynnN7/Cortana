@@ -12,30 +12,30 @@ namespace Cortana
 
             int ThreadID;
             CortanaCore Handler = new CortanaCore();
-            Console.WriteLine("Subfunctions Handler Ready");
+            Console.WriteLine("Subfunctions Handler is ready");
 
             Utility.EmailHandler.Init();
             Utility.HardwareDriver.Init();
-            Console.WriteLine("Hardware Driver & Email Handler Ready");
+            Console.WriteLine("Hardware Driver & Email Handler are ready");
 
             await Task.Delay(500);
 
             ThreadID = Handler.BootSubFunction(ESubFunctions.CortanaAPI);
-            Console.WriteLine($"Cortana API Ready on Task {ThreadID}");
+            Console.WriteLine($"Cortana API ready on Task {ThreadID}");
 
             await Task.Delay(500);
 
             ThreadID = Handler.BootSubFunction(ESubFunctions.DiscordBot);
-            Console.WriteLine($"Discord Bot booting on Task {ThreadID}, sending verification now...");
+            Console.WriteLine($"Discord Bot booting up on Task {ThreadID}, wait for a verification on Discord!");
 
             await Task.Delay(500);
 
             ThreadID = Handler.BootSubFunction(ESubFunctions.TelegramBot);
-            Console.WriteLine($"Telegram Bot booting on Task {ThreadID}, sending verification now...");
+            Console.WriteLine($"Telegram Bot booting up on Task {ThreadID},  wait for a verification on Telegram!");
 
             await Task.Delay(500);
 
-            Console.WriteLine("Booting Completed, I'm Ready Chief!");
+            Console.WriteLine("Booting Completed, I'm ready Chief!");
             Console.Read();
 
             return Task.CompletedTask;

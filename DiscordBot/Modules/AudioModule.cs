@@ -206,8 +206,8 @@ namespace DiscordBot.Modules
         public static bool IsChannelAvailable(SocketVoiceChannel Channel)
         {
             if (Channel.Id == DiscordData.DiscordIDs.GulagID) return false;
-            if (Channel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.Users.Count > 1;
-            else return Channel.Users.Count > 0;
+            if (Channel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.ConnectedUsers.Count > 1;
+            else return Channel.ConnectedUsers.Count > 0;
         }
 
         public static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
@@ -233,7 +233,7 @@ namespace DiscordBot.Modules
         {
             foreach (var voiceChannel in Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
+                if (voiceChannel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
             }
             return null;
         }
@@ -447,7 +447,7 @@ namespace DiscordBot.Modules
             var Text = "Non posso connettermi se non sei in un canale";
             foreach(var voiceChannel in Context.Guild.VoiceChannels)
             {
-                if (voiceChannel.Users.Contains(Context.User))
+                if (voiceChannel.ConnectedUsers.Contains(Context.User))
                 {
                     Text = AudioHandler.Connect(voiceChannel);
                     break;

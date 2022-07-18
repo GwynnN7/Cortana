@@ -237,7 +237,7 @@ namespace DiscordBot.Modules
                 {
                     foreach (var channel in Context.Guild.VoiceChannels)
                     {
-                        if (channel.Users.Contains(Context.User)) AvailableUsers = channel.Users;
+                        if (channel.ConnectedUsers.Contains(Context.User)) AvailableUsers = channel.ConnectedUsers;
                     }
                 }
                 foreach (var user in AvailableUsers)
