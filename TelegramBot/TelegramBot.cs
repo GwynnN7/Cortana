@@ -114,7 +114,7 @@ namespace TelegramBot
                 {
                     currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
                 }
-                Rows[i % 2] = currentLine;
+                Rows[i / 2] = currentLine;
             }
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
