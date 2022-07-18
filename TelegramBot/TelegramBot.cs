@@ -4,6 +4,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
 {
@@ -26,7 +27,24 @@ namespace TelegramBot
 
         private async Task UpdateHandler(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            if(update.Type == UpdateType.Message)
+            InlineKeyboardMarkup myInlineKeyboard = new InlineKeyboardMarkup(
+
+    new InlineKeyboardButton[][]
+    {
+        new InlineKeyboardButton[] // First row
+        {
+            InlineKeyboardButton.WithCallbackData( // First Column
+                "option1", // Button Name
+                "CallbackQuery1" // Answer you'll recieve
+            ),
+            InlineKeyboardButton.WithCallbackData( //Second column
+                "option2", // Button Name
+                "CallbackQuery2" // Answer you'll recieve
+            )
+        }
+    }
+);
+            if (update.Type == UpdateType.Message)
             {
                 if(update.Message?.Type == MessageType.Text)
                 {
@@ -42,7 +60,7 @@ namespace TelegramBot
                                 break;
                             case "ip":
                                 var ip = await Utility.Functions.GetPublicIP();
-                                await botClient.SendTextMessageAsync(id, $"IP: {ip}");
+                                await botClient.SendTextMessageAsync(id, $"IP: {ip}", replyMarkup: myInlineKeyboard);
                                 break;
                         }
                     }
