@@ -221,11 +221,10 @@ namespace Utility
                 EFanSpeeds.High => "c",
                 _ => "a"
             };
-            if (FanState == EBooleanState.Off)
-            {
-                FanState = EBooleanState.On;
-                command = $"1\n{command}";
-            }
+
+            FanState = EBooleanState.On;
+            command = $"1\n{command}";
+            
             Task.Run(() => SendFanCommand(command));
             return "Comando inviato";
         }

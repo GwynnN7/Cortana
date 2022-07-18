@@ -29,13 +29,37 @@ namespace TelegramBot
         {
             if(update.Type == UpdateType.CallbackQuery)
             {
-                Console.WriteLine("Callback: " + update.CallbackQuery.Message.Text);
-                await botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, update.CallbackQuery.Data);
-            }
-            else if(update.Type == UpdateType.InlineQuery)
-            {
-                Console.WriteLine("Inline: " + update.InlineQuery.Query);
-               // botClient.AnswerInlineQueryAsync(update.InlineQuery.Id);
+                string data = update.CallbackQuery.Data;
+                string type = data.Split("-").First();
+                string action = data.Split("-").Last();
+
+                EHardwareTrigger state = action == "on" ? EHardwareTrigger.On : EHardwareTrigger.Off;
+
+
+                string result = type switch
+                {
+                    "lamp" => Utility.HardwareDriver.SwitchLamp(state),
+                    "pc" => Utility.HardwareDriver.SwitchPC(state),
+                    "outlets" => Utility.HardwareDriver.SwitchOutlets(state),
+                    "oled" => Utility.HardwareDriver.SwitchOLED(state),
+                    "led" => Utility.HardwareDriver.SwitchLED(state),
+                    //"room" => Utility.HardwareDriver.SwitchRoom(state),
+                    _ => ""
+                };
+                if(type == "fan")
+                {
+                    EFanSpeeds fanSpeed = action switch
+                    {
+                        "off" => EFanSpeeds.Off,
+                        "low" => EFanSpeeds.Low,
+                        "medium" => EFanSpeeds.Medium,
+                        "high" => EFanSpeeds.High,
+                        _ => EFanSpeeds.Off
+                    };
+                    result = Utility.HardwareDriver.SetFanSpeed(fanSpeed);
+                }
+
+                await botClient.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
             }
             else if (update.Type == UpdateType.Message)
             {
@@ -48,33 +72,104 @@ namespace TelegramBot
 
                         switch (message)
                         {
-                            case "light":
-                                Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-                                break;
                             case "ip":
+                                var ip = await Utility.Functions.GetPublicIP();
+                                await botClient.SendTextMessageAsync(id, $"IP: {ip}");
+                                break;
+                            case "hardware":
                                 {
-                                    InlineKeyboardMarkup myInlineKeyboard = new InlineKeyboardMarkup(
+                                    InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(
 
                                         new InlineKeyboardButton[][]
                                         {
-                                            new InlineKeyboardButton[] // First row
+                                            new InlineKeyboardButton[]
                                             {
-                                                InlineKeyboardButton.WithCallbackData( // First Column
-                                                    "option1", // Button Name
-                                                    "CallbackQuery1" // Answer you'll recieve
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Lamp On",
+                                                    "lamp-on"
                                                 ),
-                                                InlineKeyboardButton.WithCallbackData( //Second column
-                                                    "option2", // Button Name
-                                                    "CallbackQuery2" // Answer you'll recieve
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Lamp Off",
+                                                    "lamp-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "PC On",
+                                                    "pc-on"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "PC Off",
+                                                    "pc-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Outlets On",
+                                                    "outlets-on"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Outlets Off",
+                                                    "outlets-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "OLED On",
+                                                    "oled-on"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "OLED Off",
+                                                    "oled-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "LED On",
+                                                    "led-on"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "LED Off",
+                                                    "led-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Room On",
+                                                    "room-on"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Room Off",
+                                                    "room-off"
+                                                )
+                                            },
+                                            new InlineKeyboardButton[]
+                                            {
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Fan Off",
+                                                    "fan-off"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Fan Low",
+                                                    "fan-low"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Fan Medium",
+                                                    "fan-medium"
+                                                ),
+                                                InlineKeyboardButton.WithCallbackData(
+                                                    "Fan High",
+                                                    "fan-high"
                                                 )
                                             }
                                         }
                                     );
-
-                                    var ip = await Utility.Functions.GetPublicIP();
-                                    await botClient.SendTextMessageAsync(id, $"IP: {ip}", replyMarkup: myInlineKeyboard);
-
-
+                                    await botClient.SendTextMessageAsync(id, "Hardware", replyMarkup: hardwareKeyboard);
                                     break;
                                 }
                         }
