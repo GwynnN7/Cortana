@@ -49,7 +49,7 @@ namespace TelegramBot
 
         private async void HandleCallback(ITelegramBotClient Cortana, Update update)
         {
-            if (update.CallbackQuery == null || update.CallbackQuery.Data == null) return;
+            if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.Message == null) return;
 
             string data = update.CallbackQuery.Data;
 
