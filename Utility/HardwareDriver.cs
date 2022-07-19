@@ -266,18 +266,15 @@ namespace Utility
 
         public static void SendFanCommand(string command)
         {
-            Task.Run(() =>
+            try
             {
-                try
-                {
-                    if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+                if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
 
-                    Fan.Open();
-                    Fan.Write(command);
-                    Fan.Close();
-                }
-                catch {}
-            });
+                Fan.Open();
+                Fan.Write(command);
+                Fan.Close();
+            }
+            catch { }
         }
     }
 }
