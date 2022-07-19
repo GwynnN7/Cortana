@@ -18,11 +18,7 @@ namespace TelegramBot
         {
             var config = ConfigurationBuilder();
             var cortana = new TelegramBotClient(config["token"]);
-            var receiverOptions = new ReceiverOptions
-            {
-                AllowedUpdates = new UpdateType[] { UpdateType.Message, UpdateType.CallbackQuery, UpdateType.EditedMessage }
-            };
-            cortana.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
+            cortana.StartReceiving(UpdateHandler, ErrorHandler);
 
             TelegramData.Init(cortana);
             HardwareAction = new();
