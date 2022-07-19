@@ -57,14 +57,14 @@ namespace TelegramBot
                     HardwareAction[message_id] = data;
 
                     InlineKeyboardMarkup Action = data != "fan" ? CreateOnOffButtons() : CreateSpeedButtons();
-                    await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, Action);
+                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
                 }
                 else
                 {
                     if(data == "back")
                     {
                         HardwareAction[message_id] = "";
-                        await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, CreateHardwareButtons());
+                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
                         return;
                     }
 
@@ -104,7 +104,7 @@ namespace TelegramBot
 
                     HardwareAction[message_id] = "";
                     await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
-                    await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, CreateHardwareButtons());
+                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
                 }
             }
         }
