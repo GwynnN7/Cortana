@@ -205,13 +205,13 @@ namespace Utility
         {
             if(state == EHardwareTrigger.On)
             {
-                SendFanCommand("1");
+                Task.Run(() => SendFanCommand("1"));
                 FanState = EBooleanState.On;
                 return "Accendo il ventilatore";
             }
             else if(state == EHardwareTrigger.Off)
             {
-                SendFanCommand("0");
+                Task.Run(() => SendFanCommand("0"));
                 FanState = EBooleanState.Off;
                 return "Spengo il ventilatore";
             }
@@ -233,7 +233,7 @@ namespace Utility
             FanState = EBooleanState.On;
             command = $"1\n{command}";
             
-            SendFanCommand(command);
+            Task.Run(() => SendFanCommand(command));
             return "Comando inviato";
         }
 

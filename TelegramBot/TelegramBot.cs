@@ -57,6 +57,7 @@ namespace TelegramBot
                     HardwareAction[message_id] = data;
 
                     InlineKeyboardMarkup Action = data != "fan" ? CreateOnOffButtons() : CreateSpeedButtons();
+                    await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                     await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
                 }
                 else
