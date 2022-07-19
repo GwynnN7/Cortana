@@ -104,7 +104,7 @@ namespace TelegramBot
 
                     HardwareAction[message_id] = "";
                     await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
-                    await Cortana.EditMessageReplyMarkupAsync(update.Id, update.Message.MessageId, CreateHardwareButtons());
+                    await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, CreateHardwareButtons());
                 }
             }
         }
@@ -151,16 +151,16 @@ namespace TelegramBot
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
 
-            for (int i = 0; i < 7; i += 2)
+            for (int i = 0; i < 4; i ++)
             {
-                int len = i == 6 ? 1 : 2;
+                int len = i == 3 ? 1 : 2;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = 0; j < len; j++)
+                for (int j = i; j < len; j++)
                 {
                     currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
                 }
-                Rows[i / 2] = currentLine;
+                Rows[i] = currentLine;
             }
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
@@ -177,18 +177,18 @@ namespace TelegramBot
                 { "<< Back", "back" }
             };
 
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[3][];
 
-            for (int i = 0; i < 4; i += 2)
+            for (int i = 0; i < 3; i ++)
             {
-                int len = i < 2 ? 2 : 1;
+                int len = i == 0 ? 2 : 1;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = 0; j < len; j++)
+                for (int j = i; j < len; j++)
                 {
                     currentLine[j] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[i + j], OnOffElements.Values.ToArray()[i + j]);
                 }
-                Rows[i / 2] = currentLine;
+                Rows[i] = currentLine;
             }
 
             InlineKeyboardMarkup OnOffKeyboard = new InlineKeyboardMarkup(Rows);
@@ -206,18 +206,18 @@ namespace TelegramBot
                 { "<< Back", "back" }
             };
 
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[2][];
 
-            for (int i = 0; i < 5; i += 2)
+            for (int i = 0; i < 2; i += 4)
             {
-                int len = i < 4 ? 4 : 1;
+                int len = i == 0 ? 4 : 1;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = 0; j < len; j++)
+                for (int j = i; j < len; j++)
                 {
                     currentLine[j] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[i + j], SpeedElements.Values.ToArray()[i + j]);
                 }
-                Rows[i / 2] = currentLine;
+                Rows[i] = currentLine;
             }
 
             InlineKeyboardMarkup SpeedKeyboard = new InlineKeyboardMarkup(Rows);
