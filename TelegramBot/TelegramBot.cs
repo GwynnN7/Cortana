@@ -126,8 +126,12 @@ namespace TelegramBot
                             var ip = await Utility.Functions.GetPublicIP();
                             await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
                             break;
+                        case "temperatura":
+                            var temp = Utility.HardwareDriver.GetCPUTemperature();
+                            await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
+                            break;
                         case "hardware":
-                            var mex = await Cortana.SendTextMessageAsync(ChatID, "Gestisci il tuo hardware", replyMarkup: CreateHardwareButtons());
+                            var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                             HardwareAction.Add(mex.MessageId, "");
                             break;
                     }
@@ -175,7 +179,7 @@ namespace TelegramBot
                 { "On", "on" },
                 { "Off", "off" },
                 { "Toggle", "toggle" },
-                { "<< Back", "back" }
+                { "<<", "back" }
             };
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[3][];
@@ -205,7 +209,7 @@ namespace TelegramBot
                 { "1", "1" },
                 { "2", "2" },
                 { "3", "3" },
-                { "<< Back", "back" }
+                { "<<", "back" }
             };
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[2][];
