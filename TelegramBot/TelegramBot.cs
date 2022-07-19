@@ -20,7 +20,7 @@ namespace TelegramBot
             var cortana = new TelegramBotClient(config["token"]);
             var receiverOptions = new ReceiverOptions
             {
-                AllowedUpdates = Array.Empty<UpdateType>()
+                AllowedUpdates = new UpdateType[] { UpdateType.Message, UpdateType.CallbackQuery, UpdateType.EditedMessage }
             };
             cortana.StartReceiving(UpdateHandler, ErrorHandler, receiverOptions);
 
