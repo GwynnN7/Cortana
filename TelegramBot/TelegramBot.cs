@@ -150,15 +150,16 @@ namespace TelegramBot
 
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
-
+            int elementIndex = 0;
             for (int i = 0; i < 4; i ++)
             {
                 int len = i == 3 ? 1 : 2;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = i; j < i + len; j++)
+                for (int j = 0; j < len; j++)
                 {
-                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[elementIndex], HardwareElements.Values.ToArray()[elementIndex]);
+                    elementIndex++;
                 }
                 Rows[i] = currentLine;
             }
@@ -178,15 +179,16 @@ namespace TelegramBot
             };
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[3][];
-
+            int elementIndex = 0;
             for (int i = 0; i < 3; i ++)
             {
                 int len = i == 0 ? 2 : 1;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = i; j < i + len; j++)
+                for (int j = 0; j < len; j++)
                 {
-                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[i + j], OnOffElements.Values.ToArray()[i + j]);
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[elementIndex], OnOffElements.Values.ToArray()[elementIndex]);
+                    elementIndex++;
                 }
                 Rows[i] = currentLine;
             }
@@ -207,15 +209,16 @@ namespace TelegramBot
             };
 
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[2][];
-
+            int elementIndex = 0;
             for (int i = 0; i < 2; i ++)
             {
                 int len = i == 0 ? 4 : 1;
                 var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = i; j < i + len; j++)
+                for (int j = 0; j < len; j++)
                 {
-                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[i + j], SpeedElements.Values.ToArray()[i + j]);
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[elementIndex], SpeedElements.Values.ToArray()[elementIndex]);
+                    elementIndex++;
                 }
                 Rows[i] = currentLine;
             }

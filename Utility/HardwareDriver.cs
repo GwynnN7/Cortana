@@ -205,13 +205,13 @@ namespace Utility
         {
             if(state == EHardwareTrigger.On)
             {
-                Task.Run(() => SendFanCommand("1"));
+                SendFanCommand("1");
                 FanState = EBooleanState.On;
                 return "Accendo il ventilatore";
             }
             else if(state == EHardwareTrigger.Off)
             {
-                Task.Run(() => SendFanCommand("0"));
+                SendFanCommand("0");
                 FanState = EBooleanState.Off;
                 return "Spengo il ventilatore";
             }
@@ -233,7 +233,7 @@ namespace Utility
             FanState = EBooleanState.On;
             command = $"1\n{command}";
             
-            Task.Run(() => SendFanCommand(command));
+            SendFanCommand(command);
             return "Comando inviato";
         }
 
@@ -264,22 +264,20 @@ namespace Utility
             return reply.Status == IPStatus.Success;
         }
 
-        public static bool SendFanCommand(string command)
+        public static void SendFanCommand(string command)
         {
-            try
+            Task.Run(() =>
             {
-                if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+                try
+                {
+                    if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
 
-                Fan.Open();
-                Fan.Write(command);
-                Fan.Close();
-
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
+                    Fan.Open();
+                    Fan.Write(command);
+                    Fan.Close();
+                }
+                catch {}
+            });
         }
     }
 }
