@@ -45,31 +45,31 @@ namespace TelegramBot
 
         private async void HandleCallback(ITelegramBotClient Cortana, Update update)
         {
-            Console.WriteLine(update.EditedMessage.MessageId);
-            if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.Message == null) return;
+            if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.CallbackQuery.Message == null) return;
           
             string data = update.CallbackQuery.Data;
+            int message_id = update.CallbackQuery.Message.MessageId;
 
-            if(HardwareAction.ContainsKey(update.Message.MessageId))
+            if (HardwareAction.ContainsKey(message_id))
             {
-                if (HardwareAction[update.Message.MessageId] == "")
+                if (HardwareAction[message_id] == "")
                 {
-                    HardwareAction[update.Message.MessageId] = data;
+                    HardwareAction[message_id] = data;
 
                     InlineKeyboardMarkup Action = data != "fan" ? CreateOnOffButtons() : CreateSpeedButtons();
-                    await Cortana.EditMessageReplyMarkupAsync(update.Id, update.Message.MessageId, Action);
+                    await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, Action);
                 }
                 else
                 {
                     if(data == "back")
                     {
-                        HardwareAction[update.Message.MessageId] = "";
-                        await Cortana.EditMessageReplyMarkupAsync(update.Id, update.Message.MessageId, CreateHardwareButtons());
+                        HardwareAction[message_id] = "";
+                        await Cortana.EditMessageReplyMarkupAsync(update.Id, message_id, CreateHardwareButtons());
                         return;
                     }
 
                     string result;
-                    if(HardwareAction[update.Message.MessageId] == "fan")
+                    if(HardwareAction[message_id] == "fan")
                     {
                         EFanSpeeds speeds = data switch
                         {
@@ -90,7 +90,7 @@ namespace TelegramBot
                             "toggle" => EHardwareTrigger.Toggle,
                             _ => EHardwareTrigger.Off
                         };
-                        result = HardwareAction[update.Message.MessageId] switch
+                        result = HardwareAction[message_id] switch
                         {
                             "lamp" => Utility.HardwareDriver.SwitchLamp(trigger),
                             "pc" => Utility.HardwareDriver.SwitchPC(trigger),
@@ -102,7 +102,7 @@ namespace TelegramBot
                         };
                     }
 
-                    HardwareAction[update.Message.MessageId] = "";
+                    HardwareAction[message_id] = "";
                     await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
                     await Cortana.EditMessageReplyMarkupAsync(update.Id, update.Message.MessageId, CreateHardwareButtons());
                 }
