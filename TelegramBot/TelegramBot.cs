@@ -158,7 +158,7 @@ namespace TelegramBot
 
                 for (int j = i; j < i + len; j++)
                 {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
+                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[i + j], HardwareElements.Values.ToArray()[i + j]);   
                 }
                 Rows[i] = currentLine;
             }
@@ -186,7 +186,7 @@ namespace TelegramBot
 
                 for (int j = i; j < i + len; j++)
                 {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[i + j], OnOffElements.Values.ToArray()[i + j]);
+                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[i + j], OnOffElements.Values.ToArray()[i + j]);
                 }
                 Rows[i] = currentLine;
             }
@@ -215,7 +215,7 @@ namespace TelegramBot
 
                 for (int j = i; j < i + len; j++)
                 {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[i + j], SpeedElements.Values.ToArray()[i + j]);
+                    currentLine[j - i] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[i + j], SpeedElements.Values.ToArray()[i + j]);
                 }
                 Rows[i] = currentLine;
             }
