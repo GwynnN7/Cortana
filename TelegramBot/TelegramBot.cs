@@ -45,8 +45,9 @@ namespace TelegramBot
 
         private async void HandleCallback(ITelegramBotClient Cortana, Update update)
         {
+            Console.WriteLine(update.EditedMessage.MessageId);
             if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.Message == null) return;
-            Console.WriteLine("Porco dio");
+          
             string data = update.CallbackQuery.Data;
 
             if(HardwareAction.ContainsKey(update.Message.MessageId))
