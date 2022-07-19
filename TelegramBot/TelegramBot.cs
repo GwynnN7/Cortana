@@ -65,6 +65,7 @@ namespace TelegramBot
                     if(data == "back")
                     {
                         HardwareAction[message_id] = "";
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                         await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
                         return;
                     }
