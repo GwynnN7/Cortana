@@ -204,14 +204,10 @@ namespace DiscordBot.Modules
                         .WithValue(proj.Key));
                     ProjectsEmbed.AddField(proj.Key, proj.Value.Description);
                 }
-                var projectMenu = new SelectMenuBuilder()
-                    .WithPlaceholder("Seleziona un progetto")
-                    .WithCustomId("project-list")
-                    .WithMinValues(0);
 
-                var ComponentsBuilder = new ComponentBuilder()
-                    .WithSelectMenu(projectMenu)
-                    .WithButton("Aggiungi", "add-project", ButtonStyle.Success);
+                var ComponentsBuilder = new ComponentBuilder().WithButton("Aggiungi", "add-project", ButtonStyle.Success, row: 1);
+
+                if (projects.Count > 0) ComponentsBuilder.WithSelectMenu(customId: "project-list", projects, placeholder: "Seleziona un progetto", row: 0);
 
                 await RespondAsync(embed: ProjectsEmbed.Build(), components: ComponentsBuilder.Build());
             }
