@@ -35,9 +35,10 @@ namespace DiscordBot
             client.Ready += async () =>
             {
                 Cortana = client;
-
+                
                 DiscordData.InitSettings(client.Guilds);
                 DiscordData.LoadData(client.Guilds);
+                DiscordData.LoadProjects(client.Guilds);
                 DiscordData.LoadMemes();
                 DiscordData.Cortana = Cortana;
 
@@ -190,20 +191,30 @@ namespace DiscordBot
         {
             if (DiscordData.GuildSettings.ContainsKey(Guild.Id)) DiscordData.GuildSettings.Remove(Guild.Id);
             if (DiscordData.UserGuildData.ContainsKey(Guild.Id)) DiscordData.UserGuildData.Remove(Guild.Id);
+            DiscordData.UpdateSettings();
+            DiscordData.UpdateUserGuildData();
             return Task.CompletedTask;
         }
 
         async Task OnUserJoin(SocketGuildUser User)
         {
             if (User.IsBot) return;
-            DiscordData.UserGuildData[User.Guild.Id].UserData.Add(User.Id, new GuildUserData());
+            if (!DiscordData.UserGuildData.ContainsKey(User.Guild.Id)) DiscordData.UserGuildData[User.Guild.Id].UserData.Add(User.Id, new GuildUserData());
+            if (!DiscordData.Projects.ContainsKey(User.Id)) DiscordData.Projects.Add(User.Id, new Projects());
 
+            DiscordData.UpdateUserGuildData();
+            DiscordData.UpdateProjects();
             await User.Guild.GetTextChannel(DiscordData.GuildSettings[User.Guild.Id].GreetingsChannel).SendMessageAsync(embed: DiscordData.CreateEmbed($"Benvenuto {User.DisplayName}"));
         }
 
         Task OnUserLeft(SocketGuild Guild, SocketUser User)
         {
-            if (!User.IsBot) DiscordData.UserGuildData[Guild.Id].UserData.Remove(User.Id);
+            if (User.IsBot) return Task.CompletedTask;
+            if (DiscordData.UserGuildData.ContainsKey(Guild.Id)) DiscordData.UserGuildData[Guild.Id].UserData.Remove(User.Id);
+            if (DiscordData.Projects.ContainsKey(User.Id)) DiscordData.Projects.Remove(User.Id);
+
+            DiscordData.UpdateUserGuildData();
+            DiscordData.UpdateProjects();
             return Task.CompletedTask;
         }
 
