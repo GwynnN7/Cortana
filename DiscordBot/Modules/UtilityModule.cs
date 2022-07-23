@@ -194,7 +194,7 @@ namespace DiscordBot.Modules
             public async Task GetProjects()
             {
                 if (!DiscordData.Projects.ContainsKey(Context.User.Id)) return;
-                EmbedBuilder ProjectsEmbed = DiscordData.CreateEmbed("Progetti").ToEmbedBuilder();
+                EmbedBuilder ProjectsEmbed = DiscordData.CreateEmbed("Progetti", User: Context.User).ToEmbedBuilder();
 
                 List<SelectMenuOptionBuilder> projects = new();
                 foreach(var proj in DiscordData.Projects[Context.User.Id].UserProjects)
