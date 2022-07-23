@@ -201,19 +201,17 @@ namespace DiscordBot.Modules
                 {
                     projects.Add(new SelectMenuOptionBuilder()
                         .WithLabel(proj.Key)
-                        .WithValue(proj.Key)
-                        .WithDescription("test"));
+                        .WithValue(proj.Key));
                     ProjectsEmbed.AddField(proj.Key, proj.Value.Description);
                 }
                 var projectMenu = new SelectMenuBuilder()
                     .WithPlaceholder("Seleziona un progetto")
                     .WithCustomId("project-list")
-                    .WithMinValues(0)
-                    .WithOptions(projects);
+                    .WithMinValues(0);
 
                 var ComponentsBuilder = new ComponentBuilder()
                     .WithSelectMenu(projectMenu)
-                    .WithButton("Aggiungi", "add-project");
+                    .WithButton("Aggiungi", "add-project", ButtonStyle.Success);
 
                 await RespondAsync(embed: ProjectsEmbed.Build(), components: ComponentsBuilder.Build());
             }
