@@ -18,6 +18,7 @@ namespace DiscordBot
         public static Dictionary<ulong, GuildUsersData> UserGuildData = new Dictionary<ulong, GuildUsersData>();
 
         public static Dictionary<string, MemeJsonStructure> Memes = new Dictionary<string, MemeJsonStructure>();
+        public static Dictionary<ulong, Projects> Projects = new Dictionary<ulong, Projects>();
 
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
@@ -86,6 +87,33 @@ namespace DiscordBot
             UpdateUserGuildData();
         }
 
+        static public void LoadProjects(IReadOnlyCollection<SocketGuild> Guilds)
+        {
+            Dictionary<ulong, Projects>? projectsResult = null;
+            if (File.Exists("Data/Discord/Projects.json"))
+            {
+                var file = File.ReadAllText("Data/Discord/Projects.json");
+
+                projectsResult = JsonConvert.DeserializeObject<Dictionary<ulong, Projects>>(file);
+            }
+            if (projectsResult == null) projectsResult = new Dictionary<ulong, Projects>();
+
+            foreach (var Guild in Guilds)
+            {
+                foreach (var User in Guild.Users)
+                {
+                    if (User.IsBot) continue;
+                    if (!projectsResult.ContainsKey(User.Id))
+                    {
+                        projectsResult.Add(User.Id, new Projects());
+                        continue;
+                    }
+                }
+            }
+            Projects = projectsResult;
+            UpdateProjects();
+        }
+
         static public void LoadMemes()
         {
             Dictionary<string, MemeJsonStructure>? memesDataResult = null;
@@ -106,6 +134,7 @@ namespace DiscordBot
                 GreetingsChannel = Guild.DefaultChannel.Id,
             };
             if (!GuildSettings.ContainsKey(Guild.Id)) GuildSettings.Add(Guild.Id, DefaultGuildSettings);
+            UpdateSettings();
         }
 
         static public void AddGuildUserData(SocketGuild Guild)
@@ -115,6 +144,7 @@ namespace DiscordBot
                 UserData = Guild.Users.Where(x => !x.IsBot).ToDictionary(x => x.Id, x => new GuildUserData())
             };
             UserGuildData.Add(Guild.Id, userData);
+            UpdateUserGuildData();
         }
 
         static public void UpdateSettings()
@@ -125,8 +155,8 @@ namespace DiscordBot
             LastLoadedSettings.GuildSettings = GuildSettings;
             var newJson = JsonConvert.SerializeObject(LastLoadedSettings, jsonWriteOptions);
 
-            var fileSettingsPath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildConfig.json");
-            File.WriteAllText(fileSettingsPath, newJson);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildConfig.json");
+            File.WriteAllText(filePath, newJson);
         }
 
         static public void UpdateUserGuildData()
@@ -136,8 +166,19 @@ namespace DiscordBot
 
             var newJson = JsonConvert.SerializeObject(UserGuildData, jsonWriteOptions);
 
-            var fileSettingsPath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildUserData.json");
-            File.WriteAllText(fileSettingsPath, newJson);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildUserData.json");
+            File.WriteAllText(filePath, newJson);
+        }
+
+        static public void UpdateProjects()
+        {
+            var jsonWriteOptions = new JsonSerializerSettings() { Formatting = Formatting.Indented };
+            jsonWriteOptions.Converters.Add(new StringEnumConverter());
+
+            var newJson = JsonConvert.SerializeObject(Projects, jsonWriteOptions);
+
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/Projects.json");
+            File.WriteAllText(filePath, newJson);
         }
 
         static public Embed CreateEmbed(string Title, SocketUser? User = null, string Description = "", Color? EmbedColor = null, EmbedFooterBuilder? Footer = null, bool WithTimeStamp = true, bool WithoutAuthor = false)
@@ -244,4 +285,17 @@ public class MemeJsonStructure
     public List<string> Alias { get; set; } = new List<string>();
     public string Link { get; set; }
     public EMemeCategory Category { get; set; }
+}
+
+public class Projects
+{
+    public Dictionary<string, Project> UserProjects = new();
+}
+
+public class Project
+{
+    public List<string> WorkInProgress = new();
+    public List<string> NextFeatures = new();
+    public List<string> Bugs = new();
+    public string Description { get; set; }
 }

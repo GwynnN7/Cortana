@@ -189,6 +189,34 @@ namespace DiscordBot.Modules
                     await RespondAsync("Utente kickato");
                 }
             }
+
+            [SlashCommand("progetti", "Gestione dei vostri progetti")]
+            public async Task GetProjects()
+            {
+                if (!DiscordData.Projects.ContainsKey(Context.User.Id)) return;
+                EmbedBuilder ProjectsEmbed = DiscordData.CreateEmbed("Progetti").ToEmbedBuilder();
+
+                List<SelectMenuOptionBuilder> projects = new();
+                foreach(var proj in DiscordData.Projects[Context.User.Id].UserProjects)
+                {
+                    projects.Add(new SelectMenuOptionBuilder()
+                        .WithLabel(proj.Key)
+                        .WithValue(proj.Key)
+                        .WithDescription("test"));
+                    ProjectsEmbed.AddField(proj.Key, proj.Value.Description);
+                }
+                var projectMenu = new SelectMenuBuilder()
+                    .WithPlaceholder("Seleziona un progetto")
+                    .WithCustomId("project-list")
+                    .WithMinValues(0)
+                    .WithOptions(projects);
+
+                var ComponentsBuilder = new ComponentBuilder()
+                    .WithSelectMenu(projectMenu)
+                    .WithButton("Aggiungi", "add-project");
+
+                await RespondAsync(embed: ProjectsEmbed.Build(), components: ComponentsBuilder.Build());
+            }
         }
             
 

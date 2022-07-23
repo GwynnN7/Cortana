@@ -14,12 +14,12 @@ namespace DiscordBot.Modules
             await RespondAsync($"Da ora in poi vi saluterò in {channel.Name}");
         }
 
-        [SlashCommand("auto-join", "Volete che sto sempre in un canale vocale?")]
+        [SlashCommand("auto-join", "Volete che entri in automatico?")]
         public async Task SetAutoJoin([Summary("scelta", "Si o No?")] EAnswer answer)
         {
             DiscordData.GuildSettings[Context.Guild.Id].AutoJoin = answer == EAnswer.Si;
             DiscordData.UpdateSettings();
-            await RespondAsync("Ok farò come dici");
+            await RespondAsync(answer == EAnswer.Si ? "Auto Join attivato" : "Auto Join disattivato");
         }
     }
 }
