@@ -55,7 +55,7 @@ namespace DiscordBot
                     if (channel != null) Modules.AudioHandler.Connect(channel);
                 }
 
-                Utility.EmailHandler.Callbacks.Add(ReceiveMail);
+                //Utility.EmailHandler.Callbacks.Add(ReceiveMail);
 
                 DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
             };
