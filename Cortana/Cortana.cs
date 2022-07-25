@@ -14,7 +14,7 @@ namespace Cortana
             CortanaCore Handler = new CortanaCore();
             Console.WriteLine("Subfunctions Handler is ready");
 
-            Utility.EmailHandler.Init();
+            //Utility.EmailHandler.Init();
             Utility.HardwareDriver.Init();
             Console.WriteLine("Hardware Driver & Email Handler are ready");
 
