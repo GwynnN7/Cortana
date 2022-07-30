@@ -55,8 +55,6 @@ namespace DiscordBot
                     if (channel != null) Modules.AudioHandler.Connect(channel);
                 }
 
-                //Utility.EmailHandler.Callbacks.Add(ReceiveMail);
-
                 DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
             };
 
@@ -86,18 +84,6 @@ namespace DiscordBot
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
             else if(message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
-        }
-
-        public static Task ReceiveMail(Utility.UnreadEmailStructure email)
-        {
-            var embed = DiscordData.CreateEmbed("Hai ricevuto una mail", Description: string.Format("[{0}](https://mail.google.com/mail/u/{1}/#inbox)", email.Email.Email, email.Email.Id));
-            embed = embed.ToEmbedBuilder()
-                .AddField("Oggetto", email.Subject)
-                .AddField("Testo", email.Content)
-                .AddField($"Da {email.FromName}", email.FromAddress)
-                .Build();
-            DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
-            return Task.CompletedTask;
         }
 
         private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
