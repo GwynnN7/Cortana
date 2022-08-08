@@ -155,17 +155,30 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_ON.py" });
-
-                OLEDState = EBooleanState.On;
-                return "Display acceso";
+                try
+                {
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_ON.py" });
+                    OLEDState = EBooleanState.On;
+                    return "Display acceso";
+                }
+                catch
+                {
+                    return "Errore display";
+                }
+                
             }
             else if (state == EHardwareTrigger.Off)
             {
-                Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_OFF.py" });
-
-                OLEDState = EBooleanState.Off;
-                return "Display spento";
+                try
+                {
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_OFF.py" });
+                    OLEDState = EBooleanState.Off;
+                    return "Display spento";
+                }
+                catch
+                {
+                    return "Errore display";
+                }
             }
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -179,6 +192,7 @@ namespace Utility
             {
                 controller.Write(OutletsPin, PinValue.High);
                 OutletsState = EBooleanState.On;
+                PCState = EBooleanState.On;
                 return "Ciabatta accesa";
             }
             else if (state == EHardwareTrigger.Off)
@@ -188,8 +202,16 @@ namespace Utility
                     Task.Run(async () =>
                     {
                         SwitchPC(EHardwareTrigger.Off);
-                        while (PingPC()) await Task.Delay(500);
+                        Console.WriteLine("----------");
+                        while (PingPC())
+                        {
+                            Console.WriteLine("Waiting for PC to shut down");
+                            await Task.Delay(500);
+                        }
+                        Console.WriteLine("Waiting for default delay");
                         await Task.Delay(2000);
+                        Console.WriteLine("Outlets off");
+                        Console.WriteLine("----------");
                         SwitchOutlets(EHardwareTrigger.Off);
                     });
                     return "PC e ciabatta in spegnimento";
