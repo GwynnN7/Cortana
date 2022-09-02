@@ -202,16 +202,14 @@ namespace Utility
                     Task.Run(async () =>
                     {
                         SwitchPC(EHardwareTrigger.Off);
-                        Console.WriteLine("----------");
+                        bool check = false;
                         while (PingPC())
                         {
-                            Console.WriteLine("Waiting for PC to shut down");
+                            check = true;
                             await Task.Delay(500);
                         }
-                        Console.WriteLine("Waiting for default delay");
-                        await Task.Delay(2000);
-                        Console.WriteLine("Outlets off");
-                        Console.WriteLine("----------");
+                        if(check) await Task.Delay(2000);
+                        else await Task.Delay(10000);
                         SwitchOutlets(EHardwareTrigger.Off);
                     });
                     return "PC e ciabatta in spegnimento";

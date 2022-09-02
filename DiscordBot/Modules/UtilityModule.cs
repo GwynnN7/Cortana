@@ -6,9 +6,32 @@ namespace DiscordBot.Modules
 {
     public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [Group("utility", "Generatore di cose random")]
+        [Group("utility", "Comandi di utilità")]
         public class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
         {
+            [SlashCommand("unipi", "Siti UNIPI", ignoreGroupNames: true)]
+            public async Task Ping([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                Embed embed = DiscordData.CreateEmbed("UNIPI");
+                EmbedBuilder embed_builder = embed.ToEmbedBuilder();
+                embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
+                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it//)");
+                embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
+                embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
+
+                switch(Context.User.Id)
+                {
+                    case 468399905023721481:
+                        embed_builder.AddField("Matricola", "658274");
+                        embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
+                        break;
+                    default:
+                        break;
+                }
+
+                await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
+            }
+
             [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
             public async Task Ping([Summary("ip", "IP da pingare")] string ip)
             {
