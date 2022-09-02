@@ -12,7 +12,7 @@ namespace DiscordBot.Modules
             [SlashCommand("unipi", "Siti UNIPI", ignoreGroupNames: true)]
             public async Task Ping([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("UNIPI");
+                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
                 embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it//)");
