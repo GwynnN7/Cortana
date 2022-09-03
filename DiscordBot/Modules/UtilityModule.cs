@@ -15,7 +15,8 @@ namespace DiscordBot.Modules
                 Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
-                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it//)");
+                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it/)");
+                embed_builder.AddField("Laurea in Informatica", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/)");
                 embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
                 embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
 
@@ -24,6 +25,10 @@ namespace DiscordBot.Modules
                     case 468399905023721481:
                         embed_builder.AddField("Matricola", "658274");
                         embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
+                        break;
+                    case 648939655579828226:
+                        embed_builder.AddField("Matricola", "658988");
+                        embed_builder.AddField("Email", "s.baffo7@studenti.unipi.it");
                         break;
                     default:
                         break;
