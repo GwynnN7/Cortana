@@ -32,17 +32,15 @@ namespace Utility
 
         public static void HandleNight()
         {
-            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 2, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Quotidiano);
+            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Quotidiano);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
-        {
-            SwitchLamp(EHardwareTrigger.Off);
-            
+        { 
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);  
             else Functions.RequestPC("notify/night");
 
-            if(DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
+            if(DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 0, Minutes: 30, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         private static void ToggleLamp()
@@ -65,7 +63,9 @@ namespace Utility
             SwitchLED(state);
             SwitchFan(state);
 
-            if (DateTime.Now.Hour < 20 && DateTime.Now.Hour > 7 && (state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On))) SwitchLamp(state);
+            var hour = DateTime.Now.Hour;
+            if (hour >= 18 && hour <= 6) SwitchLamp(state);
+            else if(state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On)) SwitchLamp(state);
 
             return "Procedo";
         }

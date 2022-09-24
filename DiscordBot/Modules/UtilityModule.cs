@@ -9,33 +9,6 @@ namespace DiscordBot.Modules
         [Group("utility", "Comandi di utilità")]
         public class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            [SlashCommand("unipi", "Siti UNIPI", ignoreGroupNames: true)]
-            public async Task Ping([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
-            {
-                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
-                EmbedBuilder embed_builder = embed.ToEmbedBuilder();
-                embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
-                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it/)");
-                embed_builder.AddField("Laurea in Informatica", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/)");
-                embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
-                embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
-
-                switch(Context.User.Id)
-                {
-                    case 468399905023721481:
-                        embed_builder.AddField("Matricola", "658274");
-                        embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
-                        break;
-                    case 648939655579828226:
-                        embed_builder.AddField("Matricola", "658988");
-                        embed_builder.AddField("Email", "s.baffo7@studenti.unipi.it");
-                        break;
-                    default:
-                        break;
-                }
-
-                await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
-            }
 
             [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
             public async Task Ping([Summary("ip", "IP da pingare")] string ip)
@@ -306,6 +279,56 @@ namespace DiscordBot.Modules
                 string[] lanes = new[] {"Top", "Jungle", "Mid", "ADC", "Support"};
                 int randomIndex = new Random().Next(0, lanes.Length);
                 await RespondAsync($"{User.Mention} vai *{lanes[randomIndex]}*", ephemeral: Ephemeral == EAnswer.Si);
+            }
+        }
+
+        [Group("unipi", "Università")]
+        public class UniversityGroup : InteractionModuleBase<SocketInteractionContext>
+        {
+            [SlashCommand("siti", "Siti UNIPI")]
+            public async Task UnipiSites([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
+                EmbedBuilder embed_builder = embed.ToEmbedBuilder();
+                embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
+                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it/)");
+                embed_builder.AddField("Laurea in Informatica", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/)");
+                embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
+                embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
+
+                switch (Context.User.Id)
+                {
+                    case 468399905023721481:
+                        embed_builder.AddField("Matricola", "658274");
+                        embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
+                        break;
+                    case 648939655579828226:
+                        embed_builder.AddField("Matricola", "658988");
+                        embed_builder.AddField("Email", "s.baffo@studenti.unipi.it");
+                        break;
+                    case 306402234135085067:
+                        embed_builder.AddField("Matricola", "658992");
+                        embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
+                        break;
+                    default:
+                        break;
+                }
+
+                await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
+            }
+
+            [SlashCommand("lezioni", "Lezioni UNIPI")]
+            public async Task UnipiLessons([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
+                EmbedBuilder embed_builder = embed.ToEmbedBuilder();
+                embed_builder.AddField("Analisi", "[Classroom 2022/23](https://classroom.google.com/u/3/c/NDg5NzMwNTM2MjU2)\n[Classroom 2021/22](https://classroom.google.com/u/3/c/Mzg4NTMyMTcwNjA4)");
+                embed_builder.AddField("Fondamenti di Informatica", "[E-Learning](https://elearning.di.unipi.it/)\n[Teams](https://teams.microsoft.com/l/team/19%3aSftm_BDyYmZmwctxPjXUdsCc9ic4HeJDyNU4L0iLDhw1%40thread.tacv2/conversations?groupId=91f5bd22-e97f-4469-bfab-028321c3c0af&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");
+                embed_builder.AddField("Programmazione e Algoritmica", "[Classroom](https://classroom.google.com/u/3/c/NDg5NzMxMzU4ODAx)\n[SAI Evo](https://evo.di.unipi.it/student/courses/7)");
+                embed_builder.AddField("Laboratorio 1", "[Classroom](https://classroom.google.com/u/3/c/NDg5NzMwNTM2Mjg4)\n[SAI Evo](https://evo.di.unipi.it/student/courses/8)");
+                embed_builder.WithFooter("[Telegraph](https://telegra.ph/Informatica-CorsoA-22-23-09-15)");
+               
+                await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
             }
         }
     }

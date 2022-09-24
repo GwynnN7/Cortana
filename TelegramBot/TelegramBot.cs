@@ -105,8 +105,16 @@ namespace TelegramBot
                     }
 
                     HardwareAction[message_id] = "";
-                    await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
-                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
+                    try
+                    {
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
+                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
+                    }
+                    catch 
+                    {
+                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                        HardwareAction.Add(mex.MessageId, "");
+                    }
                 }
             }
         }
