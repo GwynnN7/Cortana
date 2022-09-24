@@ -288,7 +288,7 @@ namespace DiscordBot.Modules
             [SlashCommand("siti", "Siti UNIPI")]
             public async Task UnipiSites([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
+                Embed embed = DiscordData.CreateEmbed("Siti UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
                 embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it/)");
@@ -320,14 +320,15 @@ namespace DiscordBot.Modules
             [SlashCommand("lezioni", "Lezioni UNIPI")]
             public async Task UnipiLessons([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("UNIPI", User: Context.User);
+                Embed embed = DiscordData.CreateEmbed("Lezioni UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
-                embed_builder.WithDescription("[Telegraph](https://telegra.ph/Informatica-CorsoA-22-23-09-15)\n[Agenda Didattica](https://agendadidattica.unipi.it/Prod/Home/Calendar)");
+                embed_builder.WithDescription("[Telegraph](https://telegra.ph/Informatica-CorsoA-22-23-09-15)\n[Calendario](https://agendadidattica.unipi.it/Prod/Home/Calendar)");
                 embed_builder.AddField("Analisi", "[Classroom 2022/23](https://classroom.google.com/u/3/c/NDg5NzMwNTM2MjU2)\n[Classroom 2021/22](https://classroom.google.com/u/3/c/Mzg4NTMyMTcwNjA4)");
                 embed_builder.AddField("Fondamenti di Informatica", "[E-Learning](https://elearning.di.unipi.it/)\n[Teams](https://teams.microsoft.com/l/team/19%3aSftm_BDyYmZmwctxPjXUdsCc9ic4HeJDyNU4L0iLDhw1%40thread.tacv2/conversations?groupId=91f5bd22-e97f-4469-bfab-028321c3c0af&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");
                 embed_builder.AddField("Programmazione e Algoritmica", "[Classroom](https://classroom.google.com/u/3/c/NDg5NzMxMzU4ODAx)\n[SAI Evo](https://evo.di.unipi.it/student/courses/7)");
                 embed_builder.AddField("Laboratorio 1", "[Classroom](https://classroom.google.com/u/3/c/NDg5NzMwNTM2Mjg4)\n[SAI Evo](https://evo.di.unipi.it/student/courses/8)");
-               
+                embed_builder.WithFooter("Corso A");
+
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
             }
         }
