@@ -27,7 +27,7 @@ namespace Utility
         public static void Init()
         {
             HandleNight();
-            Fan = new SerialPort("/dev/rfcomm0", 9600);
+            //Fan = new SerialPort("/dev/rfcomm0", 9600);
         }
 
         public static void HandleNight()
@@ -99,7 +99,7 @@ namespace Utility
                 }
                 else
                 {
-                    PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    PhysicalAddress target = PhysicalAddress.Parse("7C-B5-66-66-71-EB");
                     var header = Enumerable.Repeat(byte.MaxValue, 6);
                     var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
                     var magicPacket = header.Concat(data).ToArray();
@@ -271,7 +271,7 @@ namespace Utility
         public static bool PingPC()
         {
             using Ping pingSender = new Ping();
-            PingReply reply = pingSender.Send("192.168.1.17", 1000);
+            PingReply reply = pingSender.Send("192.168.178.118", 1000);
 
             return reply.Status == IPStatus.Success;
         }
