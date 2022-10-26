@@ -4,6 +4,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
@@ -163,7 +164,7 @@ namespace TelegramBot
                     {
                         case EAnswerCommands.QRCODE:
                             var ImageStream = Utility.Functions.CreateQRCode(update.Message.Text, true, true);
-                            await Cortana.SendPhotoAsync(ChatID, ImageStream);
+                            await Cortana.SendPhotoAsync(ChatID, new InputOnlineFile(ImageStream, "QRCODE"));
                             AnswerCommands.Remove(ChatID);
                             break;
                         default:
