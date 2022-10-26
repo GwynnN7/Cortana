@@ -21,8 +21,10 @@ namespace Utility
         private static EBooleanState OLEDState = EBooleanState.On;
         private static EBooleanState LampState = EBooleanState.Off;
 
+        /*
         private static EBooleanState FanState = EBooleanState.Off;
         private static SerialPort? Fan;
+        */
 
         public static void Init()
         {
@@ -61,7 +63,7 @@ namespace Utility
             else SwitchOutlets(state);
             SwitchOLED(state);
             SwitchLED(state);
-            SwitchFan(state);
+            //SwitchFan(state);
 
             var hour = DateTime.Now.Hour;
             if (hour >= 18 && hour <= 6) SwitchLamp(state);
@@ -221,6 +223,7 @@ namespace Utility
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
+        /*
         public static string SwitchFan(EHardwareTrigger state)
         {
             if(state == EHardwareTrigger.On)
@@ -256,6 +259,7 @@ namespace Utility
             Task.Run(() => SendFanCommand(command));
             return "Comando inviato";
         }
+        */
 
         public static string GetCPUTemperature()
         {
@@ -284,6 +288,7 @@ namespace Utility
             return reply.Status == IPStatus.Success;
         }
 
+        /*
         public static void SendFanCommand(string command)
         {
             try
@@ -296,5 +301,6 @@ namespace Utility
             }
             catch { }
         }
+        */
     }
 }

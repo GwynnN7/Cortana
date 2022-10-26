@@ -296,17 +296,24 @@ namespace DiscordBot.Modules
                 embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
                 embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
 
+                var ids = new Dictionary<string, long>() 
+                {
+                    {"matteo" : 468399905023721481},
+                    {"samuele" : 648939655579828226},
+                    {"danu" : 306402234135085067}
+                };
+
                 switch (Context.User.Id)
                 {
-                    case 468399905023721481:
+                    case ids["matteo"]:
                         embed_builder.AddField("Matricola", "658274");
                         embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
                         break;
-                    case 648939655579828226:
+                    case ids["samuele"]:
                         embed_builder.AddField("Matricola", "658988");
                         embed_builder.AddField("Email", "s.baffo@studenti.unipi.it");
                         break;
-                    case 306402234135085067:
+                    case ids["danu"]:
                         embed_builder.AddField("Matricola", "658992");
                         embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
                         break;

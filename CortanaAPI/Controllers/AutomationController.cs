@@ -47,6 +47,7 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
+        /*
         [HttpGet("fan")]
         public Dictionary<string, string> FanPower(string state)
         {
@@ -60,7 +61,7 @@ namespace RequestsHandler.Controllers
             string result = Utility.HardwareDriver.SetFanSpeed(Utility.Functions.FanSpeedFromString(state));
             return new Dictionary<string, string>() { { "data", result } };
         }
-
+        */
 
         [HttpGet("all")]
         public Dictionary<string, string> EverythingPower(string state)

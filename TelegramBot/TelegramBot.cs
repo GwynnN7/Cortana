@@ -56,7 +56,7 @@ namespace TelegramBot
                 {
                     HardwareAction[message_id] = data;
 
-                    InlineKeyboardMarkup Action = data != "fan" ? CreateOnOffButtons() : CreateSpeedButtons();
+                    InlineKeyboardMarkup Action = data != "multi" ? CreateOnOffButtons() : CreateMultiButtons();
                     await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                     await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
                 }
@@ -71,9 +71,10 @@ namespace TelegramBot
                     }
 
                     string result;
-                    if(HardwareAction[message_id] == "fan")
+                    if(HardwareAction[message_id] == "multi")
                     {
-                        EFanSpeeds speeds = data switch
+                        /*
+                        ESpeeds speeds = data switch
                         {
                             "0" => EFanSpeeds.Off,
                             "1" => EFanSpeeds.Low,
@@ -82,6 +83,7 @@ namespace TelegramBot
                             _ => EFanSpeeds.Off
                         };
                         result = Utility.HardwareDriver.SetFanSpeed(speeds);
+                        */
                     }
                     else
                     {
@@ -155,7 +157,7 @@ namespace TelegramBot
             {
                 { "Lamp", "lamp" },
                 { "PC", "pc" },
-                { "Fan", "fan" },
+                { "Multi", "multi" },
                 { "Plugs", "outlets" },
                 { "OLED", "oled" },
                 { "LED", "led" },
@@ -211,9 +213,9 @@ namespace TelegramBot
             return OnOffKeyboard;
         }
 
-        private InlineKeyboardMarkup CreateSpeedButtons()
+        private InlineKeyboardMarkup CreateMultiButton()
         {
-            Dictionary<string, string> SpeedElements = new Dictionary<string, string>()
+            Dictionary<string, string> MultiElements = new Dictionary<string, string>()
             {
                 { "0", "0" },
                 { "1", "1" },
@@ -231,14 +233,14 @@ namespace TelegramBot
 
                 for (int j = 0; j < len; j++)
                 {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(SpeedElements.Keys.ToArray()[elementIndex], SpeedElements.Values.ToArray()[elementIndex]);
+                    currentLine[j] = InlineKeyboardButton.WithCallbackData(MultiElements.Keys.ToArray()[elementIndex], MultiElements.Values.ToArray()[elementIndex]);
                     elementIndex++;
                 }
                 Rows[i] = currentLine;
             }
 
-            InlineKeyboardMarkup SpeedKeyboard = new InlineKeyboardMarkup(Rows);
-            return SpeedKeyboard;
+            InlineKeyboardMarkup MultiKeyboard = new InlineKeyboardMarkup(Rows);
+            return MultiKeyboard;
         }
 
         private Task ErrorHandler(ITelegramBotClient Cortana, Exception exception, CancellationToken cancellationToken)

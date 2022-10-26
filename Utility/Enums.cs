@@ -21,7 +21,7 @@ public enum EHardwareElements
     PC,
     Lamp,
     Outlets,
-    Fan
+    //Fan
 }
 
 public enum EBooleanState
@@ -107,6 +107,7 @@ public enum EPrivateSounds
     Sorry
 }
 
+/*
 public enum EFanSpeeds
 {
     Off,
@@ -114,6 +115,7 @@ public enum EFanSpeeds
     Medium,
     High
 }
+*/
 
 public enum ECortanaChannels
 {

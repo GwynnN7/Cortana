@@ -66,12 +66,14 @@ namespace Utility
             return Status;
         }
 
+        /*
         public static EFanSpeeds FanSpeedFromString(string state)
         {
             state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
             Enum.TryParse(state, out EFanSpeeds Status);
             return Status;
         }
+        */
 
         public static async Task<string> GetPublicIP()
         {
