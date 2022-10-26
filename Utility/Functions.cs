@@ -20,7 +20,6 @@ namespace Utility
             {
                 image.Save(ImageStream, new PngEncoder());
             }
-            ImageStream.Position = 0;
             return ImageStream;
         }
 
