@@ -10,6 +10,8 @@ namespace TelegramBot
 {
     public class TelegramBot
     {
+        enum EAnswerCommands { QRCODE }
+        private static Dictionary<long, EAnswerCommands> AnswerCommands;
         private static Dictionary<long, string> HardwareAction;
 
         public static void BootTelegramBot() => new TelegramBot().Main();
@@ -21,6 +23,7 @@ namespace TelegramBot
             cortana.StartReceiving(UpdateHandler, ErrorHandler);
 
             TelegramData.Init(cortana);
+            AnswerCommands = new();
             HardwareAction = new();
 
             TelegramData.SendToUser(TelegramData.ChiefID, "I'm Ready Chief!");
@@ -145,6 +148,25 @@ namespace TelegramBot
                         case "hardware":
                             var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                             HardwareAction.Add(mex.MessageId, "");
+                            break;
+                        case "qrcode":
+                            if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.;
+                            AnswerCommands.Append(ChatID, EAnswerCommands.QRCODE);
+                            await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
+                            break;
+                    }
+                }
+                else
+                {
+                    if(!AnswerCommands.ContainsKey(ChatID)) return;
+                    switch(AnswerCommands[ChatID])
+                    {
+                        case EAnswerCommands.QRCODE:
+                            var ImageStream = Utility.Functions.CreateQRCode(update.Message.Text, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
+                            await Cortana.SendFile...
+                            AnswerCommands.;
+                            break;
+                        default:
                             break;
                     }
                 }
