@@ -84,8 +84,6 @@ namespace Utility
 
         public static bool RequestPC(string url)
         {
-            return false;
-
             using var client = new HttpClient();
             var result = client.GetAsync($"http://192.168.178.118:5000/cortana-pc/{url}").Result;
             return result.IsSuccessStatusCode;
