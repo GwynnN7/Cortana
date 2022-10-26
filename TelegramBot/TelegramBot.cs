@@ -164,6 +164,7 @@ namespace TelegramBot
                     {
                         case EAnswerCommands.QRCODE:
                             var ImageStream = Utility.Functions.CreateQRCode(update.Message.Text, true, true);
+                            await Task.Delay(5000);
                             await Cortana.SendPhotoAsync(ChatID, new InputOnlineFile(ImageStream, "QRCODE"));
                             AnswerCommands.Remove(ChatID);
                             break;
