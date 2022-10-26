@@ -76,14 +76,14 @@ namespace DiscordBot.Modules
             [SlashCommand("turno", "Vi dico a chi tocca scegliere")]
             public async Task Turn()
             {
-                if(Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
+                if (Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
                 {
                     await RespondAsync("Questo server non può usare questo comando");
                     return;
                 }
                 SocketGuildUser user = Context.Guild.GetUser(DiscordData.DiscordIDs.CortanaID);
                 var today = DateTime.Today.DayOfWeek;
-                switch(today)
+                switch (today)
                 {
                     case DayOfWeek.Monday:
                     case DayOfWeek.Thursday:
@@ -153,7 +153,7 @@ namespace DiscordBot.Modules
                 if (text.Length >= 1500)
                 {
                     await RespondAsync("```" + text.Substring(0, 1000) + "```");
-                    await Context.Channel.SendMessageAsync("```"+ text.Substring(1000) + "```");
+                    await Context.Channel.SendMessageAsync("```" + text.Substring(1000) + "```");
                 }
                 else await RespondAsync("```" + text + "```");
             }
@@ -184,7 +184,7 @@ namespace DiscordBot.Modules
             {
                 if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
                 else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
-                else 
+                else
                 {
                     await user.KickAsync();
                     await RespondAsync("Utente kickato");
@@ -198,7 +198,7 @@ namespace DiscordBot.Modules
                 EmbedBuilder ProjectsEmbed = DiscordData.CreateEmbed("Progetti", User: Context.User).ToEmbedBuilder();
 
                 List<SelectMenuOptionBuilder> projects = new();
-                foreach(var proj in DiscordData.Projects[Context.User.Id].UserProjects)
+                foreach (var proj in DiscordData.Projects[Context.User.Id].UserProjects)
                 {
                     projects.Add(new SelectMenuOptionBuilder()
                         .WithLabel(proj.Key)
@@ -213,7 +213,7 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: ProjectsEmbed.Build(), components: ComponentsBuilder.Build());
             }
         }
-            
+
 
         [Group("random", "Generatore di cose random")]
         public class RandomGroup : InteractionModuleBase<SocketInteractionContext>
@@ -265,9 +265,9 @@ namespace DiscordBot.Modules
                 }
                 foreach (var user in AvailableUsers)
                 {
-                    if(!user.IsBot || (user.IsBot  && user.Id == DiscordData.DiscordIDs.CortanaID && cortana == EAnswer.Si)) Users.Add(user);
+                    if (!user.IsBot || (user.IsBot && user.Id == DiscordData.DiscordIDs.CortanaID && cortana == EAnswer.Si)) Users.Add(user);
                 }
-                
+
                 SocketGuildUser ChosenUser = Users[new Random().Next(0, Users.Count)];
                 await RespondAsync($"Ho scelto {ChosenUser.Mention}", ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -276,7 +276,7 @@ namespace DiscordBot.Modules
             public async Task Lane([Summary("user", "A chi è rivolto?")] SocketUser? User = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 if (User == null) User = Context.User;
-                string[] lanes = new[] {"Top", "Jungle", "Mid", "ADC", "Support"};
+                string[] lanes = new[] { "Top", "Jungle", "Mid", "ADC", "Support" };
                 int randomIndex = new Random().Next(0, lanes.Length);
                 await RespondAsync($"{User.Mention} vai *{lanes[randomIndex]}*", ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -296,29 +296,26 @@ namespace DiscordBot.Modules
                 embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
                 embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
 
-                var ids = new Dictionary<string, long>() 
+               Dictionary<string, ulong> ids = new Dictionary<string, ulong>()
                 {
-                    {"matteo" : 468399905023721481},
-                    {"samuele" : 648939655579828226},
-                    {"danu" : 306402234135085067}
+                    { "matteo", 468399905023721481 },
+                    { "samuele", 648939655579828226 },
+                    { "danu", 306402234135085067 }
                 };
 
-                switch (Context.User.Id)
+                if (Context.User.Id == ids["matteo"]) {
+                    embed_builder.AddField("Matricola", "658274");
+                    embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
+                }
+                else if(Context.User.Id == ids["samuele"])
                 {
-                    case ids["matteo"]:
-                        embed_builder.AddField("Matricola", "658274");
-                        embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
-                        break;
-                    case ids["samuele"]:
-                        embed_builder.AddField("Matricola", "658988");
-                        embed_builder.AddField("Email", "s.baffo@studenti.unipi.it");
-                        break;
-                    case ids["danu"]:
-                        embed_builder.AddField("Matricola", "658992");
-                        embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
-                        break;
-                    default:
-                        break;
+                    embed_builder.AddField("Matricola", "658988");
+                    embed_builder.AddField("Email", "s.baffo@studenti.unipi.it");
+                }
+                else if(Context.User.Id == ids["danu"])
+                {
+                    embed_builder.AddField("Matricola", "658992");
+                    embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
                 }
 
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);

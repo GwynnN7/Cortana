@@ -73,7 +73,7 @@ namespace TelegramBot
                         return;
                     }
 
-                    string result;
+                    string result = "";
                     if(HardwareAction[message_id] == "multi")
                     {
                         /*
@@ -150,8 +150,8 @@ namespace TelegramBot
                             HardwareAction.Add(mex.MessageId, "");
                             break;
                         case "qrcode":
-                            if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.;
-                            AnswerCommands.Append(ChatID, EAnswerCommands.QRCODE);
+                            if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
+                            AnswerCommands.Add(ChatID, EAnswerCommands.QRCODE);
                             await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
                             break;
                     }
@@ -162,9 +162,9 @@ namespace TelegramBot
                     switch(AnswerCommands[ChatID])
                     {
                         case EAnswerCommands.QRCODE:
-                            var ImageStream = Utility.Functions.CreateQRCode(update.Message.Text, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
-                            await Cortana.SendFile...
-                            AnswerCommands.;
+                            var ImageStream = Utility.Functions.CreateQRCode(update.Message.Text, true, true);
+                            await Cortana.SendPhotoAsync(ChatID, ImageStream);
+                            AnswerCommands.Remove(ChatID);
                             break;
                         default:
                             break;
@@ -235,7 +235,7 @@ namespace TelegramBot
             return OnOffKeyboard;
         }
 
-        private InlineKeyboardMarkup CreateMultiButton()
+        private InlineKeyboardMarkup CreateMultiButtons()
         {
             Dictionary<string, string> MultiElements = new Dictionary<string, string>()
             {
