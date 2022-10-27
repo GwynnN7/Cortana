@@ -106,7 +106,7 @@ namespace Utility
                     var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
                     var magicPacket = header.Concat(data).ToArray();
                     using var client = new UdpClient();
-                    client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Any, 9));
+                    client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Parse("169.254.255.255"), 9));
 
                     return "PC in accensione";
                 }
