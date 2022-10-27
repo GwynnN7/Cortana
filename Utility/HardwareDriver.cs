@@ -2,7 +2,6 @@
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO.Ports;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -102,12 +101,37 @@ namespace Utility
                 else
                 {
                     PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    target.SendWol();
+
+                    Thread.Sleep(2000);
+
+                    PhysicalAddress target2 = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    target2.SendWol(IPAddress.Any);
+
+                    Thread.Sleep(2000);
+
+                    PhysicalAddress target3 = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    target3.SendWol(IPAddress.Parse("169.254.255.255"));
+
+                    Thread.Sleep(2000);
+
+                    PhysicalAddress target4 = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
+                    target4.SendWol(IPAddress.Parse("169.254.153.136"));
+
+                 
+                    /*
                     var header = Enumerable.Repeat(byte.MaxValue, 6);
                     var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
                     var magicPacket = header.Concat(data).ToArray();
                     using var client = new UdpClient();
                     client.Send(magicPacket, magicPacket.Length, new IPEndPoint(IPAddress.Parse("169.254.255.255"), 9));
 
+                   
+                    // ...
+
+                    // Using the IPAddess extension
+                    IPAddress.Any.SendWol(target.);
+                    */
                     return "PC in accensione";
                 }
                 
