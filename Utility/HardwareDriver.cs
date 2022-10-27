@@ -101,7 +101,7 @@ namespace Utility
                 }
                 else
                 {
-                    PhysicalAddress target = PhysicalAddress.Parse("7C-B5-66-66-71-EB");
+                    PhysicalAddress target = PhysicalAddress.Parse("B4-2E-99-31-CF-74");
                     var header = Enumerable.Repeat(byte.MaxValue, 6);
                     var data = Enumerable.Repeat(target.GetAddressBytes(), 16).SelectMany(mac => mac);
                     var magicPacket = header.Concat(data).ToArray();
