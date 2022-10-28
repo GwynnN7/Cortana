@@ -1,2 +1,3 @@
-﻿import os
-os.system("sudo etherwake -i eth0 B4:2E:99:31:CF:74")
+﻿import os, sys
+mac = sys.argv[1]
+os.system(f"sudo etherwake -i eth0 {mac}")

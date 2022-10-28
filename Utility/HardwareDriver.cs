@@ -100,7 +100,8 @@ namespace Utility
                 }
                 else
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/WoL.py" });
+                    string mac = "B4:2E:99:31:CF:74";
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
             
                     return "PC in accensione";
                 }
@@ -203,6 +204,7 @@ namespace Utility
                         var start = DateTime.Now;             
                         while (PingPC() && (DateTime.Now - start).Seconds >= 120) await Task.Delay(1000);
 
+                        await Task.Delay(2500); //test with ethernet
                         SwitchOutlets(EHardwareTrigger.Off);
                         
                     });
