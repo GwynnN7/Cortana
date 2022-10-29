@@ -34,13 +34,11 @@ namespace Utility
 
         public static void LoadNetworkData()
         {
-            NetStats = new();
             if (File.Exists("Data/Global/NetworkData.json"))
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
-                NetStats = JsonConvert.DeserializeObject<NetworkStats>(file);
-                Console.WriteLine(file.Length);
-                Console.WriteLine(NetStats.Gateway);
+                var nStats = JsonConvert.DeserializeObject<NetworkStats>(file);
+                NetStats = nStats ?? new();
             }
         }
 
