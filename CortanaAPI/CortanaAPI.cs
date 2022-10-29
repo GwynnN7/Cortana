@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using Utility;
 
 namespace CortanaAPI
 {
@@ -10,7 +11,7 @@ namespace CortanaAPI
         private static WebApplication? CortanaWebAPI;
         public static void BootCortanaAPI()
         {
-            var builder = WebApplication.CreateBuilder(new[] { "--urls=http://192.168.178.117:5000/" });
+            var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://{HardwareDriver.NetStats.Cortana_IP}:5000/" });
 
             Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
             builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);

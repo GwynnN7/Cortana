@@ -1,4 +1,5 @@
 ﻿using Iot.Device.CpuTemperature;
+using Newtonsoft.Json;
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
@@ -20,15 +21,27 @@ namespace Utility
         private static EBooleanState OLEDState = EBooleanState.On;
         private static EBooleanState LampState = EBooleanState.Off;
 
-        /*
-        private static EBooleanState FanState = EBooleanState.Off;
-        private static SerialPort? Fan;
-        */
+        public static NetworkStats NetStats;
+
+        //private static EBooleanState FanState = EBooleanState.Off;
+        //private static SerialPort? Fan;
+
 
         public static void Init()
         {
             HandleNight();
+            LoadNetworkData();
             //Fan = new SerialPort("/dev/rfcomm0", 9600);
+        }
+
+        public static void LoadNetworkData()
+        {
+            NetStats = new();
+            if (File.Exists("Data/Global/NetworkData.json"))
+            {
+                var file = File.ReadAllText("Data/Global/NetworkData.json");
+                NetStats = JsonConvert.DeserializeObject<NetworkStats>(file);
+            }
         }
 
         public static void HandleNight()
@@ -100,7 +113,7 @@ namespace Utility
                 }
                 else
                 {
-                    string mac = "B4:2E:99:31:CF:74";
+                    string mac = NetStats.Desktop_LAN_MAC;
                     Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
             
                     return "PC in accensione";
@@ -204,7 +217,7 @@ namespace Utility
                         var start = DateTime.Now;             
                         while (PingPC() && (DateTime.Now - start).Seconds >= 120) await Task.Delay(1000);
 
-                        await Task.Delay(2500); //test with ethernet
+                        await Task.Delay(3000);
                         SwitchOutlets(EHardwareTrigger.Off);
                         
                     });
@@ -216,44 +229,6 @@ namespace Utility
             }
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
-
-        /*
-        public static string SwitchFan(EHardwareTrigger state)
-        {
-            if(state == EHardwareTrigger.On)
-            {
-                Task.Run(() => SendFanCommand("1"));
-                FanState = EBooleanState.On;
-                return "Accendo il ventilatore";
-            }
-            else if(state == EHardwareTrigger.Off)
-            {
-                Task.Run(() => SendFanCommand("0"));
-                FanState = EBooleanState.Off;
-                return "Spengo il ventilatore";
-            }
-            else return SwitchFan(FanState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-        }
-
-        public static string SetFanSpeed(EFanSpeeds speed)
-        {
-            if(speed == EFanSpeeds.Off) return SwitchFan(EHardwareTrigger.Off);
-            
-            var command = speed switch
-            {
-                EFanSpeeds.Low => "a",
-                EFanSpeeds.Medium => "b",
-                EFanSpeeds.High => "c",
-                _ => "a"
-            };
-
-            FanState = EBooleanState.On;
-            command = $"1\n{command}";
-            
-            Task.Run(() => SendFanCommand(command));
-            return "Comando inviato";
-        }
-        */
 
         public static string GetCPUTemperature()
         {
@@ -269,9 +244,10 @@ namespace Utility
         public static bool PingPC()
         {
             using Ping pingSender = new Ping();
-            PingReply reply = pingSender.Send("192.168.178.118", 1000);
+            PingReply replyWLAN = pingSender.Send(NetStats.Desktop_WLAN_IP, 1500);
+            PingReply replyLAN = pingSender.Send(NetStats.Desktop_LAN_IP, 1500);
 
-            return reply.Status == IPStatus.Success;
+            return replyWLAN.Status == IPStatus.Success || replyLAN.Status == IPStatus.Success;
         }
 
         public static bool Ping(string ip)
@@ -281,20 +257,75 @@ namespace Utility
 
             return reply.Status == IPStatus.Success;
         }
+    }
 
-        /*
-        public static void SendFanCommand(string command)
-        {
-            try
-            {
-                if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+    public class NetworkStats
+    {
+        public string Cortana_IP { get; }
+        public string Cortana_LAN_MAC { get; }
+        public string Cortana_WLAN_MAC { get; }
+        
+        public string Desktop_LAN_IP { get; }
+        public string Desktop_WLAN_IP { get; }
+        public string Desktop_LAN_MAC { get; }
+        public string Desktop_WLAN_MAC { get; }
 
-                Fan.Open();
-                Fan.Write(command);
-                Fan.Close();
-            }
-            catch { }
-        }
-        */
+        public string SubnetMask { get; }
+        public string Gateway { get; }
     }
 }
+
+
+
+
+/*
+
+       public static string SwitchFan(EHardwareTrigger state)
+       {
+           if(state == EHardwareTrigger.On)
+           {
+               Task.Run(() => SendFanCommand("1"));
+               FanState = EBooleanState.On;
+               return "Accendo il ventilatore";
+           }
+           else if(state == EHardwareTrigger.Off)
+           {
+               Task.Run(() => SendFanCommand("0"));
+               FanState = EBooleanState.Off;
+               return "Spengo il ventilatore";
+           }
+           else return SwitchFan(FanState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+       }
+
+       public static string SetFanSpeed(EFanSpeeds speed)
+       {
+           if(speed == EFanSpeeds.Off) return SwitchFan(EHardwareTrigger.Off);
+
+           var command = speed switch
+           {
+               EFanSpeeds.Low => "a",
+               EFanSpeeds.Medium => "b",
+               EFanSpeeds.High => "c",
+               _ => "a"
+           };
+
+           FanState = EBooleanState.On;
+           command = $"1\n{command}";
+
+           Task.Run(() => SendFanCommand(command));
+           return "Comando inviato";
+       }
+
+       public static void SendFanCommand(string command)
+       {
+           try
+           {
+               if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
+
+               Fan.Open();
+               Fan.Write(command);
+               Fan.Close();
+           }
+           catch { }
+       }
+       */

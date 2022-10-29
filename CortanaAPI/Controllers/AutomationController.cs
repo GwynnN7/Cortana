@@ -47,7 +47,19 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
-        /*
+        [HttpGet("all")]
+        public Dictionary<string, string> EverythingPower(string state)
+        {
+            var trigger = Utility.Functions.TriggerStateFromString(state);
+            Utility.HardwareDriver.SwitchRoom(trigger);
+
+            return new Dictionary<string, string>() { { "data", "Done" } };
+        }
+    }
+}
+
+
+/*
         [HttpGet("fan")]
         public Dictionary<string, string> FanPower(string state)
         {
@@ -62,14 +74,3 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
         */
-
-        [HttpGet("all")]
-        public Dictionary<string, string> EverythingPower(string state)
-        {
-            var trigger = Utility.Functions.TriggerStateFromString(state);
-            Utility.HardwareDriver.SwitchRoom(trigger);
-
-            return new Dictionary<string, string>() { { "data", "Done" } };
-        }
-    }
-}

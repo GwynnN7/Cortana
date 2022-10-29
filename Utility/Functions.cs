@@ -66,15 +66,6 @@ namespace Utility
             return Status;
         }
 
-        /*
-        public static EFanSpeeds FanSpeedFromString(string state)
-        {
-            state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
-            Enum.TryParse(state, out EFanSpeeds Status);
-            return Status;
-        }
-        */
-
         public static async Task<string> GetPublicIP()
         {
             using var client = new HttpClient();
@@ -85,8 +76,18 @@ namespace Utility
         public static bool RequestPC(string url)
         {
             using var client = new HttpClient();
-            var result = client.GetAsync($"http://192.168.178.118:5000/cortana-pc/{url}").Result;
+            var result = client.GetAsync($"http://{HardwareDriver.NetStats.Desktop_WLAN_IP}:5000/cortana-pc/{url}").Result;
             return result.IsSuccessStatusCode;
         }
     }
 }
+
+
+/*
+        public static EFanSpeeds FanSpeedFromString(string state)
+        {
+            state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
+            Enum.TryParse(state, out EFanSpeeds Status);
+            return Status;
+        }
+        */

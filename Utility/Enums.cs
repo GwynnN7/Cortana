@@ -107,6 +107,16 @@ public enum EPrivateSounds
     Sorry
 }
 
+public enum ECortanaChannels
+{
+    Cortana,
+    Log
+}
+
+
+
+
+
 /*
 public enum EFanSpeeds
 {
@@ -116,9 +126,3 @@ public enum EFanSpeeds
     High
 }
 */
-
-public enum ECortanaChannels
-{
-    Cortana,
-    Log
-}

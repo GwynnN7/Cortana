@@ -16,19 +16,6 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
-        /*
-        [SlashCommand("fan", "Imposta la velocità del ventilatore")]
-        public async Task FanSpeed([Summary("speed", "Velocità ventola")] EFanSpeeds speed)
-        {
-            await DeferAsync(ephemeral: true);
-
-            string result = Utility.HardwareDriver.SetFanSpeed(speed);
-            Embed embed = DiscordData.CreateEmbed(Title: result);
-
-            await FollowupAsync(embed: embed, ephemeral: true);
-        }
-        */
-
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
         public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
@@ -76,3 +63,17 @@ namespace DiscordBot.Modules
         }
     }
 }
+
+
+/*
+       [SlashCommand("fan", "Imposta la velocità del ventilatore")]
+       public async Task FanSpeed([Summary("speed", "Velocità ventola")] EFanSpeeds speed)
+       {
+           await DeferAsync(ephemeral: true);
+
+           string result = Utility.HardwareDriver.SetFanSpeed(speed);
+           Embed embed = DiscordData.CreateEmbed(Title: result);
+
+           await FollowupAsync(embed: embed, ephemeral: true);
+       }
+       */
