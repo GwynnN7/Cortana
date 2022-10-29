@@ -3,9 +3,7 @@ using Newtonsoft.Json;
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
-using System.Net;
 using System.Net.NetworkInformation;
-using System.Net.Sockets;
 
 namespace Utility
 {
@@ -29,8 +27,8 @@ namespace Utility
 
         public static void Init()
         {
-            HandleNight();
             LoadNetworkData();
+            HandleNight();
             //Fan = new SerialPort("/dev/rfcomm0", 9600);
         }
 
@@ -41,7 +39,9 @@ namespace Utility
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
                 NetStats = JsonConvert.DeserializeObject<NetworkStats>(file);
+                Console.WriteLine("Porca madonna");
             }
+            else Console.WriteLine("Porco dio");
         }
 
         public static void HandleNight()
