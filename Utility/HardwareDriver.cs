@@ -37,10 +37,7 @@ namespace Utility
             if (File.Exists("Data/Global/NetworkData.json"))
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
-                var nStats = JsonConvert.DeserializeObject<NetworkStats>(file);
-                Console.WriteLine(nStats.Gateway);
-                Console.WriteLine(nStats.Cortana_IP);
-                Console.WriteLine(nStats.Cortana_WLAN_MAC);
+                NetStats = JsonConvert.DeserializeObject<NetworkStats>(file) ?? new();
             }
         }
 
@@ -260,17 +257,17 @@ namespace Utility
 
     public class NetworkStats
     {
-        public string Cortana_IP { get; }
-        public string Cortana_LAN_MAC { get; }
-        public string Cortana_WLAN_MAC { get; }
+        public string Cortana_IP { get; set;  }
+        public string Cortana_LAN_MAC { get; set; }
+        public string Cortana_WLAN_MAC { get; set; }
         
-        public string Desktop_LAN_IP { get; }
-        public string Desktop_WLAN_IP { get; }
-        public string Desktop_LAN_MAC { get; }
-        public string Desktop_WLAN_MAC { get; }
+        public string Desktop_LAN_IP { get; set; }
+        public string Desktop_WLAN_IP { get; set; }
+        public string Desktop_LAN_MAC { get; set; }
+        public string Desktop_WLAN_MAC { get; set; }
 
-        public string SubnetMask { get; }
-        public string Gateway { get; }
+        public string SubnetMask { get; set; }
+        public string Gateway { get; set; }
     }
 }
 
