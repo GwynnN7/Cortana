@@ -39,9 +39,9 @@ namespace Utility
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
                 NetStats = JsonConvert.DeserializeObject<NetworkStats>(file);
-                Console.WriteLine("Porca madonna");
+                Console.WriteLine(file.Length);
+                Console.WriteLine(NetStats.Gateway);
             }
-            else Console.WriteLine("Porco dio");
         }
 
         public static void HandleNight()
