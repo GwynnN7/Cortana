@@ -38,8 +38,9 @@ namespace Utility
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
                 var nStats = JsonConvert.DeserializeObject<NetworkStats>(file);
-                if (nStats != null) NetStats = nStats;
-                else Console.WriteLine("oljnuhgesgselkjnmgsrklmòp");
+                Console.WriteLine(nStats.Gateway);
+                Console.WriteLine(nStats.Cortana_IP);
+                Console.WriteLine(nStats.Cortana_WLAN_MAC);
             }
         }
 
