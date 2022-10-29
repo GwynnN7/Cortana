@@ -56,14 +56,19 @@ namespace Utility
 
         private static void ToggleLamp()
         {
-            Task.Run(async () =>
+            /*Task.Run(async () =>
             {
                 using var controller = new GpioController();
                 controller.OpenPin(LampPin, PinMode.Output);
                 controller.Write(LampPin, PinValue.High);
                 await Task.Delay(100);
                 controller.Write(LampPin, PinValue.Low);
-            });
+            });*/
+
+            using var controller = new GpioController();
+            controller.OpenPin(LampPin, PinMode.Output);
+            if (LampState == EBooleanState.On) controller.Write(LampPin, PinValue.Low);
+            else controller.Write(LampPin, PinValue.Low);
         }
 
         public static string SwitchRoom(EHardwareTrigger state)
