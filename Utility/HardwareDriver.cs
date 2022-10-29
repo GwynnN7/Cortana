@@ -38,7 +38,8 @@ namespace Utility
             {
                 var file = File.ReadAllText("Data/Global/NetworkData.json");
                 var nStats = JsonConvert.DeserializeObject<NetworkStats>(file);
-                NetStats = nStats ?? new();
+                if (nStats != null) NetStats = nStats;
+                else Console.WriteLine("oljnuhgesgselkjnmgsrklmòp");
             }
         }
 
