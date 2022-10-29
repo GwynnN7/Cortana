@@ -215,7 +215,7 @@ namespace Utility
                         await Task.Delay(1000);
 
                         var start = DateTime.Now;             
-                        while (PingPC() && (DateTime.Now - start).Seconds >= 120) await Task.Delay(1000);
+                        while (PingPC() && (DateTime.Now - start).Seconds <= 120) await Task.Delay(1000);
 
                         await Task.Delay(3000);
                         SwitchOutlets(EHardwareTrigger.Off);
@@ -244,10 +244,9 @@ namespace Utility
         public static bool PingPC()
         {
             using Ping pingSender = new Ping();
-            PingReply replyWLAN = pingSender.Send(NetStats.Desktop_WLAN_IP, 1500);
-            PingReply replyLAN = pingSender.Send(NetStats.Desktop_LAN_IP, 1500);
+            PingReply reply = pingSender.Send(NetStats.Desktop_WLAN_IP, 2000);
 
-            return replyWLAN.Status == IPStatus.Success || replyLAN.Status == IPStatus.Success;
+            return reply.Status == IPStatus.Success;
         }
 
         public static bool Ping(string ip)
