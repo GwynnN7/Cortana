@@ -222,8 +222,20 @@ namespace Utility
                     });
                     return "PC e ciabatta in spegnimento";
                 }
-                controller.Write(OutletsPin, PinValue.Low);
-                OutletsState = EBooleanState.Off;
+                if(DateTime.Now.Hour > 22 && DateTime.Now.Hour < 6)
+                {
+                    SwitchLamp(EHardwareTrigger.On);
+                    var action = delegate(object? obj, System.Timers.ElapsedEventArgs args) {
+                        SwitchLamp(EHardwareTrigger.Off);
+                        controller.Write(OutletsPin, PinValue.Low);
+                        OutletsState = EBooleanState.Off;
+                    };
+                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 5, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
+                }
+                else{                  
+                    controller.Write(OutletsPin, PinValue.Low);
+                    OutletsState = EBooleanState.Off;
+                }
                 return "Ciabatta spenta";
             }
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
