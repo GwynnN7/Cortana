@@ -47,11 +47,11 @@ namespace Utility
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
-        { 
-            if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);  
+        {
+            if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
             else Functions.RequestPC("notify/night");
 
-            if(DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 0, Minutes: 30, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
+            if (DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 0, Minutes: 30, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         private static void ToggleLamp()
@@ -76,7 +76,7 @@ namespace Utility
 
             var hour = DateTime.Now.Hour;
             if (hour >= 18 && hour <= 6) SwitchLamp(state);
-            else if(state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On)) SwitchLamp(state);
+            else if (state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On)) SwitchLamp(state);
 
             return "Procedo";
         }
@@ -102,7 +102,7 @@ namespace Utility
 
         public static string SwitchPC(EHardwareTrigger state)
         {
-            if(state == EHardwareTrigger.On)
+            if (state == EHardwareTrigger.On)
             {
                 PCState = EBooleanState.On;
                 if (OutletsState == EBooleanState.Off)
@@ -114,20 +114,20 @@ namespace Utility
                 {
                     string mac = NetStats.Desktop_LAN_MAC;
                     Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
-            
+
                     return "PC in accensione";
                 }
-                
+
             }
-            else if(state == EHardwareTrigger.Off)
+            else if (state == EHardwareTrigger.Off)
             {
                 string text = "PC in spegnimento";
                 try
                 {
                     var result = Functions.RequestPC("hardware/shutdown");
-                    if(!result) text = "PC già spento";
+                    if (!result) text = "PC già spento";
                 }
-                catch 
+                catch
                 {
                     text = "PC già spento";
                 }
@@ -174,7 +174,7 @@ namespace Utility
                 {
                     return "Errore display";
                 }
-                
+
             }
             else if (state == EHardwareTrigger.Off)
             {
@@ -194,9 +194,6 @@ namespace Utility
 
         public static string SwitchOutlets(EHardwareTrigger state)
         {
-            using var controller = new GpioController();
-            controller.OpenPin(OutletsPin, PinMode.Output);
-
             if (state == EHardwareTrigger.On)
             {
                 controller.Write(OutletsPin, PinValue.High);
@@ -213,27 +210,28 @@ namespace Utility
                         SwitchPC(EHardwareTrigger.Off);
                         await Task.Delay(1000);
 
-                        var start = DateTime.Now;             
+                        var start = DateTime.Now;
                         while (PingPC() && (DateTime.Now - start).Seconds <= 120) await Task.Delay(1000);
 
                         await Task.Delay(3000);
                         SwitchOutlets(EHardwareTrigger.Off);
-                        
+
                     });
                     return "PC e ciabatta in spegnimento";
                 }
-                if(DateTime.Now.Hour > 22 || DateTime.Now.Hour < 6)
+                if (DateTime.Now.Hour > 22 || DateTime.Now.Hour < 6)
                 {
                     SwitchLamp(EHardwareTrigger.On);
-                    var action = delegate(object? obj, System.Timers.ElapsedEventArgs args) {
+                    var action = delegate (object? obj, System.Timers.ElapsedEventArgs args) {
                         SwitchLamp(EHardwareTrigger.Off);
-                        controller.Write(OutletsPin, PinValue.Low);
+                        UseGPIO(OutletsPin, PinValue.Low);
                         OutletsState = EBooleanState.Off;
                     };
                     new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 5, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
                 }
-                else{                  
-                    controller.Write(OutletsPin, PinValue.Low);
+                else
+                {
+                    UseGPIO(OutletsPin, PinValue.Low);
                     OutletsState = EBooleanState.Off;
                 }
                 return "Ciabatta spenta";
@@ -271,10 +269,10 @@ namespace Utility
 
     public class NetworkStats
     {
-        public string Cortana_IP { get; set;  }
+        public string Cortana_IP { get; set; }
         public string Cortana_LAN_MAC { get; set; }
         public string Cortana_WLAN_MAC { get; set; }
-        
+
         public string Desktop_LAN_IP { get; set; }
         public string Desktop_WLAN_IP { get; set; }
         public string Desktop_LAN_MAC { get; set; }
