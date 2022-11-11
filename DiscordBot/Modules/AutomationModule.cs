@@ -28,7 +28,6 @@ namespace DiscordBot.Modules
                 EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
                 EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),
                 EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
-                //EHardwareElements.Fan => Utility.HardwareDriver.SwitchFan(trigger),
                 _ => "Dispositivo hardware non presente"
             };
 
@@ -63,17 +62,3 @@ namespace DiscordBot.Modules
         }
     }
 }
-
-
-/*
-       [SlashCommand("fan", "Imposta la velocità del ventilatore")]
-       public async Task FanSpeed([Summary("speed", "Velocità ventola")] EFanSpeeds speed)
-       {
-           await DeferAsync(ephemeral: true);
-
-           string result = Utility.HardwareDriver.SetFanSpeed(speed);
-           Embed embed = DiscordData.CreateEmbed(Title: result);
-
-           await FollowupAsync(embed: embed, ephemeral: true);
-       }
-       */

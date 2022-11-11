@@ -21,15 +21,10 @@ namespace Utility
 
         public static NetworkStats NetStats;
 
-        //private static EBooleanState FanState = EBooleanState.Off;
-        //private static SerialPort? Fan;
-
-
         public static void Init()
         {
             LoadNetworkData();
             HandleNight();
-            //Fan = new SerialPort("/dev/rfcomm0", 9600);
         }
 
         public static void LoadNetworkData()
@@ -51,49 +46,35 @@ namespace Utility
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
             else Functions.RequestPC("notify/night");
 
-            if (DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 0, Minutes: 30, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
-        }
-
-        private static void ToggleLamp()
-        {
-            Task.Run(async () =>
-            {
-                using var controller = new GpioController();
-                controller.OpenPin(LampPin, PinMode.Output);
-                controller.Write(LampPin, PinValue.High);
-                await Task.Delay(100);
-                controller.Write(LampPin, PinValue.Low);
-            });
+            if (DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         public static string SwitchRoom(EHardwareTrigger state)
         {
+            
             if (state == EHardwareTrigger.On) SwitchPC(state);
-            else SwitchOutlets(state);
+            else
+            {
+                SwitchLamp(state);
+                SwitchOutlets(state);
+            }
             SwitchOLED(state);
             SwitchLED(state);
-            //SwitchFan(state);
-
-            var hour = DateTime.Now.Hour;
-            if (hour >= 18 && hour <= 6) SwitchLamp(state);
-            else if (state == EHardwareTrigger.Off || (state == EHardwareTrigger.Toggle && LampState == EBooleanState.On)) SwitchLamp(state);
 
             return "Procedo";
         }
 
         public static string SwitchLamp(EHardwareTrigger state)
         {
-            using var controller = new GpioController();
-            controller.OpenPin(LampPin, PinMode.Output);
             if (state == EHardwareTrigger.On)
             {
-                if (LampState == EBooleanState.Off) controller.Write(LampPin, PinValue.High);
+                if (LampState == EBooleanState.Off) UseGPIO(LampPin, PinValue.High);
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (LampState == EBooleanState.On) controller.Write(LampPin, PinValue.Low);
+                if (LampState == EBooleanState.On) UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
@@ -142,18 +123,15 @@ namespace Utility
 
         public static string SwitchLED(EHardwareTrigger state)
         {
-            using var controller = new GpioController();
-            controller.OpenPin(LEDPin, PinMode.Output);
-
             if (state == EHardwareTrigger.On)
             {
-                controller.Write(LEDPin, PinValue.High);
+                UseGPIO(LEDPin, PinValue.High);
                 LEDState = EBooleanState.On;
                 return "Led acceso";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                controller.Write(LEDPin, PinValue.Low);
+                UseGPIO(LEDPin, PinValue.Low);
                 LEDState = EBooleanState.Off;
                 return "Led spento";
             }
@@ -196,7 +174,7 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                controller.Write(OutletsPin, PinValue.High);
+                UseGPIO(OutletsPin, PinValue.High);
                 OutletsState = EBooleanState.On;
                 PCState = EBooleanState.On;
                 return "Ciabatta accesa";
@@ -227,7 +205,7 @@ namespace Utility
                         UseGPIO(OutletsPin, PinValue.Low);
                         OutletsState = EBooleanState.Off;
                     };
-                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 5, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
+                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 2, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
                 }
                 else
                 {
@@ -265,6 +243,13 @@ namespace Utility
 
             return reply.Status == IPStatus.Success;
         }
+
+        private static void UseGPIO(int Pin, PinValue Value)
+        {
+            using var controller = new GpioController();
+            controller.OpenPin(Pin, PinMode.Output);
+            controller.Write(Pin, Value);
+        }
     }
 
     public class NetworkStats
@@ -282,58 +267,3 @@ namespace Utility
         public string Gateway { get; set; }
     }
 }
-
-
-
-
-/*
-
-       public static string SwitchFan(EHardwareTrigger state)
-       {
-           if(state == EHardwareTrigger.On)
-           {
-               Task.Run(() => SendFanCommand("1"));
-               FanState = EBooleanState.On;
-               return "Accendo il ventilatore";
-           }
-           else if(state == EHardwareTrigger.Off)
-           {
-               Task.Run(() => SendFanCommand("0"));
-               FanState = EBooleanState.Off;
-               return "Spengo il ventilatore";
-           }
-           else return SwitchFan(FanState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-       }
-
-       public static string SetFanSpeed(EFanSpeeds speed)
-       {
-           if(speed == EFanSpeeds.Off) return SwitchFan(EHardwareTrigger.Off);
-
-           var command = speed switch
-           {
-               EFanSpeeds.Low => "a",
-               EFanSpeeds.Medium => "b",
-               EFanSpeeds.High => "c",
-               _ => "a"
-           };
-
-           FanState = EBooleanState.On;
-           command = $"1\n{command}";
-
-           Task.Run(() => SendFanCommand(command));
-           return "Comando inviato";
-       }
-
-       public static void SendFanCommand(string command)
-       {
-           try
-           {
-               if (Fan == null) Fan = new SerialPort("/dev/rfcomm0", 9600);
-
-               Fan.Open();
-               Fan.Write(command);
-               Fan.Close();
-           }
-           catch { }
-       }
-       */

@@ -77,17 +77,7 @@ namespace TelegramBot
                     string result = "";
                     if(HardwareAction[message_id] == "multi")
                     {
-                        /*
-                        ESpeeds speeds = data switch
-                        {
-                            "0" => EFanSpeeds.Off,
-                            "1" => EFanSpeeds.Low,
-                            "2" => EFanSpeeds.Medium,
-                            "3" => EFanSpeeds.High,
-                            _ => EFanSpeeds.Off
-                        };
-                        result = Utility.HardwareDriver.SetFanSpeed(speeds);
-                        */
+                        //Not yet implemented
                     }
                     else
                     {

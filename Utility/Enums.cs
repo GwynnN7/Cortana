@@ -20,8 +20,7 @@ public enum EHardwareElements
     OLED,
     PC,
     Lamp,
-    Outlets,
-    //Fan
+    Outlets
 }
 
 public enum EBooleanState
@@ -112,17 +111,3 @@ public enum ECortanaChannels
     Cortana,
     Log
 }
-
-
-
-
-
-/*
-public enum EFanSpeeds
-{
-    Off,
-    Low,
-    Medium,
-    High
-}
-*/
