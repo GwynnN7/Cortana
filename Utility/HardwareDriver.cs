@@ -197,7 +197,7 @@ namespace Utility
                     });
                     return "PC e ciabatta in spegnimento";
                 }
-                if (DateTime.Now.Hour > 22 || DateTime.Now.Hour < 6)
+                if ((DateTime.Now.Hour > 22 || DateTime.Now.Hour < 6) && OutletsState == EBooleanState.On)
                 {
                     SwitchLamp(EHardwareTrigger.On);
                     var action = delegate (object? obj, System.Timers.ElapsedEventArgs args) {
