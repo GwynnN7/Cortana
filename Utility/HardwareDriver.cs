@@ -38,7 +38,7 @@ namespace Utility
 
         public static void HandleNight()
         {
-            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 0, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Quotidiano);
+            new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Quotidiano);
         }
 
         private static void HandleNightCallback(object? sender, EventArgs e)
@@ -191,7 +191,7 @@ namespace Utility
                         var start = DateTime.Now;
                         while (PingPC() && (DateTime.Now - start).Seconds <= 120) await Task.Delay(1000);
 
-                        await Task.Delay(3000);
+                        await Task.Delay(4000);
                         SwitchOutlets(EHardwareTrigger.Off);
 
                     });
@@ -205,7 +205,7 @@ namespace Utility
                         UseGPIO(OutletsPin, PinValue.Low);
                         OutletsState = EBooleanState.Off;
                     };
-                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 2, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
+                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 1, Seconds: 15, Callback: action, TimerLocation: ETimerLocation.Utility);
                 }
                 else
                 {
