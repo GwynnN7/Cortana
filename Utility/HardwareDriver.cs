@@ -46,7 +46,7 @@ namespace Utility
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
             else Functions.RequestPC("notify/night");
 
-            if (DateTime.Now.Hour < 5) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
+            if (DateTime.Now.Hour < 4) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         public static string SwitchRoom(EHardwareTrigger state)
@@ -189,7 +189,7 @@ namespace Utility
                         await Task.Delay(1000);
 
                         var start = DateTime.Now;
-                        while (PingPC() && (DateTime.Now - start).Seconds <= 120) await Task.Delay(1000);
+                        while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1000);
 
                         await Task.Delay(4000);
                         SwitchOutlets(EHardwareTrigger.Off);
@@ -197,7 +197,7 @@ namespace Utility
                     });
                     return "PC e ciabatta in spegnimento";
                 }
-                if ((DateTime.Now.Hour > 22 || DateTime.Now.Hour < 6) && OutletsState == EBooleanState.On)
+                if ((DateTime.Now.Hour > 22 || DateTime.Now.Hour < 3) && OutletsState == EBooleanState.On)
                 {
                     SwitchLamp(EHardwareTrigger.On);
                     var action = delegate (object? obj, System.Timers.ElapsedEventArgs args) {
@@ -205,7 +205,7 @@ namespace Utility
                         UseGPIO(OutletsPin, PinValue.Low);
                         OutletsState = EBooleanState.Off;
                     };
-                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 1, Seconds: 15, Callback: action, TimerLocation: ETimerLocation.Utility);
+                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 1, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
                 }
                 else
                 {
