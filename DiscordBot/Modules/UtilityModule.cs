@@ -194,7 +194,7 @@ namespace DiscordBot.Modules
             [SlashCommand("progetti", "Vi mando il link di Notion, per gestire i vostri progetti")]
             public async Task GetProjects()
             {
-                await RespondAsync("www.notion.so");
+                await RespondAsync("[Notion](www.notion.so)");
             }
         }
 
