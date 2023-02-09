@@ -286,16 +286,3 @@ public class MemeJsonStructure
     public string Link { get; set; }
     public EMemeCategory Category { get; set; }
 }
-
-public class Projects
-{
-    public Dictionary<string, Project> UserProjects = new();
-}
-
-public class Project
-{
-    public List<string> WorkInProgress = new();
-    public List<string> NextFeatures = new();
-    public List<string> Bugs = new();
-    public string Description { get; set; }
-}

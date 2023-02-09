@@ -131,7 +131,7 @@ namespace DiscordBot.Modules
                 }
             }
 
-            [SlashCommand("code", "Conveto un messaggio sotto forma di codice")]
+            [SlashCommand("code", "Converto un messaggio sotto forma di codice")]
             public async Task ToCode()
             {
                 await RespondWithModalAsync<CodeModal>("to-code");
@@ -191,26 +191,10 @@ namespace DiscordBot.Modules
                 }
             }
 
-            [SlashCommand("progetti", "Gestione dei vostri progetti")]
+            [SlashCommand("progetti", "Vi mando il link di Notion, per gestire i vostri progetti")]
             public async Task GetProjects()
             {
-                if (!DiscordData.Projects.ContainsKey(Context.User.Id)) return;
-                EmbedBuilder ProjectsEmbed = DiscordData.CreateEmbed("Progetti", User: Context.User).ToEmbedBuilder();
-
-                List<SelectMenuOptionBuilder> projects = new();
-                foreach (var proj in DiscordData.Projects[Context.User.Id].UserProjects)
-                {
-                    projects.Add(new SelectMenuOptionBuilder()
-                        .WithLabel(proj.Key)
-                        .WithValue(proj.Key));
-                    ProjectsEmbed.AddField(proj.Key, proj.Value.Description);
-                }
-
-                var ComponentsBuilder = new ComponentBuilder().WithButton("Aggiungi", "add-project", ButtonStyle.Success, row: 1);
-
-                if (projects.Count > 0) ComponentsBuilder.WithSelectMenu(customId: "project-list", projects, placeholder: "Seleziona un progetto", row: 0);
-
-                await RespondAsync(embed: ProjectsEmbed.Build(), components: ComponentsBuilder.Build());
+                await RespondAsync("www.notion.so");
             }
         }
 
@@ -317,6 +301,11 @@ namespace DiscordBot.Modules
                     embed_builder.AddField("Matricola", "658992");
                     embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
                 }
+                else
+                {
+                    await RespondAsync("Mi dispiace, non ho dati su di te per questa università", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
 
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -324,6 +313,18 @@ namespace DiscordBot.Modules
             [SlashCommand("lezioni", "Lezioni UNIPI")]
             public async Task UnipiLessons([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
+                Dictionary<string, ulong> ids = new Dictionary<string, ulong>()
+                {
+                    { "matteo", 468399905023721481 },
+                    { "samuele", 648939655579828226 },
+                    { "danu", 306402234135085067 }
+                };
+                if (Context.User.Id != ids["matteo"] && Context.User.Id != ids["samuele"] && Context.User.Id != ids["danu"])
+                {
+                    await RespondAsync("Mi dispiace, non ho dati su di te per questa università", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
+
                 Embed embed = DiscordData.CreateEmbed("Lezioni UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.WithDescription("[Telegraph](https://telegra.ph/Informatica-CorsoA-22-23-09-15)\n[Calendario](https://agendadidattica.unipi.it/Prod/Home/Calendar)");
