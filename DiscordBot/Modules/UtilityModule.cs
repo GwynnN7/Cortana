@@ -6,9 +6,34 @@ namespace DiscordBot.Modules
 {
     public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
     {
+        [Group("personal", "Comandi personali")]
+        public class PersonalGroup : InteractionModuleBase<SocketInteractionContext>
+        {
+            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
+            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
+            {
+                var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
+                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
+                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
+                await RespondAsync(embed: embed);
+            }
+
+            [SlashCommand("progetti", "Vi mando il link di Notion, per gestire i vostri progetti")]
+            public async Task GetProjects()
+            {
+                await RespondAsync("https://www.notion.so");
+            }
+        }
+
         [Group("utility", "Comandi di utilità")]
         public class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
         {
+
+            [SlashCommand("my-code", "Vi mando il mio codice")]
+            public async Task SendMyCode([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                await RespondAsync("https://github.com/GwynbleiddN7/Cortana", ephemeral: Ephemeral == EAnswer.Si);
+            }
 
             [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
             public async Task Ping([Summary("ip", "IP da pingare")] string ip)
@@ -51,15 +76,7 @@ namespace DiscordBot.Modules
                 await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
             }
 
-            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
-            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
-            {
-                var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
-                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
-                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
-                await RespondAsync(embed: embed);
-            }
-
+            
             [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
             public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
@@ -71,36 +88,6 @@ namespace DiscordBot.Modules
                     .Build();
 
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
-            }
-
-            [SlashCommand("turno", "Vi dico a chi tocca scegliere")]
-            public async Task Turn()
-            {
-                if (Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
-                {
-                    await RespondAsync("Questo server non può usare questo comando");
-                    return;
-                }
-                SocketGuildUser user = Context.Guild.GetUser(DiscordData.DiscordIDs.CortanaID);
-                var today = DateTime.Today.DayOfWeek;
-                switch (today)
-                {
-                    case DayOfWeek.Monday:
-                    case DayOfWeek.Thursday:
-                        user = Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID);
-                        break;
-                    case DayOfWeek.Tuesday:
-                    case DayOfWeek.Friday:
-                        user = Context.Guild.GetUser(306402234135085067);
-                        break;
-                    case DayOfWeek.Wednesday:
-                    case DayOfWeek.Saturday:
-                        user = Context.Guild.GetUser(648939655579828226);
-                        break;
-                    default:
-                        break;
-                }
-                await RespondAsync($"Oggi tocca a {user.Mention}");
             }
 
             [SlashCommand("scrivi", "Scrivo qualcosa al posto vostro")]
@@ -158,6 +145,36 @@ namespace DiscordBot.Modules
                 else await RespondAsync("```" + text + "```");
             }
 
+            [SlashCommand("turno", "Vi dico a chi tocca scegliere")]
+            public async Task Turn()
+            {
+                if (Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
+                {
+                    await RespondAsync("Questo server non può usare questo comando");
+                    return;
+                }
+                SocketGuildUser user = Context.Guild.GetUser(DiscordData.DiscordIDs.CortanaID);
+                var today = DateTime.Today.DayOfWeek;
+                switch (today)
+                {
+                    case DayOfWeek.Monday:
+                    case DayOfWeek.Thursday:
+                        user = Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID);
+                        break;
+                    case DayOfWeek.Tuesday:
+                    case DayOfWeek.Friday:
+                        user = Context.Guild.GetUser(306402234135085067);
+                        break;
+                    case DayOfWeek.Wednesday:
+                    case DayOfWeek.Saturday:
+                        user = Context.Guild.GetUser(648939655579828226);
+                        break;
+                    default:
+                        break;
+                }
+                await RespondAsync($"Oggi tocca a {user.Mention}");
+            }
+
             [SlashCommand("links", "Vi mando dei link utili")]
             public async Task SendLinks([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
@@ -178,26 +195,54 @@ namespace DiscordBot.Modules
                     .Build();
                 await RespondAsync(embed: ShortcutsEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
+        }
 
+        [Group("gestione", "Comandi gestione server")]
+        public class ManageGroup : InteractionModuleBase<SocketInteractionContext>
+        {
             [SlashCommand("kick", "Kicko un utente dal server")]
-            public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user)
+            public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
             {
                 if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
                 else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
                 else
                 {
-                    await user.KickAsync();
+                    await user.KickAsync(reason: reason);
                     await RespondAsync("Utente kickato");
                 }
             }
 
-            [SlashCommand("progetti", "Vi mando il link di Notion, per gestire i vostri progetti")]
-            public async Task GetProjects()
+            [SlashCommand("ban", "Banno un utente dal server")]
+            public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
             {
-                await RespondAsync("[Notion](www.notion.so)");
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                else
+                {
+                    await user.BanAsync(reason: reason);
+                    await RespondAsync("Utente bannato");
+                }
+            }
+
+            [SlashCommand("imposta-timeout", "Timeouto un utente dal server")]
+            public async Task SetTimeoutMember([Summary("user", "Chi vuoi timeoutare?")] SocketGuildUser user, [Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")] double timeout = 10)
+            {
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                else
+                {
+                    await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));
+                    await RespondAsync($"Utente timeoutato per {timeout} minuti");
+                }
+            }
+
+            [SlashCommand("rimuovi-timeout", "Rimuovo il timeout di un utente del server")]
+            public async Task RemoveTimeoutMember([Summary("user", "Di chi vuoi rimuovere il timeout?")] SocketGuildUser user)
+            {
+                await user.RemoveTimeOutAsync();
+                await RespondAsync("Timeout rimosso");
             }
         }
-
 
         [Group("random", "Generatore di cose random")]
         public class RandomGroup : InteractionModuleBase<SocketInteractionContext>
@@ -310,7 +355,7 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
             }
 
-            [SlashCommand("lezioni", "Lezioni UNIPI")]
+            [SlashCommand("corsi", "Lezioni UNIPI")]
             public async Task UnipiLessons([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 Dictionary<string, ulong> ids = new Dictionary<string, ulong>()

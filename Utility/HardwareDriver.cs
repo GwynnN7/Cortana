@@ -13,11 +13,11 @@ namespace Utility
         private static int LEDPin = 27;
         private static int OutletsPin = 17;
 
-        private static EBooleanState OutletsState = EBooleanState.On;
-        private static EBooleanState PCState = EBooleanState.On;
-        private static EBooleanState LEDState = EBooleanState.On;
-        private static EBooleanState OLEDState = EBooleanState.On;
-        private static EBooleanState LampState = EBooleanState.Off;
+        private static EBooleanState OutletsState = GPIOStatus(OutletsPin);
+        private static EBooleanState PCState = GPIOStatus(OutletsPin);
+        private static EBooleanState LEDState = GPIOStatus(LEDPin);
+        private static EBooleanState OLEDState = GPIOStatus(LEDPin);
+        private static EBooleanState LampState = GPIOStatus(LampPin);
 
         public static NetworkStats NetStats;
 
@@ -249,6 +249,12 @@ namespace Utility
             using var controller = new GpioController();
             controller.OpenPin(Pin, PinMode.Output);
             controller.Write(Pin, Value);
+        }
+
+        private static EBooleanState GPIOStatus(int Pin)
+        {
+            using var controller = new GpioController();
+            return controller.Read(Pin) == PinValue.High ? EBooleanState.On : EBooleanState.Off;
         }
     }
 

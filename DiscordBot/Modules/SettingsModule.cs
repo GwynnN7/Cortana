@@ -14,6 +14,22 @@ namespace DiscordBot.Modules
             await RespondAsync($"Da ora in poi vi saluterò in {channel.Name}");
         }
 
+        [SlashCommand("imposta-canale-afk", "Quale è il canale AFK?")]
+        public async Task SetAFKChannel([Summary("canale", "Dite il canale")] SocketTextChannel channel)
+        {
+            DiscordData.GuildSettings[Context.Guild.Id].AFKChannel = channel.Id;
+            DiscordData.UpdateSettings();
+            await RespondAsync($"Canale AFK settato a {channel.Name}");
+        }
+
+        [SlashCommand("rimuovi-canale-afk", "Rimuovo il canale AFK")]
+        public async Task RemoveAFKChannel()
+        {
+            DiscordData.GuildSettings[Context.Guild.Id].AFKChannel = 0;
+            DiscordData.UpdateSettings();
+            await RespondAsync("Canale AFK rimosso");
+        }
+
         [SlashCommand("auto-join", "Volete che entri in automatico?")]
         public async Task SetAutoJoin([Summary("scelta", "Si o No?")] EAnswer answer)
         {

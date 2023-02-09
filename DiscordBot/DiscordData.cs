@@ -204,6 +204,7 @@ namespace DiscordBot
     {
         public bool AutoJoin { get; set; }
         public ulong GreetingsChannel { get; set; }
+        public ulong AFKChannel { get; set; }
     }
 
     public class DiscordIDs
@@ -214,7 +215,6 @@ namespace DiscordBot
         public ulong HomeID { get; set; }
         public ulong CortanaChannelID { get; set; }
         public ulong CortanaLogChannelID { get; set; }
-        public ulong GulagID { get; set; }
     }
 }
 

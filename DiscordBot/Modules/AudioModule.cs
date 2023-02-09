@@ -205,7 +205,7 @@ namespace DiscordBot.Modules
 
         public static bool IsChannelAvailable(SocketVoiceChannel Channel)
         {
-            if (Channel.Id == DiscordData.DiscordIDs.GulagID) return false;
+            if (Channel.Id == DiscordData.GuildSettings[Channel.Guild.Id].AFKChannel) return false;
             if (Channel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.ConnectedUsers.Count > 1;
             else return Channel.ConnectedUsers.Count > 0;
         }
