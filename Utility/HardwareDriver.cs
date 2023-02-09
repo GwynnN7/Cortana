@@ -254,6 +254,7 @@ namespace Utility
         private static EBooleanState GPIOStatus(int Pin)
         {
             using var controller = new GpioController();
+            controller.OpenPin(Pin, PinMode.Input);
             return controller.Read(Pin) == PinValue.High ? EBooleanState.On : EBooleanState.Off;
         }
     }
