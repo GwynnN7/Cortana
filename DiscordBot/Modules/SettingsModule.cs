@@ -15,7 +15,7 @@ namespace DiscordBot.Modules
         }
 
         [SlashCommand("imposta-canale-afk", "Quale è il canale AFK?")]
-        public async Task SetAFKChannel([Summary("canale", "Dite il canale")] SocketTextChannel channel)
+        public async Task SetAFKChannel([Summary("canale", "Dite il canale")] SocketVoiceChannel channel)
         {
             DiscordData.GuildSettings[Context.Guild.Id].AFKChannel = channel.Id;
             DiscordData.UpdateSettings();

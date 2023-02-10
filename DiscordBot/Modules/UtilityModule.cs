@@ -21,7 +21,11 @@ namespace DiscordBot.Modules
             [SlashCommand("progetti", "Vi mando il link di Notion, per gestire i vostri progetti")]
             public async Task GetProjects()
             {
-                await RespondAsync("https://www.notion.so");
+                Embed NotionEmbed = DiscordData.CreateEmbed("Progetti");
+                NotionEmbed = NotionEmbed.ToEmbedBuilder()
+                    .AddField("Notion", "[Vai al codice](https://www.notion.so)")
+                    .Build();
+                await RespondAsync(embed: NotionEmbed);
             }
         }
 
@@ -32,7 +36,11 @@ namespace DiscordBot.Modules
             [SlashCommand("my-code", "Vi mando il mio codice")]
             public async Task SendMyCode([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                await RespondAsync("https://github.com/GwynbleiddN7/Cortana", ephemeral: Ephemeral == EAnswer.Si);
+                Embed GithubEmbed = DiscordData.CreateEmbed("Github");
+                GithubEmbed = GithubEmbed.ToEmbedBuilder()
+                    .AddField("Cortana", "[Vai al codice](https://github.com/GwynbleiddN7/Cortana)")
+                    .Build();
+                await RespondAsync(embed: GithubEmbed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
             [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
