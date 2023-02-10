@@ -9,10 +9,10 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private static int RelayPin_0 = 25; //PC-OUTLET
-        private static int RelayPin_1 = 8;  //LAMP
-        private static int RelayPin_2 = 7;  //GUITAR
-        private static int RelayPin_3 = 1;  //GENERAL
+        private const int RelayPin_0 = 25; //PC-OUTLET
+        private const int RelayPin_1 = 8;  //LAMP
+        private const int RelayPin_2 = 7;  //GUITAR
+        private const int RelayPin_3 = 1;  //GENERAL
 
         private static int SwitchPin = 4;
         private static int LEDPin = 14;
@@ -188,7 +188,7 @@ namespace Utility
                         var start = DateTime.Now;
                         while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1000);
 
-                        await Task.Delay(4000);
+                        await Task.Delay(10000);
                         SwitchOutlets(EHardwareTrigger.Off);
 
                     });
