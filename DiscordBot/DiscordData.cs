@@ -216,34 +216,34 @@ namespace DiscordBot
         public ulong CortanaChannelID { get; set; }
         public ulong CortanaLogChannelID { get; set; }
     }
-}
 
-public class GuildUsersData
-{
-    public Dictionary<ulong, GuildUserData> UserData { get; set; } = new Dictionary<ulong, GuildUserData>();
-}
+    public class GuildUsersData
+    {
+        public Dictionary<ulong, GuildUserData> UserData { get; set; } = new Dictionary<ulong, GuildUserData>();
+    }
 
-public class GuildUserData
-{
-    public Statistics Stats { get; set; } = new Statistics();
-}
+    public class GuildUserData
+    {
+        public Statistics Stats { get; set; } = new Statistics();
+    }
 
-public class Statistics
-{
-    public ulong TimeConnected { get; set; } = 0;
-    public ulong MessagesSent { get; set; } = 0;
-    public int QuizPlayed { get; set; } = 0;
-    public int QuizWon { get; set; } = 0;
-    public int MemesPlayed { get; set; } = 0;
-    public int MemesAdded { get; set; } = 0;
-    public int SongPlayed { get; set; } = 0;
-    public List<string> Projects { get; set; } = new List<string>();
-    public string Image { get; set; } = "";
-}
+    public class Statistics
+    {
+        public ulong TimeConnected { get; set; } = 0;
+        public ulong MessagesSent { get; set; } = 0;
+        public int QuizPlayed { get; set; } = 0;
+        public int QuizWon { get; set; } = 0;
+        public int MemesPlayed { get; set; } = 0;
+        public int MemesAdded { get; set; } = 0;
+        public int SongPlayed { get; set; } = 0;
+        public List<string> Projects { get; set; } = new List<string>();
+        public string Image { get; set; } = "";
+    }
 
-public class MemeJsonStructure
-{
-    public List<string> Alias { get; set; } = new List<string>();
-    public string Link { get; set; }
-    public EMemeCategory Category { get; set; }
+    public class MemeJsonStructure
+    {
+        public List<string> Alias { get; set; } = new List<string>();
+        public string Link { get; set; }
+        public EMemeCategory Category { get; set; }
+    }
 }

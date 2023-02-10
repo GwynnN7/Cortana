@@ -9,21 +9,33 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private static int LampPin = 4;
-        private static int LEDPin = 27;
-        private static int OutletsPin = 17;
+        private static int RelayPin_0 = 25; //PC-OUTLET
+        private static int RelayPin_1 = 8;  //LAMP
+        private static int RelayPin_2 = 7;  //GUITAR
+        private static int RelayPin_3 = 1;  //GENERAL
 
-        private static EBooleanState OutletsState = GPIOStatus(OutletsPin);
-        private static EBooleanState PCState = GPIOStatus(OutletsPin);
-        private static EBooleanState LEDState = GPIOStatus(LEDPin);
-        private static EBooleanState OLEDState = GPIOStatus(LEDPin);
-        private static EBooleanState LampState = GPIOStatus(LampPin);
+        private static int SwitchPin = 4;
+        private static int LEDPin = 14;
+        private static int PCPlugsPin = RelayPin_0;
+        private static int LampPin = RelayPin_1;
+        private static int GuitarPin = RelayPin_2;
+        private static int GeneralPin = RelayPin_3;
+
+        private static EBooleanState OutletsState = EBooleanState.Off;
+        private static EBooleanState PCState = EBooleanState.Off;
+        private static EBooleanState LEDState = EBooleanState.Off;
+        private static EBooleanState OLEDState = EBooleanState.Off;
+        private static EBooleanState LampState = EBooleanState.Off;
+        private static EBooleanState GuitarState = EBooleanState.Off;
+        private static EBooleanState GeneralState = EBooleanState.Off;
 
         public static NetworkStats NetStats;
 
         public static void Init()
         {
             LoadNetworkData();
+
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -68,17 +80,51 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if (LampState == EBooleanState.Off) UseGPIO(LampPin, PinValue.High);
+                if (LampState == EBooleanState.Off) UseGPIO(LampPin, PinValue.Low); //Pull-Up
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (LampState == EBooleanState.On) UseGPIO(LampPin, PinValue.Low);
+                if (LampState == EBooleanState.On) UseGPIO(LampPin, PinValue.High); //Pull-Up
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
             else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SwitchGuitar(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                if (GuitarState == EBooleanState.Off) UseGPIO(GuitarPin, PinValue.Low); //Pull-Up
+                GuitarState = EBooleanState.On;
+                return "Chitarra accesa";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                if (GuitarState == EBooleanState.On) UseGPIO(GuitarPin, PinValue.High); //Pull-Up
+                GuitarState = EBooleanState.Off;
+                return "Chitarra spenta";
+            }
+            else return SwitchGuitar(GuitarState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SwitchGeneral(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                if (GeneralState == EBooleanState.Off) UseGPIO(GeneralPin, PinValue.Low); //Pull-Up
+                GeneralState = EBooleanState.On;
+                return "Presa generale accesa";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                if (GeneralState == EBooleanState.On) UseGPIO(GeneralPin, PinValue.High); //Pull-Up
+                GeneralState = EBooleanState.Off;
+                return "Presa generale spenta";
+            }
+            else return SwitchGeneral(GeneralState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchPC(EHardwareTrigger state)
@@ -119,6 +165,41 @@ namespace Utility
                 return text;
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SwitchOutlets(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                UseGPIO(PCPlugsPin, PinValue.Low); //Pull-Up
+                OutletsState = EBooleanState.On;
+                PCState = EBooleanState.On;
+                return "Ciabatta accesa";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                if (PCState == EBooleanState.On)
+                {
+                    Task.Run(async () =>
+                    {
+                        SwitchPC(EHardwareTrigger.Off);
+                        await Task.Delay(1000);
+
+                        var start = DateTime.Now;
+                        while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1000);
+
+                        await Task.Delay(4000);
+                        SwitchOutlets(EHardwareTrigger.Off);
+
+                    });
+                    return "PC e ciabatta in spegnimento";
+                }
+                UseGPIO(PCPlugsPin, PinValue.High); //Pull-Up
+                OutletsState = EBooleanState.Off;
+
+                return "Ciabatta spenta";
+            }
+            else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchLED(EHardwareTrigger state)
@@ -170,53 +251,6 @@ namespace Utility
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static string SwitchOutlets(EHardwareTrigger state)
-        {
-            if (state == EHardwareTrigger.On)
-            {
-                UseGPIO(OutletsPin, PinValue.High);
-                OutletsState = EBooleanState.On;
-                PCState = EBooleanState.On;
-                return "Ciabatta accesa";
-            }
-            else if (state == EHardwareTrigger.Off)
-            {
-                if (PCState == EBooleanState.On)
-                {
-                    Task.Run(async () =>
-                    {
-                        SwitchPC(EHardwareTrigger.Off);
-                        await Task.Delay(1000);
-
-                        var start = DateTime.Now;
-                        while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1000);
-
-                        await Task.Delay(4000);
-                        SwitchOutlets(EHardwareTrigger.Off);
-
-                    });
-                    return "PC e ciabatta in spegnimento";
-                }
-                if ((DateTime.Now.Hour > 22 || DateTime.Now.Hour < 3) && OutletsState == EBooleanState.On)
-                {
-                    SwitchLamp(EHardwareTrigger.On);
-                    var action = delegate (object? obj, System.Timers.ElapsedEventArgs args) {
-                        SwitchLamp(EHardwareTrigger.Off);
-                        UseGPIO(OutletsPin, PinValue.Low);
-                        OutletsState = EBooleanState.Off;
-                    };
-                    new UtilityTimer(Name: "light-temp", Hours: 0, Minutes: 1, Seconds: 0, Callback: action, TimerLocation: ETimerLocation.Utility);
-                }
-                else
-                {
-                    UseGPIO(OutletsPin, PinValue.Low);
-                    OutletsState = EBooleanState.Off;
-                }
-                return "Ciabatta spenta";
-            }
-            else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-        }
-
         public static string GetCPUTemperature()
         {
             using CpuTemperature cpuTemperature = new CpuTemperature();
@@ -249,13 +283,6 @@ namespace Utility
             using var controller = new GpioController();
             controller.OpenPin(Pin, PinMode.Output);
             controller.Write(Pin, Value);
-        }
-
-        private static EBooleanState GPIOStatus(int Pin)
-        {
-            using var controller = new GpioController();
-            controller.OpenPin(Pin, PinMode.Input);
-            return controller.Read(Pin) == PinValue.High ? EBooleanState.On : EBooleanState.Off;
         }
     }
 

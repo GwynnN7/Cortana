@@ -20,7 +20,9 @@ public enum EHardwareElements
     OLED,
     PC,
     Lamp,
-    Outlets
+    Outlets,
+    Guitar,
+    General
 }
 
 public enum EBooleanState

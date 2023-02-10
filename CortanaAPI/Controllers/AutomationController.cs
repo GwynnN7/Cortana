@@ -47,6 +47,20 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
+        [HttpGet("guitar")]
+        public Dictionary<string, string> GuitarPower(string state)
+        {
+            string result = Utility.HardwareDriver.SwitchGuitar(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
+        [HttpGet("general")]
+        public Dictionary<string, string> GeneralPower(string state)
+        {
+            string result = Utility.HardwareDriver.SwitchGeneral(Utility.Functions.TriggerStateFromString(state));
+            return new Dictionary<string, string>() { { "data", result } };
+        }
+
         [HttpGet("all")]
         public Dictionary<string, string> EverythingPower(string state)
         {

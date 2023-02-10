@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
-using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.InputFiles;
@@ -27,7 +26,7 @@ namespace TelegramBot
             AnswerCommands = new();
             HardwareAction = new();
 
-            TelegramData.SendToUser(TelegramData.ChiefID, "I'm Ready Chief!");
+            TelegramData.SendToUser(TelegramData.Data.ChiefID, "I'm Ready Chief!");
         }
 
         private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)
@@ -58,11 +57,19 @@ namespace TelegramBot
             {
                 if (HardwareAction[message_id] == "")
                 {
-                    HardwareAction[message_id] = data;
+                    if(data == "lamp-toggle")
+                    {
+                        Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                    }
+                    else
+                    {
+                        HardwareAction[message_id] = data;
 
-                    InlineKeyboardMarkup Action = data != "multi" ? CreateOnOffButtons() : CreateMultiButtons();
-                    await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
+                        InlineKeyboardMarkup Action = CreateOnOffButtons();
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
+                    }
                 }
                 else
                 {
@@ -74,31 +81,27 @@ namespace TelegramBot
                         return;
                     }
 
-                    string result = "";
-                    if(HardwareAction[message_id] == "multi")
+                    EHardwareTrigger trigger = data switch
                     {
-                        //Not yet implemented
-                    }
-                    else
+                        "on" => EHardwareTrigger.On,
+                        "off" => EHardwareTrigger.Off,
+                        "toggle" => EHardwareTrigger.Toggle,
+                        _ => EHardwareTrigger.Off
+                    };
+
+                    string result = HardwareAction[message_id] switch
                     {
-                        EHardwareTrigger trigger = data switch
-                        {
-                            "on" => EHardwareTrigger.On,
-                            "off" => EHardwareTrigger.Off,
-                            "toggle" => EHardwareTrigger.Toggle,
-                            _ => EHardwareTrigger.Off
-                        };
-                        result = HardwareAction[message_id] switch
-                        {
-                            "lamp" => Utility.HardwareDriver.SwitchLamp(trigger),
-                            "pc" => Utility.HardwareDriver.SwitchPC(trigger),
-                            "outlets" => Utility.HardwareDriver.SwitchOutlets(trigger),
-                            "oled" => Utility.HardwareDriver.SwitchOLED(trigger),
-                            "led" => Utility.HardwareDriver.SwitchLED(trigger),
-                            "room" => Utility.HardwareDriver.SwitchRoom(trigger),
-                            _ => ""
-                        };
-                    }
+                        "lamp" => Utility.HardwareDriver.SwitchLamp(trigger),
+                        "pc" => Utility.HardwareDriver.SwitchPC(trigger),
+                        "outlets" => Utility.HardwareDriver.SwitchOutlets(trigger),
+                        "guitar" => Utility.HardwareDriver.SwitchGuitar(trigger),
+                        "general" => Utility.HardwareDriver.SwitchGeneral(trigger),
+                        "oled" => Utility.HardwareDriver.SwitchOLED(trigger),
+                        "led" => Utility.HardwareDriver.SwitchLED(trigger),
+                        "room" => Utility.HardwareDriver.SwitchRoom(trigger),
+                        _ => ""
+                    };
+                    
 
                     HardwareAction[message_id] = "";
                     try
@@ -108,7 +111,9 @@ namespace TelegramBot
                     }
                     catch 
                     {
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                         var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                        HardwareAction.Remove(message_id);
                         HardwareAction.Add(mex.MessageId, "");
                     }
                 }
@@ -167,32 +172,28 @@ namespace TelegramBot
 
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
-            Dictionary<string, string> HardwareElements = new Dictionary<string, string>()
-            {
-                { "Lamp", "lamp" },
-                { "PC", "pc" },
-                { "Multi", "multi" },
-                { "Plugs", "outlets" },
-                { "OLED", "oled" },
-                { "LED", "led" },
-                { "Room", "room" }
-            };
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[9][];
 
+            Rows[0] = new InlineKeyboardButton[1];
+            Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp-toggle");
 
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[4][];
-            int elementIndex = 0;
-            for (int i = 0; i < 4; i ++)
-            {
-                int len = i == 3 ? 1 : 2;
-                var currentLine = new InlineKeyboardButton[len];
+            Rows[1] = new InlineKeyboardButton[1];
+            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
 
-                for (int j = 0; j < len; j++)
-                {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(HardwareElements.Keys.ToArray()[elementIndex], HardwareElements.Values.ToArray()[elementIndex]);
-                    elementIndex++;
-                }
-                Rows[i] = currentLine;
-            }
+            Rows[2] = new InlineKeyboardButton[2];
+            Rows[2][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
+            Rows[2][1] = InlineKeyboardButton.WithCallbackData("Lamp", "lamp");
+
+            Rows[3] = new InlineKeyboardButton[2];
+            Rows[3][0] = InlineKeyboardButton.WithCallbackData("Guitar", "guitar");
+            Rows[3][1] = InlineKeyboardButton.WithCallbackData("General", "general");
+
+            Rows[4] = new InlineKeyboardButton[2];
+            Rows[4][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
+            Rows[4][1] = InlineKeyboardButton.WithCallbackData("LED", "led");
+
+            Rows[5] = new InlineKeyboardButton[1];
+            Rows[5][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
             return hardwareKeyboard;
@@ -200,61 +201,20 @@ namespace TelegramBot
 
         private InlineKeyboardMarkup CreateOnOffButtons()
         {
-            Dictionary<string, string> OnOffElements = new Dictionary<string, string>()
-            {
-                { "On", "on" },
-                { "Off", "off" },
-                { "Toggle", "toggle" },
-                { "<<", "back" }
-            };
-
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[3][];
-            int elementIndex = 0;
-            for (int i = 0; i < 3; i ++)
-            {
-                int len = i == 0 ? 2 : 1;
-                var currentLine = new InlineKeyboardButton[len];
 
-                for (int j = 0; j < len; j++)
-                {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(OnOffElements.Keys.ToArray()[elementIndex], OnOffElements.Values.ToArray()[elementIndex]);
-                    elementIndex++;
-                }
-                Rows[i] = currentLine;
-            }
+            Rows[0] = new InlineKeyboardButton[2];
+            Rows[0][0] = InlineKeyboardButton.WithCallbackData("On", "on");
+            Rows[0][1] = InlineKeyboardButton.WithCallbackData("Off", "off");
 
+            Rows[1] = new InlineKeyboardButton[1];
+            Rows[1][0] = InlineKeyboardButton.WithCallbackData("Toggle", "toggle");
+
+            Rows[2] = new InlineKeyboardButton[1];
+            Rows[2][0] = InlineKeyboardButton.WithCallbackData("<<", "back");
+           
             InlineKeyboardMarkup OnOffKeyboard = new InlineKeyboardMarkup(Rows);
             return OnOffKeyboard;
-        }
-
-        private InlineKeyboardMarkup CreateMultiButtons()
-        {
-            Dictionary<string, string> MultiElements = new Dictionary<string, string>()
-            {
-                { "0", "0" },
-                { "1", "1" },
-                { "2", "2" },
-                { "3", "3" },
-                { "<<", "back" }
-            };
-
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[2][];
-            int elementIndex = 0;
-            for (int i = 0; i < 2; i ++)
-            {
-                int len = i == 0 ? 4 : 1;
-                var currentLine = new InlineKeyboardButton[len];
-
-                for (int j = 0; j < len; j++)
-                {
-                    currentLine[j] = InlineKeyboardButton.WithCallbackData(MultiElements.Keys.ToArray()[elementIndex], MultiElements.Values.ToArray()[elementIndex]);
-                    elementIndex++;
-                }
-                Rows[i] = currentLine;
-            }
-
-            InlineKeyboardMarkup MultiKeyboard = new InlineKeyboardMarkup(Rows);
-            return MultiKeyboard;
         }
 
         private Task ErrorHandler(ITelegramBotClient Cortana, Exception exception, CancellationToken cancellationToken)
