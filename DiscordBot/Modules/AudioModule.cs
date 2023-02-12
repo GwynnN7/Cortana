@@ -87,7 +87,7 @@ namespace DiscordBot.Modules
 
             foreach (var video in StreamInfo)
             {
-
+                Console.WriteLine(video.VideoQuality.Label);
                 if (video.VideoQuality.Label == "720p60")
                 {
                     var Stream = await youtube.Videos.Streams.GetAsync(video);
