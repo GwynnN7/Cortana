@@ -222,7 +222,7 @@ namespace TelegramBot
             Rows[1] = new InlineKeyboardButton[1];
             Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
 
-            Rows[2] = new InlineKeyboardButton[2];
+            Rows[2] = new InlineKeyboardButton[1];
             Rows[2][0] = InlineKeyboardButton.WithCallbackData("General", "general");
 
             Rows[3] = new InlineKeyboardButton[2];
