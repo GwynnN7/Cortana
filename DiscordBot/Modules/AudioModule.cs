@@ -83,9 +83,16 @@ namespace DiscordBot.Modules
         {
             YoutubeClient youtube = new YoutubeClient();
             var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
-            var StreamInfo = StreamManifest.GetMuxedStreams().GetWithHighestVideoQuality();
-            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
-            return Stream;
+            var StreamInfo = StreamManifest.GetMuxedStreams();
+            foreach(var video in StreamInfo)
+            {
+                if(video.Size.Bytes < 8388608)
+                {
+                    var Stream = await youtube.Videos.Streams.GetAsync(video);
+                    return Stream;
+                }
+            }
+            return Stream.Null;
         }
 
         public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url)
