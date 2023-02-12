@@ -165,9 +165,12 @@ namespace TelegramBot
                                 },
                                 new KeyboardButton[]
                                 {
+                                    new KeyboardButton("🔌"),
+                                },
+                                new KeyboardButton[]
+                                {
                                     new KeyboardButton("🔌🔌🔌🔌"),
                                     new KeyboardButton("🎸"),
-                                    new KeyboardButton("🔌")
                                 },
                                   new KeyboardButton[]
                                 {
@@ -176,8 +179,8 @@ namespace TelegramBot
                                 },
                                    new KeyboardButton[]
                                 {
-                                    new KeyboardButton("✅"),
-                                    new KeyboardButton("🛑"),
+                                    new KeyboardButton("🟩"),
+                                    new KeyboardButton("🟥"),
                                 }
                                  };
                             var rkm = new ReplyKeyboardMarkup(x);
@@ -192,6 +195,15 @@ namespace TelegramBot
                 }
                 else
                 {
+                    switch(update.Message.Text)
+                    {
+                        case "💡":
+                            Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                            await Cortana.DeleteMessageAsync(update.Message.Chat.Id, update.Message.MessageId);
+                            break;
+                        default:
+                            break;
+                    }
                     if(!AnswerCommands.ContainsKey(ChatID)) return;
                     switch(AnswerCommands[ChatID])
                     {
