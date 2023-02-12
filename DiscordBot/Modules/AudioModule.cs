@@ -84,9 +84,17 @@ namespace DiscordBot.Modules
             YoutubeClient youtube = new YoutubeClient();
             var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
             var StreamInfo = StreamManifest.GetMuxedStreams();
-            foreach(var video in StreamInfo)
+            
+            var NewList = StreamInfo.ToList();
+            NewList.Sort(delegate (MuxedStreamInfo a, MuxedStreamInfo b)
             {
-                if(video.Size.Bytes < 8388608)
+                if (a.Size.Bytes >= b.Size.Bytes) return -1;
+                else return 1;
+            });
+
+            foreach (var video in NewList)
+            {
+                if (video.Size.Bytes < 8388608)
                 {
                     var Stream = await youtube.Videos.Streams.GetAsync(video);
                     return Stream;
