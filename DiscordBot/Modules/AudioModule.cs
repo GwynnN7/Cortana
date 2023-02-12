@@ -79,6 +79,15 @@ namespace DiscordBot.Modules
             return Stream;
         }
 
+        public static async Task<Stream> GetYoutubeVideoStream(string url)
+        {
+            YoutubeClient youtube = new YoutubeClient();
+            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
+            var StreamInfo = StreamManifest.GetMuxedStreams().GetWithHighestBitrate();
+            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
+            return Stream;
+        }
+
         public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url)
         {
             var youtube = new YoutubeClient();
@@ -481,6 +490,26 @@ namespace DiscordBot.Modules
             await RespondAsync(embed: temp_embed.Build(), ephemeral: Ephemeral == EAnswer.Si);
         }
 
+        [SlashCommand("scarica-musica", "Scarica una canzone da youtube", runMode: RunMode.Async)]
+        public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        {
+            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
+            var result = await AudioHandler.GetYoutubeVideoInfos(text);
+            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+            Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
+            embed = embed.ToEmbedBuilder()
+            .WithUrl(result.Url)
+            .WithThumbnailUrl(result.Thumbnails.Last().Url)
+            .Build();
+
+            await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+
+            var Stream = await AudioHandler.GetYoutubeAudioStream(result.Url);
+            await Context.Channel.SendFileAsync(Stream, result.Title + ".mp3");
+        }
+
+
         [SlashCommand("scarica-video", "Scarica un video da youtube", runMode: RunMode.Async)]
         public async Task DownloadVideo([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
         {
@@ -494,24 +523,10 @@ namespace DiscordBot.Modules
             .WithThumbnailUrl(result.Thumbnails.Last().Url)
             .Build();
 
-            var Stream = await AudioHandler.GetYoutubeAudioStream(result.Url);
-            await FollowupWithFileAsync(Stream, result.Title + ".mp3", ephemeral: Ephemeral == EAnswer.Si);
-        }
-
-        [SlashCommand("cerca-video", "Cerca un video su youtube", runMode: RunMode.Async)]
-        public async Task SearchVideo([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
-        {
-            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
-
-            var result = await AudioHandler.GetYoutubeVideoInfos(text);
-            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-            Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
-            embed = embed.ToEmbedBuilder()
-            .WithUrl(result.Url)
-            .WithThumbnailUrl(result.Thumbnails.Last().Url)
-            .Build();
-
             await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+
+            var Stream = await AudioHandler.GetYoutubeVideoStream(result.Url);
+            await Context.Channel.SendFileAsync(Stream, result.Title + ".mp4");
         }
 
         [SlashCommand("metti-file", "Metti un file mp3 in locale", runMode: RunMode.Async)]
