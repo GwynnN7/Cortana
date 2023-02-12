@@ -83,7 +83,7 @@ namespace DiscordBot.Modules
         {
             YoutubeClient youtube = new YoutubeClient();
             var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
-            var StreamInfo = StreamManifest.GetMuxedStreams().GetWithHighestBitrate();
+            var StreamInfo = StreamManifest.GetMuxedStreams().GetWithHighestVideoQuality();
             var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
             return Stream;
         }
@@ -499,6 +499,7 @@ namespace DiscordBot.Modules
             TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
             Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
+            .WithDescription("Musica in download...")
             .WithUrl(result.Url)
             .WithThumbnailUrl(result.Thumbnails.Last().Url)
             .Build();
@@ -519,6 +520,7 @@ namespace DiscordBot.Modules
             TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
             Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
+             .WithDescription("Video in download...")
             .WithUrl(result.Url)
             .WithThumbnailUrl(result.Thumbnails.Last().Url)
             .Build();
