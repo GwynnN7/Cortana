@@ -23,7 +23,7 @@ namespace DiscordBot.Modules
             {
                 Embed NotionEmbed = DiscordData.CreateEmbed("Progetti");
                 NotionEmbed = NotionEmbed.ToEmbedBuilder()
-                    .AddField("Notion", "[Vai al codice](https://www.notion.so)")
+                    .AddField("Notion", "[Vai a Notion](https://www.notion.so)")
                     .Build();
                 await RespondAsync(embed: NotionEmbed);
             }
