@@ -142,24 +142,6 @@ namespace TelegramBot
                             var ip = await Utility.Functions.GetPublicIP();
                             await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
                             break;
-                        case "test":
-
-                            var x =
-                                 new KeyboardButton[][]
-                                                 {
-                                new KeyboardButton[]
-                                {
-                                    new KeyboardButton("item"),
-                                    new KeyboardButton("item")
-                                },
-                                  new KeyboardButton[]
-                                {
-                                    new KeyboardButton("item")
-                                }
-                                 };
-                            var rkm = new ReplyKeyboardMarkup(x);
-                            await Cortana.SendTextMessageAsync(ChatID, "Text", replyMarkup: rkm);
-                            break;
                         case "temperatura":
                             var temp = Utility.HardwareDriver.GetCPUTemperature();
                             await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
@@ -167,6 +149,39 @@ namespace TelegramBot
                         case "hardware":
                             var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard",replyMarkup: CreateHardwareButtons());
                             HardwareAction.Add(mex.MessageId, "");
+                            break;
+                        case "hardware-toggle":
+
+                            var x =
+                                 new KeyboardButton[][]
+                                                 {
+                                new KeyboardButton[]
+                                {
+                                    new KeyboardButton("💡"),
+                                },
+                                new KeyboardButton[]
+                                {
+                                    new KeyboardButton("🖥"),
+                                },
+                                new KeyboardButton[]
+                                {
+                                    new KeyboardButton("🔌🔌🔌🔌"),
+                                    new KeyboardButton("🎸"),
+                                    new KeyboardButton("🔌")
+                                },
+                                  new KeyboardButton[]
+                                {
+                                    new KeyboardButton("🔵"),
+                                    new KeyboardButton("📺")
+                                },
+                                   new KeyboardButton[]
+                                {
+                                    new KeyboardButton("✅"),
+                                    new KeyboardButton("🛑"),
+                                }
+                                 };
+                            var rkm = new ReplyKeyboardMarkup(x);
+                            await Cortana.SendTextMessageAsync(ChatID, "Text", replyMarkup: rkm);
                             break;
                         case "qrcode":
                             if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
