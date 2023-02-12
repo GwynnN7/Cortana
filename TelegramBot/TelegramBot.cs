@@ -57,24 +57,11 @@ namespace TelegramBot
             {
                 if (HardwareAction[message_id] == "")
                 {
-                    if(data == "lamp-toggle")
-                    {
-                        Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                    }
-                    else if(data == "pc-toggle")
-                    {
-                        Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                    }
-                    else
-                    {
-                        HardwareAction[message_id] = data;
+                    HardwareAction[message_id] = data;
 
-                        InlineKeyboardMarkup Action = CreateOnOffButtons();
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
-                    }
+                    InlineKeyboardMarkup Action = CreateOnOffButtons();
+                    await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
                 }
                 else
                 {
@@ -150,42 +137,8 @@ namespace TelegramBot
                             var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard",replyMarkup: CreateHardwareButtons());
                             HardwareAction.Add(mex.MessageId, "");
                             break;
-                        case "hardware-toggle":
-
-                            var x =
-                                 new KeyboardButton[][]
-                                                 {
-                                new KeyboardButton[]
-                                {
-                                    new KeyboardButton("💡"),
-                                },
-                                new KeyboardButton[]
-                                {
-                                    new KeyboardButton("🖥"),
-                                },
-                                new KeyboardButton[]
-                                {
-                                    new KeyboardButton("🔌"),
-                                },
-                                new KeyboardButton[]
-                                {
-                                    new KeyboardButton("🔌🔌🔌🔌"),
-                                    new KeyboardButton("🎸"),
-                                },
-                                  new KeyboardButton[]
-                                {
-                                    new KeyboardButton("🔵"),
-                                    new KeyboardButton("📺")
-                                },
-                                   new KeyboardButton[]
-                                {
-                                    new KeyboardButton("🟩"),
-                                    new KeyboardButton("🟥"),
-                                }
-                                 };
-                            var rkm = new ReplyKeyboardMarkup(x);
-                            rkm.ResizeKeyboard = true;
-                            await Cortana.SendTextMessageAsync(ChatID, "Text", replyMarkup: rkm);
+                        case "keyboard":
+                            await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
                             break;
                         case "qrcode":
                             if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
@@ -196,49 +149,85 @@ namespace TelegramBot
                 }
                 else
                 {
-                    switch(update.Message.Text)
+                    if (!AnswerCommands.ContainsKey(ChatID))
                     {
-                        case "💡":
-                            Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-                            await Cortana.DeleteMessageAsync(update.Message.Chat.Id, update.Message.MessageId);
-                            break;
-                        default:
-                            break;
+                        switch (update.Message.Text)
+                        {
+                            case "💡":
+                                Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "🖥":
+                                Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "⚡":
+                                Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "🎸":
+                                Utility.HardwareDriver.SwitchGuitar(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "🔌":
+                                Utility.HardwareDriver.SwitchGeneral(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "\U0001f7e9":
+                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "\U0001f7e5":
+                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "🔵":
+                                Utility.HardwareDriver.SwitchLED(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case "📺":
+                                Utility.HardwareDriver.SwitchOLED(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            default:
+                                break;
+                        }
                     }
-                    if(!AnswerCommands.ContainsKey(ChatID)) return;
-                    switch(AnswerCommands[ChatID])
+                    else
                     {
-                        case EAnswerCommands.QRCODE:
-                            var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
-                            ImageStream.Position = 0;
-                            await Cortana.SendPhotoAsync(ChatID, new InputOnlineFile(ImageStream, "QRCODE.png"));
-                            AnswerCommands.Remove(ChatID);
-                            break;
-                        default:
-                            break;
+                        switch (AnswerCommands[ChatID])
+                        {
+                            case EAnswerCommands.QRCODE:
+                                var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
+                                ImageStream.Position = 0;
+                                await Cortana.SendPhotoAsync(ChatID, new InputOnlineFile(ImageStream, "QRCODE.png"));
+                                AnswerCommands.Remove(ChatID);
+                                break;
+                            default:
+                                break;
+                        }
                     }
                 }
             }
         }
 
   
-            private InlineKeyboardMarkup CreateHardwareButtons()
+        private InlineKeyboardMarkup CreateHardwareButtons()
         {
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[6][];
 
             Rows[0] = new InlineKeyboardButton[1];
-            Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp-toggle");
+            Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp");
          
             Rows[1] = new InlineKeyboardButton[1];
-            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc-toggle");
+            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
 
             Rows[2] = new InlineKeyboardButton[2];
-            Rows[2][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
-            Rows[2][1] = InlineKeyboardButton.WithCallbackData("Lamp", "lamp");
+            Rows[2][0] = InlineKeyboardButton.WithCallbackData("General", "general");
 
             Rows[3] = new InlineKeyboardButton[2];
-            Rows[3][0] = InlineKeyboardButton.WithCallbackData("Guitar", "guitar");
-            Rows[3][1] = InlineKeyboardButton.WithCallbackData("General", "general");
+            Rows[3][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
+            Rows[3][1] = InlineKeyboardButton.WithCallbackData("Guitar", "guitar");
 
             Rows[4] = new InlineKeyboardButton[2];
             Rows[4][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
@@ -267,6 +256,37 @@ namespace TelegramBot
            
             InlineKeyboardMarkup OnOffKeyboard = new InlineKeyboardMarkup(Rows);
             return OnOffKeyboard;
+        }
+
+        private ReplyKeyboardMarkup CreateHardwareToggles()
+        {
+            var Keyboard =
+                    new KeyboardButton[][]
+                    {
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("💡"),
+                            new KeyboardButton("🖥"),
+                        },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("⚡"),
+                            new KeyboardButton("🎸"),
+                            new KeyboardButton("🔌"),
+                            
+                        },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("🟩"),
+                            new KeyboardButton("🟥"),
+                        },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("🔵"),
+                            new KeyboardButton("📺")
+                        },
+                    };
+            return new ReplyKeyboardMarkup(Keyboard);
         }
 
         private Task ErrorHandler(ITelegramBotClient Cortana, Exception exception, CancellationToken cancellationToken)
