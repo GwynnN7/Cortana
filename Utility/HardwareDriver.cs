@@ -35,7 +35,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -58,7 +58,7 @@ namespace Utility
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
             else Functions.RequestPC("notify/night");
 
-            if (DateTime.Now.Hour < 4) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
+            if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
         public static string SwitchRoom(EHardwareTrigger state)
