@@ -117,7 +117,7 @@ namespace TelegramBot
                     catch 
                     {
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboardaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", replyMarkup: CreateHardwareButtons());
+                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                         HardwareAction.Remove(message_id);
                         HardwareAction.Add(mex.MessageId, "");
                     }
@@ -142,12 +142,30 @@ namespace TelegramBot
                             var ip = await Utility.Functions.GetPublicIP();
                             await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
                             break;
+                        case "test":
+
+                            var x =
+                                 new KeyboardButton[][]
+                                                 {
+                                new KeyboardButton[]
+                                {
+                                    new KeyboardButton("item"),
+                                    new KeyboardButton("item")
+                                },
+                                  new KeyboardButton[]
+                                {
+                                    new KeyboardButton("item")
+                                }
+                                 };
+                            var rkm = new ReplyKeyboardMarkup(x);
+                            await Cortana.SendTextMessageAsync(ChatID, "Text", replyMarkup: rkm);
+                            break;
                         case "temperatura":
                             var temp = Utility.HardwareDriver.GetCPUTemperature();
                             await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
                             break;
                         case "hardware":
-                            var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                            var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard",replyMarkup: CreateHardwareButtons());
                             HardwareAction.Add(mex.MessageId, "");
                             break;
                         case "qrcode":
@@ -175,7 +193,8 @@ namespace TelegramBot
             }
         }
 
-        private InlineKeyboardMarkup CreateHardwareButtons()
+  
+            private InlineKeyboardMarkup CreateHardwareButtons()
         {
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[6][];
 
