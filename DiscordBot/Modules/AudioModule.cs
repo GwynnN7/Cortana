@@ -88,8 +88,8 @@ namespace DiscordBot.Modules
             var NewList = StreamInfo.ToList();
             NewList.Sort(delegate (MuxedStreamInfo a, MuxedStreamInfo b)
             {
-                if (a.Size.Bytes >= b.Size.Bytes) return -1;
-                else return 1;
+                if (a.Size.Bytes >= b.Size.Bytes) return 1;
+                else return -1;
             });
 
             foreach (var video in NewList)
