@@ -62,6 +62,11 @@ namespace TelegramBot
                         Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                     }
+                    else if(data == "pc-toggle")
+                    {
+                        Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
+                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                    }
                     else
                     {
                         HardwareAction[message_id] = data;
@@ -112,7 +117,7 @@ namespace TelegramBot
                     catch 
                     {
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboardaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", replyMarkup: CreateHardwareButtons());
                         HardwareAction.Remove(message_id);
                         HardwareAction.Add(mex.MessageId, "");
                     }
@@ -176,9 +181,9 @@ namespace TelegramBot
 
             Rows[0] = new InlineKeyboardButton[1];
             Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp-toggle");
-
+         
             Rows[1] = new InlineKeyboardButton[1];
-            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
+            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc-toggle");
 
             Rows[2] = new InlineKeyboardButton[2];
             Rows[2][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
