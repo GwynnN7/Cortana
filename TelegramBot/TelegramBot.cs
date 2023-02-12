@@ -184,6 +184,7 @@ namespace TelegramBot
                                 }
                                  };
                             var rkm = new ReplyKeyboardMarkup(x);
+                            rkm.ResizeKeyboard = true;
                             await Cortana.SendTextMessageAsync(ChatID, "Text", replyMarkup: rkm);
                             break;
                         case "qrcode":
