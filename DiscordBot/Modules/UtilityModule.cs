@@ -410,12 +410,9 @@ namespace DiscordBot.Modules
                     Console.WriteLine("1");
                     var x = foundGame.GameEngines;
                     Console.WriteLine("2");
-                    var y = foundGame.GameEngines.Values;
-                    Console.WriteLine("3");
-                    var z = foundGame.GameEngines.Values.First();
-                    Console.WriteLine("4");
-                    var h = foundGame.GameEngines.Values.First().Name;
-                    
+                    var y = foundGame.GameEngines == null;
+                    Console.WriteLine(y);
+
                     Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
