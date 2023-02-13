@@ -409,7 +409,7 @@ namespace DiscordBot.Modules
                 foreach (var foundGame in games)
                 {
                     var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
-                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
+                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                         .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
