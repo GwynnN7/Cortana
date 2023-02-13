@@ -17,6 +17,8 @@ namespace DiscordBot
         public static Dictionary<ulong, GuildSettings> GuildSettings = new Dictionary<ulong, GuildSettings>();
         public static Dictionary<ulong, GuildUsersData> UserGuildData = new Dictionary<ulong, GuildUsersData>();
 
+        public static IGDBData IGDB;
+
         public static Dictionary<string, MemeJsonStructure> Memes = new Dictionary<string, MemeJsonStructure>();
 
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
@@ -96,6 +98,18 @@ namespace DiscordBot
                 memesDataResult = JsonConvert.DeserializeObject<Dictionary<string, MemeJsonStructure>>(file);
             }
             if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
+        }
+
+        static public void LoadIGDB()
+        {
+            IGDBData? IGDBResult = null;
+            if (File.Exists("Data/Global/IGDB.json"))
+            {
+                var file = File.ReadAllText("Data/Global/IGDB.json");
+
+                IGDBResult = JsonConvert.DeserializeObject<IGDBData>(file);
+            }
+            if (IGDBResult != null) IGDB = IGDBResult;
         }
 
         static public void AddGuildSettings(SocketGuild Guild)
@@ -225,6 +239,12 @@ namespace DiscordBot
     public class GuildUserData
     {
         public Statistics Stats { get; set; } = new Statistics();
+    }
+
+    public class IGDBData
+    {
+        public string ClientID { get; set; }
+        public string ClientSecret { get; set; }
     }
 
     public class Statistics

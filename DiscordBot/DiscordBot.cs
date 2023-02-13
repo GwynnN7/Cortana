@@ -39,6 +39,7 @@ namespace DiscordBot
                 DiscordData.InitSettings(client.Guilds);
                 DiscordData.LoadData(client.Guilds);
                 DiscordData.LoadMemes();
+                DiscordData.LoadIGDB();
                 DiscordData.Cortana = Cortana;
 
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID, true);

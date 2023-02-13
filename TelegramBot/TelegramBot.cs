@@ -26,7 +26,7 @@ namespace TelegramBot
             AnswerCommands = new();
             HardwareAction = new();
 
-            TelegramData.SendToUser(TelegramData.Data.ChiefID, "I'm Ready Chief!");
+            TelegramData.SendToUser(TelegramData.Data.ChiefID, "I'm Ready Chief!", false);
         }
 
         private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)

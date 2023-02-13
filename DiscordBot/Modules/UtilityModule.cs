@@ -402,10 +402,11 @@ namespace DiscordBot.Modules
             [SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
             public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                await RespondAsync("AAAAAAAAAAAAAAAA");
-                var igdb = new IGDBClient("736igv8svzbet95taada229tyjak5s", "87bifi0v86jxfig2jm3to9m5y9lvza");
+                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
+                var igdb = new IGDBClient(DiscordData.IGDB.ClientID, DiscordData.IGDB.ClientSecret);
                 string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
-                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count * 10};";
+                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count + 5};";
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 var sortedGames = games.ToList();
                 sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
@@ -420,6 +421,13 @@ namespace DiscordBot.Modules
                     if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
                     else return 1;
                 });
+
+                if(sortedGames.Count() == 0)
+                {
+                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
+
                 foreach (var foundGame in sortedGames)
                 {
                     var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
