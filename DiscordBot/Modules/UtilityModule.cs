@@ -1,6 +1,9 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using IGDB;
+using IGDB.Models;
+using System.Linq.Expressions;
 
 namespace DiscordBot.Modules
 {
@@ -84,7 +87,7 @@ namespace DiscordBot.Modules
                 await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
             }
 
-            
+
             [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
             public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
@@ -333,23 +336,24 @@ namespace DiscordBot.Modules
                 embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
                 embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
 
-               Dictionary<string, ulong> ids = new Dictionary<string, ulong>()
+                Dictionary<string, ulong> ids = new Dictionary<string, ulong>()
                 {
                     { "matteo", 468399905023721481 },
                     { "samuele", 648939655579828226 },
                     { "danu", 306402234135085067 }
                 };
 
-                if (Context.User.Id == ids["matteo"]) {
+                if (Context.User.Id == ids["matteo"])
+                {
                     embed_builder.AddField("Matricola", "658274");
                     embed_builder.AddField("Email", "m.cherubini6@studenti.unipi.it");
                 }
-                else if(Context.User.Id == ids["samuele"])
+                else if (Context.User.Id == ids["samuele"])
                 {
                     embed_builder.AddField("Matricola", "658988");
                     embed_builder.AddField("Email", "s.baffo@studenti.unipi.it");
                 }
-                else if(Context.User.Id == ids["danu"])
+                else if (Context.User.Id == ids["danu"])
                 {
                     embed_builder.AddField("Matricola", "658992");
                     embed_builder.AddField("Email", "v.nitu@studenti.unipi.it");
@@ -388,6 +392,38 @@ namespace DiscordBot.Modules
                 embed_builder.WithFooter("Corso A");
 
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
+            }
+        }
+
+        [Group("games", "videogames")]
+        public class VideogamesGroup : InteractionModuleBase<SocketInteractionContext>
+        {
+            [SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
+            public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                var igdb = new IGDBClient("736igv8svzbet95taada229tyjak5s", "87bifi0v86jxfig2jm3to9m5y9lvza");
+
+                string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, release_dates.human, summary, themes.name, url";
+                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count};";
+                var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
+                foreach(var foundGame in games)
+                {
+                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
+                    GameEmbed = GameEmbed.ToEmbedBuilder()
+                        .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
+                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
+                        .AddField("Game Engine", foundGame.GameEngines.Values.First().Name, inline: true)
+                        .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)), inline: true)
+                        .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)), inline: true)
+                        .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)), inline: true)
+                        .AddField("Rating", foundGame.Rating.ToString() ?? "Unknown", inline: true)
+                        .AddField("Release Date", foundGame.ReleaseDates.Values.First().Human, inline: true)
+                        .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)), inline: true)
+                        .WithFooter(foundGame.Summary.Take(350).ToString() + "...")
+                        .Build();
+                    await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
+
+                }
             }
         }
     }
