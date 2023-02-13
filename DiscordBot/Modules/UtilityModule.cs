@@ -411,13 +411,13 @@ namespace DiscordBot.Modules
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                         .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
-                        .AddField("Game Engine", foundGame.GameEngines.Values.First().Name, inline: true)/*
+                        //.AddField("Game Engine", foundGame.GameEngines.Values.First().Name, inline: true)
                         .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)), inline: true)
                         .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)), inline: true)
                         .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)), inline: true)
-                        .AddField("Rating", foundGame.Rating.ToString() ?? "Unknown", inline: true)
+                        //.AddField("Rating", foundGame.Rating.ToString() ?? "Unknown", inline: true)
                         .AddField("Release Date", foundGame.ReleaseDates.Values.First().Human, inline: true)
-                        .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)), inline: true)*/
+                        .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)), inline: true)
                         .WithFooter(foundGame.Summary.Take(350).ToString() + "...")
                         .Build();
                     await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
