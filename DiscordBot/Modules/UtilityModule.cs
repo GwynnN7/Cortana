@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using IGDB;
 using IGDB.Models;
 using System.Linq.Expressions;
+using System.Xml.Linq;
 
 namespace DiscordBot.Modules
 {
@@ -403,13 +404,21 @@ namespace DiscordBot.Modules
             {
                 await RespondAsync("AAAAAAAAAAAAAAAA");
                 var igdb = new IGDBClient("736igv8svzbet95taada229tyjak5s", "87bifi0v86jxfig2jm3to9m5y9lvza");
-                string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, release_dates.human, summary, themes.name, url";
+                string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
                 string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count * 10};";
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 var sortedGames = games.ToList();
                 sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
-                    if (a.Name.Length < b.Name.Length) return -1;
-                    return 0;
+                    if((a.TotalRatingCount == null || a.TotalRatingCount == 0) && (b.TotalRatingCount == null || b.TotalRatingCount == 0))
+                    {
+                        if (Math.Abs(a.Name.Length - game.Length) <= Math.Abs(b.Name.Length - game.Length)) return -1;
+                        else return 1;
+                    }
+                    if(a.TotalRatingCount == null || a.TotalRatingCount == 0) return 1;
+                    if(b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
+                    
+                    if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
+                    else return -1;
                 });
                 foreach (var foundGame in sortedGames)
                 {
