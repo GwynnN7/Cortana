@@ -411,6 +411,9 @@ namespace DiscordBot.Modules
                 Console.WriteLine("4");
                 foreach (var foundGame in games)
                 {
+                    Console.WriteLine("5");
+                    if (foundGame == null) continue;
+                    Console.WriteLine("6");
                     Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
@@ -424,6 +427,7 @@ namespace DiscordBot.Modules
                         .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)), inline: true)
                         .WithFooter(foundGame.Summary.Take(350).ToString() + "...")
                         .Build();
+                    Console.WriteLine("7");
                     await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
 
                 }
