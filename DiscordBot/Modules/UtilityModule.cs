@@ -419,7 +419,7 @@ namespace DiscordBot.Modules
                         .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
                         .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
                         .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .WithFooter(foundGame.Summary.Substring(0, 350) + "...")
+                        .WithFooter(foundGame.Summary != null ? foundGame.Summary.Substring(0, 350) + "..." : "No summary available")
                         .Build();
                     await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
                 }
