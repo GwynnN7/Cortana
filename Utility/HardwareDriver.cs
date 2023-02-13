@@ -80,13 +80,13 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if (LampState == EBooleanState.Off) UseGPIO(LampPin, PinValue.Low); //Pull-Up
+                UseGPIO(LampPin, PinValue.Low); //Pull-Up
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (LampState == EBooleanState.On) UseGPIO(LampPin, PinValue.High); //Pull-Up
+                UseGPIO(LampPin, PinValue.High); //Pull-Up
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
@@ -97,13 +97,13 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if (GuitarState == EBooleanState.Off) UseGPIO(GuitarPin, PinValue.Low); //Pull-Up
+                UseGPIO(GuitarPin, PinValue.Low); //Pull-Up
                 GuitarState = EBooleanState.On;
                 return "Chitarra accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (GuitarState == EBooleanState.On) UseGPIO(GuitarPin, PinValue.High); //Pull-Up
+                UseGPIO(GuitarPin, PinValue.High); //Pull-Up
                 GuitarState = EBooleanState.Off;
                 return "Chitarra spenta";
             }
@@ -114,13 +114,13 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if (GeneralState == EBooleanState.Off) UseGPIO(GeneralPin, PinValue.Low); //Pull-Up
+                UseGPIO(GeneralPin, PinValue.Low); //Pull-Up
                 GeneralState = EBooleanState.On;
                 return "Presa generale accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (GeneralState == EBooleanState.On) UseGPIO(GeneralPin, PinValue.High); //Pull-Up
+                UseGPIO(GeneralPin, PinValue.High); //Pull-Up
                 GeneralState = EBooleanState.Off;
                 return "Presa generale spenta";
             }
@@ -131,23 +131,18 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                PCState = EBooleanState.On;
-                if (OutletsState == EBooleanState.Off)
-                {
-                    SwitchOutlets(EHardwareTrigger.On);
-                    return "PC e ciabatta in accensione";
-                }
-                else
-                {
-                    string mac = NetStats.Desktop_LAN_MAC;
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
+                SwitchOutlets(EHardwareTrigger.On);
 
-                    return "PC in accensione";
-                }
+                string mac = NetStats.Desktop_LAN_MAC;
+                Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
+
+                return "PC in accensione";
+                
 
             }
             else if (state == EHardwareTrigger.Off)
             {
+                PCState = EBooleanState.Off;
                 string text = "PC in spegnimento";
                 try
                 {
@@ -157,10 +152,6 @@ namespace Utility
                 catch
                 {
                     text = "PC già spento";
-                }
-                finally
-                {
-                    PCState = EBooleanState.Off;
                 }
                 return text;
             }
