@@ -415,7 +415,7 @@ namespace DiscordBot.Modules
                         .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)))
                         .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)))
                         .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)))
-                        .AddField("Rating", foundGame.Rating ? foundGame.Rating.ToString() : "Unknown")
+                        .AddField("Rating", foundGame.Rating != null ? foundGame.Rating.ToString() : "Unknown")
                         .AddField("Release Date", foundGame.ReleaseDates.Values.First().Human)
                         .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)))
                         .WithFooter(foundGame.Summary.Substring(0, 350) + "...")
