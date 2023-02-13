@@ -418,7 +418,7 @@ namespace DiscordBot.Modules
                     if(b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
                     
                     if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
-                    else return -1;
+                    else return 1;
                 });
                 foreach (var foundGame in sortedGames)
                 {
