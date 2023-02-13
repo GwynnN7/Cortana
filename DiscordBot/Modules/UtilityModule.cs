@@ -420,7 +420,7 @@ namespace DiscordBot.Modules
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                         .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
-                        .AddField("Game Engine", foundGame.GameEngines.)
+                        //.AddField("Game Engine", foundGame.GameEngines.)
                         .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)))
                         .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)))
                         .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)))
