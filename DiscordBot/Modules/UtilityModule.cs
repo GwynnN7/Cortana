@@ -402,19 +402,12 @@ namespace DiscordBot.Modules
             public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 var igdb = new IGDBClient("736igv8svzbet95taada229tyjak5s", "87bifi0v86jxfig2jm3to9m5y9lvza");
-                Console.WriteLine("1");
                 string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, release_dates.human, summary, themes.name, url";
-                Console.WriteLine("2");
                 string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count};";
-                Console.WriteLine("3");
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
-                Console.WriteLine("4");
                 foreach (var foundGame in games)
                 {
-                    Console.WriteLine("5");
-                    if (foundGame == null) continue;
-                    Console.WriteLine("6");
-                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
+                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);/*
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                         .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
@@ -426,7 +419,7 @@ namespace DiscordBot.Modules
                         .AddField("Release Date", foundGame.ReleaseDates.Values.First().Human, inline: true)
                         .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)), inline: true)
                         .WithFooter(foundGame.Summary.Take(350).ToString() + "...")
-                        .Build();
+                        .Build();*/
                     Console.WriteLine("7");
                     await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
 
