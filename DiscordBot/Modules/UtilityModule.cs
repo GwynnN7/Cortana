@@ -407,17 +407,18 @@ namespace DiscordBot.Modules
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 foreach (var foundGame in games)
                 {
+                    var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
                     Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
                     GameEmbed = GameEmbed.ToEmbedBuilder()
                         .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
-                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
+                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
                         .AddField("Game Engine", foundGame.GameEngines != null ? foundGame.GameEngines.Values.First().Name : "N/A")
-                        .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)))
-                        .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)))
-                        .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)))
-                        .AddField("Rating", foundGame.Rating.HasValue ? Math.Round(foundGame.Rating.Value, 2).ToString() : "Unknown")
+                        .AddField("Genres", foundGame.Genres != null ? string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)) : "N/A")
+                        .AddField("Developers", foundGame.InvolvedCompanies != null ? string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)) : "N/A")
+                        .AddField("Platforms", foundGame.Platforms != null ? string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)) : "N/A")
+                        .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
                         .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
-                        .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)))
+                        .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
                         .WithFooter(foundGame.Summary.Substring(0, 350) + "...")
                         .Build();
                     await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
