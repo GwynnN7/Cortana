@@ -53,7 +53,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;
@@ -83,7 +83,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;
@@ -113,7 +113,7 @@ namespace DiscordBot
                     default:
                         break;
                 }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error} {arg3.ErrorReason}", ECortanaChannels.Log);
+                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
             }
 
             return Task.CompletedTask;

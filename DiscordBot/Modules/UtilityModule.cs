@@ -407,21 +407,28 @@ namespace DiscordBot.Modules
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 foreach (var foundGame in games)
                 {
-                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
-                    GameEmbed = GameEmbed.ToEmbedBuilder()
-                        .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
-                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
-                        .AddField("Game Engine", foundGame.GameEngines.Values.Length != 0 ? foundGame.GameEngines.Values.First().Name : "Unkown")
-                        .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)))
-                        .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)))
-                        .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)))
-                        .AddField("Rating", foundGame.Rating.HasValue ? Math.Round(foundGame.Rating.Value, 2).ToString() : "Unknown")
-                        .AddField("Release Date", foundGame.ReleaseDates.Values.FirstOrDefault(new ReleaseDate { Human = "Unknown" }).Human)
-                        .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)))
-                        .WithFooter(foundGame.Summary.Substring(0, 350) + "...")
-                        .Build();
-                    await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
-
+                    try
+                    {
+                        Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name);
+                        GameEmbed = GameEmbed.ToEmbedBuilder()
+                            .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
+                            .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{foundGame.Cover.Value.ImageId}.jpg")
+                            .AddField("Game Engine", foundGame.GameEngines.Values.Length != 0 ? foundGame.GameEngines.Values.First().Name : "Unkown")
+                            .AddField("Genres", string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)))
+                            .AddField("Developers", string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)))
+                            .AddField("Platforms", string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)))
+                            .AddField("Rating", foundGame.Rating.HasValue ? Math.Round(foundGame.Rating.Value, 2).ToString() : "Unknown")
+                            .AddField("Release Date", foundGame.ReleaseDates.Values.FirstOrDefault(new ReleaseDate { Human = "Unknown" }).Human)
+                            .AddField("Themes", string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)))
+                            .WithFooter(foundGame.Summary.Substring(0, 350) + "...")
+                            .Build();
+                        await RespondAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
+                    }
+                    
+                    catch(Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
                 }
             }
         }
