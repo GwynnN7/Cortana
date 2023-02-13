@@ -427,7 +427,10 @@ namespace DiscordBot.Modules
                     
                     catch(Exception e)
                     {
-                        Console.WriteLine(e.ToString());
+                        Console.WriteLine(e.Message);
+                        Console.WriteLine(e.StackTrace);
+                        Console.WriteLine(e.Source);
+                        Console.WriteLine(e.InnerException);
                     }
                 }
             }
