@@ -404,8 +404,12 @@ namespace DiscordBot.Modules
                 await RespondAsync("AAAAAAAAAAAAAAAA");
                 var igdb = new IGDBClient("736igv8svzbet95taada229tyjak5s", "87bifi0v86jxfig2jm3to9m5y9lvza");
                 string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, release_dates.human, summary, themes.name, url";
-                string query = $"fields {fields}; sort rating desc; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count};";
+                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count};";
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
+                games.ToList().Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
+                    if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
+                    else return 1;
+                });
                 foreach (var foundGame in games)
                 {
                     var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
