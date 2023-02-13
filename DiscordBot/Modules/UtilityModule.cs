@@ -408,10 +408,10 @@ namespace DiscordBot.Modules
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 var sortedGames = games.ToList();
                 sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
-                    if (a.TotalRatingCount == null && b.TotalRatingCount == null) return 0;
-                    if (a.TotalRatingCount == null) return 1;
-                    if (b.TotalRatingCount == null) return -1;
-                    if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
+                    if (a.RatingCount == null && b.RatingCount == null) return 0;
+                    if (a.RatingCount == null) return 1;
+                    if (b.RatingCount == null) return -1;
+                    if (a.RatingCount >= b.RatingCount) return -1;
                     else return 1;
                 });
                 foreach (var foundGame in sortedGames)
