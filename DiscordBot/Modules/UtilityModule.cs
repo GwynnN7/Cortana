@@ -14,7 +14,7 @@ namespace DiscordBot.Modules
         public class PersonalGroup : InteractionModuleBase<SocketInteractionContext>
         {
             [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
-            public async Task GetAvatar([Summary("user", "Di chi vuoi l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
+            public async Task GetAvatar([Summary("user", "Di chi vuoi vedere l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
             {
                 var url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
                 Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
@@ -449,6 +449,85 @@ namespace DiscordBot.Modules
                     count -= 1;
                     if(count <= 0) return;
                 }
+            }
+
+            [SlashCommand("gaming-profile", "Profili RAWG, Steam e GOG")]
+            public async Task ShowGamingProfile([Summary("user", "Di chi vuoi vedere il profilo?")] SocketUser user, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            {
+                if(user.Id == DiscordData.DiscordIDs.CortanaID)
+                {
+                    await RespondAsync("La spunta \"Non sono un robot\" mi impedisce ogni volta di creare account di gioco purtroppo", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
+
+                if(DiscordData.GamingProfile.ContainsKey(user.Id))
+                {
+                    var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", User: user);
+                    gamingEmbed = gamingEmbed.ToEmbedBuilder()
+                        .AddField("RAWG", $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
+                        .AddField("Steam", $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
+                        .AddField("GOG", $"[Vai al profilo](https://www.gog.com/u/{DiscordData.GamingProfile[user.Id].GOG})")
+                        .Build();
+                    await RespondAsync(embed: gamingEmbed, ephemeral: Ephemeral == EAnswer.Si);
+                }
+                else
+                {
+                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo, usa /add-gaming-profile per aggiungerlo", ephemeral: Ephemeral == EAnswer.Si);
+                    else await RespondAsync("L'utente non ha ancora registrato nessun profilo", ephemeral: Ephemeral == EAnswer.Si);
+                }
+            }
+
+            [SlashCommand("add-gaming-profile", "Aggiungi o modifica profili RAWG, Steam o GOG")]
+            public async Task AddGamingProfile([Summary("account", "Di cosa vuoi aggiungere l'account?")] EGamingProfiles profile, [Summary("username", "Username del tuo account")] string username)
+            {
+                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
+                {
+                    DiscordData.GamingProfile.Add(Context.User.Id, new GamingProfileSet { GOG = "N/A", Steam = "N/A", RAWG = "N/A" }); 
+                }
+
+                switch(profile)
+                {
+                    case EGamingProfiles.RAWG:
+                        DiscordData.GamingProfile[Context.User.Id].RAWG = username;
+                        break;
+                    case EGamingProfiles.Steam:
+                        DiscordData.GamingProfile[Context.User.Id].Steam = username;
+                        break;
+                    case EGamingProfiles.GOG:
+                        DiscordData.GamingProfile[Context.User.Id].GOG = username;
+                        break;
+                }
+
+                DiscordData.UpdateGamingProfile();
+
+                await RespondAsync("Profilo aggiunto con successo. Usa /gaming-profile per vederlo");
+            }
+
+            [SlashCommand("remove-gaming-profile", "Rimuovi profili RAWG, Steam o GOG")]
+            public async Task RemoveGamingProfile([Summary("account", "Di cosa vuoi rimuovere l'account?")] EGamingProfiles profile)
+            {
+                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
+                {
+                    await RespondAsync("Non hai ancora registrato nessun profilo, usa /add-gaming-profile per aggiungerlo");
+                    return;
+                }
+
+                switch (profile)
+                {
+                    case EGamingProfiles.RAWG:
+                        DiscordData.GamingProfile[Context.User.Id].RAWG = "N/A";
+                        break;
+                    case EGamingProfiles.Steam:
+                        DiscordData.GamingProfile[Context.User.Id].Steam = "N/A";
+                        break;
+                    case EGamingProfiles.GOG:
+                        DiscordData.GamingProfile[Context.User.Id].GOG = "N/A";
+                        break;
+                }
+
+                DiscordData.UpdateGamingProfile();
+
+                await RespondAsync("Profilo rimosso con successo. Usa /gaming-profile per vederlo");
             }
         }
     }

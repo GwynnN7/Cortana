@@ -98,6 +98,13 @@ public enum EMemeCategory
     Default
 }
 
+public enum EGamingProfiles
+{
+    RAWG,
+    Steam,
+    GOG
+}
+
 public enum EPrivateSounds
 {
     Cortana1,

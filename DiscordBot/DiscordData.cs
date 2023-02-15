@@ -15,8 +15,8 @@ namespace DiscordBot
 
         public static DiscordIDs DiscordIDs;
         public static Dictionary<ulong, GuildSettings> GuildSettings = new Dictionary<ulong, GuildSettings>();
-        public static Dictionary<ulong, GuildUsersData> UserGuildData = new Dictionary<ulong, GuildUsersData>();
 
+        public static Dictionary<ulong, GamingProfileSet> GamingProfile = new Dictionary<ulong, GamingProfileSet>();
         public static IGDBData IGDB;
 
         public static Dictionary<string, MemeJsonStructure> Memes = new Dictionary<string, MemeJsonStructure>();
@@ -54,40 +54,6 @@ namespace DiscordBot
             UpdateSettings();  
         }
 
-        static public void LoadData(IReadOnlyCollection<SocketGuild> Guilds)
-        {
-            Dictionary<ulong, GuildUsersData>? userDataResult = null;
-            if(File.Exists("Data/Discord/GuildUserData.json"))
-            {
-                var file = File.ReadAllText("Data/Discord/GuildUserData.json");
-
-                userDataResult = JsonConvert.DeserializeObject<Dictionary<ulong, GuildUsersData>>(file);
-            }
-            if (userDataResult == null) userDataResult = new Dictionary<ulong, GuildUsersData>();
-
-            foreach (var Guild in Guilds)
-            {
-                if (!userDataResult.ContainsKey(Guild.Id))
-                {
-                    AddGuildUserData(Guild);
-                    continue;
-                }
-                GuildUsersData usersData = new GuildUsersData();
-                foreach(var User in Guild.Users)
-                {
-                    if (User.IsBot) continue;
-                    if(!userDataResult[Guild.Id].UserData.ContainsKey(User.Id))
-                    {
-                        usersData.UserData.Add(User.Id, new GuildUserData());
-                        continue;
-                    }
-                    usersData.UserData.Add(User.Id, userDataResult[Guild.Id].UserData[User.Id]);
-                }
-                UserGuildData.Add(Guild.Id, usersData);
-            }
-            UpdateUserGuildData();
-        }
-
         static public void LoadMemes()
         {
             Dictionary<string, MemeJsonStructure>? memesDataResult = null;
@@ -98,6 +64,18 @@ namespace DiscordBot
                 memesDataResult = JsonConvert.DeserializeObject<Dictionary<string, MemeJsonStructure>>(file);
             }
             if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
+        }
+
+        static public void LoadGamingProfiles()
+        {
+            Dictionary<ulong, GamingProfileSet>? gamingProfilesResult = null;
+            if (File.Exists("Data/Discord/GamingProfile.json"))
+            {
+                var file = File.ReadAllText("Data/Discord/GamingProfile.json");
+
+                gamingProfilesResult = JsonConvert.DeserializeObject<Dictionary<ulong, GamingProfileSet>>(file);
+            }
+            if (gamingProfilesResult != null) GamingProfile = gamingProfilesResult;
         }
 
         static public void LoadIGDB()
@@ -123,16 +101,6 @@ namespace DiscordBot
             UpdateSettings();
         }
 
-        static public void AddGuildUserData(SocketGuild Guild)
-        {
-            var userData = new GuildUsersData()
-            {
-                UserData = Guild.Users.Where(x => !x.IsBot).ToDictionary(x => x.Id, x => new GuildUserData())
-            };
-            UserGuildData.Add(Guild.Id, userData);
-            UpdateUserGuildData();
-        }
-
         static public void UpdateSettings()
         {
             var jsonWriteOptions = new JsonSerializerSettings() { Formatting = Formatting.Indented };
@@ -145,14 +113,11 @@ namespace DiscordBot
             File.WriteAllText(filePath, newJson);
         }
 
-        static public void UpdateUserGuildData()
+        static public void UpdateGamingProfile()
         {
-            var jsonWriteOptions = new JsonSerializerSettings() { Formatting = Formatting.Indented };
-            jsonWriteOptions.Converters.Add(new StringEnumConverter());
+            var newJson = JsonConvert.SerializeObject(GamingProfile);
 
-            var newJson = JsonConvert.SerializeObject(UserGuildData, jsonWriteOptions);
-
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildUserData.json");
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GamingProfile.json");
             File.WriteAllText(filePath, newJson);
         }
 
@@ -231,33 +196,17 @@ namespace DiscordBot
         public ulong CortanaLogChannelID { get; set; }
     }
 
-    public class GuildUsersData
-    {
-        public Dictionary<ulong, GuildUserData> UserData { get; set; } = new Dictionary<ulong, GuildUserData>();
-    }
-
-    public class GuildUserData
-    {
-        public Statistics Stats { get; set; } = new Statistics();
-    }
-
     public class IGDBData
     {
         public string ClientID { get; set; }
         public string ClientSecret { get; set; }
     }
 
-    public class Statistics
-    {
-        public ulong TimeConnected { get; set; } = 0;
-        public ulong MessagesSent { get; set; } = 0;
-        public int QuizPlayed { get; set; } = 0;
-        public int QuizWon { get; set; } = 0;
-        public int MemesPlayed { get; set; } = 0;
-        public int MemesAdded { get; set; } = 0;
-        public int SongPlayed { get; set; } = 0;
-        public List<string> Projects { get; set; } = new List<string>();
-        public string Image { get; set; } = "";
+    public class GamingProfileSet
+    { 
+        public string RAWG { get; set; }  //https://rawg.io/@username
+        public string Steam { get; set; } //https://steamcommunity.com/id/username/
+        public string GOG { get; set; } //https://www.gog.com/u/username
     }
 
     public class MemeJsonStructure

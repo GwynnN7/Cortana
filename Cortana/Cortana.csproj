@@ -44,9 +44,6 @@
     <None Update="Data\Discord\GuildConfig.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
-    <None Update="Data\Discord\GuildUserData.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
     <None Update="Data\Discord\Token.json">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>

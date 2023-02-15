@@ -37,7 +37,6 @@ namespace DiscordBot
                 Cortana = client;
                 
                 DiscordData.InitSettings(client.Guilds);
-                DiscordData.LoadData(client.Guilds);
                 DiscordData.LoadMemes();
                 DiscordData.LoadIGDB();
                 DiscordData.Cortana = Cortana;
@@ -168,7 +167,6 @@ namespace DiscordBot
         async Task OnServerJoin(SocketGuild Guild)
         {
             DiscordData.AddGuildSettings(Guild);
-            DiscordData.AddGuildUserData(Guild);
 
             await Guild.DefaultChannel.SendMessageAsync(embed: DiscordData.CreateEmbed("Ciao, sono Cortana"));
         }
@@ -176,27 +174,21 @@ namespace DiscordBot
         Task OnServerLeave(SocketGuild Guild)
         {
             if (DiscordData.GuildSettings.ContainsKey(Guild.Id)) DiscordData.GuildSettings.Remove(Guild.Id);
-            if (DiscordData.UserGuildData.ContainsKey(Guild.Id)) DiscordData.UserGuildData.Remove(Guild.Id);
             DiscordData.UpdateSettings();
-            DiscordData.UpdateUserGuildData();
             return Task.CompletedTask;
         }
 
         async Task OnUserJoin(SocketGuildUser User)
         {
             if (User.IsBot) return;
-            if (!DiscordData.UserGuildData.ContainsKey(User.Guild.Id)) DiscordData.UserGuildData[User.Guild.Id].UserData.Add(User.Id, new GuildUserData());
 
-            DiscordData.UpdateUserGuildData();
             await User.Guild.GetTextChannel(DiscordData.GuildSettings[User.Guild.Id].GreetingsChannel).SendMessageAsync(embed: DiscordData.CreateEmbed($"Benvenuto {User.DisplayName}"));
         }
 
         Task OnUserLeft(SocketGuild Guild, SocketUser User)
         {
             if (User.IsBot) return Task.CompletedTask;
-            if (DiscordData.UserGuildData.ContainsKey(Guild.Id)) DiscordData.UserGuildData[Guild.Id].UserData.Remove(User.Id);
 
-            DiscordData.UpdateUserGuildData();
             return Task.CompletedTask;
         }
 
