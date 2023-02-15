@@ -456,7 +456,7 @@ namespace DiscordBot.Modules
             {
                 if(user.Id == DiscordData.DiscordIDs.CortanaID)
                 {
-                    await RespondAsync("Purtroppo la spunta ```Non sono un robot``` mi impedisce ogni volta di creare account di gioco", ephemeral: Ephemeral == EAnswer.Si);
+                    await RespondAsync("Purtroppo la conferma \"NON SONO UN ROBOT\" mi impedisce ogni volta di creare account di gioco", ephemeral: Ephemeral == EAnswer.Si);
                     return;
                 }
 
@@ -472,7 +472,7 @@ namespace DiscordBot.Modules
                 }
                 else
                 {
-                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo, usa ```/add-gaming-profile``` per aggiungerlo", ephemeral: Ephemeral == EAnswer.Si);
+                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```", ephemeral: Ephemeral == EAnswer.Si);
                     else await RespondAsync("L'utente non ha ancora registrato nessun profilo", ephemeral: Ephemeral == EAnswer.Si);
                 }
             }
@@ -500,15 +500,15 @@ namespace DiscordBot.Modules
 
                 DiscordData.UpdateGamingProfile();
 
-                await RespondAsync("Profilo aggiunto con successo. Usa ```/gaming-profile``` per vederlo");
+                await RespondAsync("Profilo aggiunto con successo. Per visualizzarlo, usa il seguente comando: ```/games gaming-profile```");
             }
 
-            [SlashCommand("remove-gaming-profile", "Rimuovi profili RAWG, Steam o GOG")]
+            [SlashCommand("remove-gaming-profile", "Rimuovi profilo RAWG, Steam o GOG")]
             public async Task RemoveGamingProfile([Summary("account", "Di cosa vuoi rimuovere l'account?")] EGamingProfiles profile)
             {
                 if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
                 {
-                    await RespondAsync("Non hai ancora registrato nessun profilo, usa ```/add-gaming-profile``` per aggiungerlo");
+                    await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```");
                     return;
                 }
 
@@ -527,7 +527,7 @@ namespace DiscordBot.Modules
 
                 DiscordData.UpdateGamingProfile();
 
-                await RespondAsync("Profilo rimosso con successo. Usa /gaming-profile per vederlo");
+                await RespondAsync("Profilo rimosso con successo. Per visualizzarlo usa il seguente comando: ```/games gaming-profile```");
             }
         }
     }
