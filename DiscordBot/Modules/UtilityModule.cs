@@ -456,7 +456,7 @@ namespace DiscordBot.Modules
             {
                 if(user.Id == DiscordData.DiscordIDs.CortanaID)
                 {
-                    await RespondAsync("La spunta \"Non sono un robot\" mi impedisce ogni volta di creare account di gioco purtroppo", ephemeral: Ephemeral == EAnswer.Si);
+                    await RespondAsync("Purtroppo la spunta ```Non sono un robot``` mi impedisce ogni volta di creare account di gioco", ephemeral: Ephemeral == EAnswer.Si);
                     return;
                 }
 
@@ -464,15 +464,15 @@ namespace DiscordBot.Modules
                 {
                     var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", User: user);
                     gamingEmbed = gamingEmbed.ToEmbedBuilder()
-                        .AddField("RAWG", $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
-                        .AddField("Steam", $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
-                        .AddField("GOG", $"[Vai al profilo](https://www.gog.com/u/{DiscordData.GamingProfile[user.Id].GOG})")
+                        .AddField("RAWG", DiscordData.GamingProfile[user.Id].RAWG == "N/A" ? "N/A" : $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
+                        .AddField("Steam", DiscordData.GamingProfile[user.Id].Steam == "N/A" ? "N/A" : $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
+                        .AddField("GOG", DiscordData.GamingProfile[user.Id].GOG == "N/A" ? "N/A" : $"[Vai al profilo](https://www.gog.com/u/{DiscordData.GamingProfile[user.Id].GOG})")
                         .Build();
                     await RespondAsync(embed: gamingEmbed, ephemeral: Ephemeral == EAnswer.Si);
                 }
                 else
                 {
-                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo, usa /add-gaming-profile per aggiungerlo", ephemeral: Ephemeral == EAnswer.Si);
+                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo, usa ```/add-gaming-profile``` per aggiungerlo", ephemeral: Ephemeral == EAnswer.Si);
                     else await RespondAsync("L'utente non ha ancora registrato nessun profilo", ephemeral: Ephemeral == EAnswer.Si);
                 }
             }
@@ -500,7 +500,7 @@ namespace DiscordBot.Modules
 
                 DiscordData.UpdateGamingProfile();
 
-                await RespondAsync("Profilo aggiunto con successo. Usa /gaming-profile per vederlo");
+                await RespondAsync("Profilo aggiunto con successo. Usa ```/gaming-profile``` per vederlo");
             }
 
             [SlashCommand("remove-gaming-profile", "Rimuovi profili RAWG, Steam o GOG")]
@@ -508,7 +508,7 @@ namespace DiscordBot.Modules
             {
                 if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
                 {
-                    await RespondAsync("Non hai ancora registrato nessun profilo, usa /add-gaming-profile per aggiungerlo");
+                    await RespondAsync("Non hai ancora registrato nessun profilo, usa ```/add-gaming-profile``` per aggiungerlo");
                     return;
                 }
 
