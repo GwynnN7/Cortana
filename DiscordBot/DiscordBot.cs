@@ -70,16 +70,19 @@ namespace DiscordBot
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
             {
-                /*
-                foreach(string word in DiscordData.GuildSettings[arg.Channel.Guild.Id].BannedWords)
+                var channel = arg.Channel as SocketGuildChannel;
+                if (channel != null)
                 {
-                    if (message.Contains(word))
+                    foreach (string word in DiscordData.GuildSettings[channel.Guild.Id].BannedWords)
                     {
-                        await arg.Channel.SendMessageAsync("Ho trovato una parola non consentita e sono costretta ad eliminare il messaggio");
-                        await arg.DeleteAsync();
-                        return;
+                        if (message.Contains(word))
+                        {
+                            await arg.Channel.SendMessageAsync("Ho trovato una parola non consentita, sono costretta ad eliminare il messaggio");
+                            await arg.DeleteAsync();
+                            return;
+                        }
                     }
-                }*/
+                }
             }
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");

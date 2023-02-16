@@ -13,10 +13,10 @@ namespace DiscordBot.Modules
         [Group("personal", "Comandi personali")]
         public class PersonalGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            [SlashCommand("commands", "Vi mostro le categorie dei miei comandi")]
+            [SlashCommand("comandi", "Vi mostro le categorie dei miei comandi")]
             public async Task ShowCommands()
             {
-                var commandsEmbed = DiscordData.CreateEmbed("Comandi");
+                var commandsEmbed = DiscordData.CreateEmbed("Comandi", WithTimeStamp: false);
                 commandsEmbed = commandsEmbed.ToEmbedBuilder()
                     .AddField("/media", "Gestione audio dei canali vocali")
                     .AddField("/domotica", "Domotica personale riservata")
@@ -254,7 +254,7 @@ namespace DiscordBot.Modules
                     else return 1;
                 });
 
-                if(sortedGames.Count() == 0)
+                if(sortedGames.Count == 0)
                 {
                     await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando", ephemeral: Ephemeral == EAnswer.Si);
                     return;
@@ -514,7 +514,7 @@ namespace DiscordBot.Modules
                     await RespondAsync("Non ci sono parole vietate in questo server");
                     return;
                 }
-                string bannedWordsList = "```\n";
+                string bannedWordsList = "Ecco le parole bannate di questo server:\n```\n";
                 foreach(var word in DiscordData.GuildSettings[Context.Guild.Id].BannedWords)
                 {
                     bannedWordsList += word + "\n";
