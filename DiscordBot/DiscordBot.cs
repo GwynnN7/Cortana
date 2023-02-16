@@ -70,7 +70,7 @@ namespace DiscordBot
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
             {
-                foreach(string word in DiscordData.GuildSettings[arg.Guild.Id].BannedWords)
+                foreach(string word in DiscordData.GuildSettings[arg.Channel.Guild.Id].BannedWords)
                 {
                     if (message.Contains(word))
                     {
