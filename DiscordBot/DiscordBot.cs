@@ -66,6 +66,7 @@ namespace DiscordBot
 
         private async Task Client_MessageReceived(SocketMessage arg)
         {
+            if(arg.Author.Id == DiscordData.DiscordIDs.CortanaID) return;
             var message = arg.Content.ToLower();
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
