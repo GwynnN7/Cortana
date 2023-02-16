@@ -70,6 +70,7 @@ namespace DiscordBot
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
             {
+                /*
                 foreach(string word in DiscordData.GuildSettings[arg.Channel.Guild.Id].BannedWords)
                 {
                     if (message.Contains(word))
@@ -78,7 +79,7 @@ namespace DiscordBot
                         await arg.DeleteAsync();
                         return;
                     }
-                }
+                }*
             }
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
