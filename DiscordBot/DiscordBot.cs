@@ -79,7 +79,7 @@ namespace DiscordBot
                         await arg.DeleteAsync();
                         return;
                     }
-                }*
+                }*/
             }
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
