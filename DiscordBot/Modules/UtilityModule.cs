@@ -13,6 +13,25 @@ namespace DiscordBot.Modules
         [Group("personal", "Comandi personali")]
         public class PersonalGroup : InteractionModuleBase<SocketInteractionContext>
         {
+            [SlashCommand("commands", "Vi mostro le categorie dei miei comandi")]
+            public async Task ShowCommands()
+            {
+                var commandsEmbed = DiscordData.CreateEmbed("Comandi");
+                commandsEmbed = commandsEmbed.ToEmbedBuilder()
+                    .AddField("/media", "Gestione audio dei canali vocali")
+                    .AddField("/domotica", "Domotica personale riservata")
+                    .AddField("/timer", "Gestione timer e sveglie")
+                    .AddField("/personal", "Comandi per gli utenti")
+                    .AddField("/utility", "Funzioni di utility")
+                    .AddField("/random", "Scelte random")
+                    .AddField("/games", "Comandi per videogames")
+                    .AddField("/unipi", "Gestione Università di Pisa")
+                    .AddField("/gestione", "Gestione Server Discord")
+                    .AddField("/settings", "Impostazioni Server Discord")
+                    .Build();
+                await RespondAsync(embed: commandsEmbed);
+            }
+
             [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
             public async Task GetAvatar([Summary("user", "Di chi vuoi vedere l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
             {
@@ -209,50 +228,138 @@ namespace DiscordBot.Modules
             }
         }
 
-        [Group("gestione", "Comandi gestione server")]
-        public class ManageGroup : InteractionModuleBase<SocketInteractionContext>
+        [Group("games", "videogames")]
+        public class VideogamesGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            [SlashCommand("kick", "Kicko un utente dal server")]
-            public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
+            [SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
+            public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
-                else
+                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+
+                var igdb = new IGDBClient(DiscordData.IGDB.ClientID, DiscordData.IGDB.ClientSecret);
+                string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
+                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count + 5};";
+                var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
+                var sortedGames = games.ToList();
+                sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
+                    if((a.TotalRatingCount == null || a.TotalRatingCount == 0) && (b.TotalRatingCount == null || b.TotalRatingCount == 0))
+                    {
+                        if (Math.Abs(a.Name.Length - game.Length) <= Math.Abs(b.Name.Length - game.Length)) return -1;
+                        else return 1;
+                    }
+                    if(a.TotalRatingCount == null || a.TotalRatingCount == 0) return 1;
+                    if(b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
+                    
+                    if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
+                    else return 1;
+                });
+
+                if(sortedGames.Count() == 0)
                 {
-                    await user.KickAsync(reason: reason);
-                    await RespondAsync("Utente kickato");
+                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
+
+                foreach (var foundGame in sortedGames)
+                {
+                    var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
+                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
+                    GameEmbed = GameEmbed.ToEmbedBuilder()
+                        .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
+                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
+                        .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
+                        .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
+                        .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
+                        .AddField("Genres", foundGame.Genres != null ? string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)) : "N/A")
+                        .AddField("Game Engine", foundGame.GameEngines != null ? foundGame.GameEngines.Values.First().Name : "N/A") 
+                        .AddField("Developers", foundGame.InvolvedCompanies != null ? string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)) : "N/A")
+                        .AddField("Platforms", foundGame.Platforms != null ? string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)) : "N/A")
+                        .WithFooter(foundGame.Summary != null ? (foundGame.Summary.Length <= 350 ? foundGame.Summary : foundGame.Summary.Substring(0, 350) + "...") : "No summary available")
+                        .Build();
+                    await FollowupAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
+
+                    count -= 1;
+                    if(count <= 0) return;
                 }
             }
 
-            [SlashCommand("ban", "Banno un utente dal server")]
-            public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
+            [SlashCommand("gaming-profile", "Profili RAWG, Steam e GOG")]
+            public async Task ShowGamingProfile([Summary("user", "Di chi vuoi vedere il profilo?")] SocketUser user, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                if(user.Id == DiscordData.DiscordIDs.CortanaID)
+                {
+                    await RespondAsync("Purtroppo la conferma \"NON SONO UN ROBOT\" mi impedisce ogni volta di creare account di gioco", ephemeral: Ephemeral == EAnswer.Si);
+                    return;
+                }
+
+                if(DiscordData.GamingProfile.ContainsKey(user.Id))
+                {
+                    var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", User: user);
+                    gamingEmbed = gamingEmbed.ToEmbedBuilder()
+                        .AddField("RAWG", DiscordData.GamingProfile[user.Id].RAWG == "N/A" ? "N/A" : $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
+                        .AddField("Steam", DiscordData.GamingProfile[user.Id].Steam == "N/A" ? "N/A" : $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
+                        .AddField("GOG", DiscordData.GamingProfile[user.Id].GOG == "N/A" ? "N/A" : $"[Vai al profilo](https://www.gog.com/u/{DiscordData.GamingProfile[user.Id].GOG})")
+                        .Build();
+                    await RespondAsync(embed: gamingEmbed, ephemeral: Ephemeral == EAnswer.Si);
+                }
                 else
                 {
-                    await user.BanAsync(reason: reason);
-                    await RespondAsync("Utente bannato");
+                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```", ephemeral: Ephemeral == EAnswer.Si);
+                    else await RespondAsync("L'utente non ha ancora registrato nessun profilo", ephemeral: Ephemeral == EAnswer.Si);
                 }
             }
 
-            [SlashCommand("imposta-timeout", "Timeouto un utente dal server")]
-            public async Task SetTimeoutMember([Summary("user", "Chi vuoi timeoutare?")] SocketGuildUser user, [Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")] double timeout = 10)
+            [SlashCommand("add-gaming-profile", "Aggiungi o modifica profili RAWG, Steam o GOG")]
+            public async Task AddGamingProfile([Summary("account", "Di cosa vuoi aggiungere l'account?")] EGamingProfiles profile, [Summary("username", "Username del tuo account")] string username)
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
-                else
+                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
                 {
-                    await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));
-                    await RespondAsync($"Utente timeoutato per {timeout} minuti");
+                    DiscordData.GamingProfile.Add(Context.User.Id, new GamingProfileSet { GOG = "N/A", Steam = "N/A", RAWG = "N/A" }); 
                 }
+
+                switch(profile)
+                {
+                    case EGamingProfiles.RAWG:
+                        DiscordData.GamingProfile[Context.User.Id].RAWG = username;
+                        break;
+                    case EGamingProfiles.Steam:
+                        DiscordData.GamingProfile[Context.User.Id].Steam = username;
+                        break;
+                    case EGamingProfiles.GOG:
+                        DiscordData.GamingProfile[Context.User.Id].GOG = username;
+                        break;
+                }
+
+                DiscordData.UpdateGamingProfile();
+
+                await RespondAsync("Profilo aggiunto con successo. Per visualizzarlo, usa il seguente comando: ```/games gaming-profile```");
             }
 
-            [SlashCommand("rimuovi-timeout", "Rimuovo il timeout di un utente del server")]
-            public async Task RemoveTimeoutMember([Summary("user", "Di chi vuoi rimuovere il timeout?")] SocketGuildUser user)
+            [SlashCommand("remove-gaming-profile", "Rimuovi profilo RAWG, Steam o GOG")]
+            public async Task RemoveGamingProfile([Summary("account", "Di cosa vuoi rimuovere l'account?")] EGamingProfiles profile)
             {
-                await user.RemoveTimeOutAsync();
-                await RespondAsync("Timeout rimosso");
+                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
+                {
+                    await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```");
+                    return;
+                }
+
+                switch (profile)
+                {
+                    case EGamingProfiles.RAWG:
+                        DiscordData.GamingProfile[Context.User.Id].RAWG = "N/A";
+                        break;
+                    case EGamingProfiles.Steam:
+                        DiscordData.GamingProfile[Context.User.Id].Steam = "N/A";
+                        break;
+                    case EGamingProfiles.GOG:
+                        DiscordData.GamingProfile[Context.User.Id].GOG = "N/A";
+                        break;
+                }
+
+                DiscordData.UpdateGamingProfile();
+
+                await RespondAsync("Profilo rimosso con successo. Per visualizzarlo usa il seguente comando: ```/games gaming-profile```");
             }
         }
 
@@ -396,138 +503,95 @@ namespace DiscordBot.Modules
             }
         }
 
-        [Group("games", "videogames")]
-        public class VideogamesGroup : InteractionModuleBase<SocketInteractionContext>
+        [Group("gestione", "Comandi gestione server")]
+        public class ManageGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            [SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
-            public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            [SlashCommand("banned-words", "Vi mostro le parole bannate in questo server")]
+            public async Task ShowBannedWords()
             {
-                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
-
-                var igdb = new IGDBClient(DiscordData.IGDB.ClientID, DiscordData.IGDB.ClientSecret);
-                string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
-                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count + 5};";
-                var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
-                var sortedGames = games.ToList();
-                sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
-                    if((a.TotalRatingCount == null || a.TotalRatingCount == 0) && (b.TotalRatingCount == null || b.TotalRatingCount == 0))
-                    {
-                        if (Math.Abs(a.Name.Length - game.Length) <= Math.Abs(b.Name.Length - game.Length)) return -1;
-                        else return 1;
-                    }
-                    if(a.TotalRatingCount == null || a.TotalRatingCount == 0) return 1;
-                    if(b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
-                    
-                    if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
-                    else return 1;
-                });
-
-                if(sortedGames.Count() == 0)
+                if(DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Count == 0)
                 {
-                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando", ephemeral: Ephemeral == EAnswer.Si);
+                    await RespondAsync("Non ci sono parole vietate in questo server");
                     return;
                 }
-
-                foreach (var foundGame in sortedGames)
+                string bannedWordsList = "```\n";
+                foreach(var word in DiscordData.GuildSettings[Context.Guild.Id].BannedWords)
                 {
-                    var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
-                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
-                    GameEmbed = GameEmbed.ToEmbedBuilder()
-                        .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
-                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
-                        .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
-                        .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
-                        .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .AddField("Genres", foundGame.Genres != null ? string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .AddField("Game Engine", foundGame.GameEngines != null ? foundGame.GameEngines.Values.First().Name : "N/A") 
-                        .AddField("Developers", foundGame.InvolvedCompanies != null ? string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)) : "N/A")
-                        .AddField("Platforms", foundGame.Platforms != null ? string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .WithFooter(foundGame.Summary != null ? (foundGame.Summary.Length <= 350 ? foundGame.Summary : foundGame.Summary.Substring(0, 350) + "...") : "No summary available")
-                        .Build();
-                    await FollowupAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
-
-                    count -= 1;
-                    if(count <= 0) return;
+                    bannedWordsList += word + "\n";
                 }
+                bannedWordsList += "```";
+                await RespondAsync(bannedWordsList);
             }
 
-            [SlashCommand("gaming-profile", "Profili RAWG, Steam e GOG")]
-            public async Task ShowGamingProfile([Summary("user", "Di chi vuoi vedere il profilo?")] SocketUser user, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            [SlashCommand("modify-banned-words", "Aggiungo o rimuovo parole bannate da questo server")]
+            public async Task ShowBannedWords([Summary("action", "Cosa vuoi fare?")] EAction action, [Summary("word", "Parola bannata")] string word)
             {
-                if(user.Id == DiscordData.DiscordIDs.CortanaID)
+                word = word.ToLower();
+                switch(action)
                 {
-                    await RespondAsync("Purtroppo la conferma \"NON SONO UN ROBOT\" mi impedisce ogni volta di creare account di gioco", ephemeral: Ephemeral == EAnswer.Si);
-                    return;
+                    case EAction.Crea:
+                        if(DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+                        {
+                            await RespondAsync("Questa parola è già presente tra quelle bannate in questo server");
+                            return;
+                        }
+                        DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Add(word);
+                        await RespondAsync("Parola aggiunta con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");                   
+                        break;
+                    case EAction.Elimina:
+                        if(!DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+                        {
+                            await RespondAsync("Questa parola non è presente tra quelle bannate in questo server");
+                            return;
+                        }
+                        DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Remove(word);
+                        await RespondAsync("Parola rimossa con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
+                        break;
                 }
+                DiscordData.UpdateSettings();
+            }
 
-                if(DiscordData.GamingProfile.ContainsKey(user.Id))
-                {
-                    var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", User: user);
-                    gamingEmbed = gamingEmbed.ToEmbedBuilder()
-                        .AddField("RAWG", DiscordData.GamingProfile[user.Id].RAWG == "N/A" ? "N/A" : $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
-                        .AddField("Steam", DiscordData.GamingProfile[user.Id].Steam == "N/A" ? "N/A" : $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
-                        .AddField("GOG", DiscordData.GamingProfile[user.Id].GOG == "N/A" ? "N/A" : $"[Vai al profilo](https://www.gog.com/u/{DiscordData.GamingProfile[user.Id].GOG})")
-                        .Build();
-                    await RespondAsync(embed: gamingEmbed, ephemeral: Ephemeral == EAnswer.Si);
-                }
+            [SlashCommand("kick", "Kicko un utente dal server")]
+            public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
+            {
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
                 else
                 {
-                    if(user.Id == Context.User.Id) await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```", ephemeral: Ephemeral == EAnswer.Si);
-                    else await RespondAsync("L'utente non ha ancora registrato nessun profilo", ephemeral: Ephemeral == EAnswer.Si);
+                    await user.KickAsync(reason: reason);
+                    await RespondAsync("Utente kickato");
                 }
             }
 
-            [SlashCommand("add-gaming-profile", "Aggiungi o modifica profili RAWG, Steam o GOG")]
-            public async Task AddGamingProfile([Summary("account", "Di cosa vuoi aggiungere l'account?")] EGamingProfiles profile, [Summary("username", "Username del tuo account")] string username)
+            [SlashCommand("ban", "Banno un utente dal server")]
+            public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
             {
-                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                else
                 {
-                    DiscordData.GamingProfile.Add(Context.User.Id, new GamingProfileSet { GOG = "N/A", Steam = "N/A", RAWG = "N/A" }); 
+                    await user.BanAsync(reason: reason);
+                    await RespondAsync("Utente bannato");
                 }
-
-                switch(profile)
-                {
-                    case EGamingProfiles.RAWG:
-                        DiscordData.GamingProfile[Context.User.Id].RAWG = username;
-                        break;
-                    case EGamingProfiles.Steam:
-                        DiscordData.GamingProfile[Context.User.Id].Steam = username;
-                        break;
-                    case EGamingProfiles.GOG:
-                        DiscordData.GamingProfile[Context.User.Id].GOG = username;
-                        break;
-                }
-
-                DiscordData.UpdateGamingProfile();
-
-                await RespondAsync("Profilo aggiunto con successo. Per visualizzarlo, usa il seguente comando: ```/games gaming-profile```");
             }
 
-            [SlashCommand("remove-gaming-profile", "Rimuovi profilo RAWG, Steam o GOG")]
-            public async Task RemoveGamingProfile([Summary("account", "Di cosa vuoi rimuovere l'account?")] EGamingProfiles profile)
+            [SlashCommand("imposta-timeout", "Timeouto un utente dal server")]
+            public async Task SetTimeoutMember([Summary("user", "Chi vuoi timeoutare?")] SocketGuildUser user, [Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")] double timeout = 10)
             {
-                if (!DiscordData.GamingProfile.ContainsKey(Context.User.Id))
+                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                else
                 {
-                    await RespondAsync("Non hai ancora registrato nessun profilo. Per aggiungerlo, usa il seguente comando: ```/games add-gaming-profile```");
-                    return;
+                    await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));
+                    await RespondAsync($"Utente timeoutato per {timeout} minuti");
                 }
+            }
 
-                switch (profile)
-                {
-                    case EGamingProfiles.RAWG:
-                        DiscordData.GamingProfile[Context.User.Id].RAWG = "N/A";
-                        break;
-                    case EGamingProfiles.Steam:
-                        DiscordData.GamingProfile[Context.User.Id].Steam = "N/A";
-                        break;
-                    case EGamingProfiles.GOG:
-                        DiscordData.GamingProfile[Context.User.Id].GOG = "N/A";
-                        break;
-                }
-
-                DiscordData.UpdateGamingProfile();
-
-                await RespondAsync("Profilo rimosso con successo. Per visualizzarlo usa il seguente comando: ```/games gaming-profile```");
+            [SlashCommand("rimuovi-timeout", "Rimuovo il timeout di un utente del server")]
+            public async Task RemoveTimeoutMember([Summary("user", "Di chi vuoi rimuovere il timeout?")] SocketGuildUser user)
+            {
+                await user.RemoveTimeOutAsync();
+                await RespondAsync("Timeout rimosso");
             }
         }
     }

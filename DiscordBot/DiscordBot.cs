@@ -70,8 +70,7 @@ namespace DiscordBot
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
             {
-                List<string> BannedWords = new() {"yuumi", "yummi", "seraphine", "teemo", "fortnite"};
-                foreach(string word in BannedWords)
+                foreach(string word in DiscordData.GuildSettings[arg.Guild.Id].BannedWords)
                 {
                     if (message.Contains(word))
                     {

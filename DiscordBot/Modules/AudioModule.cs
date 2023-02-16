@@ -378,7 +378,7 @@ namespace DiscordBot.Modules
     [Group("media", "Gestione audio")]
     public class AudioModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("meme", "Metto un meme tra quelli disponibili", ignoreGroupNames: true)]
+        [SlashCommand("meme", "Metto un meme tra quelli disponibili")]
         public async Task Meme([Summary("nome", "Nome del meme")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
         {
             await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
@@ -463,7 +463,7 @@ namespace DiscordBot.Modules
             await RespondAsync(Text, ephemeral: Ephemeral == EAnswer.Si);
         }
 
-        [SlashCommand("elenco-meme", "Lista dei meme disponibili", ignoreGroupNames: true)]
+        [SlashCommand("elenco-meme", "Lista dei meme disponibili")]
         public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
         {
             Embed embed = DiscordData.CreateEmbed("Memes");
