@@ -28,8 +28,6 @@ namespace DiscordBot.Modules
                 EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
                 EHardwareElements.LED => Utility.HardwareDriver.SwitchLED(trigger),
                 EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
-                EHardwareElements.Guitar => Utility.HardwareDriver.SwitchGuitar(trigger),
-                EHardwareElements.General => Utility.HardwareDriver.SwitchGeneral(trigger),
                 _ => "Dispositivo hardware non presente"
             };
 

@@ -11,23 +11,17 @@ namespace Utility
     {
         private const int RelayPin_0 = 25; //PC-OUTLET
         private const int RelayPin_1 = 8;  //LAMP
-        private const int RelayPin_2 = 7;  //GUITAR
-        private const int RelayPin_3 = 1;  //GENERAL
 
         private static int SwitchPin = 4;
         private static int LEDPin = 14;
         private static int PCPlugsPin = RelayPin_0;
         private static int LampPin = RelayPin_1;
-        private static int GuitarPin = RelayPin_2;
-        private static int GeneralPin = RelayPin_3;
 
         private static EBooleanState OutletsState = EBooleanState.Off;
         private static EBooleanState PCState = EBooleanState.Off;
         private static EBooleanState LEDState = EBooleanState.Off;
         private static EBooleanState OLEDState = EBooleanState.Off;
         private static EBooleanState LampState = EBooleanState.Off;
-        private static EBooleanState GuitarState = EBooleanState.Off;
-        private static EBooleanState GeneralState = EBooleanState.Off;
 
         public static NetworkStats NetStats;
 
@@ -80,53 +74,19 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                UseGPIO(LampPin, PinValue.Low); //Pull-Up
+                UseGPIO(LampPin, PinValue.High);
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                UseGPIO(LampPin, PinValue.High); //Pull-Up
+                UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
             else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
-
-        public static string SwitchGuitar(EHardwareTrigger state)
-        {
-            if (state == EHardwareTrigger.On)
-            {
-                UseGPIO(GuitarPin, PinValue.Low); //Pull-Up
-                GuitarState = EBooleanState.On;
-                return "Chitarra accesa";
-            }
-            else if (state == EHardwareTrigger.Off)
-            {
-                UseGPIO(GuitarPin, PinValue.High); //Pull-Up
-                GuitarState = EBooleanState.Off;
-                return "Chitarra spenta";
-            }
-            else return SwitchGuitar(GuitarState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-        }
-
-        public static string SwitchGeneral(EHardwareTrigger state)
-        {
-            if (state == EHardwareTrigger.On)
-            {
-                UseGPIO(GeneralPin, PinValue.Low); //Pull-Up
-                GeneralState = EBooleanState.On;
-                return "Presa generale accesa";
-            }
-            else if (state == EHardwareTrigger.Off)
-            {
-                UseGPIO(GeneralPin, PinValue.High); //Pull-Up
-                GeneralState = EBooleanState.Off;
-                return "Presa generale spenta";
-            }
-            else return SwitchGeneral(GeneralState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-        }
-
+      
         public static string SwitchPC(EHardwareTrigger state)
         {
             if (state == EHardwareTrigger.On)
@@ -162,7 +122,7 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                UseGPIO(PCPlugsPin, PinValue.Low); //Pull-Up
+                UseGPIO(PCPlugsPin, PinValue.High);
                 OutletsState = EBooleanState.On;
                 PCState = EBooleanState.On;
                 return "Ciabatta accesa";
@@ -185,7 +145,7 @@ namespace Utility
                     });
                     return "PC e ciabatta in spegnimento";
                 }
-                UseGPIO(PCPlugsPin, PinValue.High); //Pull-Up
+                UseGPIO(PCPlugsPin, PinValue.Low);
                 OutletsState = EBooleanState.Off;
 
                 return "Ciabatta spenta";
