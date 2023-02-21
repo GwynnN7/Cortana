@@ -26,13 +26,6 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
-        [HttpGet("led")]
-        public Dictionary<string, string> LEDPower(string state)
-        {
-            string result = Utility.HardwareDriver.SwitchLED(Utility.Functions.TriggerStateFromString(state));
-            return new Dictionary<string, string>() { { "data", result } };
-        }
-
         [HttpGet("oled")]
         public Dictionary<string, string> OledPower(string state)
         {

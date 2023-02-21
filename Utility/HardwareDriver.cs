@@ -65,7 +65,6 @@ namespace Utility
                 SwitchOutlets(state);
             }
             SwitchOLED(state);
-            SwitchLED(state);
 
             return "Procedo";
         }
@@ -151,23 +150,6 @@ namespace Utility
                 return "Ciabatta spenta";
             }
             else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
-        }
-
-        public static string SwitchLED(EHardwareTrigger state)
-        {
-            if (state == EHardwareTrigger.On)
-            {
-                UseGPIO(LEDPin, PinValue.High);
-                LEDState = EBooleanState.On;
-                return "Led acceso";
-            }
-            else if (state == EHardwareTrigger.Off)
-            {
-                UseGPIO(LEDPin, PinValue.Low);
-                LEDState = EBooleanState.Off;
-                return "Led spento";
-            }
-            else return SwitchLED(LEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchOLED(EHardwareTrigger state)

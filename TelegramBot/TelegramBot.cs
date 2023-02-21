@@ -87,7 +87,6 @@ namespace TelegramBot
                         "pc" => Utility.HardwareDriver.SwitchPC(trigger),
                         "outlets" => Utility.HardwareDriver.SwitchOutlets(trigger),
                         "oled" => Utility.HardwareDriver.SwitchOLED(trigger),
-                        "led" => Utility.HardwareDriver.SwitchLED(trigger),
                         "room" => Utility.HardwareDriver.SwitchRoom(trigger),
                         _ => ""
                     };
@@ -159,20 +158,16 @@ namespace TelegramBot
                                 Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
-                            case "⚡⚡⚡":
+                            case "⚡":
                                 Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
-                            case "\U0001f7e9":
+                            case "\U0001f7e9\U0001f7e9\U0001f7e9":
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
-                            case "\U0001f7e5":
+                            case "\U0001f7e5\U0001f7e5\U0001f7e5":
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "🔵":
-                                Utility.HardwareDriver.SwitchLED(EHardwareTrigger.Toggle);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
                             case "📺":
@@ -217,7 +212,6 @@ namespace TelegramBot
 
             Rows[3] = new InlineKeyboardButton[2];
             Rows[3][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
-            Rows[3][1] = InlineKeyboardButton.WithCallbackData("LED", "led");
 
             Rows[4] = new InlineKeyboardButton[1];
             Rows[4][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
@@ -256,19 +250,19 @@ namespace TelegramBot
                         },
                         new KeyboardButton[]
                         {
-                            new KeyboardButton("⚡⚡⚡")
-                            
-                        },
-                        new KeyboardButton[]
-                        {
-                            new KeyboardButton("🟩"),
-                            new KeyboardButton("🟥"),
-                        },
-                        new KeyboardButton[]
-                        {
-                            new KeyboardButton("🔵"),
+                            new KeyboardButton("⚡"),
                             new KeyboardButton("📺")
+
                         },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("\U0001f7e9\U0001f7e9\U0001f7e9"),
+                        },
+                        new KeyboardButton[]
+                        {
+                            new KeyboardButton("\U0001f7e5\U0001f7e5\U0001f7e5"),
+                        },
+                        
                     };
             return new ReplyKeyboardMarkup(Keyboard);
         }
