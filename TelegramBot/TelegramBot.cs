@@ -210,7 +210,7 @@ namespace TelegramBot
             Rows[2] = new InlineKeyboardButton[1];
             Rows[2][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
 
-            Rows[3] = new InlineKeyboardButton[2];
+            Rows[3] = new InlineKeyboardButton[1];
             Rows[3][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
 
             Rows[4] = new InlineKeyboardButton[1];
