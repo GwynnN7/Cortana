@@ -204,7 +204,7 @@ namespace TelegramBot
   
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[6][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[5][];
 
             Rows[0] = new InlineKeyboardButton[1];
             Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp");
@@ -256,7 +256,7 @@ namespace TelegramBot
                         },
                         new KeyboardButton[]
                         {
-                            new KeyboardButton("⚡⚡⚡"),
+                            new KeyboardButton("⚡⚡⚡")
                             
                         },
                         new KeyboardButton[]
