@@ -251,7 +251,6 @@ namespace DiscordBot.Modules
                     .Build();
 
                 await mex.ModifyAsync(mex => mex.Components = messageComponent);
-
             }
 
             private async Task<Embed?> getGameEmbedAsync(string game, int count)
@@ -304,7 +303,7 @@ namespace DiscordBot.Modules
             public async Task GameButtonAnswer(string action, string game, int count, ulong messageID)
             {
                 if (action == "forward") count += 1;
-                else count -= 1;
+                else if(action == "backward") count -= 1;
 
                 await DeferAsync();
 
@@ -321,7 +320,7 @@ namespace DiscordBot.Modules
                 count = int.Parse(counterValues[0])-1;
 
                 var messageComponent = new ComponentBuilder()
-                    .WithButton("<", $"game-back-{game}-{count}-{messageID}")
+                    .WithButton("<", $"game-backward-{game}-{count}-{messageID}")
                     .WithButton(">", $"game-forward-{game}-{count}-{messageID}")
                     .Build();
 
