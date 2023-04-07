@@ -236,7 +236,7 @@ namespace DiscordBot.Modules
             {
                 await DeferAsync();
 
-                var gameEmbed = await GetGameEmbedAsync(game, 0);
+                var gameEmbed = await getGameEmbedAsync(game, 0);
                 if (gameEmbed == null)
                 {
                     await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
@@ -251,7 +251,7 @@ namespace DiscordBot.Modules
                 await FollowupAsync(embed: gameEmbed, components: messageComponent);
             }
 
-            private async Task<Embed?> GetGameEmbedAsync(string game, int count)
+            private async Task<Embed?> getGameEmbedAsync(string game, int count)
             {
                 var igdb = new IGDBClient(DiscordData.IGDB.ClientID, DiscordData.IGDB.ClientSecret);
                 string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
@@ -297,15 +297,15 @@ namespace DiscordBot.Modules
                 return GameEmbed;
             }
 
-            [ComponentInteraction("game-*-*-*", ignoreGroupNames: true)]
-            public async Task GameButtonAnswer(string action, string game, int count)
+            [ComponentInteraction("game-*-*-*-*", ignoreGroupNames: true)]
+            public async Task GameButtonAnswer(string action, string game, int count, ulong messageID)
             {
                 if (action == "forward") count += 1;
                 else count -= 1;
 
                 await DeferAsync();
 
-                var gameEmbed = await GetGameEmbedAsync(game, 0);
+                var gameEmbed = await getGameEmbedAsync(game, count);
                 if (gameEmbed == null)
                 {
                     await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
@@ -318,11 +318,11 @@ namespace DiscordBot.Modules
                 count = int.Parse(counterValues[0]);
 
                 var messageComponent = new ComponentBuilder()
-                    .WithButton("<", $"game-back-{game}-{count}")
-                    .WithButton(">", $"game-forward-{game}-{count}")
+                    .WithButton("<", $"game-back-{game}-{count}-{messageID}")
+                    .WithButton(">", $"game-forward-{game}-{count}-{messageID}")
                     .Build();
 
-                await FollowupAsync(embed: gameEmbed, components: messageComponent);
+               await Context.Channel.ModifyMessageAsync(messageID, message => { message.Embed = gameEmbed; message.Components = messageComponent; });
             }
 
             [SlashCommand("gaming-profile", "Profili RAWG, Steam e GOG")]
