@@ -246,7 +246,7 @@ namespace DiscordBot.Modules
                 var mex = await FollowupAsync(embed: gameEmbed);
 
                 var messageComponent = new ComponentBuilder()
-                    .WithButton("<", $"game-back-{game}-0-{mex.Id}")
+                    .WithButton("<", $"game-backward-{game}-0-{mex.Id}")
                     .WithButton(">", $"game-forward-{game}-0-{mex.Id}")
                     .Build();
 
@@ -306,8 +306,6 @@ namespace DiscordBot.Modules
                 if (action == "forward") count += 1;
                 else count -= 1;
 
-                
-
                 await DeferAsync();
 
                 var gameEmbed = await getGameEmbedAsync(game, count);
@@ -320,7 +318,7 @@ namespace DiscordBot.Modules
                 var counter = gameEmbed.Fields.Where(x => x.Name == "Risultato").First();
                 var counterValues = counter.Value.Split(" di ");
 
-                count = int.Parse(counterValues[0]);
+                count = int.Parse(counterValues[0])-1;
 
                 var messageComponent = new ComponentBuilder()
                     .WithButton("<", $"game-back-{game}-{count}-{messageID}")
