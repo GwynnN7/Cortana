@@ -232,55 +232,97 @@ namespace DiscordBot.Modules
         public class VideogamesGroup : InteractionModuleBase<SocketInteractionContext>
         {
             [SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
-            public async Task SearchGame([Summary("game", "Nome del gioco")] string game, [Summary("count", "Numero di risultati")] int count = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+            public async Task SearchGame([Summary("game", "Nome del gioco")] string game)
             {
-                await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+                await DeferAsync();
 
+                var gameEmbed = await GetGameEmbedAsync(game, 0);
+                if (gameEmbed == null)
+                {
+                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
+                    return;
+                }
+
+                var messageComponent = new ComponentBuilder()
+                    .WithButton("<", $"game-back-{game}-0")
+                    .WithButton(">", $"game-forward-{game}-0")
+                    .Build();
+
+                await FollowupAsync(embed: gameEmbed, components: messageComponent);
+            }
+
+            private async Task<Embed?> GetGameEmbedAsync(string game, int count)
+            {
                 var igdb = new IGDBClient(DiscordData.IGDB.ClientID, DiscordData.IGDB.ClientSecret);
                 string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
-                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit {count + 5};";
+                string query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";
                 var games = await igdb.QueryAsync<IGDB.Models.Game>(IGDBClient.Endpoints.Games, query: query);
                 var sortedGames = games.ToList();
                 sortedGames.Sort(delegate (IGDB.Models.Game a, IGDB.Models.Game b) {
-                    if((a.TotalRatingCount == null || a.TotalRatingCount == 0) && (b.TotalRatingCount == null || b.TotalRatingCount == 0))
+                    if ((a.TotalRatingCount == null || a.TotalRatingCount == 0) && (b.TotalRatingCount == null || b.TotalRatingCount == 0))
                     {
                         if (Math.Abs(a.Name.Length - game.Length) <= Math.Abs(b.Name.Length - game.Length)) return -1;
                         else return 1;
                     }
-                    if(a.TotalRatingCount == null || a.TotalRatingCount == 0) return 1;
-                    if(b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
-                    
+                    if (a.TotalRatingCount == null || a.TotalRatingCount == 0) return 1;
+                    if (b.TotalRatingCount == null || b.TotalRatingCount == 0) return -1;
+
                     if (a.TotalRatingCount >= b.TotalRatingCount) return -1;
                     else return 1;
                 });
 
-                if(sortedGames.Count == 0)
+                if (sortedGames.Count == 0) return null;   
+                
+                if (count >= sortedGames.Count) count = 0;
+                else if (count < 0) count = sortedGames.Count - 1;
+
+                var foundGame = sortedGames[count];
+
+                var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
+                Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
+                GameEmbed = GameEmbed.ToEmbedBuilder()
+                    .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
+                    .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
+                    .AddField("Risultato", $"{ count + 1} di { sortedGames.Count}")
+                    .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
+                    .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
+                    .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
+                    .AddField("Genres", foundGame.Genres != null ? string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)) : "N/A")
+                    .AddField("Game Engine", foundGame.GameEngines != null ? foundGame.GameEngines.Values.First().Name : "N/A")
+                    .AddField("Developers", foundGame.InvolvedCompanies != null ? string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)) : "N/A")
+                    .AddField("Platforms", foundGame.Platforms != null ? string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)) : "N/A")
+                    .WithFooter(foundGame.Summary != null ? (foundGame.Summary.Length <= 350 ? foundGame.Summary : foundGame.Summary.Substring(0, 350) + "...") : "No summary available")
+                    .Build();
+             
+                return GameEmbed;
+            }
+
+            [ComponentInteraction("game-*-*-*", ignoreGroupNames: true)]
+            public async Task GameButtonAnswer(string action, string game, int count)
+            {
+                if (action == "forward") count += 1;
+                else count -= 1;
+
+                await DeferAsync();
+
+                var gameEmbed = await GetGameEmbedAsync(game, 0);
+                if (gameEmbed == null)
                 {
-                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando", ephemeral: Ephemeral == EAnswer.Si);
+                    await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
                     return;
                 }
 
-                foreach (var foundGame in sortedGames)
-                {
-                    var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
-                    Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
-                    GameEmbed = GameEmbed.ToEmbedBuilder()
-                        .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
-                        .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
-                        .AddField("Rating", foundGame.Rating != null ? Math.Round(foundGame.Rating.Value, 2).ToString() : "N/A")
-                        .AddField("Release Date", foundGame.ReleaseDates != null ? foundGame.ReleaseDates.Values.First().Human : "N/A")
-                        .AddField("Themes", foundGame.Themes != null ? string.Join("\n", foundGame.Themes.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .AddField("Genres", foundGame.Genres != null ? string.Join("\n", foundGame.Genres.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .AddField("Game Engine", foundGame.GameEngines != null ? foundGame.GameEngines.Values.First().Name : "N/A") 
-                        .AddField("Developers", foundGame.InvolvedCompanies != null ? string.Join("\n", foundGame.InvolvedCompanies.Values.Take(3).Select(x => x.Company.Value.Name)) : "N/A")
-                        .AddField("Platforms", foundGame.Platforms != null ? string.Join("\n", foundGame.Platforms.Values.Take(3).Select(x => x.Name)) : "N/A")
-                        .WithFooter(foundGame.Summary != null ? (foundGame.Summary.Length <= 350 ? foundGame.Summary : foundGame.Summary.Substring(0, 350) + "...") : "No summary available")
-                        .Build();
-                    await FollowupAsync(embed: GameEmbed, ephemeral: Ephemeral == EAnswer.Si);
+                var counter = gameEmbed.Fields.Where(x => x.Name == "Risultato").First();
+                var counterValues = counter.Value.Split(" di ");
 
-                    count -= 1;
-                    if(count <= 0) return;
-                }
+                count = int.Parse(counterValues[0]);
+
+                var messageComponent = new ComponentBuilder()
+                    .WithButton("<", $"game-back-{game}-{count}")
+                    .WithButton(">", $"game-forward-{game}-{count}")
+                    .Build();
+
+                await FollowupAsync(embed: gameEmbed, components: messageComponent);
             }
 
             [SlashCommand("gaming-profile", "Profili RAWG, Steam e GOG")]
