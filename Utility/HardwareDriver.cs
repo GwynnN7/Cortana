@@ -73,6 +73,7 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
+                if (LampState == EBooleanState.On) return "Lampada già accesa";
                 UseGPIO(LampPin, PinValue.High);
                 Thread.Sleep(500);
                 UseGPIO(LampPin, PinValue.Low);
@@ -81,6 +82,7 @@ namespace Utility
             }
             else if (state == EHardwareTrigger.Off)
             {
+                if (LampState == EBooleanState.Off) return "Lampada già spenta";
                 UseGPIO(LampPin, PinValue.High);
                 Thread.Sleep(500);
                 UseGPIO(LampPin, PinValue.Low);
