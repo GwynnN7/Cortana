@@ -115,7 +115,7 @@ namespace Utility
             {
                 SwitchOutlets(EHardwareTrigger.On);
 
-                string mac = NetStats.Desktop_WLAN_MAC;
+                string mac = NetStats.Desktop_LAN_MAC;
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
 
                 return "PC in accensione";
