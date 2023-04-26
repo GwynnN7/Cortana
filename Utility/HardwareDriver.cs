@@ -10,18 +10,18 @@ namespace Utility
     public static class HardwareDriver
     {
         private const int RelayPin_0 = 25; //PC-OUTLET
-        private const int RelayPin_1 = 8;  //LAMP
+        private const int RelayPin_1 = 8;  //AMPLIFIER
+        private const int RelayPin_2 = 14; //LAMP
 
-        private static int SwitchPin = 4;
-        private static int LEDPin = 14;
         private static int PCPlugsPin = RelayPin_0;
-        private static int LampPin = RelayPin_1;
+        private static int AmplifierPin = RelayPin_1;
+        private static int LampPin = RelayPin_2;
 
         private static EBooleanState OutletsState = EBooleanState.Off;
         private static EBooleanState PCState = EBooleanState.Off;
-        private static EBooleanState LEDState = EBooleanState.Off;
         private static EBooleanState OLEDState = EBooleanState.Off;
         private static EBooleanState LampState = EBooleanState.Off;
+        private static EBooleanState AmplifierState = EBooleanState.Off;
 
         public static NetworkStats NetStats;
 
@@ -74,18 +74,39 @@ namespace Utility
             if (state == EHardwareTrigger.On)
             {
                 UseGPIO(LampPin, PinValue.High);
+                Thread.Sleep(500);
+                UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
+                UseGPIO(LampPin, PinValue.High);
+                Thread.Sleep(500);
                 UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
             else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
-      
+
+        public static string SwitchAmplifier(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                UseGPIO(AmplifierPin, PinValue.High);
+                AmplifierState = EBooleanState.On;
+                return "Amplificatore acceso";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                UseGPIO(AmplifierPin, PinValue.Low);
+                AmplifierState = EBooleanState.Off;
+                return "Amplificatore spento";
+            }
+            else return SwitchAmplifier(AmplifierState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
         public static string SwitchPC(EHardwareTrigger state)
         {
             if (state == EHardwareTrigger.On)

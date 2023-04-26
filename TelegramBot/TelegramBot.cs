@@ -84,6 +84,7 @@ namespace TelegramBot
                     string result = HardwareAction[message_id] switch
                     {
                         "lamp" => Utility.HardwareDriver.SwitchLamp(trigger),
+                        "amplifier" => Utility.HardwareDriver.SwitchAmplifier(trigger),
                         "pc" => Utility.HardwareDriver.SwitchPC(trigger),
                         "outlets" => Utility.HardwareDriver.SwitchOutlets(trigger),
                         "oled" => Utility.HardwareDriver.SwitchOLED(trigger),
@@ -162,6 +163,10 @@ namespace TelegramBot
                                 Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
+                            case "🎸":
+                                Utility.HardwareDriver.SwitchAmplifier(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
                             case "\U0001f7e9\U0001f7e9\U0001f7e9":
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
                                 await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
@@ -199,7 +204,7 @@ namespace TelegramBot
   
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[5][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[6][];
 
             Rows[0] = new InlineKeyboardButton[1];
             Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp");
@@ -208,13 +213,16 @@ namespace TelegramBot
             Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
 
             Rows[2] = new InlineKeyboardButton[1];
-            Rows[2][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
+            Rows[2][0] = InlineKeyboardButton.WithCallbackData("Amplifier", "amplifier");
 
             Rows[3] = new InlineKeyboardButton[1];
-            Rows[3][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
+            Rows[3][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
 
             Rows[4] = new InlineKeyboardButton[1];
-            Rows[4][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
+            Rows[4][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
+
+            Rows[5] = new InlineKeyboardButton[1];
+            Rows[5][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
             return hardwareKeyboard;
@@ -246,10 +254,11 @@ namespace TelegramBot
                         new KeyboardButton[]
                         {
                             new KeyboardButton("💡"),
-                            new KeyboardButton("🖥"),
+                            new KeyboardButton("🎸"),
                         },
                         new KeyboardButton[]
                         {
+                            new KeyboardButton("🖥"),
                             new KeyboardButton("⚡"),
                             new KeyboardButton("📺")
 
