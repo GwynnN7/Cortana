@@ -75,7 +75,7 @@ namespace Utility
             {
                 if (LampState == EBooleanState.On) return "Lampada già accesa";
                 UseGPIO(LampPin, PinValue.High);
-                Thread.Sleep(500);
+                Thread.Sleep(150);
                 UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
@@ -84,7 +84,7 @@ namespace Utility
             {
                 if (LampState == EBooleanState.Off) return "Lampada già spenta";
                 UseGPIO(LampPin, PinValue.High);
-                Thread.Sleep(500);
+                Thread.Sleep(150);
                 UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
