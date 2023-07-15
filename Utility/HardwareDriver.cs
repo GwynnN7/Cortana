@@ -159,9 +159,11 @@ namespace Utility
                         await Task.Delay(1000);
 
                         var start = DateTime.Now;
-                        while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1000);
+                        while (PingPC() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
 
-                        await Task.Delay(10000);
+                        if ((DateTime.Now - start).Seconds < 3) await Task.Delay(25000);
+                        else await Task.Delay(5000);
+
                         SwitchOutlets(EHardwareTrigger.Off);
 
                     });
