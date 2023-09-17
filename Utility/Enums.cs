@@ -21,7 +21,6 @@ public enum EHardwareElements
     PC,
     Lamp,
     Outlets,
-    Amplifier,
     General
 }
 

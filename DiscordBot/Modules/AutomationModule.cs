@@ -25,7 +25,6 @@ namespace DiscordBot.Modules
             {
                 EHardwareElements.Lamp => Utility.HardwareDriver.SwitchLamp(trigger),
                 EHardwareElements.PC => Utility.HardwareDriver.SwitchPC(trigger),
-                EHardwareElements.Amplifier => Utility.HardwareDriver.SwitchAmplifier(trigger),
                 EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
                 EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
                 _ => "Dispositivo hardware non presente"
