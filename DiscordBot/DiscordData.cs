@@ -47,6 +47,7 @@ namespace DiscordBot
                 {
                     AutoJoin = discordSettings.GuildSettings[Guild.Id].AutoJoin,
                     GreetingsChannel = discordSettings.GuildSettings[Guild.Id].GreetingsChannel,
+                    Greetings = discordSettings.GuildSettings[Guild.Id].Greetings,
                     AFKChannel = discordSettings.GuildSettings[Guild.Id].AFKChannel,
                     BannedWords = discordSettings.GuildSettings[Guild.Id].BannedWords
                 };
@@ -97,6 +98,7 @@ namespace DiscordBot
             var DefaultGuildSettings = new GuildSettings()
             {
                 AutoJoin = false,
+                Greetings = false,
                 GreetingsChannel = Guild.DefaultChannel.Id,
                 AFKChannel = 0,
                 BannedWords = new List<string>()
@@ -186,6 +188,7 @@ namespace DiscordBot
     public class GuildSettings
     {
         public bool AutoJoin { get; set; }
+        public bool Greetings { get; set; }
         public ulong GreetingsChannel { get; set; }
         public ulong AFKChannel { get; set; }
         public List<string> BannedWords { get; set; }

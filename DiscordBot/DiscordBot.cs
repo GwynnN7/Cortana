@@ -148,7 +148,7 @@ namespace DiscordBot
                 string Title = $"{Utility.Functions.RandomOption(new string[]{ "Ciao", "Benvenuto", "Salve" })}  {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Sei entrato alle:" });
 
-                await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
+                if(DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);

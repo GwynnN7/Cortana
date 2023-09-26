@@ -35,7 +35,15 @@ namespace DiscordBot.Modules
         {
             DiscordData.GuildSettings[Context.Guild.Id].AutoJoin = answer == EAnswer.Si;
             DiscordData.UpdateSettings();
-            await RespondAsync(answer == EAnswer.Si ? "Auto Join attivato" : "Auto Join disattivato");
+            await RespondAsync(answer == EAnswer.Si ? "Auto-Join attivato" : "Auto-Join disattivato");
+        }
+
+        [SlashCommand("greetings", "Volete che vi saluti quando entrate in un canale vocale?")]
+        public async Task SetGreetings([Summary("scelta", "Si o No?")] EAnswer answer)
+        {
+            DiscordData.GuildSettings[Context.Guild.Id].Greetings = answer == EAnswer.Si;
+            DiscordData.UpdateSettings();
+            await RespondAsync(answer == EAnswer.Si ? "Greetings attivato" : "Greetings disattivato");
         }
     }
 }

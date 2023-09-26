@@ -2,9 +2,6 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using IGDB;
-using IGDB.Models;
-using System.Linq.Expressions;
-using System.Xml.Linq;
 
 namespace DiscordBot.Modules
 {
