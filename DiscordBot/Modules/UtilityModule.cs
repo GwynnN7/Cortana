@@ -474,16 +474,21 @@ namespace DiscordBot.Modules
         [Group("unipi", "Università")]
         public class UniversityGroup : InteractionModuleBase<SocketInteractionContext>
         {
-            [SlashCommand("siti", "Siti UNIPI")]
+            [SlashCommand("link", "Siti UNIPI")]
             public async Task UnipiSites([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 Embed embed = DiscordData.CreateEmbed("Siti UNIPI", User: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
-                embed_builder.AddField("Agenda Didattica", "[Vai al sito](https://agendadidattica.unipi.it/)");
-                embed_builder.AddField("Università di Pisa", "[Vai al sito](https://www.unipi.it/)");
+                embed_builder.AddField("Home", "[Vai al sito](https://agendadidattica.unipi.it/Prod)");
                 embed_builder.AddField("Laurea in Informatica", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/)");
-                embed_builder.AddField("Area Personale", "[Vai al sito](https://www.studenti.unipi.it/)");
-                embed_builder.AddField("CISA TOLC", "[Vai al sito](https://www.cisiaonline.it/)");
+                embed_builder.AddField("Piano di Studi", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/piani-di-studio-2/)");
+                embed_builder.AddField("Iscrizione Esami", "[Vai al sito](https://esami.unipi.it/archivioiscrizioni.php)");
+                embed_builder.AddField("Calendario 2023/2024", "[Immagine](https://cdn.discordapp.com/attachments/912356013108256858/1137669285251121213/Orario_settimanale_-_Orario_settimanale.jpg?ex=65169016&is=65153e96&hm=0055311a24931ed11a8db1b3c462b8be1264a4371f5aac6ebdd9292c995fd762&)");
+
+                embed_builder.AddField("Architettura e Sistemi Operativi", "[Classroom](https://classroom.google.com/u/2/c/NjIyMjg0ODk2OTM2)\n[Teams](https://teams.microsoft.com/l/team/19%3ad78R1wqZ_8OCtKvUSqGAhRLVm_kbb0FTD6AZIdc2eus1%40thread.tacv2/conversations?groupId=956555d6-95af-4d8c-ae35-33549b96e038&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");
+                embed_builder.AddField("Laboratorio II", "[Classroom](https://classroom.google.com/u/2/c/NjIyMjg2NTcxMzE5)\n[SAI EVO](https://evo.di.unipi.it/student/courses/36/practices)\n[Teams](https://teams.microsoft.com/l/team/19%3a2yvkDN_uhbuK3sFWnzfwFZHOauEM86hzRBHAIEhBTz41%40thread.tacv2/conversations?groupId=613aa738-d3b6-49e8-8d39-9cfda135d653&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");
+                embed_builder.AddField("Ricerca Operativa", "[Moodle](https://elearning.di.unipi.it/course/view.php?id=495)\n[Teams](https://teams.microsoft.com/l/team/19%3amQrlWLskRtrOerZ0c5t_XRf8-DXjjnsnnmZ0Q892QZQ1%40thread.tacv2/conversations?groupId=7efd8a47-9ad9-4eb2-9fec-cb079183c650&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");
+                embed_builder.AddField("Paradigmi di Programmazione", "[Moodle A](https://elearning.di.unipi.it/course/view.php?id=534)\n[Moodle B](https://elearning.di.unipi.it/course/view.php?id=540)\n[Moodle 2022/2023](https://elearning.di.unipi.it/course/view.php?id=309)");
 
                 Dictionary<string, ulong> ids = new Dictionary<string, ulong>()
                 {
@@ -512,6 +517,7 @@ namespace DiscordBot.Modules
                     await RespondAsync("Mi dispiace, non ho dati su di te per questa università", ephemeral: Ephemeral == EAnswer.Si);
                     return;
                 }
+                embed_builder.WithFooter("Corso A [D5]");
 
                 await RespondAsync(embed: embed_builder.Build(), ephemeral: Ephemeral == EAnswer.Si);
             }
