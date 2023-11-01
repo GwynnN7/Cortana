@@ -1,10 +1,31 @@
-﻿using QRCoder;
+﻿using Newtonsoft.Json;
+using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
+using System.Text.Json;
 
 namespace Utility
 {
     public static class Functions
     {
+        static public T? LoadFile<T>(string Path)
+        {
+            T? DataToLoad = default;
+            if (File.Exists(Path))
+            {
+                var file = File.ReadAllText(Path);
+                DataToLoad = JsonConvert.DeserializeObject<T>(file);
+            }
+            return DataToLoad;
+        }
+
+        static public void WriteFile<T>(string FileName, T Data, JsonSerializerSettings? options = null)
+        {
+            var newJson = JsonConvert.SerializeObject(Data, options);
+
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), FileName);
+            File.WriteAllText(filePath, newJson);
+        }
+
         public static Stream CreateQRCode(string content, bool useNormalColors, bool useBorders)
         {
             QRCodeGenerator qrGenerator = new QRCodeGenerator();

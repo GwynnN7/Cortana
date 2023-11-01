@@ -3,16 +3,28 @@ using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.InputFiles;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
 {
+    static class HardwareEmoji
+    {
+        public const string LIGHT = "💡";
+        public const string PC = "🖥";
+        public const string PLUGS = "⚡";
+        public const string MONITOR = "📺";
+        public const string ON = "\U0001f7e9\U0001f7e9\U0001f7e9";
+        public const string OFF = "\U0001f7e5\U0001f7e5\U0001f7e5";
+    }
+
     public class TelegramBot
     {
         enum EAnswerCommands { QRCODE }
         private static Dictionary<long, EAnswerCommands> AnswerCommands;
         private static Dictionary<long, string> HardwareAction;
+        private static List<long> HardwarePermissions;
+
+
 
         public static void BootTelegramBot() => new TelegramBot().Main();
 
@@ -25,6 +37,11 @@ namespace TelegramBot
             TelegramData.Init(cortana);
             AnswerCommands = new();
             HardwareAction = new();
+            HardwarePermissions = new()
+            {
+                TelegramData.Data.ChiefID,
+                TelegramData.Data.LF_ID
+            };
 
             TelegramData.SendToUser(TelegramData.Data.ChiefID, "I'm Ready Chief!", false);
         }
@@ -45,11 +62,125 @@ namespace TelegramBot
 
             return Task.CompletedTask;
         }
+        
+
+        private async void HandleMessage(ITelegramBotClient Cortana, Update update)
+        {
+            if (update.Message == null) return;
+
+            var ChatID = update.Message.Chat.Id;
+            var UserID = update.Message.From == null ? ChatID : update.Message.From.Id;
+            if (update.Message.Type == MessageType.Text && update.Message.Text != null)
+            {
+                if (update.Message.Text.StartsWith("/"))
+                {
+                    var message = update.Message.Text.Substring(1).Split(" ").First();
+
+                    switch (message)
+                    {
+                        case "ip":
+                            var ip = await Utility.Functions.GetPublicIP();
+                            await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
+                            break;
+                        case "temperatura":
+                            var temp = Utility.HardwareDriver.GetCPUTemperature();
+                            await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
+                            break;
+                        case "qrcode":
+                            if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
+                            AnswerCommands.Add(ChatID, EAnswerCommands.QRCODE);
+                            await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
+                            break;
+                        case "buy":
+                            if(ChatID == TelegramData.Data.PSM_ID)
+                            {
+                                Shopping.Buy(UserID, update.Message.Text.Substring(1));
+                            }
+                            else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
+                            break;
+                        case "debts":
+
+                            break;
+                        case "hardware":
+                            if(HardwarePermissions.Contains(UserID))
+                            {
+                                var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                                HardwareAction.Add(mex.MessageId, "");
+                            }
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");      
+                            break;
+                        case "keyboard":
+                            if (HardwarePermissions.Contains(UserID))
+                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
+                    }
+                }
+                else
+                {
+                    if (!AnswerCommands.ContainsKey(ChatID))
+                    {
+                        if (!HardwarePermissions.Contains(UserID)) return;
+                        switch (update.Message.Text)
+                        {
+                            case HardwareEmoji.LIGHT:
+                                Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case HardwareEmoji.PC:
+                                Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case HardwareEmoji.PLUGS:
+                                Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case HardwareEmoji.ON:
+                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case HardwareEmoji.OFF:
+                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            case HardwareEmoji.MONITOR:
+                                Utility.HardwareDriver.SwitchOLED(EHardwareTrigger.Toggle);
+                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        switch (AnswerCommands[ChatID])
+                        {
+                            case EAnswerCommands.QRCODE:
+                                var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
+                                ImageStream.Position = 0;
+                                await Cortana.SendPhotoAsync(ChatID, new InputFileStream(ImageStream, "QRCODE.png"));
+                                AnswerCommands.Remove(ChatID);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            }
+        }
+
 
         private async void HandleCallback(ITelegramBotClient Cortana, Update update)
         {
             if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.CallbackQuery.Message == null) return;
-          
+            if (!HardwarePermissions.Contains(update.CallbackQuery.From.Id))
+            {
+                await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                return;
+            }
+
             string data = update.CallbackQuery.Data;
             int message_id = update.CallbackQuery.Message.MessageId;
 
@@ -65,7 +196,7 @@ namespace TelegramBot
                 }
                 else
                 {
-                    if(data == "back")
+                    if (data == "back")
                     {
                         HardwareAction[message_id] = "";
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
@@ -90,7 +221,7 @@ namespace TelegramBot
                         "room" => Utility.HardwareDriver.SwitchRoom(trigger),
                         _ => ""
                     };
-                    
+
 
                     HardwareAction[message_id] = "";
                     try
@@ -98,7 +229,7 @@ namespace TelegramBot
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
                         await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
                     }
-                    catch 
+                    catch
                     {
                         await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
                         var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
@@ -109,94 +240,6 @@ namespace TelegramBot
             }
         }
 
-        private async void HandleMessage(ITelegramBotClient Cortana, Update update)
-        {
-            if (update.Message == null) return;
-
-            var ChatID = update.Message.Chat.Id;
-            if (update.Message.Type == MessageType.Text && update.Message.Text != null)
-            {
-                if (update.Message.Text.StartsWith("/"))
-                {
-                    var message = update.Message.Text.Substring(1).Split(" ").First();
-
-                    switch (message)
-                    {
-                        case "ip":
-                            var ip = await Utility.Functions.GetPublicIP();
-                            await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
-                            break;
-                        case "temperatura":
-                            var temp = Utility.HardwareDriver.GetCPUTemperature();
-                            await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
-                            break;
-                        case "hardware":
-                            var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard",replyMarkup: CreateHardwareButtons());
-                            HardwareAction.Add(mex.MessageId, "");
-                            break;
-                        case "keyboard":
-                            await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
-                            break;
-                        case "qrcode":
-                            if(AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
-                            AnswerCommands.Add(ChatID, EAnswerCommands.QRCODE);
-                            await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
-                            break;
-                    }
-                }
-                else
-                {
-                    if (!AnswerCommands.ContainsKey(ChatID))
-                    {
-                        switch (update.Message.Text)
-                        {
-                            case "💡":
-                                Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "🖥":
-                                Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "⚡":
-                                Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "\U0001f7e9\U0001f7e9\U0001f7e9":
-                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "\U0001f7e5\U0001f7e5\U0001f7e5":
-                                Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            case "📺":
-                                Utility.HardwareDriver.SwitchOLED(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    else
-                    {
-                        switch (AnswerCommands[ChatID])
-                        {
-                            case EAnswerCommands.QRCODE:
-                                var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
-                                ImageStream.Position = 0;
-                                await Cortana.SendPhotoAsync(ChatID, new InputOnlineFile(ImageStream, "QRCODE.png"));
-                                AnswerCommands.Remove(ChatID);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                }
-            }
-        }
-
-  
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
             InlineKeyboardButton[][] Rows = new InlineKeyboardButton[5][];
@@ -245,23 +288,23 @@ namespace TelegramBot
                     {
                         new KeyboardButton[]
                         {
-                            new KeyboardButton("💡"),
-                            new KeyboardButton("🖥")
+                            new KeyboardButton(HardwareEmoji.LIGHT),
+                            new KeyboardButton(HardwareEmoji.PC)
                         },
                         new KeyboardButton[]
                         {
 
-                            new KeyboardButton("⚡"),
-                            new KeyboardButton("📺")
+                            new KeyboardButton(HardwareEmoji.PLUGS),
+                            new KeyboardButton(HardwareEmoji.MONITOR)
 
                         },
                         new KeyboardButton[]
                         {
-                            new KeyboardButton("\U0001f7e9\U0001f7e9\U0001f7e9"),
+                            new KeyboardButton(HardwareEmoji.ON),
                         },
                         new KeyboardButton[]
                         {
-                            new KeyboardButton("\U0001f7e5\U0001f7e5\U0001f7e5"),
+                            new KeyboardButton(HardwareEmoji.OFF),
                         },
                         
                     };

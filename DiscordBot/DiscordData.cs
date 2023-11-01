@@ -2,7 +2,7 @@
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System.Data;
+using System.Text.Json;
 
 namespace DiscordBot
 {
@@ -23,14 +23,9 @@ namespace DiscordBot
 
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
-            DiscordSettings? discordSettings = null;
-            if (File.Exists("Data/Discord/GuildConfig.json"))
-            {
-                var file = File.ReadAllText("Data/Discord/GuildConfig.json");
-
-                discordSettings = JsonConvert.DeserializeObject<DiscordSettings>(file);
-            }
+            DiscordSettings? discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json");
             if (discordSettings == null) discordSettings = new DiscordSettings();
+            
 
             DiscordIDs = discordSettings.IDs;
             if (discordSettings.GuildSettings == null) discordSettings.GuildSettings = GuildSettings;
@@ -59,37 +54,19 @@ namespace DiscordBot
 
         static public void LoadMemes()
         {
-            Dictionary<string, MemeJsonStructure>? memesDataResult = null;
-            if (File.Exists("Data/Discord/Memes.json"))
-            {
-                var file = File.ReadAllText("Data/Discord/Memes.json");
-
-                memesDataResult = JsonConvert.DeserializeObject<Dictionary<string, MemeJsonStructure>>(file);
-            }
+            Dictionary<string, MemeJsonStructure>? memesDataResult = Utility.Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Data/Discord/Memes.json");
             if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
         }
 
         static public void LoadGamingProfiles()
-        {
-            Dictionary<ulong, GamingProfileSet>? gamingProfilesResult = null;
-            if (File.Exists("Data/Discord/GamingProfile.json"))
-            {
-                var file = File.ReadAllText("Data/Discord/GamingProfile.json");
-
-                gamingProfilesResult = JsonConvert.DeserializeObject<Dictionary<ulong, GamingProfileSet>>(file);
-            }
+        { 
+            Dictionary<ulong, GamingProfileSet>? gamingProfilesResult = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json");
             if (gamingProfilesResult != null) GamingProfile = gamingProfilesResult;
         }
 
         static public void LoadIGDB()
         {
-            IGDBData? IGDBResult = null;
-            if (File.Exists("Data/Global/IGDB.json"))
-            {
-                var file = File.ReadAllText("Data/Global/IGDB.json");
-
-                IGDBResult = JsonConvert.DeserializeObject<IGDBData>(file);
-            }
+            IGDBData? IGDBResult = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json");
             if (IGDBResult != null) IGDB = IGDBResult;
         }
 
@@ -113,18 +90,13 @@ namespace DiscordBot
             jsonWriteOptions.Converters.Add(new StringEnumConverter());
 
             LastLoadedSettings.GuildSettings = GuildSettings;
-            var newJson = JsonConvert.SerializeObject(LastLoadedSettings, jsonWriteOptions);
 
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GuildConfig.json");
-            File.WriteAllText(filePath, newJson);
+            Utility.Functions.WriteFile("Data/Discord/GuildConfig.json", LastLoadedSettings, jsonWriteOptions);
         }
 
         static public void UpdateGamingProfile()
         {
-            var newJson = JsonConvert.SerializeObject(GamingProfile);
-
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Data/Discord/GamingProfile.json");
-            File.WriteAllText(filePath, newJson);
+            Utility.Functions.WriteFile("Data/Discord/GamingProfile.json", GamingProfile);
         }
 
         static public Embed CreateEmbed(string Title, SocketUser? User = null, string Description = "", Color? EmbedColor = null, EmbedFooterBuilder? Footer = null, bool WithTimeStamp = true, bool WithoutAuthor = false)
