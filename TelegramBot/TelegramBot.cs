@@ -98,8 +98,12 @@ namespace TelegramBot
                             }
                             else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
                             break;
-                        case "debts":
-
+                        case "my-debts":
+                            if(ChatID == TelegramData.Data.PSM_ID)
+                            {
+                                await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(UserID));
+                            }
+                            else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
                             break;
                         case "hardware":
                             if(HardwarePermissions.Contains(UserID))

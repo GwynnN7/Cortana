@@ -6,6 +6,13 @@ namespace TelegramBot
     {
         public static Dictionary<long, List<Debts>> Debts;
 
+        private static Dictionary<string, long> Usernames = new()
+        {
+            { "@Vasile78", 975535920 },
+            { "@mattcheru", 327041645 },
+            { "@coolermustacho", 168702626 }
+        };
+
         static public void LoadDebts()
         {
             Dictionary<long, List<Debts>>? DataToLoad = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json");
@@ -19,7 +26,6 @@ namespace TelegramBot
 
         static public bool Buy(long user, string message)
         {
-            Console.WriteLine(message);
             List<string> data = message.Split(" ").ToList();
             List<long> buyers = new();
             double value = 0;
@@ -29,7 +35,8 @@ namespace TelegramBot
                 value = double.Parse(data[1]);
                 for (int i = 2; i < data.Count; i++)
                 {
-                    buyers.Add(long.Parse(data[i]));
+                    if (!Usernames.ContainsKey(data[i])) continue;
+                    buyers.Add(Usernames[data[i]]);
                 }
             }
             catch
@@ -91,6 +98,17 @@ namespace TelegramBot
                 if (Debts[from][i].To == to) return i;
             }
             return -1;
+        }
+
+        static public string GetDebts(long from)
+        {
+            if (!Debts.ContainsKey(from) || Debts[from].Count == 0) return "Non devi soldi a nessuno";
+            string result = "";
+            foreach(var owns in Debts[from])
+            {
+                result += $"Devi {owns.Amount} a {Usernames.Where(x => x.Value == owns.To).First().Key}\n";
+            }
+            return result;
         }
     }
 
