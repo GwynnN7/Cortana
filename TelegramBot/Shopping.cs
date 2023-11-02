@@ -1,27 +1,27 @@
-﻿using Telegram.Bot.Types;
-
-namespace TelegramBot
+﻿namespace TelegramBot
 {
     public static class Shopping
     {
         public static Dictionary<long, List<Debts>> Debts;
-
-        private static Dictionary<string, long> Usernames = new()
+        private static List<string> AllowedChannles = new List<string>()
         {
-            { "@Vasile78", 975535920 },
-            { "@mattcheru", 327041645 },
-            { "@coolermustacho", 168702626 }
+            "ProcioneSpazialeMistico"
         };
 
         static public void LoadDebts()
         {
-            Dictionary<long, List<Debts>>? DataToLoad = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json");
+            var DataToLoad = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json");
             if (DataToLoad != null) Debts = DataToLoad;
         }
 
         static public void UpdateDebts()
         {
             Utility.Functions.WriteFile("Data/Telegram/Data.json", Debts);
+        }
+
+        static public bool IsChannelAllowed(long channelId)
+        {
+            return AllowedChannles.Contains(TelegramData.IDToGroupName(channelId));
         }
 
         static public bool Buy(long user, string message)
@@ -35,8 +35,7 @@ namespace TelegramBot
                 value = double.Parse(data[1]);
                 for (int i = 2; i < data.Count; i++)
                 {
-                    if (!Usernames.ContainsKey(data[i])) continue;
-                    buyers.Add(Usernames[data[i]]);
+                    buyers.Add(TelegramData.NameToID(data[i]));
                 }
             }
             catch
@@ -55,6 +54,7 @@ namespace TelegramBot
         static public void AddDebt(long user, double amount, long buyer)
         {
             if (!Debts.ContainsKey(user)) Debts.Add(user, new());
+            if (user == buyer) return;
 
             double oldDebt = GetDebt(buyer, user);
             if (oldDebt > 0)
@@ -100,13 +100,31 @@ namespace TelegramBot
             return -1;
         }
 
-        static public string GetDebts(long from)
+        static public string GetDebts(string username)
         {
-            if (!Debts.ContainsKey(from) || Debts[from].Count == 0) return "Non devi soldi a nessuno";
+            
+
+            long id = TelegramData.NameToID(username);
+            if (!Debts.ContainsKey(id) || Debts[id].Count == 0) return $"{username} non deve soldi a nessuno\n";
             string result = "";
-            foreach(var owns in Debts[from])
+            foreach(var owns in Debts[id])
             {
-                result += $"Devi {owns.Amount} a {Usernames.Where(x => x.Value == owns.To).First().Key}\n";
+                result += $"{username} deve {owns.Amount} a {TelegramData.IDToName(owns.To)}\n";
+            }
+            result += "\n";
+            foreach(var ownance in Debts)
+            {
+                if (ownance.Key == id) continue;
+                else
+                {
+                    foreach(var owns in ownance.Value)
+                    {
+                        if(owns.To == id)
+                        {
+                            result += $"{TelegramData.IDToName(ownance.Key)} deve {owns.Amount} a {username}\n";
+                        }
+                    }
+                }
             }
             return result;
         }

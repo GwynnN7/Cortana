@@ -2,7 +2,6 @@
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using System.Text.Json;
 
 namespace DiscordBot
 {
@@ -23,7 +22,7 @@ namespace DiscordBot
 
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
-            DiscordSettings? discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json");
+            var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json");
             if (discordSettings == null) discordSettings = new DiscordSettings();
             
 
@@ -54,19 +53,19 @@ namespace DiscordBot
 
         static public void LoadMemes()
         {
-            Dictionary<string, MemeJsonStructure>? memesDataResult = Utility.Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Data/Discord/Memes.json");
+            var memesDataResult = Utility.Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Data/Discord/Memes.json");
             if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
         }
 
         static public void LoadGamingProfiles()
         { 
-            Dictionary<ulong, GamingProfileSet>? gamingProfilesResult = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json");
+            var gamingProfilesResult = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json");
             if (gamingProfilesResult != null) GamingProfile = gamingProfilesResult;
         }
 
         static public void LoadIGDB()
         {
-            IGDBData? IGDBResult = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json");
+            var IGDBResult = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json");
             if (IGDBResult != null) IGDB = IGDBResult;
         }
 

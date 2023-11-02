@@ -59,8 +59,8 @@ namespace Utility
         {
             if (LoopType != ETimerLoop.No)
             {
-                if (LoopType == ETimerLoop.Quotidiano) NextTargetTime = DateTime.Now.AddDays(1);
-                else if (LoopType == ETimerLoop.Settimanalmente) NextTargetTime = DateTime.Now.AddDays(7);
+                if (LoopType == ETimerLoop.Daily) NextTargetTime = DateTime.Now.AddDays(1);
+                else if (LoopType == ETimerLoop.Weekly) NextTargetTime = DateTime.Now.AddDays(7);
                 else NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
                 var newInterval = NextTargetTime.Subtract(DateTime.Now).TotalMilliseconds;

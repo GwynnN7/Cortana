@@ -65,9 +65,9 @@ public enum EAudioSource
 public enum ETimerLoop
 {
     No,
-    Intervallo,
-    Quotidiano,
-    Settimanalmente
+    Interval,
+    Daily,
+    Weekly
 }
 
 public enum EWeek

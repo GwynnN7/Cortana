@@ -24,8 +24,6 @@ namespace TelegramBot
         private static Dictionary<long, string> HardwareAction;
         private static List<long> HardwarePermissions;
 
-
-
         public static void BootTelegramBot() => new TelegramBot().Main();
 
         public void Main()
@@ -39,11 +37,11 @@ namespace TelegramBot
             HardwareAction = new();
             HardwarePermissions = new()
             {
-                TelegramData.Data.ChiefID,
-                TelegramData.Data.LF_ID
+                TelegramData.NameToID("@mattcheru"),
+                TelegramData.NameToID("@alessiaat1")
             };
 
-            TelegramData.SendToUser(TelegramData.Data.ChiefID, "I'm Ready Chief!", false);
+            TelegramData.SendToUser(TelegramData.NameToID("@mattcheru"), "I'm Online", false);
         }
 
         private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)
@@ -92,25 +90,33 @@ namespace TelegramBot
                             await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
                             break;
                         case "buy":
-                            if(ChatID == TelegramData.Data.PSM_ID)
+                            if(Shopping.IsChannelAllowed(ChatID))
                             {
-                                Shopping.Buy(UserID, update.Message.Text.Substring(1));
+                                bool result = Shopping.Buy(UserID, update.Message.Text.Substring(1));
+                                if(result) await Cortana.SendTextMessageAsync(ChatID, "Debiti aggiornati");
+                                else await Cortana.SendTextMessageAsync(ChatID, "Non è stato possibile aggiornare i debiti");
+
                             }
                             else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
                             break;
-                        case "my-debts":
-                            if(ChatID == TelegramData.Data.PSM_ID)
+                        case "debt":
+                            if(Shopping.IsChannelAllowed(ChatID))
                             {
-                                await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(UserID));
+                                List<string> data = message.Split(" ").ToList();
+                                if (data.Count > 1)
+                                {
+                                    for (int i = 1; i < data.Count; i++)
+                                    {
+                                        await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(data[i]));
+                                    }
+                                }
+                                else await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(TelegramData.IDToName(UserID)));
                             }
-                            else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
+                            else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato a specifici gruppi");
                             break;
                         case "hardware":
                             if(HardwarePermissions.Contains(UserID))
-                            {
-                                var mex = await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
-                                HardwareAction.Add(mex.MessageId, "");
-                            }
+                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                             else
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");      
                             break;
@@ -124,7 +130,21 @@ namespace TelegramBot
                 }
                 else
                 {
-                    if (!AnswerCommands.ContainsKey(ChatID))
+                    if (AnswerCommands.ContainsKey(ChatID))
+                    {
+                        switch (AnswerCommands[ChatID])
+                        {
+                            case EAnswerCommands.QRCODE:
+                                var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
+                                ImageStream.Position = 0;
+                                await Cortana.SendPhotoAsync(ChatID, new InputFileStream(ImageStream, "QRCODE.png"));
+                                AnswerCommands.Remove(ChatID);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    else
                     {
                         if (!HardwarePermissions.Contains(UserID)) return;
                         switch (update.Message.Text)
@@ -157,20 +177,6 @@ namespace TelegramBot
                                 break;
                         }
                     }
-                    else
-                    {
-                        switch (AnswerCommands[ChatID])
-                        {
-                            case EAnswerCommands.QRCODE:
-                                var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
-                                ImageStream.Position = 0;
-                                await Cortana.SendPhotoAsync(ChatID, new InputFileStream(ImageStream, "QRCODE.png"));
-                                AnswerCommands.Remove(ChatID);
-                                break;
-                            default:
-                                break;
-                        }
-                    }
                 }
             }
         }
@@ -187,27 +193,17 @@ namespace TelegramBot
 
             string data = update.CallbackQuery.Data;
             int message_id = update.CallbackQuery.Message.MessageId;
+            InlineKeyboardMarkup Action;
 
-            if (HardwareAction.ContainsKey(message_id))
+            if (!HardwareAction.ContainsKey(message_id))
             {
-                if (HardwareAction[message_id] == "")
+                HardwareAction.Add(message_id, data);
+                Action = CreateOnOffButtons();
+            }
+            else
+            {
+                if (data != "back")
                 {
-                    HardwareAction[message_id] = data;
-
-                    InlineKeyboardMarkup Action = CreateOnOffButtons();
-                    await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                    await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
-                }
-                else
-                {
-                    if (data == "back")
-                    {
-                        HardwareAction[message_id] = "";
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
-                        return;
-                    }
-
                     EHardwareTrigger trigger = data switch
                     {
                         "on" => EHardwareTrigger.On,
@@ -225,23 +221,14 @@ namespace TelegramBot
                         "room" => Utility.HardwareDriver.SwitchRoom(trigger),
                         _ => ""
                     };
-
-
-                    HardwareAction[message_id] = "";
-                    try
-                    {
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id, result);
-                        await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, CreateHardwareButtons());
-                    }
-                    catch
-                    {
-                        await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-                        var mex = await Cortana.SendTextMessageAsync(update.CallbackQuery.Message.Chat.Id, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
-                        HardwareAction.Remove(message_id);
-                        HardwareAction.Add(mex.MessageId, "");
-                    }
                 }
+                HardwareAction.Remove(message_id);
+                Action = CreateHardwareButtons();
             }
+
+            await Cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+            await Cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, message_id, Action);
+
         }
 
         private InlineKeyboardMarkup CreateHardwareButtons()

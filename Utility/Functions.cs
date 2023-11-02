@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
-using System.Text.Json;
 
 namespace Utility
 {

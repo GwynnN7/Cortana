@@ -34,7 +34,7 @@ namespace Cortana
 
             await Task.Delay(500);
 
-            Console.WriteLine("Booting Completed, I'm ready Chief!");
+            Console.WriteLine("Boot Completed, I'm Online!");
             Console.Read();
 
             return Task.CompletedTask;

@@ -24,16 +24,44 @@ namespace TelegramBot
 
         static public void LoadData()
         {
-            Data? DataToLoad = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json");
+            var DataToLoad = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json");
             if (DataToLoad != null) Data = DataToLoad;
+        }
+
+        public static string IDToName(long id)
+        {
+            if (!Data.usernames.ContainsKey(id)) return "";
+            return Data.usernames[id];
+        }
+
+        public static string IDToGroupName(long id)
+        {
+            if (!Data.groups.ContainsKey(id)) return "";
+            return Data.usernames[id];
+        }
+
+        public static long NameToID(string name)
+        {
+            foreach (var item in Data.usernames)
+            {
+                if (item.Value == name) return item.Key;
+            }
+            return -1;
+        }
+
+        public static long NameToGroupID(string name)
+        {
+            foreach (var item in Data.groups)
+            {
+                if (item.Value == name) return item.Key;
+            }
+            return -1;
         }
     }
 
     public class Data
     {
-        public long ChiefID { get; set; }
-        public long LF_ID { get; set; }
-        public long PSM_ID { get; set; }
+        public Dictionary<long, string> usernames { get; set; }
+        public Dictionary<long, string> groups { get; set; }
     }
-
 }

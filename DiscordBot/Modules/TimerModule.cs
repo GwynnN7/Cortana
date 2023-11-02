@@ -8,15 +8,15 @@ namespace DiscordBot.Modules
     public class TimerModule : InteractionModuleBase<SocketInteractionContext>
     {
         [SlashCommand("timer", "Imposta un timer a cronometro [Default di 5 minuti]")]
-        public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi? [Default 0]"), MaxValue(59)] int seconds = 0, [Summary("minuti", "Quanti minuti? [Default 5]"), MaxValue(59)] int minutes = 5, [Summary("ore", "Quante ore? [Default 0]"), MaxValue(100)] int hours = 0, [Summary("loop", "Vuoi il timer in loop?")] ETimerLoop loop = ETimerLoop.No, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
+        public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi? [Default 0]"), MaxValue(59)] int seconds = 0, [Summary("minuti", "Quanti minuti? [Default 5]"), MaxValue(59)] int minutes = 5, [Summary("ore", "Quante ore? [Default 0]"), MaxValue(100)] int hours = 0, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
         {
-            var timer = new Utility.DiscordUserTimer(Guild: Context.Guild, User: Context.User, TextChannel: inPrivate == EAnswer.Si ? null : Context.Channel, Name: $"{Context.User.Id}:{DateTime.UnixEpoch.Second}", Text: text, Hours: hours, Minutes: minutes, Seconds: seconds, Callback: TimerFinished, Loop: loop);
+            var timer = new Utility.DiscordUserTimer(Guild: Context.Guild, User: Context.User, TextChannel: inPrivate == EAnswer.Si ? null : Context.Channel, Name: $"{Context.User.Id}:{DateTime.UnixEpoch.Second}", Text: text, Hours: hours, Minutes: minutes, Seconds: seconds, Callback: TimerFinished, Loop: ETimerLoop.No);
             var embed = DiscordData.CreateEmbed("Timer impostato!", Description: $"Per {timer.NextTargetTime:dddd dd MMMM alle HH:mm:ss}");
             await RespondAsync(embed: embed);
         }
 
         [SlashCommand("sveglia", "Imposta una sveglia [Mezzanotte di default]")]
-        public async Task SetAlarm([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("ora", "A che ora? [Default 0]"), MaxValue(23)] int hours = 0, [Summary("minuto", "A che minuto? [Default 0]"), MaxValue(59)] int minutes = 0, [Summary("giorno", "Il giorno della settimana [Default oggi]")] DayOfWeek? day = null, [Summary("loop", "Vuoi il timer in loop?")] ETimerLoop loop = ETimerLoop.No, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
+        public async Task SetAlarm([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("ora", "A che ora? [Default 0]"), MaxValue(23)] int hours = 0, [Summary("minuto", "A che minuto? [Default 0]"), MaxValue(59)] int minutes = 0, [Summary("giorno", "Il giorno della settimana [Default oggi]")] DayOfWeek? day = null, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
         {
             int dayNumber = DateTime.Now.Day;
             if (day != null)
@@ -26,7 +26,7 @@ namespace DiscordBot.Modules
             }
             
             var date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, dayNumber, hours, minutes, 1);
-            var timer = new Utility.DiscordUserTimer(Guild: Context.Guild, User: Context.User, TextChannel: inPrivate == EAnswer.Si ? null : Context.Channel, Name: $"{Context.User.Id}:{DateTime.UnixEpoch.Second}", Text: text, TargetTime: date, Callback: TimerFinished, Loop: loop);
+            var timer = new Utility.DiscordUserTimer(Guild: Context.Guild, User: Context.User, TextChannel: inPrivate == EAnswer.Si ? null : Context.Channel, Name: $"{Context.User.Id}:{DateTime.UnixEpoch.Second}", Text: text, TargetTime: date, Callback: TimerFinished, Loop: ETimerLoop.No);
             var embed = DiscordData.CreateEmbed("Timer impostato!");
             embed = embed.ToEmbedBuilder()
                     .AddField("Notifica", timer.Text ?? "N/A")

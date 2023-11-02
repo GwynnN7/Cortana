@@ -42,12 +42,12 @@ namespace DiscordBot
                 DiscordData.LoadGamingProfiles();
                 DiscordData.Cortana = Cortana;
 
-                await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID, true);
-                await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
-                //await commands.RegisterCommandsGloballyAsync(true);
+                //await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID, true);
+                //await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
+                await commands.RegisterCommandsGloballyAsync(true);
 
-                var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
-                var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Intervallo);
+                var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
+                var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
 
                 foreach(var guild in Cortana.Guilds)
                 {
@@ -55,7 +55,7 @@ namespace DiscordBot
                     if (channel != null) Modules.AudioHandler.Connect(channel);
                 }
 
-                DiscordData.SendToChannel("I'm ready Chief!", ECortanaChannels.Cortana);
+                DiscordData.SendToChannel("I'm Online", ECortanaChannels.Cortana);
             };
 
             await client.LoginAsync(TokenType.Bot, config["token"]);
@@ -161,7 +161,7 @@ namespace DiscordBot
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
             {
                 var DisplayName = OldState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"{Utility.Functions.RandomOption(new string[] { "Adios", "A Miaokai", "A dopo" })}  {DisplayName}";
+                string Title = $"{Utility.Functions.RandomOption(new string[] { "Cya", "A dopo" })}  {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Left at:" });
                 if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
