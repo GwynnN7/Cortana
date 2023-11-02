@@ -101,8 +101,6 @@
 
         static public string GetDebts(string username)
         {
-            
-
             long id = TelegramData.NameToID(username);
             if (!Debts.ContainsKey(id) || Debts[id].Count == 0) return $"{username} non deve soldi a nessuno\n";
             string result = "";

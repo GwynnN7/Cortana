@@ -72,9 +72,10 @@ namespace TelegramBot
             {
                 if (update.Message.Text.StartsWith("/"))
                 {
-                    var message = update.Message.Text.Substring(1).Split(" ").First();
+                    var message = update.Message.Text.Substring(1);
+                    var command = message.Split(" ").First();
 
-                    switch (message)
+                    switch (command)
                     {
                         case "ip":
                             var ip = await Utility.Functions.GetPublicIP();
