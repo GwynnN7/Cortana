@@ -16,6 +16,7 @@
         static public void UpdateDebts()
         {
             Utility.Functions.WriteFile("Data/Telegram/Debts.json", Debts);
+            Utility.Functions.WriteFile("../../Debts.json", Debts); //Backup
         }
 
         static public bool IsChannelAllowed(long channelId)
@@ -101,24 +102,26 @@
         static public string GetDebts(string username)
         {
             long id = TelegramData.NameToID(username);
-            if (!Debts.ContainsKey(id) || Debts[id].Count == 0) return $"{username} non deve soldi a nessuno\n";
             string result = "";
-            foreach(var owns in Debts[id])
+
+            if (!Debts.ContainsKey(id) || Debts[id].Count == 0) result += $"{username} non deve soldi a nessuno\n";
+            else
             {
-                result += $"{username} deve {Math.Round(owns.Amount, 2)} a {TelegramData.IDToName(owns.To)}\n";
+                foreach (var owns in Debts[id])
+                {
+                    result += $"{username} deve {Math.Round(owns.Amount, 2)} a {TelegramData.IDToName(owns.To)}\n";
+                }
             }
+            
             result += "\n";
             foreach(var ownance in Debts)
             {
                 if (ownance.Key == id) continue;
-                else
+                foreach(var owns in ownance.Value)
                 {
-                    foreach(var owns in ownance.Value)
+                    if(owns.To == id)
                     {
-                        if(owns.To == id)
-                        {
-                            result += $"{TelegramData.IDToName(ownance.Key)} deve {Math.Round(owns.Amount, 2)} a {username}\n";
-                        }
+                        result += $"{TelegramData.IDToName(ownance.Key)} deve {Math.Round(owns.Amount, 2)} a {username}\n";
                     }
                 }
             }
