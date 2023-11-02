@@ -37,11 +37,11 @@ namespace TelegramBot
             HardwareAction = new();
             HardwarePermissions = new()
             {
-                TelegramData.NameToID("@mattcheru"),
+                TelegramData.NameToID("@gwynn7"),
                 TelegramData.NameToID("@alessiaat1")
             };
 
-            TelegramData.SendToUser(TelegramData.NameToID("@mattcheru"), "I'm Online", false);
+            TelegramData.SendToUser(TelegramData.NameToID("@gwynn7"), "I'm Online", false);
         }
 
         private Task UpdateHandler(ITelegramBotClient Cortana, Update update, CancellationToken cancellationToken)
