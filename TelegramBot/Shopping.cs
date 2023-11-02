@@ -16,7 +16,6 @@
         static public void UpdateDebts()
         {
             Utility.Functions.WriteFile("Data/Telegram/Debts.json", Debts);
-            Utility.Functions.WriteFile("../../Debts.json", Debts); //Backup
         }
 
         static public bool IsChannelAllowed(long channelId)
