@@ -37,7 +37,7 @@ namespace TelegramBot
         public static string IDToGroupName(long id)
         {
             if (!Data.groups.ContainsKey(id)) return "";
-            return Data.usernames[id];
+            return Data.groups[id];
         }
 
         public static long NameToID(string name)
