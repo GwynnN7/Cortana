@@ -146,7 +146,6 @@ namespace DiscordBot
 
     public class DiscordSettings
     {
-        public string Token { get; set; }
         public DiscordIDs IDs { get; set; }
 
         public Dictionary<ulong, GuildSettings> GuildSettings { get; set; }
