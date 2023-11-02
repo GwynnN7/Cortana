@@ -22,9 +22,7 @@ namespace DiscordBot
 
         static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
-            var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json");
-            if (discordSettings == null) discordSettings = new DiscordSettings();
-            
+            var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json") ?? new();
 
             DiscordIDs = discordSettings.IDs;
             if (discordSettings.GuildSettings == null) discordSettings.GuildSettings = GuildSettings;
@@ -58,15 +56,13 @@ namespace DiscordBot
         }
 
         static public void LoadGamingProfiles()
-        { 
-            var gamingProfilesResult = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json");
-            if (gamingProfilesResult != null) GamingProfile = gamingProfilesResult;
+        {
+            GamingProfile = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json") ?? new();
         }
 
         static public void LoadIGDB()
         {
-            var IGDBResult = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json");
-            if (IGDBResult != null) IGDB = IGDBResult;
+            IGDB = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json") ?? new();
         }
 
         static public void AddGuildSettings(SocketGuild Guild)

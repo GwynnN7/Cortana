@@ -10,8 +10,7 @@
 
         static public void LoadDebts()
         {
-            var DataToLoad = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json");
-            if (DataToLoad != null) Debts = DataToLoad;
+            Debts = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json") ?? new();
         }
 
         static public void UpdateDebts()

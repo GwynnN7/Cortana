@@ -24,8 +24,7 @@ namespace TelegramBot
 
         static public void LoadData()
         {
-            var DataToLoad = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json");
-            if (DataToLoad != null) Data = DataToLoad;
+            Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
         }
 
         public static string IDToName(long id)

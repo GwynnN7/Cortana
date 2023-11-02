@@ -26,17 +26,13 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
         public static void LoadNetworkData()
         {
-            if (File.Exists("Data/Global/NetworkData.json"))
-            {
-                var file = File.ReadAllText("Data/Global/NetworkDataPisa.json");
-                NetStats = JsonConvert.DeserializeObject<NetworkStats>(file) ?? new();
-            }
+            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
         }
 
         public static void HandleNight()
