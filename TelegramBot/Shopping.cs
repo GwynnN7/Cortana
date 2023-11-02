@@ -15,7 +15,7 @@
 
         static public void UpdateDebts()
         {
-            Utility.Functions.WriteFile("Data/Telegram/Data.json", Debts);
+            Utility.Functions.WriteFile("Data/Telegram/Debts.json", Debts);
         }
 
         static public bool IsChannelAllowed(long channelId)
@@ -45,7 +45,7 @@
             double amount = value / buyers.Count;
             foreach(long buyer in buyers)
             {
-                AddDebt(user, amount, buyer);
+                AddDebt(buyer, amount, user);
             }
             return true;
         }
@@ -76,7 +76,6 @@
                 else Debts[user][id].Amount += amount;
             }
             UpdateDebts();
-
         }
 
         static public double GetDebt(long from, long to)
@@ -106,7 +105,7 @@
             string result = "";
             foreach(var owns in Debts[id])
             {
-                result += $"{username} deve {owns.Amount} a {TelegramData.IDToName(owns.To)}\n";
+                result += $"{username} deve {Math.Round(owns.Amount, 2)} a {TelegramData.IDToName(owns.To)}\n";
             }
             result += "\n";
             foreach(var ownance in Debts)
@@ -118,7 +117,7 @@
                     {
                         if(owns.To == id)
                         {
-                            result += $"{TelegramData.IDToName(ownance.Key)} deve {owns.Amount} a {username}\n";
+                            result += $"{TelegramData.IDToName(ownance.Key)} deve {Math.Round(owns.Amount, 2)} a {username}\n";
                         }
                     }
                 }
