@@ -73,7 +73,10 @@
             {
                 
                 int id = GetOwnance(user, buyer);
-                if (id == -1) Debts[user].Add(new Debts() { Amount=amount, To=buyer });   
+                if (id == -1)
+                {
+                    if(amount > 0) Debts[user].Add(new Debts() { Amount = amount, To = buyer });
+                }
                 else Debts[user][id].Amount += amount;
             }
             UpdateDebts();
