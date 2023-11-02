@@ -48,10 +48,8 @@ namespace DiscordBot.Modules
                 var text_channel = (SocketTextChannel?) timer.TextChannel;
 
                 var embed = DiscordData.CreateEmbed("Timer trascorso", User: user);
-                string nextElapsed = timer.LoopType == ETimerLoop.No ? "Nessuna" : $"{timer.NextTargetTime:dddd dd MMMM alle HH:mm:ss}";
                 embed = embed.ToEmbedBuilder()
                     .AddField("Notifica", timer.Text ?? "N/A")
-                    .AddField("Prossimo loop", nextElapsed)
                     .Build();
 
                 if (text_channel == null) await user.SendMessageAsync(embed: embed);

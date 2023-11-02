@@ -121,7 +121,7 @@
                 if (ownance.Key == id) continue;
                 foreach(var owns in ownance.Value)
                 {
-                    if(owns.To == id)
+                    if(owns.To == id && owns.Amount > 0)
                     {
                         result += $"{TelegramData.IDToName(ownance.Key)} deve {Math.Round(owns.Amount, 2)} a {username}\n";
                     }
