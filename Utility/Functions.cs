@@ -107,6 +107,7 @@ namespace Utility
                     client.Connect();
                     var res =  client.RunCommand(command);
                     exitStatus = res.ExitStatus;
+                    Console.WriteLine(exitStatus);
                     client.Disconnect();
                 }
             }
