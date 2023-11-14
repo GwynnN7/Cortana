@@ -103,7 +103,7 @@ namespace Utility
             {
                 using (var client = new SshClient(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", ""))
                 {
-                    client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
+                    //client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                     client.Connect();
                     var res =  client.RunCommand(command);
                     exitStatus = res.ExitStatus;
