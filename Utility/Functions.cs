@@ -102,11 +102,10 @@ namespace Utility
 
             var methods = new List<AuthenticationMethod>
             {
-                new PasswordAuthenticationMethod("gwynn7", "")
             };
             var con = new ConnectionInfo(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", methods.ToArray())
             {
-                Timeout = TimeSpan.FromSeconds(3)
+                Timeout = TimeSpan.FromSeconds(5)
             };
             try
             {
