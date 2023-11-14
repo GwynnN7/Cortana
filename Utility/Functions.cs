@@ -99,19 +99,11 @@ namespace Utility
         public static bool SSH_PC(string command)
         {
             int exitStatus = 255;
-
-            var methods = new List<AuthenticationMethod>
-            {
-            };
-            var con = new ConnectionInfo(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", methods.ToArray())
-            {
-                Timeout = TimeSpan.FromSeconds(5)
-            };
             try
             {
-
-                using (var client = new SshClient(con))
+                using (var client = new SshClient(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", ""))
                 {
+                    client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                     client.Connect();
                     var res =  client.RunCommand(command);
                     exitStatus = res.ExitStatus;
