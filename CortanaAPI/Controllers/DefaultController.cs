@@ -12,7 +12,7 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", "Hi, I'm Cortana" } };
         }
 
-        [HttpGet("notify-desktop")]
+        [HttpGet("notify-pc")]
         public Dictionary<string, string> OpenDesktop()
         {
             var res = Utility.Functions.NotifyPC("Hi, I'm Cortana");
