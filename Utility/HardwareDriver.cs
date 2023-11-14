@@ -1,5 +1,4 @@
 ﻿using Iot.Device.CpuTemperature;
-using Newtonsoft.Json;
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
@@ -26,7 +25,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -43,7 +42,7 @@ namespace Utility
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
-            else Functions.RequestPC("notify/night");
+            else Functions.NotifyPC("Avviso orario");
 
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
@@ -100,7 +99,7 @@ namespace Utility
                 string text = "PC in spegnimento";
                 try
                 {
-                    var result = Functions.RequestPC("hardware/shutdown");
+                    var result = Functions.SSH_PC("shutdown now");
                     if (!result) text = "PC già spento";
                 }
                 catch

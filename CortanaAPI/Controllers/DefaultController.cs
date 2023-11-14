@@ -12,12 +12,10 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", "Hi, I'm Cortana" } };
         }
 
-        [HttpGet("open-desktop")]
-        public Dictionary<string, string> OpenDesktop()
+        [HttpGet("notify-desktop")]
+        public void OpenDesktop()
         {
-            var result = Utility.Functions.RequestPC("show");
-            if(result) return new Dictionary<string, string>() { { "data", "Opening desktop application" } };
-            else return new Dictionary<string, string>() { { "data", "Desktop application didn't respond" } };
+            Utility.Functions.NotifyPC("Hi");
         }
     }
 }

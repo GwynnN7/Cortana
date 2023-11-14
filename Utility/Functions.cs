@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using QRCoder;
 using SixLabors.ImageSharp.Formats.Png;
+using Renci.SshNet;
 
 namespace Utility
 {
@@ -95,11 +96,22 @@ namespace Utility
             return ip;
         }
 
-        public static bool RequestPC(string url)
+        public static bool SSH_PC(string command)
         {
-            using var client = new HttpClient();
-            var result = client.GetAsync($"http://{HardwareDriver.NetStats.Desktop_WLAN_IP}:5000/cortana-pc/{url}").Result;
-            return result.IsSuccessStatusCode;
+            int exitStatus = 255;
+            using (var client = new SshClient(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", ""))
+{
+                client.Connect();
+                var res =  client.RunCommand(command);
+                exitStatus = res.ExitStatus;
+                client.Disconnect();
+            }
+            return exitStatus != 255;
+        }
+
+        public static void NotifyPC(string text)
+        {
+            SSH_PC($".config/Cortana/Notify.sh Cortana \"{text}\"");
         }
     }
 }
