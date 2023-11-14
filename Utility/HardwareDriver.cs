@@ -25,7 +25,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -42,7 +42,7 @@ namespace Utility
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
-            else Functions.NotifyPC("Avviso orario");
+            else Functions.NotifyPC("It's late!");
 
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
@@ -97,15 +97,8 @@ namespace Utility
             {
                 PCState = EBooleanState.Off;
                 string text = "PC in spegnimento";
-                try
-                {
-                    var result = Functions.SSH_PC("shutdown now");
-                    if (!result) text = "PC già spento";
-                }
-                catch
-                {
-                    text = "PC già spento";
-                }
+                var result = Functions.SSH_PC("shutdown now");
+                if (!result) text = "PC già spento";
                 return text;
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);

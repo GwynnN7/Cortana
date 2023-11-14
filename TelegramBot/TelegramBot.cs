@@ -127,6 +127,24 @@ namespace TelegramBot
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
                             break;
+                        case "cmd":
+                            if (HardwarePermissions.Contains(UserID))
+                            {
+                                var res = Utility.Functions.SSH_PC(message.Split(" ").Skip(1).ToString() ?? "echo");
+                                await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
+                            } 
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
+                        case "notify":
+                            if (HardwarePermissions.Contains(UserID))
+                            {
+                                var res = Utility.Functions.NotifyPC(message.Split(" ").Skip(1).ToString() ?? "Hi, I'm Cortana");
+                                await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
+                            } 
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
                     }
                 }
                 else

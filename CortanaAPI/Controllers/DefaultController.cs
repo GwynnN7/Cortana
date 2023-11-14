@@ -13,9 +13,10 @@ namespace RequestsHandler.Controllers
         }
 
         [HttpGet("notify-desktop")]
-        public void OpenDesktop()
+        public Dictionary<string, string> OpenDesktop()
         {
-            Utility.Functions.NotifyPC("Hi");
+            var res = Utility.Functions.NotifyPC("Hi, I'm Cortana");
+            return new Dictionary<string, string>() { { "data", res ? "Done" : "Error"} };
         }
     }
 }

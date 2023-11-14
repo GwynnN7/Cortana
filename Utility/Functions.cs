@@ -109,9 +109,9 @@ namespace Utility
             return exitStatus != 255;
         }
 
-        public static void NotifyPC(string text)
+        public static bool NotifyPC(string text)
         {
-            SSH_PC($".config/Cortana/Notify.sh Cortana \"{text}\"");
+            return SSH_PC($".config/Cortana/Notify.sh Cortana \"{text}\"");
         }
     }
 }
