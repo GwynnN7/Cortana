@@ -13,8 +13,9 @@ namespace TelegramBot
         public const string PC = "🖥";
         public const string PLUGS = "⚡";
         public const string MONITOR = "📺";
-        public const string ON = "\U0001f7e9\U0001f7e9\U0001f7e9";
-        public const string OFF = "\U0001f7e5\U0001f7e5\U0001f7e5";
+        public const string REBOOT = "🔄";
+        public const string ON = "🟩";
+        public const string OFF = "🟥";
     }
 
     public class TelegramBot
@@ -144,7 +145,7 @@ namespace TelegramBot
                         case "notify":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                var cmd = String.Join(" ", message.Split(" ").Skip(1));
+                                var cmd = string.Join(" ", message.Split(" ").Skip(1));
                                 var res = Utility.Functions.NotifyPC(cmd ?? "Hi, I'm Cortana");
                                 if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 else await Cortana.SendTextMessageAsync(ChatID, res);
@@ -177,31 +178,38 @@ namespace TelegramBot
                         {
                             case HardwareEmoji.LIGHT:
                                 Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
                             case HardwareEmoji.PC:
                                 Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
                             case HardwareEmoji.PLUGS:
                                 Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
                             case HardwareEmoji.ON:
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
                             case HardwareEmoji.OFF:
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 break;
-                            case HardwareEmoji.MONITOR:
-                                Utility.HardwareDriver.SwitchOLED(EHardwareTrigger.Toggle);
-                                await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                            case HardwareEmoji.REBOOT:
+                                Utility.HardwareDriver.RebootPC();
                                 break;
                             default:
-                                break;
+                                if(UserID == TelegramData.NameToID("@alessiaat1"))
+                                    await Cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), ChatID, update.Message.MessageId);
+                                else
+                                {
+                                    var cmd = "sudo " + update.Message.Text;
+                                    var res = Utility.HardwareDriver.SSH_PC(cmd);
+                                    string print = res;
+                                    if(res == "CONN_ERROR") print = "PC non raggiungibile";
+                                    else if(res == "ERROR") print = "Errore esecuzione comando";
+                                    if(print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                    else await Cortana.SendTextMessageAsync(ChatID, print);
+                                }
+                                return;
                         }
+                        await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                     }
                 }
             }
@@ -306,13 +314,14 @@ namespace TelegramBot
                         new KeyboardButton[]
                         {
                             new KeyboardButton(HardwareEmoji.LIGHT),
-                            new KeyboardButton(HardwareEmoji.PC)
+                            new KeyboardButton(HardwareEmoji.PLUGS)
+                            
                         },
                         new KeyboardButton[]
                         {
 
-                            new KeyboardButton(HardwareEmoji.PLUGS),
-                            new KeyboardButton(HardwareEmoji.MONITOR)
+                            new KeyboardButton(HardwareEmoji.PC),
+                            new KeyboardButton(HardwareEmoji.REBOOT)
 
                         },
                         new KeyboardButton[]

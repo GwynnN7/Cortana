@@ -3,7 +3,6 @@ using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
-using Renci.SshNet;
 
 namespace Utility
 {
@@ -26,7 +25,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -184,26 +183,22 @@ namespace Utility
                      Arguments = $"Python/SSH.py {usr} {addr} {command}",
                      RedirectStandardOutput = true
                 });
-                string output = x.StandardOutput.ReadToEnd();
-                var ls = output.ToList();
-                string code = "-1";
-                int i=ls.Count-1;
-                for(; i>=0; i--)
-                {
-                    if(char.IsNumber(ls[i])) 
-                    {
-                        code = ls[i].ToString();
-                        break;
-                    }
-                }
+                string output = x!.StandardOutput.ReadToEnd();
+                var values = output.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                string code = values.Last();
                 if(code == "65280") return "CONN_ERROR";
-                else if(code == "0") return i == 0 ? code : output.Substring(0, i);
+                else if(code == "0") return values.Length == 1 ? code : string.Join(" ", values.SkipLast(1));
                 return "ERROR";
             }
             catch
             {
                 return "CONN_ERROR";
             }
+        }
+
+        public static string RebootPC()
+        {
+            return SSH_PC("sudo reboot");
         }
 
         public static string GetCPUTemperature()
