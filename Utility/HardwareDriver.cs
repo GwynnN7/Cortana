@@ -185,9 +185,12 @@ namespace Utility
                      RedirectStandardOutput = true
                 });
                 string output = x.StandardOutput.ReadToEnd();
-                string code = output.ToList().Last().ToString();
-                Console.WriteLine(output);
-                Console.WriteLine(code);
+                var ls = output.ToList();
+                string code = "-1";
+                for(int i=ls.Count-1; i>=0; i--)
+                {
+                    if(char.IsNumber(ls[i])) code = ls[i].ToString();
+                }
                 if(code == "65280") return "CONN_ERROR";
                 else if(code == "0") return output.Length == 0 ? code : output;
                 return "ERROR";
