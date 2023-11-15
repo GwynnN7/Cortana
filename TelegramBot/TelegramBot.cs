@@ -131,8 +131,8 @@ namespace TelegramBot
                             if (HardwarePermissions.Contains(UserID))
                             {  
                                 var cmd = String.Join(" ", message.Split(" ").Skip(1));
-                                var res = Utility.HardwareDriver.SSH_PC(cmd ?? "echo");
-                                await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
+                                var res = Utility.HardwareDriver.SSH_PC(cmd ?? "-");
+                                await Cortana.SendTextMessageAsync(ChatID, res);
                             } 
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         

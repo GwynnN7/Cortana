@@ -97,7 +97,7 @@ namespace Utility
 
         public static bool NotifyPC(string text)
         {
-            return HardwareDriver.SSH_PC($"~/.config/Cortana/Notify.sh \"{text}\"");
+            return HardwareDriver.SSH_PC($"~/.config/Cortana/Notify.sh \"{text}\"") == "PC non raggiungibile";
         }
     }
 }

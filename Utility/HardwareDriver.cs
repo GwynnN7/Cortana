@@ -99,7 +99,7 @@ namespace Utility
             {
                 PCState = EBooleanState.Off;
                 var res = SSH_PC("shutdown now");
-                return lastState == EBooleanState.Off ? "PC già spento" : (res ? "PC in spegnimento" : "PC non raggiungibile");
+                return lastState == EBooleanState.Off ? "PC già spento" : (res == "PC non raggiungibile" ? res : "PC in spegnimento");
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -173,7 +173,7 @@ namespace Utility
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static bool SSH_PC(string command)
+        public static string SSH_PC(string command)
         {
             var usr = NetStats.DesktopUsername;
             var addr = NetStats.Desktop_WLAN_IP;
@@ -184,14 +184,14 @@ namespace Utility
                      Arguments = $"Python/SSH.py {usr} {addr} {command}"
                 });
                 string output = x.StandardOutput.ReadToEnd();
-                Console.WriteLine(output);
+                Console.WriteLine("Output: "+ output);
                 string err = x.StandardError.ReadToEnd();
-                Console.WriteLine(err);
-                return true;
+                Console.WriteLine("Error:"+ err);
+                return output;
             }
             catch
             {
-                return false;
+                return "PC non raggiungibile";
             }
         }
 
