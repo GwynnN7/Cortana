@@ -130,7 +130,7 @@ namespace TelegramBot
                         case "cmd":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                var res = Utility.Functions.SSH_PC(message.Split(" ").Skip(1).ToString() ?? "echo");
+                                var res = Utility.HardwareDriver.SSH_PC(message.Split(" ").Skip(1).ToString() ?? "echo");
                                 await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
                             } 
                             else 

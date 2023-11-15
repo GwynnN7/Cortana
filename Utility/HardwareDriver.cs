@@ -3,6 +3,7 @@ using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
+using Renci.SshNet;
 
 namespace Utility
 {
@@ -97,7 +98,7 @@ namespace Utility
             else if (state == EHardwareTrigger.Off)
             {
                 PCState = EBooleanState.Off;
-                var res = Functions.SSH_PC("shutdown now");
+                var res = SSH_PC("shutdown now");
                 return lastState == EBooleanState.Off ? "PC già spento" : (res ? "PC in spegnimento" : "PC non raggiungibile");
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
@@ -170,6 +171,22 @@ namespace Utility
                 }
             }
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static bool SSH_PC(string command)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo() {
+                     FileName = "python", 
+                     Arguments = $"Python/SSH.py {HardwareDriver.NetStats.DesktopUsername} {HardwareDriver.NetStats.Desktop_WLAN_IP} {command}" 
+                });
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static string GetCPUTemperature()
