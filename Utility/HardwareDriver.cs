@@ -174,6 +174,7 @@ namespace Utility
 
         public static string SSH_PC(string command)
         {
+            
             var usr = NetStats.DesktopUsername;
             var addr = NetStats.Desktop_WLAN_IP;
             try
@@ -185,10 +186,11 @@ namespace Utility
                 });
                 string output = x!.StandardOutput.ReadToEnd();
                 var values = output.Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                values[0] = values[0].ToLower();
                 string code = values.Last();
-                Console.WriteLine(output);
-                Console.WriteLine(values);
-                Console.WriteLine(code);
+                Console.WriteLine("Output: "+output+"|");
+                Console.WriteLine("Values: " + values+"|");
+                Console.WriteLine("Code: "+code+"|");
                 if(code == "65280") return "CONN_ERROR";
                 else if(code == "0") return values.Length == 1 ? code : string.Join(" ", values.SkipLast(1));
                 return "ERROR";
