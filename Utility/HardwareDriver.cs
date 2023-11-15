@@ -187,12 +187,17 @@ namespace Utility
                 string output = x.StandardOutput.ReadToEnd();
                 var ls = output.ToList();
                 string code = "-1";
-                for(int i=ls.Count-1; i>=0; i--)
+                int i=ls.Count-1;
+                for(; i>=0; i--)
                 {
-                    if(char.IsNumber(ls[i])) code = ls[i].ToString();
+                    if(char.IsNumber(ls[i])) 
+                    {
+                        code = ls[i].ToString();
+                        break;
+                    }
                 }
                 if(code == "65280") return "CONN_ERROR";
-                else if(code == "0") return output.Length == 0 ? code : output;
+                else if(code == "0") return i == 0 ? code : output.Substring(0, i);
                 return "ERROR";
             }
             catch
