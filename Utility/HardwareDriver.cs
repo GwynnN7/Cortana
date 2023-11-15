@@ -26,7 +26,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -184,15 +184,15 @@ namespace Utility
                      Arguments = $"Python/SSH.py {usr} {addr} {command}",
                      RedirectStandardOutput = true
                 });
-                string output = x.StandardOutput.ReadToEnd();
-                Console.WriteLine("Output: "+ output);
-                string err = x.StandardError.ReadToEnd();
-                Console.WriteLine("Error:"+ err);
-                return output;
+                string output = x!.StandardOutput.ReadToEnd();
+                string code = output.ToList().Last().ToString();
+                if(code == "65280") return "CONN_ERROR";
+                else if(code == "0") return output.Length == 0 ? code : output;
+                return "ERROR";
             }
             catch
             {
-                return "PC non raggiungibile";
+                return "CONN_ERROR";
             }
         }
 

@@ -95,9 +95,12 @@ namespace Utility
             return ip;
         }
 
-        public static bool NotifyPC(string text)
+        public static string NotifyPC(string text)
         {
-            return HardwareDriver.SSH_PC($".config/Cortana/Notify.sh \"{text}\"") == "PC non raggiungibile";
+            string res = HardwareDriver.SSH_PC($".config/Cortana/Notify.sh \"{text}\"");
+            if(res == "CONN_ERROR") return "PC non raggiungibile";
+            else if(res == "ERROR") return "Non è stato possibile inviare la notifica";
+            else return res;
         }
     }
 }

@@ -132,7 +132,11 @@ namespace TelegramBot
                             {  
                                 var cmd = String.Join(" ", message.Split(" ").Skip(1));
                                 var res = Utility.HardwareDriver.SSH_PC(cmd ?? "-");
-                                await Cortana.SendTextMessageAsync(ChatID, res);
+                                string print = res;
+                                if(res == "CONN_ERROR") print = "PC non raggiungibile";
+                                else if(res == "ERROR") print = "Errore esecuzione comando";
+                                if(print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                else await Cortana.SendTextMessageAsync(ChatID, print);
                             } 
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
@@ -142,7 +146,8 @@ namespace TelegramBot
                             {
                                 var cmd = String.Join(" ", message.Split(" ").Skip(1));
                                 var res = Utility.Functions.NotifyPC(cmd ?? "Hi, I'm Cortana");
-                                await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
+                                if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                else await Cortana.SendTextMessageAsync(ChatID, res);
                             } 
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
