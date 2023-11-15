@@ -129,8 +129,9 @@ namespace TelegramBot
                             break;
                         case "cmd":
                             if (HardwarePermissions.Contains(UserID))
-                            {
-                                var res = Utility.HardwareDriver.SSH_PC(message.Split(" ").Skip(1).ToString() ?? "echo");
+                            {  
+                                var cmd = String.Join(" ", message.Split(" ").Skip(1));
+                                var res = Utility.HardwareDriver.SSH_PC(cmd ?? "echo");
                                 await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
                             } 
                             else 
@@ -139,7 +140,8 @@ namespace TelegramBot
                         case "notify":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                var res = Utility.Functions.NotifyPC(message.Split(" ").Skip(1).ToString() ?? "Hi, I'm Cortana");
+                                var cmd = String.Join(" ", message.Split(" ").Skip(1));
+                                var res = Utility.HardwareDriver.SSH_PC(cmd ?? "Hi, I'm Cortana");
                                 await Cortana.SendTextMessageAsync(ChatID, res ? "Comando inviato" : "PC non raggiungibile");
                             } 
                             else 
