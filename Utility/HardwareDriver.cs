@@ -175,12 +175,16 @@ namespace Utility
 
         public static bool SSH_PC(string command)
         {
+            var usr = NetStats.DesktopUsername;
+            var addr = NetStats.Desktop_WLAN_IP;
+            Console.WriteLine(usr);
+            Console.WriteLine(addr);
+            Console.WriteLine(command);
             try
             {
                 Process.Start(new ProcessStartInfo() {
                      FileName = "python", 
-                     //Arguments = $"Python/SSH.py {HardwareDriver.NetStats.DesktopUsername} {HardwareDriver.NetStats.Desktop_WLAN_IP} {command}"
-                     Arguments = $"Python/SSH.py gwynn7 192.168.178.118 .config/Cortana/Notify.sh ciao"
+                     Arguments = $"Python/SSH.py {usr} {addr} {command}"
                 });
                 return true;
             }
