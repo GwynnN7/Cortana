@@ -177,15 +177,16 @@ namespace Utility
         {
             var usr = NetStats.DesktopUsername;
             var addr = NetStats.Desktop_WLAN_IP;
-            Console.WriteLine(usr);
-            Console.WriteLine(addr);
-            Console.WriteLine(command);
             try
             {
-                Process.Start(new ProcessStartInfo() {
+                var x = Process.Start(new ProcessStartInfo() {
                      FileName = "python", 
                      Arguments = $"Python/SSH.py {usr} {addr} {command}"
                 });
+                string output = x.StandardOutput.ReadToEnd();
+                Console.WriteLine(output);
+                string err = x.StandardError.ReadToEnd();
+                Console.WriteLine(err);
                 return true;
             }
             catch
