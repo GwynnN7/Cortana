@@ -188,7 +188,7 @@ namespace Utility
                 var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
                 string code = outputValues.Last();
                 if(code == "65280") return "CONN_ERROR";
-                else if(code == "0") return outputValues.First();
+                else if(code == "0") return outputValues.Length == 1 ? code : string.Join("\n", outputValues.SkipLast(1));
                 return "ERROR";
             }
             catch
