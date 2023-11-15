@@ -173,7 +173,7 @@ namespace TelegramBot
                     }
                     else
                     {
-                        if (!HardwarePermissions.Contains(UserID)) return;
+                        if (!HardwarePermissions.Contains(UserID) || update.Message.Chat.Type != ChatType.Private) return;
                         switch (update.Message.Text)
                         {
                             case HardwareEmoji.LIGHT:
