@@ -42,7 +42,7 @@ namespace Utility
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
             if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
-            else Functions.NotifyPC("It's late!");
+            else Functions.NotifyPC("You should go to sleep");
 
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
@@ -50,7 +50,11 @@ namespace Utility
         public static string SwitchRoom(EHardwareTrigger state)
         {
             
-            if (state == EHardwareTrigger.On) SwitchPC(state);
+            if (state == EHardwareTrigger.On) 
+            {
+                if(DateTime.Now.Hour >= 17) SwitchLamp(state);
+                SwitchPC(state);
+            }
             else
             {
                 SwitchLamp(state);
@@ -65,14 +69,12 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if (LampState == EBooleanState.On) return "Lampada già accesa";
                 UseGPIO(LampPin, PinValue.High);
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (LampState == EBooleanState.Off) return "Lampada già spenta";
                 UseGPIO(LampPin, PinValue.Low);
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
@@ -82,6 +84,7 @@ namespace Utility
 
         public static string SwitchPC(EHardwareTrigger state)
         {
+            var lastState = PCState;
             if (state == EHardwareTrigger.On)
             {
                 SwitchOutlets(EHardwareTrigger.On);
@@ -89,17 +92,13 @@ namespace Utility
                 string mac = NetStats.Desktop_LAN_MAC;
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
 
-                return "PC in accensione";
-                
-
+                return lastState == EBooleanState.On ? "PC già acceso" : "PC in accensione";
             }
             else if (state == EHardwareTrigger.Off)
             {
                 PCState = EBooleanState.Off;
-                string text = "PC in spegnimento";
-                var result = Functions.SSH_PC("shutdown now");
-                if (!result) text = "PC già spento";
-                return text;
+                var res = Functions.SSH_PC("shutdown now");
+                return lastState == EBooleanState.Off ? "PC già spento" : (res ? "PC in spegnimento" : "PC non raggiungibile");
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -153,7 +152,7 @@ namespace Utility
                 }
                 catch
                 {
-                    return "Errore display";
+                    return "Display non raggiungibile";
                 }
 
             }
@@ -167,7 +166,7 @@ namespace Utility
                 }
                 catch
                 {
-                    return "Errore display";
+                    return "Display non raggiungibile";
                 }
             }
             else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
@@ -186,10 +185,7 @@ namespace Utility
 
         public static bool PingPC()
         {
-            using Ping pingSender = new Ping();
-            PingReply reply = pingSender.Send(NetStats.Desktop_WLAN_IP, 2000);
-
-            return reply.Status == IPStatus.Success;
+            return Ping(NetStats.Desktop_WLAN_IP);
         }
 
         public static bool Ping(string ip)
@@ -203,7 +199,7 @@ namespace Utility
         private static void UseGPIO(int Pin, PinValue Value)
         {
             using var controller = new GpioController();
-            controller.OpenPin(Pin, PinMode.Output);
+            var x =  controller.OpenPin(Pin, PinMode.Output);
             controller.Write(Pin, Value);
         }
     }
@@ -221,5 +217,7 @@ namespace Utility
 
         public string SubnetMask { get; set; }
         public string Gateway { get; set; }
+        public string CortanaUsername { get; set; }
+        public string DesktopUsername { get; set; }
     }
 }

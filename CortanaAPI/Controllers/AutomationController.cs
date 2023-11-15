@@ -19,14 +19,6 @@ namespace RequestsHandler.Controllers
             return new Dictionary<string, string>() { { "data", result } };
         }
 
-        [HttpGet("amplifier")]
-        public Dictionary<string, string> AmplifierPower(string state)
-        {
-            string result = Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
-            return new Dictionary<string, string>() { { "data", result } };
-        }
-
-
         [HttpGet("pc")]
         public Dictionary<string, string> PCPower(string state)
         {

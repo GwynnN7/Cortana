@@ -98,27 +98,26 @@ namespace Utility
 
         public static bool SSH_PC(string command)
         {
-            int exitStatus = 255;
+            int exitStatus = -1;
+            using var client = new SshClient(HardwareDriver.NetStats.Desktop_WLAN_IP, HardwareDriver.NetStats.DesktopUsername, "");
+            client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
             try
             {
-                using (var client = new SshClient(HardwareDriver.NetStats.Desktop_WLAN_IP, "gwynn7", ""))
-                {
-                    //client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
-                    client.Connect();
-                    var res =  client.RunCommand(command);
-                    exitStatus = res.ExitStatus;
-                    Console.WriteLine(exitStatus);
-                    client.Disconnect();
-                }
+                client.Connect();
+                var res = client.RunCommand(command);
+                exitStatus = res.ExitStatus;
             }
-            catch{}
+            finally
+            {
+                client.Disconnect();
+            }
             
-            return exitStatus != 255;
+            return exitStatus == 0;
         }
 
         public static bool NotifyPC(string text)
         {
-            return SSH_PC($".config/Cortana/Notify.sh Cortana \"{text}\"");
+            return SSH_PC($"~/.config/Cortana/Notify.sh \"{text}\"");
         }
     }
 }
