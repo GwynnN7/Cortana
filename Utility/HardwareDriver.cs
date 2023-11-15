@@ -181,7 +181,8 @@ namespace Utility
             {
                 var x = Process.Start(new ProcessStartInfo() {
                      FileName = "python", 
-                     Arguments = $"Python/SSH.py {usr} {addr} {command}"
+                     Arguments = $"Python/SSH.py {usr} {addr} {command}",
+                     RedirectStandardOutput = true
                 });
                 string output = x.StandardOutput.ReadToEnd();
                 Console.WriteLine("Output: "+ output);
