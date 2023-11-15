@@ -16,7 +16,7 @@ namespace RequestsHandler.Controllers
         public Dictionary<string, string> OpenDesktop()
         {
             var res = Utility.Functions.NotifyPC("Hi, I'm Cortana");
-            return new Dictionary<string, string>() { { "data", res ? "Done" : "Error"} };
+            return new Dictionary<string, string>() { { "data", res} };
         }
     }
 }

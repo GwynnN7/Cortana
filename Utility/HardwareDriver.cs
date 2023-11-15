@@ -26,7 +26,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -98,7 +98,7 @@ namespace Utility
             else if (state == EHardwareTrigger.Off)
             {
                 PCState = EBooleanState.Off;
-                var res = SSH_PC("shutdown now");
+                var res = SSH_PC("sudo shutdown now");
                 return lastState == EBooleanState.Off ? "PC già spento" : (res == "PC non raggiungibile" ? res : "PC in spegnimento");
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
@@ -186,6 +186,7 @@ namespace Utility
                 });
                 string output = x!.StandardOutput.ReadToEnd();
                 string code = output.ToList().Last().ToString();
+                Console.WriteLine(code);
                 if(code == "65280") return "CONN_ERROR";
                 else if(code == "0") return output.Length == 0 ? code : output;
                 return "ERROR";
