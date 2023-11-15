@@ -186,6 +186,9 @@ namespace Utility
                 string output = x!.StandardOutput.ReadToEnd();
                 var values = output.Split(" ", StringSplitOptions.RemoveEmptyEntries);
                 string code = values.Last();
+                Console.WriteLine(output);
+                Console.WriteLine(values);
+                Console.WriteLine(code);
                 if(code == "65280") return "CONN_ERROR";
                 else if(code == "0") return values.Length == 1 ? code : string.Join(" ", values.SkipLast(1));
                 return "ERROR";

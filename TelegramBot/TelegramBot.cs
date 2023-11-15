@@ -14,8 +14,8 @@ namespace TelegramBot
         public const string PLUGS = "⚡";
         public const string MONITOR = "📺";
         public const string REBOOT = "🔄";
-        public const string ON = "🟩";
-        public const string OFF = "🟥";
+        public const string ON = "🟩🟩🟩";
+        public const string OFF = "🟥🟥🟥";
     }
 
     public class TelegramBot
