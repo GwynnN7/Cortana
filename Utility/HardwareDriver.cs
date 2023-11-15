@@ -26,7 +26,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -179,7 +179,8 @@ namespace Utility
             {
                 Process.Start(new ProcessStartInfo() {
                      FileName = "python", 
-                     Arguments = $"Python/SSH.py {HardwareDriver.NetStats.DesktopUsername} {HardwareDriver.NetStats.Desktop_WLAN_IP} {command}" 
+                     //Arguments = $"Python/SSH.py {HardwareDriver.NetStats.DesktopUsername} {HardwareDriver.NetStats.Desktop_WLAN_IP} {command}"
+                     Arguments = $"Python/SSH.py gwynn7 192.168.178.118 .config/Cortana/Notify.sh ciao"
                 });
                 return true;
             }
