@@ -185,14 +185,10 @@ namespace Utility
                      RedirectStandardOutput = true
                 });
                 string output = x!.StandardOutput.ReadToEnd();
-                var values = output.Split(" ", StringSplitOptions.RemoveEmptyEntries);
-                values[0] = values[0].ToLower();
-                string code = values.Last();
-                Console.WriteLine("Output: "+output+"|");
-                Console.WriteLine("Values: " + values+"|");
-                Console.WriteLine("Code: "+code+"|");
+                var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+                string code = outputValues.Last();
                 if(code == "65280") return "CONN_ERROR";
-                else if(code == "0") return values.Length == 1 ? code : string.Join(" ", values.SkipLast(1));
+                else if(code == "0") return outputValues.First();
                 return "ERROR";
             }
             catch
