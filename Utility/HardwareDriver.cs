@@ -184,8 +184,9 @@ namespace Utility
                      Arguments = $"Python/SSH.py {usr} {addr} {command}",
                      RedirectStandardOutput = true
                 });
-                string output = x!.StandardOutput.ReadToEnd();
+                string output = x.StandardOutput.ReadToEnd();
                 string code = output.ToList().Last().ToString();
+                Console.WriteLine(output);
                 Console.WriteLine(code);
                 if(code == "65280") return "CONN_ERROR";
                 else if(code == "0") return output.Length == 0 ? code : output;
