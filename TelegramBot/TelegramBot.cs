@@ -128,6 +128,16 @@ namespace TelegramBot
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
                             break;
+                        case "send":
+                            if (HardwarePermissions.Contains(UserID))
+                            {
+                                List<string> data = message.Split(" ").ToList();
+                                TelegramData.SendToUser(TelegramData.NameToID(data[0]), string.Join(" ",data.Skip(1)));
+                                await Cortana.SendTextMessageAsync(ChatID, "Testo inviato"); 
+                            }
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
                         case "cmd":
                             if (HardwarePermissions.Contains(UserID))
                             {  
