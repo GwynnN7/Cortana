@@ -86,6 +86,8 @@ namespace TelegramBot
                 {
                     var message = update.Message.Text.Substring(1);
                     var command = message.Split(" ").First();
+                    var textList = message.Split(" ").Skip(1).ToList();
+                    var text = string.Join(" ", textList);
 
                     switch (command)
                     {
@@ -105,7 +107,7 @@ namespace TelegramBot
                         case "buy":
                             if(Shopping.IsChannelAllowed(ChatID))
                             {
-                                bool result = Shopping.Buy(UserID, update.Message.Text.Substring(1));
+                                bool result = Shopping.Buy(UserID, text);
                                 if(result) await Cortana.SendTextMessageAsync(ChatID, "Debiti aggiornati");
                                 else await Cortana.SendTextMessageAsync(ChatID, "Non è stato possibile aggiornare i debiti");
 
@@ -115,12 +117,11 @@ namespace TelegramBot
                         case "debt":
                             if(Shopping.IsChannelAllowed(ChatID))
                             {
-                                List<string> data = message.Split(" ").ToList();
-                                if (data.Count > 1)
+                                if (textList.Count > 0)
                                 {
-                                    for (int i = 1; i < data.Count; i++)
+                                    for (int i = 0; i < textList.Count; i++)
                                     {
-                                        await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(data[i]));
+                                        await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(textList[i]));
                                     }
                                 }
                                 else await Cortana.SendTextMessageAsync(ChatID, Shopping.GetDebts(TelegramData.IDToName(UserID)));
@@ -142,11 +143,10 @@ namespace TelegramBot
                         case "send":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                List<string> data = message.Split(" ").ToList();
-                                if(data.Count > 2)
+                                if(textList.Count > 2)
                                 {
-                                    TelegramData.SendToUser(TelegramData.NameToID(data[1]), string.Join(" ",data.Skip(2)));
-                                    await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {data[1]}"); 
+                                    TelegramData.SendToUser(TelegramData.NameToID(textList[0]), string.Join(" ",textList.Skip(1)));
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {textList[0]}"); 
                                 }
                                 else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri");    
                             }
@@ -156,12 +156,11 @@ namespace TelegramBot
                         case "join":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                List<string> data = message.Split(" ").ToList();
-                                if(data.Count != 2)
+                                if(textList.Count != 1)
                                 {
                                     if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
-                                    AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.CHAT, data[1]));
-                                    await Cortana.SendTextMessageAsync(ChatID, $"Chat con {data[1]} avviata"); 
+                                    AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.CHAT, textList[0]));
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Chat con {textList[0]} avviata"); 
                                 }
                                 else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri"); 
                             }
@@ -175,25 +174,10 @@ namespace TelegramBot
                                 AnswerCommands.Remove(ChatID);
                             }
                             break;
-                        case "cmd":
-                            if (HardwarePermissions.Contains(UserID))
-                            {  
-                                var cmd = string.Join(" ", message.Split(" ").Skip(1));
-                                var res = Utility.HardwareDriver.SSH_PC(cmd ?? "-");
-                                string print = res;
-                                if(res == "CONN_ERROR") print = "PC non raggiungibile";
-                                else if(res == "ERROR") print = "Errore esecuzione comando";
-                                if(print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                else await Cortana.SendTextMessageAsync(ChatID, print);
-                            } 
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
-                            break;
                         case "notify":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                var cmd = string.Join(" ", message.Split(" ").Skip(1));
-                                var res = Utility.Functions.NotifyPC(cmd ?? "Hi, I'm Cortana");
+                                var res = Utility.Functions.NotifyPC(text ?? "Hi, I'm Cortana");
                                 if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 else await Cortana.SendTextMessageAsync(ChatID, res);
                             } 

@@ -27,12 +27,12 @@
         {
             List<string> data = message.Split(" ").ToList();
             List<long> buyers = new();
-            double value = 0;
-            if (data.Count < 3) return false;
+            double value;
+            if (data.Count < 2) return false;
             try
             {
-                value = double.Parse(data[1]);
-                for (int i = 2; i < data.Count; i++)
+                value = double.Parse(data[0]);
+                for (int i = 1; i < data.Count; i++)
                 {
                     buyers.Add(TelegramData.NameToID(data[i]));
                 }
