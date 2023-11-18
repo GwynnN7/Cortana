@@ -143,7 +143,7 @@ namespace TelegramBot
                         case "send":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                if(textList.Count > 2)
+                                if(textList.Count > 1)
                                 {
                                     TelegramData.SendToUser(TelegramData.NameToID(textList[0]), string.Join(" ",textList.Skip(1)));
                                     await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {textList[0]}"); 
@@ -156,7 +156,7 @@ namespace TelegramBot
                         case "join":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                if(textList.Count != 1)
+                                if(textList.Count == 1)
                                 {
                                     if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
                                     AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.CHAT, textList[0]));
