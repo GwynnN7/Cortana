@@ -20,8 +20,19 @@ namespace TelegramBot
 
     public class TelegramBot
     {
-        enum EAnswerCommands { QRCODE }
-        private static Dictionary<long, EAnswerCommands> AnswerCommands;
+        enum EAnswerCommands { QRCODE, CHAT }
+
+        struct AnswerCommand {
+            public EAnswerCommands Command;
+            public string? CommandValue;
+            public AnswerCommand(EAnswerCommands cmd, string? cmdVal = null)
+            {
+                Command = cmd;
+                CommandValue = cmdVal;
+            }
+        }
+
+        private static Dictionary<long, AnswerCommand> AnswerCommands;
         private static Dictionary<long, string> HardwareAction;
         private static List<long> HardwarePermissions;
 
@@ -88,7 +99,7 @@ namespace TelegramBot
                             break;
                         case "qrcode":
                             if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
-                            AnswerCommands.Add(ChatID, EAnswerCommands.QRCODE);
+                            AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.QRCODE));
                             await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
                             break;
                         case "buy":
@@ -132,16 +143,42 @@ namespace TelegramBot
                             if (HardwarePermissions.Contains(UserID))
                             {
                                 List<string> data = message.Split(" ").ToList();
-                                TelegramData.SendToUser(TelegramData.NameToID(data[1]), string.Join(" ",data.Skip(2)));
-                                await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {data[1]}"); 
+                                if(data.Count > 2)
+                                {
+                                    TelegramData.SendToUser(TelegramData.NameToID(data[1]), string.Join(" ",data.Skip(2)));
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {data[1]}"); 
+                                }
+                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri");    
                             }
                             else 
                                 await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
                             break;
+                        case "join":
+                            if (HardwarePermissions.Contains(UserID))
+                            {
+                                List<string> data = message.Split(" ").ToList();
+                                if(data.Count != 2)
+                                {
+                                    if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
+                                    AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.CHAT, data[1]));
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Chat con {data[1]} avviata"); 
+                                }
+                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri"); 
+                            }
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
+                        case "leave":
+                            if (AnswerCommands.ContainsKey(ChatID) && AnswerCommands[ChatID].Command == EAnswerCommands.CHAT) 
+                            {
+                                await Cortana.SendTextMessageAsync(ChatID, $"Chat con {AnswerCommands[ChatID].CommandValue} terminata"); 
+                                AnswerCommands.Remove(ChatID);
+                            }
+                            break;
                         case "cmd":
                             if (HardwarePermissions.Contains(UserID))
                             {  
-                                var cmd = String.Join(" ", message.Split(" ").Skip(1));
+                                var cmd = string.Join(" ", message.Split(" ").Skip(1));
                                 var res = Utility.HardwareDriver.SSH_PC(cmd ?? "-");
                                 string print = res;
                                 if(res == "CONN_ERROR") print = "PC non raggiungibile";
@@ -169,13 +206,16 @@ namespace TelegramBot
                 {
                     if (AnswerCommands.ContainsKey(ChatID))
                     {
-                        switch (AnswerCommands[ChatID])
+                        switch (AnswerCommands[ChatID].Command)
                         {
                             case EAnswerCommands.QRCODE:
                                 var ImageStream = Utility.Functions.CreateQRCode(content: update.Message.Text, useNormalColors: false, useBorders: true);
                                 ImageStream.Position = 0;
                                 await Cortana.SendPhotoAsync(ChatID, new InputFileStream(ImageStream, "QRCODE.png"));
                                 AnswerCommands.Remove(ChatID);
+                                break;
+                            case EAnswerCommands.CHAT:
+                                TelegramData.SendToUser(TelegramData.NameToID(AnswerCommands[ChatID].CommandValue!), update.Message.Text);
                                 break;
                             default:
                                 break;
