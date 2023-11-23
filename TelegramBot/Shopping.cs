@@ -28,13 +28,22 @@
             List<string> data = message.Split(" ").ToList();
             List<long> buyers = new();
             double value;
-            if (data.Count < 2) return false;
+            if (data.Count == 0) return false;
             try
             {
                 value = double.Parse(data[0]);
                 for (int i = 1; i < data.Count; i++)
                 {
-                    buyers.Add(TelegramData.NameToID(data[i]));
+                    buyers.Add(TelegramData.NameToID(data[i].Replace(" ", "")));
+                }
+                if(buyers.Count == 0)
+                {
+                    buyers = new()
+                    {
+                        TelegramData.NameToID("@gwynn7"),
+                        TelegramData.NameToID("@Vasile76"),
+                        TelegramData.NameToID("@moostacho"),
+                    };
                 }
             }
             catch
