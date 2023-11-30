@@ -97,7 +97,7 @@ namespace Utility
 
         public static string NotifyPC(string text)
         {
-            string res = HardwareDriver.SSH_PC($".config/Cortana/Notify.sh {text}");
+            string res = HardwareDriver.SSH_PC($"notify {text}");
             if(res == "CONN_ERROR") return "PC non raggiungibile";
             else if(res == "ERROR") return "Non è stato possibile inviare la notifica";
             else return res;
