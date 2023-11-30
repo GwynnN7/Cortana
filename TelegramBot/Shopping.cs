@@ -51,7 +51,7 @@
                 return false;
             }
             
-            double amount = value / buyers.Count;
+            double amount = Math.Round(value / buyers.Count, 2);
             foreach(long buyer in buyers)
             {
                 AddDebt(buyer, amount, user);
@@ -120,7 +120,7 @@
             {
                 foreach (var owns in Debts[id])
                 {
-                    result += $"{username} deve {Math.Round(owns.Amount, 2)} a {TelegramData.IDToName(owns.To)}\n";
+                    result += $"{username} deve {owns.Amount} a {TelegramData.IDToName(owns.To)}\n";
                 }
             }
             
@@ -132,7 +132,7 @@
                 {
                     if(owns.To == id && owns.Amount > 0)
                     {
-                        result += $"{TelegramData.IDToName(ownance.Key)} deve {Math.Round(owns.Amount, 2)} a {username}\n";
+                        result += $"{TelegramData.IDToName(ownance.Key)} deve {owns.Amount} a {username}\n";
                     }
                 }
             }

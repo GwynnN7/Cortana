@@ -18,14 +18,14 @@ namespace Utility
         private static EBooleanState PCState = EBooleanState.Off;
         private static EBooleanState OLEDState = EBooleanState.Off;
         private static EBooleanState LampState = EBooleanState.Off;
-
+    
         public static NetworkStats NetStats;
 
         public static void Init()
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -97,7 +97,7 @@ namespace Utility
             else if (state == EHardwareTrigger.Off)
             {
                 PCState = EBooleanState.Off;
-                var res = SSH_PC("sudo shutdown now");
+                var res = SSH_PC("sudo poweroff");
                 return lastState == EBooleanState.Off ? "PC già spento" : (res == "PC non raggiungibile" ? res : "PC in spegnimento");
             }
             else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);

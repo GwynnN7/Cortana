@@ -177,7 +177,7 @@ namespace TelegramBot
                         case "notify":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                var res = Utility.Functions.NotifyPC(text ?? "Hi, I'm Cortana");
+                                var res = Utility.Functions.NotifyPC(text ?? "Hi, I am Cortana");
                                 if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 else await Cortana.SendTextMessageAsync(ChatID, res);
                             } 
