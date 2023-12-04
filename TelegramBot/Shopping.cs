@@ -51,7 +51,7 @@
                 return false;
             }
             
-            double amount = Math.Round(value / buyers.Count, 2);
+            double amount = value / buyers.Count;
             foreach(long buyer in buyers)
             {
                 AddDebt(buyer, amount, user);
@@ -74,7 +74,8 @@
                 }
                 else if (amount < oldDebt)
                 {
-                    Debts[buyer][GetOwnance(buyer, user)].Amount -= amount;
+                    var currentDebt = Debts[buyer][GetOwnance(buyer, user)].Amount;
+                    Debts[buyer][GetOwnance(buyer, user)].Amount = Math.Round(currentDebt - amount, 2);
                 }
             }
             else
@@ -83,9 +84,13 @@
                 int id = GetOwnance(user, buyer);
                 if (id == -1)
                 {
-                    if(amount > 0) Debts[user].Add(new Debts() { Amount = amount, To = buyer });
+                    if(amount > 0) Debts[user].Add(new Debts() { Amount = Math.Round(amount, 2), To = buyer });
                 }
-                else Debts[user][id].Amount += amount;
+                else 
+                {
+                    var currentDebt = Debts[user][id].Amount += amount;
+                    Debts[user][id].Amount = Math.Round(currentDebt + amount, 2);
+                }
             }
             UpdateDebts();
         }
