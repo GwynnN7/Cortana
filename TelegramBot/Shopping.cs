@@ -88,7 +88,7 @@
                 }
                 else 
                 {
-                    var currentDebt = Debts[user][id].Amount += amount;
+                    var currentDebt = Debts[user][id].Amount;
                     Debts[user][id].Amount = Math.Round(currentDebt + amount, 2);
                 }
             }
