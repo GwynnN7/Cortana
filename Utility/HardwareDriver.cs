@@ -8,16 +8,19 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_0 = 25; //LAMP
+        private const int RelayPin_0 = 25; //GENERAL
         private const int RelayPin_1 = 8;  //PC-OUTLET
+        private const int RelayPin_2 = 24; //LAMP
 
-        private static int PCPlugsPin = RelayPin_1;
-        private static int LampPin = RelayPin_0;
+        private static int PCPlugsPin = RelayPin_0;
+        private static int LampPin = RelayPin_2;
+        private static int GeneralPin = RelayPin_1;
 
         private static EBooleanState OutletsState = EBooleanState.Off;
         private static EBooleanState PCState = EBooleanState.Off;
         private static EBooleanState OLEDState = EBooleanState.Off;
         private static EBooleanState LampState = EBooleanState.Off;
+        private static EBooleanState GeneralState = EBooleanState.Off;
     
         public static NetworkStats NetStats;
 
@@ -25,13 +28,13 @@ namespace Utility
         {
             LoadNetworkData();
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
         public static void LoadNetworkData()
         {
-            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
+            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkData.json") ?? new();
         }
 
         public static void HandleNight()
@@ -69,17 +72,46 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                UseGPIO(LampPin, PinValue.High);
+                Task.Run(async () =>
+                {
+                    UseGPIO(LampPin, PinValue.High);
+                    await Task.Delay(100);
+                    UseGPIO(LampPin, PinValue.Low);
+                });
+
                 LampState = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                UseGPIO(LampPin, PinValue.Low);
+                Task.Run(async () =>
+                {
+                    UseGPIO(LampPin, PinValue.High);
+                    await Task.Delay(100);
+                    UseGPIO(LampPin, PinValue.Low);
+                });
+
                 LampState = EBooleanState.Off;
                 return "Lampada spenta";
             }
             else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SwitchGeneral(EHardwareTrigger state)
+        {
+            if (state == EHardwareTrigger.On)
+            {
+                UseGPIO(GeneralPin, PinValue.High);
+                GeneralState = EBooleanState.On;
+                return "Presa attivata";
+            }
+            else if (state == EHardwareTrigger.Off)
+            {
+                UseGPIO(GeneralPin, PinValue.Low);
+                GeneralState = EBooleanState.Off;
+                return "Presa disattivata";
+            }
+            else return SwitchGeneral(GeneralState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchPC(EHardwareTrigger state)
