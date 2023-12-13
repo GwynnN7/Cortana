@@ -217,7 +217,7 @@ namespace TelegramBot
                                 Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
                                 break;
                             case HardwareEmoji.PLUGS:
-                                Utility.HardwareDriver.SwitchOutlets(EHardwareTrigger.Toggle);
+                                Utility.HardwareDriver.SwitchGeneral(EHardwareTrigger.Toggle);
                                 break;
                             case HardwareEmoji.ON:
                                 Utility.HardwareDriver.SwitchRoom(EHardwareTrigger.On);

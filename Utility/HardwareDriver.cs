@@ -73,6 +73,7 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
+                if(LampState == EBooleanState.On) return "Lampada già accesa";
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
@@ -85,6 +86,7 @@ namespace Utility
             }
             else if (state == EHardwareTrigger.Off)
             {
+                if(LampState == EBooleanState.Off) return "Lampada già spenta";
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
