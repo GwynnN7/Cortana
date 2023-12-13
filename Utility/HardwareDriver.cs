@@ -28,7 +28,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -62,6 +62,7 @@ namespace Utility
             {
                 SwitchLamp(state);
                 SwitchOutlets(state);
+                SwitchGeneral(state);
             }
             SwitchOLED(state);
 
@@ -75,7 +76,7 @@ namespace Utility
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(100);
+                    await Task.Delay(200);
                     UseGPIO(LampPin, PinValue.Low);
                 });
 
@@ -87,7 +88,7 @@ namespace Utility
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(100);
+                    await Task.Delay(200);
                     UseGPIO(LampPin, PinValue.Low);
                 });
 
