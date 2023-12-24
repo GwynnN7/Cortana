@@ -15,7 +15,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("notify-pc")]
         public string OpenDesktop()
         {
-            var res = Utility.Functions.NotifyPC("Hi, I'm Cortana");
+            var res = Utility.Functions.NotifyPC("Hi, I am Cortana");
             return res;
         }
     }

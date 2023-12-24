@@ -264,7 +264,7 @@ namespace Utility
         private static void UseGPIO(int Pin, PinValue Value)
         {
             using var controller = new GpioController();
-            var x =  controller.OpenPin(Pin, PinMode.Output);
+            controller.OpenPin(Pin, PinMode.Output);
             controller.Write(Pin, Value);
         }
     }
