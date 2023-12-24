@@ -7,16 +7,16 @@ namespace RequestsHandler.Controllers
     public class DefaultController : ControllerBase
     {
         [HttpGet]
-        public Dictionary<string, string> Get()
+        public string Get()
         {
-            return new Dictionary<string, string>() { { "data", "Hi, I'm Cortana" } };
+            return  "Hi, I'm Cortana";
         }
 
         [HttpGet("notify-pc")]
-        public Dictionary<string, string> OpenDesktop()
+        public string OpenDesktop()
         {
             var res = Utility.Functions.NotifyPC("Hi, I'm Cortana");
-            return new Dictionary<string, string>() { { "data", res} };
+            return res;
         }
     }
 }
