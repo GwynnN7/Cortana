@@ -15,32 +15,35 @@ namespace RequestsHandler.Controllers
         [HttpGet("lamp")]
         public string LightToggle()
         {
-            string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-            return result;
+            return Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
         }
+
+        [HttpGet("general")]
+        public string GeneralPower(string state)
+        {
+            return Utility.HardwareDriver.SwitchGeneral(Utility.Functions.TriggerStateFromString(state));
+        }
+
 
         [HttpGet("pc")]
         public string PCPower(string state)
         {
-            string result = Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
-            return result;
+            return Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
         }
 
         [HttpGet("oled")]
         public string OledPower(string state)
         {
-            string result = Utility.HardwareDriver.SwitchOLED(Utility.Functions.TriggerStateFromString(state));
-            return result;
+            return Utility.HardwareDriver.SwitchOLED(Utility.Functions.TriggerStateFromString(state));
         }
 
-        [HttpGet("outlets")]
+        [HttpGet("plugs")]
         public string OutletsPower(string state)
         {
-            string result = Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
-            return result;
+            return Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
         }
 
-        [HttpGet("all")]
+        [HttpGet("room")]
         public string EverythingPower(string state)
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);

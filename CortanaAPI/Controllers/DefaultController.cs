@@ -9,14 +9,19 @@ namespace RequestsHandler.Controllers
         [HttpGet]
         public string Get()
         {
-            return  "Hi, I'm Cortana";
+            return  "Hi, I\'m Cortana";
         }
 
-        [HttpGet("notify-pc")]
-        public string OpenDesktop()
+        [HttpGet("notify")]
+        public string Notify()
         {
-            var res = Utility.Functions.NotifyPC("Hi, I am Cortana");
-            return res;
+            return Utility.Functions.NotifyPC("Hi, I\'m Cortana");
+        }
+
+        [HttpGet("temp")]
+        public string Temperature()
+        {
+            return Utility.HardwareDriver.GetCPUTemperature();
         }
     }
 }

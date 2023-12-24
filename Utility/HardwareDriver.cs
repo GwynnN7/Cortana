@@ -28,7 +28,7 @@ namespace Utility
         {
             LoadNetworkData();
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -62,7 +62,6 @@ namespace Utility
             {
                 SwitchLamp(state);
                 SwitchOutlets(state);
-                SwitchGeneral(state);
             }
             SwitchOLED(state);
 
@@ -214,12 +213,12 @@ namespace Utility
             var addr = NetStats.Desktop_WLAN_IP;
             try
             {
-                var x = Process.Start(new ProcessStartInfo() {
+                var proc = Process.Start(new ProcessStartInfo() {
                      FileName = "python", 
                      Arguments = $"Python/SSH.py {usr} {addr} {command}",
                      RedirectStandardOutput = true
                 });
-                string output = x!.StandardOutput.ReadToEnd();
+                string output = proc!.StandardOutput.ReadToEnd();
                 var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
                 string code = outputValues.Last();
                 if(code == "65280") return "CONN_ERROR";
