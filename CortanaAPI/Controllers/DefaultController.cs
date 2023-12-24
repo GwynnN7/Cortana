@@ -9,13 +9,13 @@ namespace RequestsHandler.Controllers
         [HttpGet]
         public string Get()
         {
-            return  "Hi, I\'m Cortana";
+            return  "Hi, I'm Cortana";
         }
 
         [HttpGet("notify")]
         public string Notify()
         {
-            return Utility.Functions.NotifyPC("Hi, I\'m Cortana");
+            return Utility.Functions.NotifyPC("Cortana Online");
         }
 
         [HttpGet("temp")]
