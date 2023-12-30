@@ -2,6 +2,7 @@
 
 namespace RequestsHandler.Controllers
 {
+    [Route("")]   
     [ApiController]
     public class DefaultController : ControllerBase
     {

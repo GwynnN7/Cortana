@@ -25,7 +25,7 @@ namespace CortanaAPI
             });
             
             CortanaWebAPI = builder.Build();
-            CortanaWebAPI.UsePathBase("/");
+            CortanaWebAPI.UseHttpsRedirection();
             CortanaWebAPI.UseAuthorization();
             CortanaWebAPI.MapControllers();
 
