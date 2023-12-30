@@ -29,7 +29,7 @@ namespace CortanaAPI
             CortanaWebAPI.UseAuthorization();
             CortanaWebAPI.MapControllers();
 
-            CortanaWebAPI.Run("http://localhost:8080");
+            CortanaWebAPI.Run();
         }
     }
 }
