@@ -1,4 +1,4 @@
-import board, digitalio, sys
+import board, digitalio
 from PIL import Image
 import adafruit_ssd1306
 

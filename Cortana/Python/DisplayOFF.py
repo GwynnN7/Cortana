@@ -1,5 +1,4 @@
-import board, digitalio, sys
-from PIL import Image, ImageFont, ImageDraw
+import board, digitalio
 import adafruit_ssd1306
 
 oled_reset = digitalio.DigitalInOut(board.D5)

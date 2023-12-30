@@ -180,7 +180,7 @@ namespace Utility
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/Display_ON.py" });
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/DisplayON.py" });
                     HardwareStates[EHardwareElements.Display] = EBooleanState.On;
                     return "Display acceso";
                 }
@@ -194,7 +194,7 @@ namespace Utility
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/Display_OFF.py" });
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/DisplayOFF.py" });
                     HardwareStates[EHardwareElements.Display] = EBooleanState.Off;
                     return "Display spento";
                 }
