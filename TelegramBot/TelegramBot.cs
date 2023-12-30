@@ -9,10 +9,10 @@ namespace TelegramBot
 {
     static class HardwareEmoji
     {
-        public const string LIGHT = "💡";
+        public const string BULB = "💡";
         public const string PC = "🖥";
-        public const string PLUGS = "⚡";
-        public const string MONITOR = "📺";
+        public const string THUNDER = "⚡";
+        public const string DISPLAY = "📺";
         public const string REBOOT = "🔄";
         public const string ON = "🟩🟩🟩";
         public const string OFF = "🟥🟥🟥";
@@ -91,19 +91,46 @@ namespace TelegramBot
 
                     switch (command)
                     {
+                        //Hardware Driver Link
                         case "ip":
-                            var ip = await Utility.Functions.GetPublicIP();
+                            var ip = await Utility.HardwareDriver.GetPublicIP();
                             await Cortana.SendTextMessageAsync(ChatID, $"IP: {ip}");
                             break;
                         case "temperatura":
                             var temp = Utility.HardwareDriver.GetCPUTemperature();
                             await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
                             break;
+                        case "hardware":
+                            if(HardwarePermissions.Contains(UserID))
+                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");      
+                            break;
+                        case "keyboard":
+                            if (HardwarePermissions.Contains(UserID))
+                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
+                        case "notify":
+                            if (HardwarePermissions.Contains(UserID))
+                            {
+                                var res = Utility.HardwareDriver.NotifyPC(text ?? "Hi, I am Cortana");
+                                if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                else await Cortana.SendTextMessageAsync(ChatID, res);
+                            } 
+                            else 
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            break;
+
+                        //Functions Link
                         case "qrcode":
                             if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
                             AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.QRCODE));
                             await Cortana.SendTextMessageAsync(ChatID, "Scrivi il contenuto");
                             break;
+
+                        //Debts
                         case "buy":
                             if(Shopping.IsChannelAllowed(ChatID))
                             {
@@ -128,18 +155,8 @@ namespace TelegramBot
                             }
                             else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato a specifici gruppi");
                             break;
-                        case "hardware":
-                            if(HardwarePermissions.Contains(UserID))
-                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
-                            else
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");      
-                            break;
-                        case "keyboard":
-                            if (HardwarePermissions.Contains(UserID))
-                                await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
-                            break;
+                        
+                        //Chat
                         case "send":
                             if (HardwarePermissions.Contains(UserID))
                             {
@@ -174,16 +191,7 @@ namespace TelegramBot
                                 AnswerCommands.Remove(ChatID);
                             }
                             break;
-                        case "notify":
-                            if (HardwarePermissions.Contains(UserID))
-                            {
-                                var res = Utility.Functions.NotifyPC(text ?? "Hi, I am Cortana");
-                                if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                else await Cortana.SendTextMessageAsync(ChatID, res);
-                            } 
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
-                            break;
+                        
                     }
                 }
                 else
@@ -210,13 +218,13 @@ namespace TelegramBot
                         if (!HardwarePermissions.Contains(UserID) || update.Message.Chat.Type != ChatType.Private) return;
                         switch (update.Message.Text)
                         {
-                            case HardwareEmoji.LIGHT:
+                            case HardwareEmoji.BULB:
                                 Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
                                 break;
                             case HardwareEmoji.PC:
-                                Utility.HardwareDriver.SwitchPC(EHardwareTrigger.Toggle);
+                                Utility.HardwareDriver.SwitchComputer(EHardwareTrigger.Toggle);
                                 break;
-                            case HardwareEmoji.PLUGS:
+                            case HardwareEmoji.THUNDER:
                                 Utility.HardwareDriver.SwitchGeneral(EHardwareTrigger.Toggle);
                                 break;
                             case HardwareEmoji.ON:
@@ -272,24 +280,7 @@ namespace TelegramBot
             {
                 if (data != "back")
                 {
-                    EHardwareTrigger trigger = data switch
-                    {
-                        "on" => EHardwareTrigger.On,
-                        "off" => EHardwareTrigger.Off,
-                        "toggle" => EHardwareTrigger.Toggle,
-                        _ => EHardwareTrigger.Off
-                    };
-
-                    string result = HardwareAction[message_id] switch
-                    {
-                        "lamp" => Utility.HardwareDriver.SwitchLamp(trigger),
-                        "pc" => Utility.HardwareDriver.SwitchPC(trigger),
-                        "general" => Utility.HardwareDriver.SwitchGeneral(trigger),
-                        "outlets" => Utility.HardwareDriver.SwitchOutlets(trigger),
-                        "oled" => Utility.HardwareDriver.SwitchOLED(trigger),
-                        "room" => Utility.HardwareDriver.SwitchRoom(trigger),
-                        _ => ""
-                    };
+                    Utility.HardwareDriver.SwitchFromString(HardwareAction[message_id], data);
                 }
                 HardwareAction.Remove(message_id);
                 Action = CreateHardwareButtons();
@@ -302,25 +293,17 @@ namespace TelegramBot
 
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[6][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[Enum.GetValues(typeof(EHardwareElements)).Length+1][];
 
             Rows[0] = new InlineKeyboardButton[1];
-            Rows[0][0] = InlineKeyboardButton.WithCallbackData("Light", "lamp");
-         
-            Rows[1] = new InlineKeyboardButton[1];
-            Rows[1][0] = InlineKeyboardButton.WithCallbackData("PC", "pc");
+            Rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
 
-            Rows[2] = new InlineKeyboardButton[1];
-            Rows[2][0] = InlineKeyboardButton.WithCallbackData("General", "general");
-
-            Rows[3] = new InlineKeyboardButton[1];
-            Rows[3][0] = InlineKeyboardButton.WithCallbackData("Plugs", "outlets");
-
-            Rows[4] = new InlineKeyboardButton[1];
-            Rows[4][0] = InlineKeyboardButton.WithCallbackData("OLED", "oled");
-
-            Rows[5] = new InlineKeyboardButton[1];
-            Rows[5][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
+            int index = 1;
+            foreach(string element in Enum.GetNames(typeof(EHardwareElements))) {
+                Rows[index] = new InlineKeyboardButton[1];
+                Rows[index][0] = InlineKeyboardButton.WithCallbackData(element, element.ToLower());
+                index++;
+            }            
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
             return hardwareKeyboard;
@@ -351,8 +334,8 @@ namespace TelegramBot
                     {
                         new KeyboardButton[]
                         {
-                            new KeyboardButton(HardwareEmoji.LIGHT),
-                            new KeyboardButton(HardwareEmoji.PLUGS)
+                            new KeyboardButton(HardwareEmoji.BULB),
+                            new KeyboardButton(HardwareEmoji.THUNDER)
                             
                         },
                         new KeyboardButton[]

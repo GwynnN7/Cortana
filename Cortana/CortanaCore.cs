@@ -6,32 +6,32 @@
 
     public class CortanaCore
     {
-        private Dictionary<ESubFunctions, Task> SubFunctionTasks;
+        private Dictionary<ESubfunctions, Task> SubFunctionTasks;
 
         public CortanaCore()
         {
-            SubFunctionTasks = new Dictionary<ESubFunctions, Task>();
+            SubFunctionTasks = new Dictionary<ESubfunctions, Task>();
         }
 
-        public int BootSubFunction(ESubFunctions SubFunction)
+        public int BootSubFunction(ESubfunctions SubFunction)
         {
-            Task SubFunctionTask;
+            Task SubfunctionTask;
             switch (SubFunction)
             {
-                case ESubFunctions.CortanaAPI:
-                    SubFunctionTask = Task.Run(() => CortanaAPI.BootCortanaAPI());
+                case ESubfunctions.CortanaAPI:
+                    SubfunctionTask = Task.Run(() => CortanaAPI.BootCortanaAPI());
                     break;
-                case ESubFunctions.DiscordBot:
-                    SubFunctionTask = Task.Run(() => DiscordBot.BootDiscordBot());
+                case ESubfunctions.DiscordBot:
+                    SubfunctionTask = Task.Run(() => DiscordBot.BootDiscordBot());
                     break;
-                case ESubFunctions.TelegramBot:
-                    SubFunctionTask = Task.Run(() => TelegramBot.BootTelegramBot());
+                case ESubfunctions.TelegramBot:
+                    SubfunctionTask = Task.Run(() => TelegramBot.BootTelegramBot());
                     break;
                 default:
                     return -1;
             }
-            SubFunctionTasks.Add(SubFunction, SubFunctionTask);
-            return SubFunctionTask.Id;
+            SubFunctionTasks.Add(SubFunction, SubfunctionTask);
+            return SubfunctionTask.Id;
         }
     }
 }

@@ -8,7 +8,7 @@ namespace DiscordBot.Modules
     public class AutomationModule : InteractionModuleBase<SocketInteractionContext>
     {
 
-        [SlashCommand("light", "Accendi o spegni la luce")]
+        [SlashCommand("lamp", "Accendi o spegni la luce")]
         public async Task LightToggle()
         {
             string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
@@ -21,20 +21,13 @@ namespace DiscordBot.Modules
         {
             await DeferAsync(ephemeral: true);
 
-            string result = element switch
-            {
-                EHardwareElements.Lamp => Utility.HardwareDriver.SwitchLamp(trigger),
-                EHardwareElements.PC => Utility.HardwareDriver.SwitchPC(trigger),
-                EHardwareElements.OLED => Utility.HardwareDriver.SwitchOLED(trigger),
-                EHardwareElements.Outlets => Utility.HardwareDriver.SwitchOutlets(trigger),
-                _ => "Dispositivo hardware non presente"
-            };
+            string result = Utility.HardwareDriver.SwitchFromEnum(element, trigger);
 
             Embed embed = DiscordData.CreateEmbed(Title: result);
             await FollowupAsync(embed: embed, ephemeral: true);
         }
 
-        [SlashCommand("room", "Accendi o spegni l'hardware fondamentale", runMode: RunMode.Async)]
+        [SlashCommand("room", "Accendi o spegni tutti i dispositivi", runMode: RunMode.Async)]
         public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
             Embed embed = DiscordData.CreateEmbed(Title: "Procedo");
@@ -47,17 +40,8 @@ namespace DiscordBot.Modules
         public async Task GetIP()
         {
             await DeferAsync(ephemeral: true);
-            var ip = await Utility.Functions.GetPublicIP();
+            var ip = await Utility.HardwareDriver.GetPublicIP();
             await FollowupAsync($"L'IP pubblico è {ip}", ephemeral: true);
-        }
-
-        [SlashCommand("shutdown", "Vado offline su discord")]
-        public async Task Shutdown()
-        {
-            Embed embed = DiscordData.CreateEmbed(Title: "Shutting down Chief");
-            await RespondAsync(embed: embed, ephemeral: true);
-
-            await DiscordBot.Disconnect();
         }
     }
 }

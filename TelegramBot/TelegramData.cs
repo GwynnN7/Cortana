@@ -16,15 +16,15 @@ namespace TelegramBot
             Shopping.LoadDebts();
         }
 
+        static public void LoadData()
+        {
+            Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
+        }
+
         public static void SendToUser(long userID, string message, bool notify = true)
         {
             ChatId Chat = new ChatId(userID);
             Cortana.SendTextMessageAsync(Chat, message, disableNotification: !notify);
-        }
-
-        static public void LoadData()
-        {
-            Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
         }
 
         public static string IDToName(long id)

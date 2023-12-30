@@ -145,7 +145,7 @@ namespace DiscordBot
             if (OldState.VoiceChannel == null && NewState.VoiceChannel != null)
             {
                 var DisplayName = NewState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"{Utility.Functions.RandomOption(new string[]{ "Ciao", "Benvenuto", "Salve" })}  {DisplayName}";
+                string Title = $"Ciao {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Joined at:" });
 
                 if(DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
@@ -161,7 +161,7 @@ namespace DiscordBot
             else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
             {
                 var DisplayName = OldState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"{Utility.Functions.RandomOption(new string[] { "Cya", "A dopo" })}  {DisplayName}";
+                string Title = $"A dopo {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Left at:" });
                 if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 

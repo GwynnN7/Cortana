@@ -9,47 +9,19 @@ namespace RequestsHandler.Controllers
         [HttpGet]
         public string Get()
         {
-            return "Automation API => /[device]?state={on, off, toggle}";
+            return "Automation API, specify device to toggle and specify action to perform a different one";
         }
 
-        [HttpGet("lamp/{state?}")]
-        public string LightPower(string state = "toggle")
+        [HttpGet("{device}")]
+        public string PowerDevice([FromRoute] string device)
         {
-            return Utility.HardwareDriver.SwitchLamp(Utility.Functions.TriggerStateFromString(state));
+            return Utility.HardwareDriver.SwitchFromString(device, "toggle");
         }
 
-        [HttpGet("general/{state?}")]
-        public string GeneralPower(string state = "toggle")
+        [HttpGet("{device}/{state}")]
+        public string PowerDevice([FromRoute] string device, [FromRoute] string state)
         {
-            return Utility.HardwareDriver.SwitchGeneral(Utility.Functions.TriggerStateFromString(state));
-        }
-
-
-        [HttpGet("pc/{state?}")]
-        public string PCPower(string state = "toggle")
-        {
-            return Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
-        }
-
-        [HttpGet("oled/{state?}")]
-        public string OledPower(string state = "toggle")
-        {
-            return Utility.HardwareDriver.SwitchOLED(Utility.Functions.TriggerStateFromString(state));
-        }
-
-        [HttpGet("plugs/{state?}")]
-        public string OutletsPower(string state = "toggle")
-        {
-            return Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
-        }
-
-        [HttpGet("room/{state?}")]
-        public string EverythingPower(string state = "toggle")
-        {
-            var trigger = Utility.Functions.TriggerStateFromString(state);
-            Utility.HardwareDriver.SwitchRoom(trigger);
-
-            return "Done";
+            return Utility.HardwareDriver.SwitchFromString(device, state);
         }
     }
 }

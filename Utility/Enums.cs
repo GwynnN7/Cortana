@@ -1,4 +1,4 @@
-﻿public enum ESubFunctions
+﻿public enum ESubfunctions
 {
     CortanaAPI,
     DiscordBot,
@@ -16,9 +16,8 @@ public enum ETimerLocation
 
 public enum EHardwareElements
 {
-    LED,
-    OLED,
-    PC,
+    Display,
+    Computer,
     Lamp,
     Outlets,
     General

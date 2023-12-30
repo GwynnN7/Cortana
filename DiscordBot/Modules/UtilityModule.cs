@@ -173,36 +173,6 @@ namespace DiscordBot.Modules
                 else await RespondAsync("```" + text + "```");
             }
 
-            [SlashCommand("turno", "Vi dico a chi tocca scegliere")]
-            public async Task Turn()
-            {
-                if (Context.Guild.Id != DiscordData.DiscordIDs.NoMenID)
-                {
-                    await RespondAsync("Questo server non può usare questo comando");
-                    return;
-                }
-                SocketGuildUser user = Context.Guild.GetUser(DiscordData.DiscordIDs.CortanaID);
-                var today = DateTime.Today.DayOfWeek;
-                switch (today)
-                {
-                    case DayOfWeek.Monday:
-                    case DayOfWeek.Thursday:
-                        user = Context.Guild.GetUser(DiscordData.DiscordIDs.ChiefID);
-                        break;
-                    case DayOfWeek.Tuesday:
-                    case DayOfWeek.Friday:
-                        user = Context.Guild.GetUser(306402234135085067);
-                        break;
-                    case DayOfWeek.Wednesday:
-                    case DayOfWeek.Saturday:
-                        user = Context.Guild.GetUser(648939655579828226);
-                        break;
-                    default:
-                        break;
-                }
-                await RespondAsync($"Oggi tocca a {user.Mention}");
-            }
-
             [SlashCommand("links", "Vi mando dei link utili")]
             public async Task SendLinks([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
@@ -410,7 +380,7 @@ namespace DiscordBot.Modules
             [SlashCommand("numero", "Genero un numero random")]
             public async Task RandomNumber([Summary("minimo", "Minimo [0 default]")] int min = 0, [Summary("massimo", "Massimo [100 default]")] int max = 100, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string randomNumber = Utility.Functions.RandomNumber(min, max);
+                string randomNumber = Convert.ToString(new Random().Next(min, max));
                 Embed embed = DiscordData.CreateEmbed(Title: randomNumber);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -418,7 +388,8 @@ namespace DiscordBot.Modules
             [SlashCommand("dado", "Lancio uno o più dadi")]
             public async Task Dice([Summary("dadi", "Numero di dadi [default 1]")] int dices = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string dicesResults = Utility.Functions.RandomDice(dices);
+                string dicesResults = "";
+                for (int i = 0; i < dices; i++) dicesResults += Convert.ToString(new Random().Next(1, 7)) + " ";
                 Embed embed = DiscordData.CreateEmbed(Title: dicesResults);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -426,7 +397,9 @@ namespace DiscordBot.Modules
             [SlashCommand("moneta", "Lancio una moneta")]
             public async Task Coin([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string result = Utility.Functions.TOC();
+                var list = new List<string>{"Testa","Croce"};
+                int index = new Random().Next(list.Count);
+                string result = list[index];
                 Embed embed = DiscordData.CreateEmbed(Title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -434,7 +407,9 @@ namespace DiscordBot.Modules
             [SlashCommand("opzione", "Scelgo un'opzione tra quelle che mi date")]
             public async Task RandomChoice([Summary("opzioni", "Opzioni separate dallo spazio")] string options, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                string result = Utility.Functions.RandomOption(options);
+                string[] separatedList = options.Split(" ");
+                int index = new Random().Next(separatedList.Length);
+                string result = separatedList[index];
                 Embed embed = DiscordData.CreateEmbed(Title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }

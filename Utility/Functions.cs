@@ -38,69 +38,11 @@ namespace Utility
             else qrCodeAsPngByteArr = qrCode.GetGraphic(20, lightColorRgba: new byte[] { 81, 209, 246 }, darkColorRgba: new byte[] { 52, 24, 80 }, drawQuietZones: useBorders);
 
             var ImageStream = new MemoryStream();
-            using (var image = SixLabors.ImageSharp.Image.Load(qrCodeAsPngByteArr))
+            using (var image = Image.Load(qrCodeAsPngByteArr))
             {
                 image.Save(ImageStream, new PngEncoder());
             }
             return ImageStream;
-        }
-
-        public static string RandomDice(int dices)
-        {
-            string dicesResults = "";
-            for (int i = 0; i < dices; i++)
-            {
-                dicesResults += Convert.ToString(new Random().Next(1, 7)) + " ";
-            }
-            return dicesResults;
-        }
-
-        public static string TOC()
-        {
-            string result = "Testa";
-            if (new Random().Next() > (int.MaxValue / 2)) result = "Croce";
-            return result;
-        }
-
-        public static string RandomOption(string options)
-        {
-            string[] separatedList = options.Split(" ");
-            int randomIndex = new Random().Next(0, separatedList.Length);
-            return separatedList[randomIndex];
-        }
-
-        public static string RandomOption(string[] options)
-        {
-            int randomIndex = new Random().Next(0, options.Length);
-            return options[randomIndex];
-        }
-
-        public static string RandomNumber(int min, int max)
-        {
-            string randomNumber = Convert.ToString(new Random().Next(min, max));
-            return randomNumber;
-        }
-
-        public static EHardwareTrigger TriggerStateFromString(string state)
-        {
-            state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
-            Enum.TryParse(state, out EHardwareTrigger Status);
-            return Status;
-        }
-
-        public static async Task<string> GetPublicIP()
-        {
-            using var client = new HttpClient();
-            var ip = await client.GetStringAsync("https://api.ipify.org");
-            return ip;
-        }
-
-        public static string NotifyPC(string text)
-        {
-            string res = HardwareDriver.SSH_PC($"notify {text}");
-            if(res == "CONN_ERROR") return "PC non raggiungibile";
-            else if(res == "ERROR") return "Non è stato possibile inviare la notifica";
-            else return res;
         }
     }
 }

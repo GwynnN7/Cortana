@@ -15,7 +15,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("notify")]
         public string Notify()
         {
-            var res = Utility.Functions.NotifyPC("I am online");
+            var res = Utility.HardwareDriver.NotifyPC("I am online");
             return res == "0" ? "Notification sent" : res;
         }
 
@@ -28,7 +28,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("ip")]
         public string IP()
         {
-            return Utility.Functions.GetPublicIP().Result;
+            return Utility.HardwareDriver.GetPublicIP().Result;
         }
     }
 }

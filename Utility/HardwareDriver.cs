@@ -8,25 +8,25 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_0 = 25; //GENERAL
-        private const int RelayPin_1 = 8;  //PC-OUTLET
-        private const int RelayPin_2 = 24; //LAMP
+        private const int RelayPin_0 = 25; //General
+        private const int RelayPin_1 = 8;  //Computer-OUTLET
+        private const int RelayPin_2 = 24; //Lamp
 
-        private static int PCPlugsPin = RelayPin_0;
+        private static int ComputerPlugsPin = RelayPin_0;
         private static int LampPin = RelayPin_2;
         private static int GeneralPin = RelayPin_1;
 
-        private static EBooleanState OutletsState = EBooleanState.Off;
-        private static EBooleanState PCState = EBooleanState.Off;
-        private static EBooleanState OLEDState = EBooleanState.Off;
-        private static EBooleanState LampState = EBooleanState.Off;
-        private static EBooleanState GeneralState = EBooleanState.Off;
-    
+        private static Dictionary<EHardwareElements, EBooleanState> HardwareStates;
+
         public static NetworkStats NetStats;
 
         public static void Init()
         {
             LoadNetworkData();
+
+            foreach(EHardwareElements element in Enum.GetValues(typeof(EHardwareElements))) {
+                HardwareStates.Add(element, EBooleanState.Off);
+            }
 
             //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
@@ -44,8 +44,8 @@ namespace Utility
 
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
-            if (PCState == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
-            else Functions.NotifyPC("You should go to sleep");
+            if (HardwareStates[EHardwareElements.Computer] == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
+            else NotifyPC("You should go to sleep");
 
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
@@ -56,14 +56,14 @@ namespace Utility
             if (state == EHardwareTrigger.On) 
             {
                 if(DateTime.Now.Hour >= 17) SwitchLamp(state);
-                SwitchPC(state);
+                SwitchComputer(state);
             }
             else
             {
                 SwitchLamp(state);
                 SwitchOutlets(state);
             }
-            SwitchOLED(state);
+            SwitchDisplay(state);
 
             return "Procedo";
         }
@@ -72,7 +72,7 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if(LampState == EBooleanState.On) return "Lampada già accesa";
+                if(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On) return "Lampada già accesa";
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
@@ -80,12 +80,12 @@ namespace Utility
                     UseGPIO(LampPin, PinValue.Low);
                 });
 
-                LampState = EBooleanState.On;
+                HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if(LampState == EBooleanState.Off) return "Lampada già spenta";
+                if(HardwareStates[EHardwareElements.Lamp] == EBooleanState.Off) return "Lampada già spenta";
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
@@ -93,10 +93,10 @@ namespace Utility
                     UseGPIO(LampPin, PinValue.Low);
                 });
 
-                LampState = EBooleanState.Off;
+                HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
                 return "Lampada spenta";
             }
-            else return SwitchLamp(LampState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchGeneral(EHardwareTrigger state)
@@ -104,21 +104,21 @@ namespace Utility
             if (state == EHardwareTrigger.On)
             {
                 UseGPIO(GeneralPin, PinValue.High);
-                GeneralState = EBooleanState.On;
+                HardwareStates[EHardwareElements.General] = EBooleanState.On;
                 return "Presa attivata";
             }
             else if (state == EHardwareTrigger.Off)
             {
                 UseGPIO(GeneralPin, PinValue.Low);
-                GeneralState = EBooleanState.Off;
+                HardwareStates[EHardwareElements.General] = EBooleanState.Off;
                 return "Presa disattivata";
             }
-            else return SwitchGeneral(GeneralState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static string SwitchPC(EHardwareTrigger state)
+        public static string SwitchComputer(EHardwareTrigger state)
         {
-            var lastState = PCState;
+            var lastState = HardwareStates[EHardwareElements.Computer];
             if (state == EHardwareTrigger.On)
             {
                 SwitchOutlets(EHardwareTrigger.On);
@@ -126,33 +126,33 @@ namespace Utility
                 string mac = NetStats.Desktop_LAN_MAC;
                 Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
 
-                return lastState == EBooleanState.On ? "PC già acceso" : "PC in accensione";
+                return lastState == EBooleanState.On ? "Computer già acceso" : "Computer in accensione";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                PCState = EBooleanState.Off;
+                HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
                 var res = SSH_PC("sudo poweroff");
-                return lastState == EBooleanState.Off ? "PC già spento" : (res == "PC non raggiungibile" ? res : "PC in spegnimento");
+                return lastState == EBooleanState.Off ? "Computer già spento" : (res == "Computer non raggiungibile" ? res : "Computer in spegnimento");
             }
-            else return SwitchPC(PCState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchOutlets(EHardwareTrigger state)
         {
             if (state == EHardwareTrigger.On)
             {
-                UseGPIO(PCPlugsPin, PinValue.High);
-                OutletsState = EBooleanState.On;
-                PCState = EBooleanState.On;
+                UseGPIO(ComputerPlugsPin, PinValue.High);
+                HardwareStates[EHardwareElements.Outlets] = EBooleanState.On;
+                HardwareStates[EHardwareElements.Computer] = EBooleanState.On;
                 return "Ciabatta accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if (PCState == EBooleanState.On)
+                if (HardwareStates[EHardwareElements.Computer] == EBooleanState.On)
                 {
                     Task.Run(async () =>
                     {
-                        SwitchPC(EHardwareTrigger.Off);
+                        SwitchComputer(EHardwareTrigger.Off);
                         await Task.Delay(1000);
 
                         var start = DateTime.Now;
@@ -164,24 +164,24 @@ namespace Utility
                         SwitchOutlets(EHardwareTrigger.Off);
 
                     });
-                    return "PC e ciabatta in spegnimento";
+                    return "Computer e ciabatta in spegnimento";
                 }
-                UseGPIO(PCPlugsPin, PinValue.Low);
-                OutletsState = EBooleanState.Off;
+                UseGPIO(ComputerPlugsPin, PinValue.Low);
+                HardwareStates[EHardwareElements.Outlets] = EBooleanState.Off;
 
                 return "Ciabatta spenta";
             }
-            else return SwitchOutlets(OutletsState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchOutlets(HardwareStates[EHardwareElements.Outlets] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static string SwitchOLED(EHardwareTrigger state)
+        public static string SwitchDisplay(EHardwareTrigger state)
         {
             if (state == EHardwareTrigger.On)
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_ON.py" });
-                    OLEDState = EBooleanState.On;
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/Display_ON.py" });
+                    HardwareStates[EHardwareElements.Display] = EBooleanState.On;
                     return "Display acceso";
                 }
                 catch
@@ -194,8 +194,8 @@ namespace Utility
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/OLED_OFF.py" });
-                    OLEDState = EBooleanState.Off;
+                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/Display_OFF.py" });
+                    HardwareStates[EHardwareElements.Display] = EBooleanState.Off;
                     return "Display spento";
                 }
                 catch
@@ -203,7 +203,42 @@ namespace Utility
                     return "Display non raggiungibile";
                 }
             }
-            else return SwitchOLED(OLEDState == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            else return SwitchDisplay(HardwareStates[EHardwareElements.Display] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+        }
+
+        public static string SwitchFromEnum(EHardwareElements element, EHardwareTrigger trigger)
+        {
+            string result = element switch
+            {
+                EHardwareElements.Lamp => SwitchLamp(trigger),
+                EHardwareElements.Computer => SwitchComputer(trigger),
+                EHardwareElements.Display => SwitchDisplay(trigger),
+                EHardwareElements.Outlets => SwitchOutlets(trigger),
+                EHardwareElements.General => SwitchGeneral(trigger),
+                _ => "Dispositivo hardware non presente"
+            };
+            return result;
+        }
+
+        public static string SwitchFromString(string element, string trigger)
+        {
+            element = element.ToLower();
+            trigger = trigger.ToLower();
+            var element_result = HardwareElementFromString(element);
+            var trigger_result = TriggerStateFromString(trigger);
+            if(trigger_result == null) return "Azione non valida";
+            if(element_result == null) {
+                if(element == "room") return SwitchRoom(trigger_result.Value);
+                else return "Dispositivo Hardware non presente";
+            }
+            return SwitchFromEnum(element_result.Value, trigger_result.Value);
+        }
+
+        public static async Task<string> GetPublicIP()
+        {
+            using var client = new HttpClient();
+            var ip = await client.GetStringAsync("https://api.ipify.org");
+            return ip;
         }
 
         public static string SSH_PC(string command)
@@ -236,6 +271,14 @@ namespace Utility
             return SSH_PC("sudo reboot");
         }
 
+        public static string NotifyPC(string text)
+        {
+            string res = HardwareDriver.SSH_PC($"notify {text}");
+            if(res == "CONN_ERROR") return "Computer non raggiungibile";
+            else if(res == "ERROR") return "Non è stato possibile inviare la notifica";
+            else return res;
+        }
+
         public static string GetCPUTemperature()
         {
             using CpuTemperature cpuTemperature = new CpuTemperature();
@@ -265,6 +308,20 @@ namespace Utility
             using var controller = new GpioController();
             controller.OpenPin(Pin, PinMode.Output);
             controller.Write(Pin, Value);
+        }
+
+        public static EHardwareTrigger? TriggerStateFromString(string state)
+        {
+            state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
+            bool res = Enum.TryParse(state, out EHardwareTrigger status);
+            return res ? status : null;
+        }
+
+        public static EHardwareElements? HardwareElementFromString(string element)
+        {
+            element = string.Concat(element[0].ToString().ToUpper(), element.AsSpan(1));
+            bool res = Enum.TryParse(element, out EHardwareElements status);
+            return res ? status : null;
         }
     }
 
