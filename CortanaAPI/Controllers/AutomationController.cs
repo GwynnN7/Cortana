@@ -11,7 +11,7 @@ namespace RequestsHandler.Controllers
         {
             return "Automation API => /[device]?state={on, off, toggle}";
         }
-/*
+
         [HttpGet("lamp/{state:string?}")]
         public string LightPower(string state = "toggle")
         {
@@ -19,37 +19,37 @@ namespace RequestsHandler.Controllers
         }
 
         [HttpGet("general/{state:string?}")]
-        public string GeneralPower(string state)
+        public string GeneralPower(string state = "toggle")
         {
             return Utility.HardwareDriver.SwitchGeneral(Utility.Functions.TriggerStateFromString(state));
         }
 
 
         [HttpGet("pc/{state:string?}")]
-        public string PCPower(string state)
+        public string PCPower(string state = "toggle")
         {
             return Utility.HardwareDriver.SwitchPC(Utility.Functions.TriggerStateFromString(state));
         }
 
         [HttpGet("oled/{state:string?}")]
-        public string OledPower(string state)
+        public string OledPower(string state = "toggle")
         {
             return Utility.HardwareDriver.SwitchOLED(Utility.Functions.TriggerStateFromString(state));
         }
 
         [HttpGet("plugs/{state:string?}")]
-        public string OutletsPower(string state)
+        public string OutletsPower(string state = "toggle")
         {
             return Utility.HardwareDriver.SwitchOutlets(Utility.Functions.TriggerStateFromString(state));
         }
 
         [HttpGet("room/{state:string?}")]
-        public string EverythingPower(string state)
+        public string EverythingPower(string state = "toggle")
         {
             var trigger = Utility.Functions.TriggerStateFromString(state);
             Utility.HardwareDriver.SwitchRoom(trigger);
 
             return "Done";
-        }*/
+        }
     }
 }
