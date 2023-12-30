@@ -11,7 +11,7 @@ namespace RequestsHandler.Controllers
         {
             return "Automation API => /[device]?state={on, off, toggle}";
         }
-
+/*
         [HttpGet("lamp/{state:string?}")]
         public string LightPower(string state = "toggle")
         {
@@ -50,6 +50,6 @@ namespace RequestsHandler.Controllers
             Utility.HardwareDriver.SwitchRoom(trigger);
 
             return "Done";
-        }
+        }*/
     }
 }
