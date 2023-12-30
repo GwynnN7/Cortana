@@ -12,7 +12,7 @@ namespace CortanaAPI
         public static void BootCortanaAPI()
         {
             var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://{HardwareDriver.NetStats.Cortana_IP}:8080/" });
-            
+
             Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
             builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
             builder.Services.AddControllers();
@@ -25,6 +25,7 @@ namespace CortanaAPI
             });
             
             CortanaWebAPI = builder.Build();
+            CortanaWebAPI.UsePathBase("/");
             CortanaWebAPI.UseAuthorization();
             CortanaWebAPI.MapControllers();
 
