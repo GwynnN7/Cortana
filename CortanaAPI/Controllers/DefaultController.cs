@@ -2,7 +2,6 @@
 
 namespace RequestsHandler.Controllers
 {
-    [Route("cortana-api")]
     [ApiController]
     public class DefaultController : ControllerBase
     {
@@ -15,7 +14,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("notify")]
         public string Notify()
         {
-            return Utility.Functions.NotifyPC("Cortana Online");
+            return Utility.Functions.NotifyPC("I am online");
         }
 
         [HttpGet("temp")]

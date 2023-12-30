@@ -2,7 +2,7 @@
 
 namespace RequestsHandler.Controllers
 {
-    [Route("cortana-api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class AutomationController : ControllerBase
     {

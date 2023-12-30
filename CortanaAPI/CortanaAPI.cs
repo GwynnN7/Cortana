@@ -11,7 +11,7 @@ namespace CortanaAPI
         private static WebApplication? CortanaWebAPI;
         public static void BootCortanaAPI()
         {
-            var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://{HardwareDriver.NetStats.Cortana_IP}:5000/" });
+            var builder = WebApplication.CreateBuilder(new[] { $"--urls=http://{HardwareDriver.NetStats.Cortana_IP}:80/" });
 
             Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
             builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
@@ -25,7 +25,6 @@ namespace CortanaAPI
             });
             
             CortanaWebAPI = builder.Build();
-            CortanaWebAPI.UsePathBase("/cortana-api");
             CortanaWebAPI.UseAuthorization();
             CortanaWebAPI.MapControllers();
 
