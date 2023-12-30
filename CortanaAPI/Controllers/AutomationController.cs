@@ -9,7 +9,7 @@ namespace RequestsHandler.Controllers
         [HttpGet]
         public string Get()
         {
-            return "Automation API";
+            return "Automation API => /[device]?state={on, off, toggle}";
         }
 
         [HttpGet("lamp")]

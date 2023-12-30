@@ -15,7 +15,8 @@ namespace RequestsHandler.Controllers
         [HttpGet("notify")]
         public string Notify()
         {
-            return Utility.Functions.NotifyPC("I am online");
+            var res = Utility.Functions.NotifyPC("I am online");
+            return res == "0" ? "Notification sent" : res;
         }
 
         [HttpGet("temp")]
