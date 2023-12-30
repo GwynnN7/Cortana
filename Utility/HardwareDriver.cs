@@ -16,7 +16,7 @@ namespace Utility
         private static int LampPin = RelayPin_2;
         private static int GeneralPin = RelayPin_1;
 
-        private static Dictionary<EHardwareElements, EBooleanState> HardwareStates;
+        private static Dictionary<EHardwareElements, EBooleanState> HardwareStates = new();
 
         public static NetworkStats NetStats;
 
