@@ -76,7 +76,7 @@ namespace Utility
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(200);
+                    await Task.Delay(150);
                     UseGPIO(LampPin, PinValue.Low);
                 });
 
@@ -89,7 +89,7 @@ namespace Utility
                 Task.Run(async () =>
                 {
                     UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(200);
+                    await Task.Delay(150);
                     UseGPIO(LampPin, PinValue.Low);
                 });
 

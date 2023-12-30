@@ -24,5 +24,11 @@ namespace RequestsHandler.Controllers
         {
             return Utility.HardwareDriver.GetCPUTemperature();
         }
+
+        [HttpGet("ip")]
+        public string IP()
+        {
+            return Utility.Functions.GetPublicIP().Result;
+        }
     }
 }
