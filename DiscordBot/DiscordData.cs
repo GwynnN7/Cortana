@@ -178,9 +178,9 @@ namespace DiscordBot
 
     public class GamingProfileSet
     { 
-        public string RAWG { get; set; }  //https://rawg.io/@username
-        public string Steam { get; set; } //https://steamcommunity.com/id/username/
-        public string GOG { get; set; } //https://www.gog.com/u/username
+        public string RAWG { get; set; }
+        public string Steam { get; set; }
+        public string GOG { get; set; }
     }
 
     public class MemeJsonStructure

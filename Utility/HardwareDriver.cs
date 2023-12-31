@@ -28,7 +28,7 @@ namespace Utility
                 HardwareStates.Add(element, EBooleanState.Off);
             }
 
-            //SwitchRoom(EHardwareTrigger.Off);
+            SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
