@@ -8,8 +8,8 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_1 = 25; //General
-        private const int RelayPin_0 = 8;  //Computer-OUTLET
+        private const int RelayPin_0 = 25; //General
+        private const int RelayPin_1 = 8;  //Computer-OUTLET
 
         private static int ComputerPlugsPin = RelayPin_1;
         private static int LampPin = RelayPin_0;
@@ -81,27 +81,13 @@ namespace Utility
         {
             if (state == EHardwareTrigger.On)
             {
-                if(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On) return "Lampada già accesa";
-                Task.Run(async () =>
-                {
-                    UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(150);
-                    UseGPIO(LampPin, PinValue.Low);
-                });
-
+                UseGPIO(LampPin, PinValue.High);
                 HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
                 return "Lampada accesa";
             }
             else if (state == EHardwareTrigger.Off)
             {
-                if(HardwareStates[EHardwareElements.Lamp] == EBooleanState.Off) return "Lampada già spenta";
-                Task.Run(async () =>
-                {
-                    UseGPIO(LampPin, PinValue.High);
-                    await Task.Delay(150);
-                    UseGPIO(LampPin, PinValue.Low);
-                });
-
+                UseGPIO(LampPin, PinValue.Low);
                 HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
                 return "Lampada spenta";
             }
