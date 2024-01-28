@@ -50,6 +50,16 @@ namespace Utility
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
+        private static void RebootRaspberry()
+        {
+            PythonCaller("Power", "Reboot");
+        }
+
+        private static void ShutdownRaspberry()
+        {
+            PythonCaller("Power", "Shutdown");
+        }
+
         public static string SwitchRoom(EHardwareTrigger state)
         {
             
@@ -122,10 +132,7 @@ namespace Utility
             if (state == EHardwareTrigger.On)
             {
                 SwitchOutlets(EHardwareTrigger.On);
-
-                string mac = NetStats.Desktop_LAN_MAC;
-                Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = $"Python/WoL.py {mac}" });
-
+                PythonCaller("WoL", NetStats.Desktop_LAN_MAC);
                 return lastState == EBooleanState.On ? "Computer già acceso" : "Computer in accensione";
             }
             else if (state == EHardwareTrigger.Off)
@@ -180,7 +187,7 @@ namespace Utility
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/DisplayON.py" });
+                    PythonCaller("DisplayON");
                     HardwareStates[EHardwareElements.Display] = EBooleanState.On;
                     return "Display acceso";
                 }
@@ -194,7 +201,7 @@ namespace Utility
             {
                 try
                 {
-                    Process.Start(new ProcessStartInfo() { FileName = "python", Arguments = "Python/DisplayOFF.py" });
+                    PythonCaller("DisplayOFF");
                     HardwareStates[EHardwareElements.Display] = EBooleanState.Off;
                     return "Display spento";
                 }
@@ -248,11 +255,8 @@ namespace Utility
             var addr = NetStats.Desktop_WLAN_IP;
             try
             {
-                var proc = Process.Start(new ProcessStartInfo() {
-                     FileName = "python", 
-                     Arguments = $"Python/SSH.py {usr} {addr} {command}",
-                     RedirectStandardOutput = true
-                });
+                
+                var proc = PythonCaller("SSH", $"{usr} {addr} {command}", true);
                 string output = proc!.StandardOutput.ReadToEnd();
                 var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
                 string code = outputValues.Last();
@@ -322,6 +326,16 @@ namespace Utility
             element = string.Concat(element[0].ToString().ToUpper(), element.AsSpan(1));
             bool res = Enum.TryParse(element, out EHardwareElements status);
             return res ? status : null;
+        }
+
+        private static Process? PythonCaller(string fileName, string args = "", bool stdRedirect=false)
+        {
+            var proc = Process.Start(new ProcessStartInfo() {
+                     FileName = "python", 
+                     Arguments = $"Python/{fileName}.py {args}",
+                     RedirectStandardOutput = stdRedirect
+            });
+            return proc;
         }
     }
 
