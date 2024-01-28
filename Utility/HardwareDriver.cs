@@ -8,12 +8,11 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_0 = 25; //General
-        private const int RelayPin_1 = 8;  //Computer-OUTLET
-        private const int RelayPin_2 = 24; //Lamp
+        private const int RelayPin_1 = 25; //General
+        private const int RelayPin_0 = 8;  //Computer-OUTLET
 
-        private static int ComputerPlugsPin = RelayPin_0;
-        private static int LampPin = RelayPin_2;
+        private static int ComputerPlugsPin = RelayPin_1;
+        private static int LampPin = RelayPin_0;
         private static int GeneralPin = RelayPin_1;
 
         private static Dictionary<EHardwareElements, EBooleanState> HardwareStates = new();
@@ -34,7 +33,7 @@ namespace Utility
 
         public static void LoadNetworkData()
         {
-            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkData.json") ?? new();
+            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
         }
 
         public static void HandleNight()
