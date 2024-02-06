@@ -18,17 +18,5 @@ namespace RequestsHandler.Controllers
             var res = Utility.HardwareDriver.NotifyPC("I am online");
             return res == "0" ? "Notification sent" : res;
         }
-
-        [HttpGet("temp")]
-        public string Temperature()
-        {
-            return Utility.HardwareDriver.GetCPUTemperature();
-        }
-
-        [HttpGet("ip")]
-        public string IP()
-        {
-            return Utility.HardwareDriver.GetPublicIP().Result;
-        }
     }
 }

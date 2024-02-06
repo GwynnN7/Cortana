@@ -36,6 +36,12 @@ public enum EHardwareTrigger
     Toggle
 }
 
+public enum EPowerOption
+{
+    Shutdown,
+    Reboot
+}
+
 public enum EAnswer
 {
     Si,

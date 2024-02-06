@@ -27,7 +27,7 @@ namespace Utility
                 HardwareStates.Add(element, EBooleanState.Off);
             }
 
-            SwitchRoom(EHardwareTrigger.Off);
+            //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
 
@@ -49,14 +49,27 @@ namespace Utility
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
         }
 
-        private static void RebootRaspberry()
+        public static string PowerRaspberry(EPowerOption option)
         {
-            PythonCaller("Power", "Reboot");
-        }
-
-        private static void ShutdownRaspberry()
-        {
-            PythonCaller("Power", "Shutdown");
+            switch(option)
+            {
+                case EPowerOption.Shutdown:
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        PythonCaller("Power", "shutdown");
+                    });
+                    return "Rasperry powering off";
+                case EPowerOption.Reboot:
+                    Task.Run(async () =>
+                    {
+                        await Task.Delay(1000);
+                        PythonCaller("Power", "reboot");
+                    });
+                    return "Rasperry rebooting";
+                default:
+                    return "Command not found";
+            }
         }
 
         public static string SwitchRoom(EHardwareTrigger state)
