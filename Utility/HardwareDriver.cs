@@ -8,8 +8,8 @@ namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_0 = 25; //General
-        private const int RelayPin_1 = 8;  //Computer-OUTLET
+        private const int RelayPin_0 = 23; //General
+        private const int RelayPin_1 = 24;  //Computer-OUTLET
 
         private static int ComputerPlugsPin = RelayPin_1;
         private static int LampPin = RelayPin_0;
