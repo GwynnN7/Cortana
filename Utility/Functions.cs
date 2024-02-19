@@ -22,9 +22,7 @@ namespace Utility
             var newJson = JsonConvert.SerializeObject(Data, options);
 
             var filePath = Path.Combine(Directory.GetCurrentDirectory(), FileName);
-            var filePathBackup = Path.Combine(Directory.GetCurrentDirectory(), "../../CortanaBackup/" + FileName);
             File.WriteAllText(filePath, newJson);
-            File.WriteAllText(filePathBackup, newJson);
         }
 
         public static Stream CreateQRCode(string content, bool useNormalColors, bool useBorders)
