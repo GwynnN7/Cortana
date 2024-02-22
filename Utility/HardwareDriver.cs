@@ -274,11 +274,10 @@ namespace Utility
 
         public static string SSH_PC(string command)
         {
-            var usr = NetStats.DesktopUsername;
+            var usr = NetStats.DesktopRoot;
             var pass = NetStats.DesktopPassword;
             var addr = NetStats.Desktop_WLAN_IP;
 
-            string res;
             try
             {
                 using (var client = new SshClient(addr, usr, pass))
@@ -286,16 +285,15 @@ namespace Utility
                     client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                     client.Connect();
                     var r = client.RunCommand(command);
-                    res = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nOutput Stream: {r.OutputStream}\nError: {r.Error}";
+                    string res = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
                     client.Disconnect();
+                    return res;
                 }
             }
             catch (Exception e)
             {
-                res = e.Message;
+                return e.Message;
             }
-
-            return res;
         }
 
 
@@ -385,6 +383,7 @@ namespace Utility
         public string Gateway { get; set; }
         public string CortanaUsername { get; set; }
         public string DesktopUsername { get; set; }
+        public string DesktopRoot { get; set; }
         public string DesktopPassword { get; set; }
     }
 }
