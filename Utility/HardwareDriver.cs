@@ -1,4 +1,5 @@
 ﻿using Iot.Device.CpuTemperature;
+using Renci.SshNet;
 using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
@@ -23,7 +24,8 @@ namespace Utility
         {
             LoadNetworkData();
 
-            foreach(EHardwareElements element in Enum.GetValues(typeof(EHardwareElements))) {
+            foreach (EHardwareElements element in Enum.GetValues(typeof(EHardwareElements)))
+            {
                 HardwareStates.Add(element, EBooleanState.Off);
             }
 
@@ -51,7 +53,7 @@ namespace Utility
 
         public static string PowerRaspberry(EPowerOption option)
         {
-            switch(option)
+            switch (option)
             {
                 case EPowerOption.Shutdown:
                     Task.Run(async () =>
@@ -74,10 +76,10 @@ namespace Utility
 
         public static string SwitchRoom(EHardwareTrigger state)
         {
-            
-            if (state == EHardwareTrigger.On) 
+
+            if (state == EHardwareTrigger.On)
             {
-                if(DateTime.Now.Hour >= 17) SwitchLamp(state);
+                if (DateTime.Now.Hour >= 17) SwitchLamp(state);
                 SwitchComputer(state);
             }
             else
@@ -231,9 +233,10 @@ namespace Utility
             trigger = trigger.ToLower();
             var element_result = HardwareElementFromString(element);
             var trigger_result = TriggerStateFromString(trigger);
-            if(trigger_result == null) return "Azione non valida";
-            if(element_result == null) {
-                if(element == "room") return SwitchRoom(trigger_result.Value);
+            if (trigger_result == null) return "Azione non valida";
+            if (element_result == null)
+            {
+                if (element == "room") return SwitchRoom(trigger_result.Value);
                 else return "Dispositivo Hardware non presente";
             }
             return SwitchFromEnum(element_result.Value, trigger_result.Value);
@@ -246,20 +249,20 @@ namespace Utility
             return ip;
         }
 
-        public static string SSH_PC(string command)
+        public static string SSH_PC_Python(string command)
         {
-            
+
             var usr = NetStats.DesktopUsername;
             var addr = NetStats.Desktop_WLAN_IP;
             try
             {
-                
+
                 var proc = PythonCaller("SSH", $"{usr} {addr} {command}", true);
                 string output = proc!.StandardOutput.ReadToEnd();
                 var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
                 string code = outputValues.Last();
-                if(code == "65280") return "CONN_ERROR";
-                else if(code == "0") return outputValues.Length == 1 ? code : string.Join("\n", outputValues.SkipLast(1));
+                if (code == "65280") return "CONN_ERROR";
+                else if (code == "0") return outputValues.Length == 1 ? code : string.Join("\n", outputValues.SkipLast(1));
                 return "ERROR";
             }
             catch
@@ -267,6 +270,23 @@ namespace Utility
                 return "CONN_ERROR";
             }
         }
+
+
+        public static string SSH_PC(string command)
+        {
+            var usr = NetStats.DesktopUsername;
+            var addr = NetStats.Desktop_WLAN_IP;
+            string res;
+            using (var client = new SshClient(addr, usr, "vakarian"))
+            {
+                client.Connect();
+                var result = client.RunCommand(command);
+                res = result.Result;
+                client.Disconnect();
+            }
+            return res;
+        }
+
 
         public static string RebootPC()
         {
@@ -276,8 +296,8 @@ namespace Utility
         public static string NotifyPC(string text)
         {
             string res = HardwareDriver.SSH_PC($"notify {text}");
-            if(res == "CONN_ERROR") return "Computer non raggiungibile";
-            else if(res == "ERROR") return "Non è stato possibile inviare la notifica";
+            if (res == "CONN_ERROR") return "Computer non raggiungibile";
+            else if (res == "ERROR") return "Non è stato possibile inviare la notifica";
             else return res;
         }
 
@@ -326,12 +346,13 @@ namespace Utility
             return res ? status : null;
         }
 
-        private static Process? PythonCaller(string fileName, string args = "", bool stdRedirect=false)
+        private static Process? PythonCaller(string fileName, string args = "", bool stdRedirect = false)
         {
-            var proc = Process.Start(new ProcessStartInfo() {
-                     FileName = "python", 
-                     Arguments = $"Python/{fileName}.py {args}",
-                     RedirectStandardOutput = stdRedirect
+            var proc = Process.Start(new ProcessStartInfo()
+            {
+                FileName = "python",
+                Arguments = $"Python/{fileName}.py {args}",
+                RedirectStandardOutput = stdRedirect
             });
             return proc;
         }
