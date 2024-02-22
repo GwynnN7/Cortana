@@ -278,15 +278,23 @@ namespace Utility
             var pass = NetStats.DesktopPassword;
             var addr = NetStats.Desktop_WLAN_IP;
 
-            string res = "null";
-            using (var client = new SshClient(addr, usr, pass))
+            string res;
+            try
             {
-                client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
-                client.Connect();
-                var result = client.RunCommand(command);
-                res = result.Result;
-                client.Disconnect();
+                using (var client = new SshClient(addr, usr, pass))
+                {
+                    client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
+                    client.Connect();
+                    var r = client.RunCommand(command);
+                    res = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nOutput Stream: {r.OutputStream}\nError: {r.Error}";
+                    client.Disconnect();
+                }
             }
+            catch (Exception e)
+            {
+                res = e.Message;
+            }
+
             return res;
         }
 

@@ -259,8 +259,7 @@ namespace TelegramBot
                                     await Cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), ChatID, update.Message.MessageId);
                                 else
                                 {
-                                    var cmd = "sudo " + update.Message.Text;
-                                    var res = Utility.HardwareDriver.SSH_PC(cmd);
+                                    var res = Utility.HardwareDriver.SSH_PC(update.Message.Text);
                                     string print = res;
                                     if(res == "CONN_ERROR") print = "PC non raggiungibile";
                                     else if(res == "ERROR") print = "Errore esecuzione comando";
