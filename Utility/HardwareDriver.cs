@@ -275,10 +275,13 @@ namespace Utility
         public static string SSH_PC(string command)
         {
             var usr = NetStats.DesktopUsername;
+            var pass = NetStats.DesktopPassword;
             var addr = NetStats.Desktop_WLAN_IP;
-            string res;
-            using (var client = new SshClient(addr, usr, "vakarian"))
+
+            string res = "null";
+            using (var client = new SshClient(addr, usr, pass))
             {
+                client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                 client.Connect();
                 var result = client.RunCommand(command);
                 res = result.Result;
@@ -290,15 +293,16 @@ namespace Utility
 
         public static string RebootPC()
         {
-            return SSH_PC("sudo reboot");
+            return SSH_PC("reboot");
         }
 
         public static string NotifyPC(string text)
         {
-            string res = HardwareDriver.SSH_PC($"notify {text}");
-            if (res == "CONN_ERROR") return "Computer non raggiungibile";
-            else if (res == "ERROR") return "Non è stato possibile inviare la notifica";
-            else return res;
+            string res = HardwareDriver.SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
+            //if (res == "CONN_ERROR") return "Computer non raggiungibile";
+            //else if (res == "ERROR") return "Non è stato possibile inviare la notifica";
+            /*else*/
+            return res;
         }
 
         public static string GetCPUTemperature()
@@ -373,5 +377,6 @@ namespace Utility
         public string Gateway { get; set; }
         public string CortanaUsername { get; set; }
         public string DesktopUsername { get; set; }
+        public string DesktopPassword { get; set; }
     }
 }
