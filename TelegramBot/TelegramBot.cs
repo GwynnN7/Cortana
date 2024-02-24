@@ -22,7 +22,8 @@ namespace TelegramBot
     {
         enum EAnswerCommands { QRCODE, CHAT }
 
-        struct AnswerCommand {
+        struct AnswerCommand
+        {
             public EAnswerCommands Command;
             public string? CommandValue;
             public AnswerCommand(EAnswerCommands cmd, string? cmdVal = null)
@@ -72,7 +73,7 @@ namespace TelegramBot
 
             return Task.CompletedTask;
         }
-        
+
 
         private async void HandleMessage(ITelegramBotClient Cortana, Update update)
         {
@@ -101,16 +102,16 @@ namespace TelegramBot
                             await Cortana.SendTextMessageAsync(ChatID, $"Temperatura: {temp}");
                             break;
                         case "hardware":
-                            if(HardwarePermissions.Contains(UserID))
+                            if (HardwarePermissions.Contains(UserID))
                                 await Cortana.SendTextMessageAsync(ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                             else
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");      
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "keyboard":
                             if (HardwarePermissions.Contains(UserID))
                                 await Cortana.SendTextMessageAsync(ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "reboot":
                             if (HardwarePermissions.Contains(UserID))
@@ -118,8 +119,8 @@ namespace TelegramBot
                                 var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
                                 await Cortana.SendTextMessageAsync(ChatID, res);
                             }
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "shutdown":
                             if (HardwarePermissions.Contains(UserID))
@@ -127,18 +128,18 @@ namespace TelegramBot
                                 var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
                                 await Cortana.SendTextMessageAsync(ChatID, res);
                             }
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "notify":
                             if (HardwarePermissions.Contains(UserID))
                             {
                                 var res = Utility.HardwareDriver.NotifyPC(text ?? "Hi, I am Cortana");
-                                if(res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                if (res == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
                                 else await Cortana.SendTextMessageAsync(ChatID, res);
-                            } 
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            }
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
 
                         //Functions Link
@@ -150,17 +151,17 @@ namespace TelegramBot
 
                         //Debts
                         case "buy":
-                            if(Shopping.IsChannelAllowed(ChatID))
+                            if (Shopping.IsChannelAllowed(ChatID))
                             {
                                 bool result = Shopping.Buy(UserID, text);
-                                if(result) await Cortana.SendTextMessageAsync(ChatID, "Debiti aggiornati");
+                                if (result) await Cortana.SendTextMessageAsync(ChatID, "Debiti aggiornati");
                                 else await Cortana.SendTextMessageAsync(ChatID, "Non è stato possibile aggiornare i debiti");
 
                             }
                             else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato al gruppo");
                             break;
                         case "debt":
-                            if(Shopping.IsChannelAllowed(ChatID))
+                            if (Shopping.IsChannelAllowed(ChatID))
                             {
                                 if (textList.Count > 0)
                                 {
@@ -173,43 +174,43 @@ namespace TelegramBot
                             }
                             else await Cortana.SendTextMessageAsync(ChatID, "Comando riservato a specifici gruppi");
                             break;
-                        
+
                         //Chat
                         case "send":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                if(textList.Count > 1)
+                                if (textList.Count > 1)
                                 {
-                                    TelegramData.SendToUser(TelegramData.NameToID(textList[0]), string.Join(" ",textList.Skip(1)));
-                                    await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {textList[0]}"); 
+                                    TelegramData.SendToUser(TelegramData.NameToID(textList[0]), string.Join(" ", textList.Skip(1)));
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Testo inviato a {textList[0]}");
                                 }
-                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri");    
+                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri");
                             }
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "join":
                             if (HardwarePermissions.Contains(UserID))
                             {
-                                if(textList.Count == 1)
+                                if (textList.Count == 1)
                                 {
                                     if (AnswerCommands.ContainsKey(ChatID)) AnswerCommands.Remove(ChatID);
                                     AnswerCommands.Add(ChatID, new AnswerCommand(EAnswerCommands.CHAT, textList[0]));
-                                    await Cortana.SendTextMessageAsync(ChatID, $"Chat con {textList[0]} avviata"); 
+                                    await Cortana.SendTextMessageAsync(ChatID, $"Chat con {textList[0]} avviata");
                                 }
-                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri"); 
+                                else await Cortana.SendTextMessageAsync(ChatID, "Errore nel numero dei parametri");
                             }
-                            else 
-                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");         
+                            else
+                                await Cortana.SendTextMessageAsync(ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                             break;
                         case "leave":
-                            if (AnswerCommands.ContainsKey(ChatID) && AnswerCommands[ChatID].Command == EAnswerCommands.CHAT) 
+                            if (AnswerCommands.ContainsKey(ChatID) && AnswerCommands[ChatID].Command == EAnswerCommands.CHAT)
                             {
-                                await Cortana.SendTextMessageAsync(ChatID, $"Chat con {AnswerCommands[ChatID].CommandValue} terminata"); 
+                                await Cortana.SendTextMessageAsync(ChatID, $"Chat con {AnswerCommands[ChatID].CommandValue} terminata");
                                 AnswerCommands.Remove(ChatID);
                             }
                             break;
-                        
+
                     }
                 }
                 else
@@ -255,16 +256,13 @@ namespace TelegramBot
                                 Utility.HardwareDriver.RebootPC();
                                 break;
                             default:
-                                if(UserID == TelegramData.NameToID("@alessiaat1"))
+                                if (UserID == TelegramData.NameToID("@alessiaat1"))
                                     await Cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), ChatID, update.Message.MessageId);
                                 else
                                 {
-                                    var res = Utility.HardwareDriver.SSH_PC(update.Message.Text);
-                                    string print = res;
-                                    if(res == "CONN_ERROR") print = "PC non raggiungibile";
-                                    else if(res == "ERROR") print = "Errore esecuzione comando";
-                                    if(print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                    else await Cortana.SendTextMessageAsync(ChatID, print);
+                                    var result = Utility.HardwareDriver.SSH_PC(update.Message.Text, true);
+                                    if (print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
+                                    else await Cortana.SendTextMessageAsync(ChatID, result);
                                 }
                                 return;
                         }
@@ -310,17 +308,18 @@ namespace TelegramBot
 
         private InlineKeyboardMarkup CreateHardwareButtons()
         {
-            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[Enum.GetValues(typeof(EHardwareElements)).Length+1][];
+            InlineKeyboardButton[][] Rows = new InlineKeyboardButton[Enum.GetValues(typeof(EHardwareElements)).Length + 1][];
 
             Rows[0] = new InlineKeyboardButton[1];
             Rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
 
             int index = 1;
-            foreach(string element in Enum.GetNames(typeof(EHardwareElements))) {
+            foreach (string element in Enum.GetNames(typeof(EHardwareElements)))
+            {
                 Rows[index] = new InlineKeyboardButton[1];
                 Rows[index][0] = InlineKeyboardButton.WithCallbackData(element, element.ToLower());
                 index++;
-            }            
+            }
 
             InlineKeyboardMarkup hardwareKeyboard = new InlineKeyboardMarkup(Rows);
             return hardwareKeyboard;
@@ -339,7 +338,7 @@ namespace TelegramBot
 
             Rows[2] = new InlineKeyboardButton[1];
             Rows[2][0] = InlineKeyboardButton.WithCallbackData("<<", "back");
-           
+
             InlineKeyboardMarkup OnOffKeyboard = new InlineKeyboardMarkup(Rows);
             return OnOffKeyboard;
         }
@@ -353,7 +352,7 @@ namespace TelegramBot
                         {
                             new KeyboardButton(HardwareEmoji.BULB),
                             new KeyboardButton(HardwareEmoji.THUNDER)
-                            
+
                         },
                         new KeyboardButton[]
                         {
@@ -370,7 +369,7 @@ namespace TelegramBot
                         {
                             new KeyboardButton(HardwareEmoji.OFF),
                         },
-                        
+
                     };
             return new ReplyKeyboardMarkup(Keyboard);
         }

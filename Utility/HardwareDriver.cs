@@ -138,8 +138,8 @@ namespace Utility
             else if (state == EHardwareTrigger.Off)
             {
                 HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
-                var res = SSH_PC("sudo poweroff");
-                return lastState == EBooleanState.Off ? "Computer già spento" : (res == "Computer non raggiungibile" ? res : "Computer in spegnimento");
+                var res = SSH_PC("poweroff");
+                return lastState == EBooleanState.Off ? "Computer già spento" : res);
             }
             else return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
@@ -249,35 +249,14 @@ namespace Utility
             return ip;
         }
 
-        public static string SSH_PC_Python(string command)
-        {
 
-            var usr = NetStats.DesktopUsername;
-            var addr = NetStats.Desktop_WLAN_IP;
-            try
-            {
-
-                var proc = PythonCaller("SSH", $"{usr} {addr} {command}", true);
-                string output = proc!.StandardOutput.ReadToEnd();
-                var outputValues = output.Split("\n", StringSplitOptions.RemoveEmptyEntries);
-                string code = outputValues.Last();
-                if (code == "65280") return "CONN_ERROR";
-                else if (code == "0") return outputValues.Length == 1 ? code : string.Join("\n", outputValues.SkipLast(1));
-                return "ERROR";
-            }
-            catch
-            {
-                return "CONN_ERROR";
-            }
-        }
-
-
-        public static string SSH_PC(string command)
+        public static string SSH_PC(string command, bool returnResult = false)
         {
             var usr = NetStats.DesktopRoot;
             var pass = NetStats.DesktopPassword;
             var addr = NetStats.Desktop_WLAN_IP;
 
+            string result;
             try
             {
                 using (var client = new SshClient(addr, usr, pass))
@@ -285,15 +264,18 @@ namespace Utility
                     client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                     client.Connect();
                     var r = client.RunCommand(command);
-                    string res = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
+                    if (r.exitCode == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Comando eseguito";
+                    else result = (returnResult && r.Error.Length != 0) ? r.Error : "Comando non eseguito";
+                    string log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
+                    PythonCaller("Log", "ssh " + log)
                     client.Disconnect();
-                    return res;
                 }
             }
             catch (Exception e)
             {
-                return e.Message;
+                result = "Computer non raggiungibile";
             }
+            return result;
         }
 
 
@@ -304,11 +286,7 @@ namespace Utility
 
         public static string NotifyPC(string text)
         {
-            string res = HardwareDriver.SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
-            //if (res == "CONN_ERROR") return "Computer non raggiungibile";
-            //else if (res == "ERROR") return "Non è stato possibile inviare la notifica";
-            /*else*/
-            return res;
+            return HardwareDriver.SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
         }
 
         public static string GetCPUTemperature()
