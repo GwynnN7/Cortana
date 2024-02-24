@@ -35,7 +35,7 @@ namespace DiscordBot
             client.Ready += async () =>
             {
                 Cortana = client;
-                
+
                 DiscordData.InitSettings(client.Guilds);
                 DiscordData.LoadMemes();
                 DiscordData.LoadIGDB();
@@ -47,9 +47,9 @@ namespace DiscordBot
                 await commands.RegisterCommandsGloballyAsync(true);
 
                 var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
-                var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 3, Minutes: 30, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
+                var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 24, Minutes: 0, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
 
-                foreach(var guild in Cortana.Guilds)
+                foreach (var guild in Cortana.Guilds)
                 {
                     var channel = Modules.AudioHandler.GetAvailableChannel(guild);
                     if (channel != null) Modules.AudioHandler.Connect(channel);
@@ -66,7 +66,7 @@ namespace DiscordBot
 
         private async Task Client_MessageReceived(SocketMessage arg)
         {
-            if(arg.Author.Id == DiscordData.DiscordIDs.CortanaID) return;
+            if (arg.Author.Id == DiscordData.DiscordIDs.CortanaID) return;
             var message = arg.Content.ToLower();
 
             if (arg.Channel.GetChannelType() != ChannelType.DM)
@@ -87,7 +87,7 @@ namespace DiscordBot
             }
 
             if (message == "cortana") await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
-            else if(message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
+            else if (message == "ciao cortana") await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
         }
 
         private static async void ActivityTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
@@ -100,31 +100,24 @@ namespace DiscordBot
             }
             catch
             {
-                DiscordData.SendToChannel(DiscordData.CreateEmbed("Non riesco a leggere la temperatura"), ECortanaChannels.Log);
+                Utility.Functions.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
             }
         }
 
         private static void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            try
-            {
-                Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
-                DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
-            }
-            catch
-            {
-                DiscordData.SendToChannel(DiscordData.CreateEmbed("Non riesco a leggere la temperatura"), ECortanaChannels.Log);
-            }
+            Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
+            DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
         }
 
         public static async Task Disconnect()
         {
-            foreach(var guild in Modules.AudioHandler.AudioClients)
+            foreach (var guild in Modules.AudioHandler.AudioClients)
             {
                 DiscordData.GuildSettings[guild.Key].AutoJoin = false;
                 await Modules.AudioHandler.Play("Shutdown", guild.Key, EAudioSource.Local);
                 await Task.Delay(1500);
-                Modules.AudioHandler.Disconnect(guild.Key);          
+                Modules.AudioHandler.Disconnect(guild.Key);
             }
 
             Utility.TimerHandler.RemoveTimers(ETimerLocation.DiscordBot);
@@ -148,7 +141,7 @@ namespace DiscordBot
                 string Title = $"Ciao {DisplayName}";
                 Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Joined at:" });
 
-                if(DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
+                if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
                 DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
@@ -201,8 +194,7 @@ namespace DiscordBot
         {
             string path = "Discord Log.txt";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
-            logFile.WriteLine($"{DateTime.Now} Log:" + message.Message);
-
+            Utility.Functions.Log("Discord", message.Message);
             return Task.CompletedTask;
         }
 

@@ -267,7 +267,7 @@ namespace Utility
                     if (r.ExitStatus == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Comando eseguito";
                     else result = (returnResult && r.Error.Length != 0) ? r.Error : "Comando non eseguito";
                     string log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
-                    PythonCaller("Log", "ssh " + log);
+                    Functions.Log("SSH", log);
                     client.Disconnect();
                 }
             }
@@ -286,7 +286,7 @@ namespace Utility
 
         public static string NotifyPC(string text)
         {
-            return HardwareDriver.SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
+            return SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
         }
 
         public static string GetCPUTemperature()

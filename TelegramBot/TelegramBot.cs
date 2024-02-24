@@ -86,7 +86,7 @@ namespace TelegramBot
                 if (update.Message.Text.StartsWith("/"))
                 {
                     var message = update.Message.Text.Substring(1);
-                    var command = message.Split(" ").First();
+                    var command = message.Split(" ").First().Replace("@CortanaAIBot", "");
                     var textList = message.Split(" ").Skip(1).ToList();
                     var text = string.Join(" ", textList);
 
@@ -261,8 +261,7 @@ namespace TelegramBot
                                 else
                                 {
                                     var result = Utility.HardwareDriver.SSH_PC(update.Message.Text, true);
-                                    if (print == "0") await Cortana.DeleteMessageAsync(ChatID, update.Message.MessageId);
-                                    else await Cortana.SendTextMessageAsync(ChatID, result);
+                                    await Cortana.SendTextMessageAsync(ChatID, result);
                                 }
                                 return;
                         }
@@ -348,27 +347,20 @@ namespace TelegramBot
             var Keyboard =
                     new KeyboardButton[][]
                     {
-                        new KeyboardButton[]
-                        {
+                        [
                             new KeyboardButton(HardwareEmoji.BULB),
                             new KeyboardButton(HardwareEmoji.THUNDER)
-
-                        },
-                        new KeyboardButton[]
-                        {
-
+                        ],
+                        [
                             new KeyboardButton(HardwareEmoji.PC),
                             new KeyboardButton(HardwareEmoji.REBOOT)
-
-                        },
-                        new KeyboardButton[]
-                        {
+                        ],
+                        [
                             new KeyboardButton(HardwareEmoji.ON),
-                        },
-                        new KeyboardButton[]
-                        {
+                        ],
+                        [
                             new KeyboardButton(HardwareEmoji.OFF),
-                        },
+                        ],
 
                     };
             return new ReplyKeyboardMarkup(Keyboard);
@@ -381,10 +373,7 @@ namespace TelegramBot
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-            string path = "Telegram Log.txt";
-            using StreamWriter logFile = System.IO.File.Exists(path) ? System.IO.File.AppendText(path) : System.IO.File.CreateText(path);
-            logFile.WriteLine($"{DateTime.Now} Exception: " + ErrorMessage);
-
+            Utility.Functions.Log("Telegram", ErrorMessage);
             return Task.CompletedTask;
         }
 

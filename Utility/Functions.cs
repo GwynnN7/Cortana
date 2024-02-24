@@ -26,6 +26,13 @@ namespace Utility
             File.WriteAllText(filePath, newJson);
         }
 
+        static public void Log(string FileName, string Log)
+        {
+            string path = $"$HOME/CortanaLogs/{FileName}.log";
+            using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
+            logFile.WriteLine($"{DateTime.Now}: {Log}\n");
+        }
+
         public static Stream CreateQRCode(string content, bool useNormalColors, bool useBorders)
         {
             QRCodeGenerator qrGenerator = new QRCodeGenerator();
