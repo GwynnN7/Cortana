@@ -28,7 +28,7 @@ namespace Utility
 
         static public void Log(string FileName, string Log)
         {
-            string path = $"$HOME/CortanaLogs/{FileName}.log";
+            string path = $"/home/cortana/CortanaLogs/{FileName}.log";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
             logFile.WriteLine($"{DateTime.Now}: {Log}\n");
         }
