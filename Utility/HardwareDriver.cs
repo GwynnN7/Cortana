@@ -286,7 +286,7 @@ namespace Utility
 
         public static string NotifyPC(string text)
         {
-            return SSH_PC($"$HOME/.config/Cortana/Notify.sh \\\'{text}\\\'");
+            return SSH_PC($"/home/{NetStats.DesktopUsername}/.config/Cortana/Notify.sh \\\'{text}\\\'");
         }
 
         public static string GetCPUTemperature()

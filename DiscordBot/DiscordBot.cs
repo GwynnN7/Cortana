@@ -192,8 +192,6 @@ namespace DiscordBot
 
         static Task LogAsync(LogMessage message)
         {
-            string path = "Discord Log.txt";
-            using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
             Utility.Functions.Log("Discord", message.Message);
             return Task.CompletedTask;
         }
