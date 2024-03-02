@@ -16,7 +16,6 @@ namespace Cortana
 
             Utility.HardwareDriver.Init();
             Console.WriteLine("Hardware Driver is ready");
-
             await Task.Delay(500);
 
             ThreadID = Handler.BootSubFunction(ESubfunctions.CortanaAPI);

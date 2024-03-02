@@ -151,7 +151,7 @@ namespace TelegramBot
 
                         //Debts
                         case "buy":
-                            if (Shopping.IsChannelAllowed(ChatID))
+                            if (ShoppingModule.IsChannelAllowed(ChatID))
                             {
                                 bool result = Shopping.Buy(UserID, text);
                                 if (result) await Cortana.SendTextMessageAsync(ChatID, "Debiti aggiornati");

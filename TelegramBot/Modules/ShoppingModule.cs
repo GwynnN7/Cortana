@@ -1,6 +1,6 @@
 ﻿namespace TelegramBot
 {
-    public static class Shopping
+    public static class ShoppingModule
     {
         public static Dictionary<long, List<Debts>> Debts;
         private static List<string> AllowedChannles = new List<string>()
