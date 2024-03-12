@@ -47,13 +47,14 @@ namespace TelegramBot
                 UserID = update.Message.From?.Id ?? update.Message.Chat.Id,
                 MessageID = update.Message.MessageId,
                 ChatType = update.Message.Chat.Type,
-                FullMessage = update.Message.Text[1..]
+                FullMessage = update.Message.Text
             };
 
             if (messageStats.UserID != TelegramData.NameToID("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
             
             if (update.Message.Text.StartsWith('/'))
             {
+                messageStats.FullMessage = messageStats.FullMessage[1..];
                 messageStats.Command = messageStats.FullMessage.Split(" ").First().Replace("@CortanaAIBot", "");
                 messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
                 messageStats.Text = string.Join(" ", messageStats.TextList);
