@@ -9,13 +9,15 @@ namespace TelegramBot
     {
         private static Data Data;
         private static TelegramBotClient Cortana;
-        private static List<long> RootPermissions = new() { NameToID("@gwynn7"), NameToID("@alessiaat1") };
+        private static List<long> RootPermissions;
         
         public static void Init(TelegramBotClient newClient)
         {
             Cortana = newClient;
             LoadData();
             ShoppingModule.LoadDebts();
+            
+            RootPermissions = [ NameToID("@gwynn7"), NameToID("@alessiaat1") ];
         }
 
         private static void LoadData()
@@ -45,7 +47,6 @@ namespace TelegramBot
         {
             foreach (var item in Data.usernames)
             {
-                Console.WriteLine(item.Key + " " + item.Value);
                 if (item.Value == name) return item.Key;
             }
             return -1;

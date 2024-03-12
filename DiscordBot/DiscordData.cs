@@ -123,9 +123,6 @@ namespace DiscordBot
 
         public static async void SendToChannel(string text, ECortanaChannels channel)
         {
-            Console.WriteLine("aa");
-            Console.WriteLine(DiscordIDs.HomeID);
-            Console.WriteLine(DiscordIDs.CortanaChannelID);
             var channelId = channel switch
             {
                 ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,

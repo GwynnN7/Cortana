@@ -15,11 +15,9 @@ namespace TelegramBot
         {
             var config = ConfigurationBuilder();
             var cortana = new TelegramBotClient(config["token"]);
-            Console.WriteLine("awqqewqeqweqqq1");
-            TelegramData.Init(cortana);
-            Console.WriteLine("awqqewqeqweqqq2");
             cortana.StartReceiving(UpdateHandler, ErrorHandler);
-            Console.WriteLine("awqqewqeqweqqq3");
+            
+            TelegramData.Init(cortana);
             TelegramData.SendToUser(TelegramData.NameToID("@gwynn7"), "I'm Online", false);
         }
 

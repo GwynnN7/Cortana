@@ -127,65 +127,65 @@ namespace DiscordBot
             await Cortana.LogoutAsync();
         }
 
-        async Task OnUserVoiceStateUpdate(SocketUser User, SocketVoiceState OldState, SocketVoiceState NewState)
+        async Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
         {
-            var Guild = (OldState.VoiceChannel ?? NewState.VoiceChannel).Guild;
+            var guild = (oldState.VoiceChannel ?? newState.VoiceChannel).Guild;
 
-            Modules.AudioHandler.HandleConnection(Guild);
+            Modules.AudioHandler.HandleConnection(guild);
 
-            if (User.Id == DiscordData.DiscordIDs.CortanaID) return;
+            if (user.Id == DiscordData.DiscordIDs.CortanaID) return;
 
-            if (OldState.VoiceChannel == null && NewState.VoiceChannel != null)
+            if (oldState.VoiceChannel == null && newState.VoiceChannel != null)
             {
-                var DisplayName = NewState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"Ciao {DisplayName}";
-                Embed embed = DiscordData.CreateEmbed(Title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Joined at:" });
+                var displayName = newState.VoiceChannel.Guild.GetUser(user.Id).DisplayName;
+                string title = $"Ciao {displayName}";
+                Embed embed = DiscordData.CreateEmbed(title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = user.GetAvatarUrl(), Text = "Joined at:" });
 
-                if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
+                if (DiscordData.GuildSettings[guild.Id].Greetings) await guild.GetTextChannel(DiscordData.GuildSettings[guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
-                if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
-                DiscordData.TimeConnected.Add(User.Id, DateTime.Now);
+                if (DiscordData.TimeConnected.ContainsKey(user.Id)) DiscordData.TimeConnected.Remove(user.Id);
+                DiscordData.TimeConnected.Add(user.Id, DateTime.Now);
 
-                if (NewState.VoiceChannel != Modules.AudioHandler.GetCurrentCortanaChannel(Guild)) return;
+                if (newState.VoiceChannel != Modules.AudioHandler.GetCurrentCortanaChannel(guild)) return;
 
                 await Task.Delay(1000);
-                await Modules.AudioHandler.Play("Hello", NewState.VoiceChannel.Guild.Id, EAudioSource.Local);
+                await Modules.AudioHandler.Play("Hello", newState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
-            else if (OldState.VoiceChannel != null && NewState.VoiceChannel == null)
+            else if (oldState.VoiceChannel != null && newState.VoiceChannel == null)
             {
-                var DisplayName = OldState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
-                string Title = $"A dopo {DisplayName}";
-                Embed embed = DiscordData.CreateEmbed(Title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Left at:" });
-                if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
+                var displayName = oldState.VoiceChannel.Guild.GetUser(user.Id).DisplayName;
+                string title = $"A dopo {displayName}";
+                Embed embed = DiscordData.CreateEmbed(title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = user.GetAvatarUrl(), Text = "Left at:" });
+                if (DiscordData.GuildSettings[guild.Id].Greetings) await guild.GetTextChannel(DiscordData.GuildSettings[guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
-                if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);
+                if (DiscordData.TimeConnected.ContainsKey(user.Id)) DiscordData.TimeConnected.Remove(user.Id);
             }
         }
 
-        async Task OnServerJoin(SocketGuild Guild)
+        async Task OnServerJoin(SocketGuild guild)
         {
-            DiscordData.AddGuildSettings(Guild);
+            DiscordData.AddGuildSettings(guild);
 
-            await Guild.DefaultChannel.SendMessageAsync(embed: DiscordData.CreateEmbed("Ciao, sono Cortana"));
+            await guild.DefaultChannel.SendMessageAsync(embed: DiscordData.CreateEmbed("Ciao, sono Cortana"));
         }
 
-        Task OnServerLeave(SocketGuild Guild)
+        Task OnServerLeave(SocketGuild guild)
         {
-            if (DiscordData.GuildSettings.ContainsKey(Guild.Id)) DiscordData.GuildSettings.Remove(Guild.Id);
+            if (DiscordData.GuildSettings.ContainsKey(guild.Id)) DiscordData.GuildSettings.Remove(guild.Id);
             DiscordData.UpdateSettings();
             return Task.CompletedTask;
         }
 
-        async Task OnUserJoin(SocketGuildUser User)
+        async Task OnUserJoin(SocketGuildUser user)
         {
-            if (User.IsBot) return;
+            if (user.IsBot) return;
 
-            await User.Guild.GetTextChannel(DiscordData.GuildSettings[User.Guild.Id].GreetingsChannel).SendMessageAsync(embed: DiscordData.CreateEmbed($"Benvenuto {User.DisplayName}"));
+            await user.Guild.GetTextChannel(DiscordData.GuildSettings[user.Guild.Id].GreetingsChannel).SendMessageAsync(embed: DiscordData.CreateEmbed($"Benvenuto {user.DisplayName}"));
         }
 
-        Task OnUserLeft(SocketGuild Guild, SocketUser User)
+        Task OnUserLeft(SocketGuild guild, SocketUser user)
         {
-            if (User.IsBot) return Task.CompletedTask;
+            if (user.IsBot) return Task.CompletedTask;
 
             return Task.CompletedTask;
         }
