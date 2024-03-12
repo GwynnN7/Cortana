@@ -11,7 +11,7 @@ namespace TelegramBot
     {
         public static void BootTelegramBot() => new TelegramBot().Main();
 
-        public void Main()
+        private void Main()
         {
             var config = ConfigurationBuilder();
             var cortana = new TelegramBotClient(config["token"]);
@@ -39,6 +39,7 @@ namespace TelegramBot
         {
             if (update.Message == null) return;
             if (update.Message.Type != MessageType.Text || update.Message.Text == null) return;
+            if (update.Message.From == null || update.Message.From.IsBot) return;
             
             var messageStats = new MessageStats
             {
@@ -46,7 +47,7 @@ namespace TelegramBot
                 UserID = update.Message.From?.Id ?? update.Message.Chat.Id,
                 MessageID = update.Message.MessageId,
                 ChatType = update.Message.Chat.Type,
-                FullMessage = update.Message.Text.Substring(1)
+                FullMessage = update.Message.Text[1..]
             };
 
             if (messageStats.UserID != TelegramData.NameToID("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
