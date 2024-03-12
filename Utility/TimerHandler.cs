@@ -6,53 +6,50 @@ namespace Utility
     {
         public static Dictionary<ETimerLocation, List<TimerHandler>> TotalTimers;
 
-        protected string Name;
+        private string Name;
         public string? Text { get; set; }
         
         public DateTime NextTargetTime;
-        public TimeSpan NextDeltaTime
-        {
-            get{ return NextTargetTime.Subtract(DateTime.Now); }
-        }
-        public ETimerLoop LoopType { get; set; }
-        protected Action<object?, ElapsedEventArgs> Callback;
+        public TimeSpan NextDeltaTime => NextTargetTime.Subtract(DateTime.Now);
+        private ETimerLoop LoopType { get; }
+        private Action<object?, ElapsedEventArgs> Callback;
         protected ETimerLocation TimerLocation;
         
 
-        public TimerHandler(string Name, string? Text, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, ETimerLoop Loop, bool AutoStart)
+        public TimerHandler(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
-            this.Name = Name;
-            this.Text = Text;
-            this.Interval = (Hours * 3600 + Minutes * 60 + Seconds) * 1000;
-            this.Callback = Callback;
-            this.TimerLocation = TimerLocation;
+            Name = name;
+            Text = text;
+            Interval = (hours * 3600 + minutes * 60 + seconds) * 1000;
+            Callback = callback;
+            TimerLocation = timerLocation;
 
-            LoopType = Loop;
+            LoopType = loop;
             NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
-            Elapsed += new ElapsedEventHandler(TimerElapsed);
+            Elapsed += TimerElapsed;
             AutoReset = false;
-            if (AutoStart) Start();
+            if (autoStart) Start();
 
-            AddTimer(TimerLocation, this);
+            AddTimer(timerLocation, this);
         }
 
-        public TimerHandler(string Name, string? Text, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, ETimerLoop Loop, bool AutoStart)
+        public TimerHandler(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
-            this.Name = Name;
-            this.Text = Text;
-            this.Interval = TargetTime.Subtract(DateTime.Now).Minutes <= 5 ? TargetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : TargetTime.Subtract(DateTime.Now).TotalMilliseconds;
-            this.Callback = Callback;
-            this.TimerLocation = TimerLocation;
+            Name = name;
+            Text = text;
+            Interval = targetTime.Subtract(DateTime.Now).Minutes <= 5 ? targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+            Callback = callback;
+            TimerLocation = timerLocation;
 
-            LoopType = Loop;
+            LoopType = loop;
             NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
-            Elapsed += new ElapsedEventHandler(TimerElapsed);
+            Elapsed += TimerElapsed;
             AutoReset = false;
-            if (AutoStart) Start();
+            if (autoStart) Start();
 
-            AddTimer(TimerLocation, this);
+            AddTimer(timerLocation, this);
         }
 
         private void TimerElapsed(object? sender, ElapsedEventArgs args)

@@ -100,13 +100,13 @@ namespace Utility
                 HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
                 return "Lampada accesa";
             }
-            else if (state == EHardwareTrigger.Off)
+            if (state == EHardwareTrigger.Off)
             {
                 UseGPIO(LampPin, PinValue.Low);
                 HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
                 return "Lampada spenta";
             }
-            else return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchGeneral(EHardwareTrigger state)
@@ -117,13 +117,13 @@ namespace Utility
                 HardwareStates[EHardwareElements.General] = EBooleanState.On;
                 return "Presa attivata";
             }
-            else if (state == EHardwareTrigger.Off)
+            if (state == EHardwareTrigger.Off)
             {
                 UseGPIO(GeneralPin, PinValue.Low);
                 HardwareStates[EHardwareElements.General] = EBooleanState.Off;
                 return "Presa disattivata";
             }
-            else return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchComputer(EHardwareTrigger state)
@@ -135,13 +135,13 @@ namespace Utility
                 PythonCaller("WoL", NetStats.Desktop_LAN_MAC);
                 return lastState == EBooleanState.On ? "Computer già acceso" : "Computer in accensione";
             }
-            else if (state == EHardwareTrigger.Off)
+            if (state == EHardwareTrigger.Off)
             {
                 HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
                 var res = SSH_PC("poweroff");
                 return lastState == EBooleanState.Off ? "Computer già spento" : res;
             }
-            else return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchOutlets(EHardwareTrigger state)
@@ -197,7 +197,8 @@ namespace Utility
                 }
 
             }
-            else if (state == EHardwareTrigger.Off)
+            
+            if (state == EHardwareTrigger.Off)
             {
                 try
                 {
@@ -210,7 +211,8 @@ namespace Utility
                     return "Display non raggiungibile";
                 }
             }
-            else return SwitchDisplay(HardwareStates[EHardwareElements.Display] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+            
+            return SwitchDisplay(HardwareStates[EHardwareElements.Display] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchFromEnum(EHardwareElements element, EHardwareTrigger trigger)
@@ -237,7 +239,7 @@ namespace Utility
             if (element_result == null)
             {
                 if (element == "room") return SwitchRoom(trigger_result.Value);
-                else return "Dispositivo Hardware non presente";
+                return "Dispositivo Hardware non presente";
             }
             return SwitchFromEnum(element_result.Value, trigger_result.Value);
         }

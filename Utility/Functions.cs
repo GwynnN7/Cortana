@@ -43,12 +43,12 @@ namespace Utility
             if (useNormalColors) qrCodeAsPngByteArr = qrCode.GetGraphic(20, drawQuietZones: useBorders);
             else qrCodeAsPngByteArr = qrCode.GetGraphic(20, lightColorRgba: new byte[] { 81, 209, 246 }, darkColorRgba: new byte[] { 52, 24, 80 }, drawQuietZones: useBorders);
 
-            var ImageStream = new MemoryStream();
+            var imageStream = new MemoryStream();
             using (var image = Image.Load(qrCodeAsPngByteArr))
             {
-                image.Save(ImageStream, new PngEncoder());
+                image.Save(imageStream, new PngEncoder());
             }
-            return ImageStream;
+            return imageStream;
         }
     }
 }

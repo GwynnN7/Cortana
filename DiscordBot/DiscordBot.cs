@@ -46,8 +46,8 @@ namespace DiscordBot
                 //await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID, true);
                 await commands.RegisterCommandsGloballyAsync(true);
 
-                var ActivityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
-                var StatusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 24, Minutes: 0, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
+                var activityTimer = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
+                var statusTimer = new Utility.UtilityTimer(Name: "status-timer", Hours: 24, Minutes: 0, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
 
                 foreach (var guild in Cortana.Guilds)
                 {
@@ -94,9 +94,9 @@ namespace DiscordBot
         {
             try
             {
-                string Temp = Utility.HardwareDriver.GetCPUTemperature();
-                Game Activity = new Game($"on Raspberry at {Temp}", ActivityType.Playing);
-                await Cortana.SetActivityAsync(Activity);
+                string temp = Utility.HardwareDriver.GetCPUTemperature();
+                Game activity = new Game($"on Raspberry at {temp}", ActivityType.Playing);
+                await Cortana.SetActivityAsync(activity);
             }
             catch
             {
@@ -106,7 +106,7 @@ namespace DiscordBot
 
         private static void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Still alive Chief", Description: Utility.HardwareDriver.GetCPUTemperature());
+            Embed embed = DiscordData.CreateEmbed(title: "Still alive Chief", description: Utility.HardwareDriver.GetCPUTemperature());
             DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
         }
 
@@ -139,7 +139,7 @@ namespace DiscordBot
             {
                 var DisplayName = NewState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
                 string Title = $"Ciao {DisplayName}";
-                Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Joined at:" });
+                Embed embed = DiscordData.CreateEmbed(Title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Joined at:" });
 
                 if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
@@ -155,7 +155,7 @@ namespace DiscordBot
             {
                 var DisplayName = OldState.VoiceChannel.Guild.GetUser(User.Id).DisplayName;
                 string Title = $"A dopo {DisplayName}";
-                Embed embed = DiscordData.CreateEmbed(Title, WithoutAuthor: true, Footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Left at:" });
+                Embed embed = DiscordData.CreateEmbed(Title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = User.GetAvatarUrl(), Text = "Left at:" });
                 if (DiscordData.GuildSettings[Guild.Id].Greetings) await Guild.GetTextChannel(DiscordData.GuildSettings[Guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
                 if (DiscordData.TimeConnected.ContainsKey(User.Id)) DiscordData.TimeConnected.Remove(User.Id);

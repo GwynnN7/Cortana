@@ -10,76 +10,76 @@ namespace DiscordBot
         private static DiscordSettings LastLoadedSettings;
 
         public static DiscordSocketClient Cortana;
-        public static Dictionary<ulong, DateTime> TimeConnected = new Dictionary<ulong, DateTime>();
+        public static Dictionary<ulong, DateTime> TimeConnected = new();
 
         public static DiscordIDs DiscordIDs;
-        public static Dictionary<ulong, GuildSettings> GuildSettings = new Dictionary<ulong, GuildSettings>();
+        public static Dictionary<ulong, GuildSettings> GuildSettings = new();
 
-        public static Dictionary<ulong, GamingProfileSet> GamingProfile = new Dictionary<ulong, GamingProfileSet>();
+        public static Dictionary<ulong, GamingProfileSet> GamingProfile = new();
         public static IGDBData IGDB;
 
-        public static Dictionary<string, MemeJsonStructure> Memes = new Dictionary<string, MemeJsonStructure>();
+        public static Dictionary<string, MemeJsonStructure> Memes = new();
 
-        static public void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
+        public static void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
         {
             var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json") ?? new();
 
             DiscordIDs = discordSettings.IDs;
-            if (discordSettings.GuildSettings == null) discordSettings.GuildSettings = GuildSettings;
+            discordSettings.GuildSettings = GuildSettings;
 
-            foreach (var Guild in Guilds)
+            foreach (var guild in Guilds)
             {
-                if (!discordSettings.GuildSettings.ContainsKey(Guild.Id))
+                if (!discordSettings.GuildSettings.ContainsKey(guild.Id))
                 {
-                    AddGuildSettings(Guild);
+                    AddGuildSettings(guild);
                     continue;
                 }
 
                 GuildSettings guildSettings = new GuildSettings()
                 {
-                    AutoJoin = discordSettings.GuildSettings[Guild.Id].AutoJoin,
-                    GreetingsChannel = discordSettings.GuildSettings[Guild.Id].GreetingsChannel,
-                    Greetings = discordSettings.GuildSettings[Guild.Id].Greetings,
-                    AFKChannel = discordSettings.GuildSettings[Guild.Id].AFKChannel,
-                    BannedWords = discordSettings.GuildSettings[Guild.Id].BannedWords
+                    AutoJoin = discordSettings.GuildSettings[guild.Id].AutoJoin,
+                    GreetingsChannel = discordSettings.GuildSettings[guild.Id].GreetingsChannel,
+                    Greetings = discordSettings.GuildSettings[guild.Id].Greetings,
+                    AFKChannel = discordSettings.GuildSettings[guild.Id].AFKChannel,
+                    BannedWords = discordSettings.GuildSettings[guild.Id].BannedWords
                 };
-                GuildSettings.Add(Guild.Id, guildSettings);
+                GuildSettings.Add(guild.Id, guildSettings);
             };
             LastLoadedSettings = discordSettings;
             UpdateSettings();  
         }
 
-        static public void LoadMemes()
+        public static void LoadMemes()
         {
             var memesDataResult = Utility.Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Data/Discord/Memes.json");
             if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
         }
 
-        static public void LoadGamingProfiles()
+        public static void LoadGamingProfiles()
         {
             GamingProfile = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json") ?? new();
         }
 
-        static public void LoadIGDB()
+        public static void LoadIGDB()
         {
             IGDB = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json") ?? new();
         }
 
-        static public void AddGuildSettings(SocketGuild Guild)
+        public static void AddGuildSettings(SocketGuild guild)
         {
-            var DefaultGuildSettings = new GuildSettings()
+            var defaultGuildSettings = new GuildSettings()
             {
                 AutoJoin = false,
                 Greetings = false,
-                GreetingsChannel = Guild.DefaultChannel.Id,
+                GreetingsChannel = guild.DefaultChannel.Id,
                 AFKChannel = 0,
                 BannedWords = new List<string>()
             };
-            if (!GuildSettings.ContainsKey(Guild.Id)) GuildSettings.Add(Guild.Id, DefaultGuildSettings);
+            if (!GuildSettings.ContainsKey(guild.Id)) GuildSettings.Add(guild.Id, defaultGuildSettings);
             UpdateSettings();
         }
 
-        static public void UpdateSettings()
+        public static void UpdateSettings()
         {
             var jsonWriteOptions = new JsonSerializerSettings() { Formatting = Formatting.Indented };
             jsonWriteOptions.Converters.Add(new StringEnumConverter());
@@ -89,39 +89,39 @@ namespace DiscordBot
             Utility.Functions.WriteFile("Data/Discord/GuildConfig.json", LastLoadedSettings, jsonWriteOptions);
         }
 
-        static public void UpdateGamingProfile()
+        public static void UpdateGamingProfile()
         {
             Utility.Functions.WriteFile("Data/Discord/GamingProfile.json", GamingProfile);
         }
 
-        static public Embed CreateEmbed(string Title, SocketUser? User = null, string Description = "", Color? EmbedColor = null, EmbedFooterBuilder? Footer = null, bool WithTimeStamp = true, bool WithoutAuthor = false)
+        public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true, bool withoutAuthor = false)
         {
-            Color Color = (Color)(EmbedColor == null ? Color.Blue : EmbedColor);
-            if (User == null) User = Cortana.CurrentUser;
+            Color color = (Color)(embedColor == null ? Color.Blue : embedColor);
+            if (user == null) user = Cortana.CurrentUser;
 
-            var EmbedBuilder = new EmbedBuilder()
-                .WithTitle(Title)
-                .WithColor(Color)
-                .WithDescription(Description);
-            if (WithTimeStamp) EmbedBuilder.WithCurrentTimestamp();
-            if (!WithoutAuthor) EmbedBuilder.WithAuthor(User.Username, User.GetAvatarUrl());
-            if (Footer != null) EmbedBuilder.WithFooter(Footer);
-            return EmbedBuilder.Build();
+            var embedBuilder = new EmbedBuilder()
+                .WithTitle(title)
+                .WithColor(color)
+                .WithDescription(description);
+            if (withTimeStamp) embedBuilder.WithCurrentTimestamp();
+            if (!withoutAuthor) embedBuilder.WithAuthor(user.Username, user.GetAvatarUrl());
+            if (footer != null) embedBuilder.WithFooter(footer);
+            return embedBuilder.Build();
         }
 
-        static public async void SendToUser(string text, ulong user_id)
+        public static async void SendToUser(string text, ulong userId)
         {
-            var user = await Cortana.GetUserAsync(user_id);
+            var user = await Cortana.GetUserAsync(userId);
             await user.SendMessageAsync(text);
         }
 
-        static public async void SendToUser(Embed embed, ulong user_id)
+        public static async void SendToUser(Embed embed, ulong userId)
         {
-            var user = await Cortana.GetUserAsync(user_id);
+            var user = await Cortana.GetUserAsync(userId);
             await user.SendMessageAsync(embed: embed);
         }
 
-        static public async void SendToChannel(string text, ECortanaChannels channel)
+        public static async void SendToChannel(string text, ECortanaChannels channel)
         {
             var channelid = channel switch
             {
@@ -132,7 +132,7 @@ namespace DiscordBot
             await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelid).SendMessageAsync(text);
         }
 
-        static public async void SendToChannel(Embed embed, ECortanaChannels channel)
+        public static async void SendToChannel(Embed embed, ECortanaChannels channel)
         {
             var channelid = channel switch
             {

@@ -1,29 +1,56 @@
-﻿namespace TelegramBot
+﻿using Telegram.Bot;
+
+namespace TelegramBot.Modules
 {
     public static class ShoppingModule
     {
         public static Dictionary<long, List<Debts>> Debts;
-        private static List<string> AllowedChannles = new List<string>()
+        private static List<string> AllowedChannles = new()
         {
             "ProcioneSpazialeMistico"
         };
-
-        static public void LoadDebts()
+        
+        public static void LoadDebts()
         {
             Debts = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json") ?? new();
         }
 
-        static public void UpdateDebts()
+        private static void UpdateDebts()
         {
             Utility.Functions.WriteFile("Data/Telegram/Debts.json", Debts);
         }
-
-        static public bool IsChannelAllowed(long channelId)
+         public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
         {
-            return AllowedChannles.Contains(TelegramData.IDToGroupName(channelId));
+            switch (messageStats.Command)
+            {
+                case "buy":
+                    if (IsChannelAllowed(messageStats.ChatID))
+                    {
+                        bool result = Buy(messageStats.UserID, messageStats.Text);
+                        if (result) await cortana.SendTextMessageAsync(messageStats.ChatID, "Debiti aggiornati");
+                        else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non è stato possibile aggiornare i debiti");
+
+                    }
+                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Comando riservato al gruppo");
+                    break;
+                case "debt":
+                    if (IsChannelAllowed(messageStats.ChatID))
+                    {
+                        if (messageStats.TextList.Count > 0)
+                        {
+                            for (int i = 0; i < messageStats.TextList.Count; i++)
+                            {
+                                await cortana.SendTextMessageAsync(messageStats.ChatID, GetDebts(messageStats.TextList[i]));
+                            }
+                        }
+                        else await cortana.SendTextMessageAsync(messageStats.ChatID, GetDebts(TelegramData.IDToName(messageStats.UserID)));
+                    }
+                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Comando riservato a specifici gruppi");
+                    break;
+            }
         }
 
-        static public bool Buy(long user, string message)
+        private static bool Buy(long user, string message)
         {
             List<string> data = message.Split(" ").ToList();
             List<long> buyers = new();
@@ -95,7 +122,7 @@
             UpdateDebts();
         }
 
-        static public double GetDebt(long from, long to)
+        private static double GetDebt(long from, long to)
         {
             if (!Debts.ContainsKey(from)) return 0;
             foreach (var ownance in Debts[from])
@@ -104,8 +131,13 @@
             }
             return 0;
         }
+        
+        private static bool IsChannelAllowed(long channelId)
+        {
+            return AllowedChannles.Contains(TelegramData.IDToGroupName(channelId));
+        }
 
-        static public int GetOwnance(long from, long to)
+        private static int GetOwnance(long from, long to)
         {
             if(!Debts.ContainsKey(from)) return -1;
             for(int i=0; i< Debts[from].Count; i++)
@@ -115,7 +147,7 @@
             return -1;
         }
 
-        static public string GetDebts(string username)
+        private static string GetDebts(string username)
         {
             long id = TelegramData.NameToID(username);
             string result = "";

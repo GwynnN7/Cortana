@@ -13,7 +13,7 @@ namespace DiscordBot.Modules
             [SlashCommand("comandi", "Vi mostro le categorie dei miei comandi")]
             public async Task ShowCommands()
             {
-                var commandsEmbed = DiscordData.CreateEmbed("Comandi", WithTimeStamp: false);
+                var commandsEmbed = DiscordData.CreateEmbed("Comandi", withTimeStamp: false);
                 commandsEmbed = commandsEmbed.ToEmbedBuilder()
                     .AddField("/media", "Gestione audio dei canali vocali")
                     .AddField("/domotica", "Domotica personale riservata")
@@ -86,12 +86,12 @@ namespace DiscordBot.Modules
                     if (DeltaTime.Minutes > 0) ConnectionTime += $" {DeltaTime.Minutes} minuti";
                     if (DeltaTime.Seconds > 0) ConnectionTime += $" {DeltaTime.Seconds} secondi";
 
-                    var embed = DiscordData.CreateEmbed(Title: ConnectionTime, User: User);
+                    var embed = DiscordData.CreateEmbed(title: ConnectionTime, user: User);
                     await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
                 }
                 else
                 {
-                    var embed = DiscordData.CreateEmbed(Title: "Non connesso alla chat vocale", User: User);
+                    var embed = DiscordData.CreateEmbed(title: "Non connesso alla chat vocale", user: User);
                     await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
                 }
             }
@@ -248,7 +248,7 @@ namespace DiscordBot.Modules
                 var foundGame = sortedGames[count];
 
                 var coverID = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
-                Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, WithTimeStamp: false);
+                Embed GameEmbed = DiscordData.CreateEmbed(foundGame.Name, withTimeStamp: false);
                 GameEmbed = GameEmbed.ToEmbedBuilder()
                     .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                     .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverID}.jpg")
@@ -305,7 +305,7 @@ namespace DiscordBot.Modules
 
                 if(DiscordData.GamingProfile.ContainsKey(user.Id))
                 {
-                    var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", User: user);
+                    var gamingEmbed = DiscordData.CreateEmbed("Gaming Profile", user: user);
                     gamingEmbed = gamingEmbed.ToEmbedBuilder()
                         .AddField("RAWG", DiscordData.GamingProfile[user.Id].RAWG == "N/A" ? "N/A" : $"[Vai al profilo](https://rawg.io/@{DiscordData.GamingProfile[user.Id].RAWG})")
                         .AddField("Steam", DiscordData.GamingProfile[user.Id].Steam == "N/A" ? "N/A" : $"[Vai al profilo](https://steamcommunity.com/id/{DiscordData.GamingProfile[user.Id].Steam}/)")
@@ -381,7 +381,7 @@ namespace DiscordBot.Modules
             public async Task RandomNumber([Summary("minimo", "Minimo [0 default]")] int min = 0, [Summary("massimo", "Massimo [100 default]")] int max = 100, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
                 string randomNumber = Convert.ToString(new Random().Next(min, max));
-                Embed embed = DiscordData.CreateEmbed(Title: randomNumber);
+                Embed embed = DiscordData.CreateEmbed(title: randomNumber);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
@@ -390,7 +390,7 @@ namespace DiscordBot.Modules
             {
                 string dicesResults = "";
                 for (int i = 0; i < dices; i++) dicesResults += Convert.ToString(new Random().Next(1, 7)) + " ";
-                Embed embed = DiscordData.CreateEmbed(Title: dicesResults);
+                Embed embed = DiscordData.CreateEmbed(title: dicesResults);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
@@ -400,7 +400,7 @@ namespace DiscordBot.Modules
                 var list = new List<string>{"Testa","Croce"};
                 int index = new Random().Next(list.Count);
                 string result = list[index];
-                Embed embed = DiscordData.CreateEmbed(Title: result);
+                Embed embed = DiscordData.CreateEmbed(title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
@@ -410,7 +410,7 @@ namespace DiscordBot.Modules
                 string[] separatedList = options.Split(" ");
                 int index = new Random().Next(separatedList.Length);
                 string result = separatedList[index];
-                Embed embed = DiscordData.CreateEmbed(Title: result);
+                Embed embed = DiscordData.CreateEmbed(title: result);
                 await RespondAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
             }
 
@@ -452,7 +452,7 @@ namespace DiscordBot.Modules
             [SlashCommand("link", "Siti UNIPI")]
             public async Task UnipiSites([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("Siti UNIPI", User: Context.User);
+                Embed embed = DiscordData.CreateEmbed("Siti UNIPI", user: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.AddField("Home", "[Vai al sito](https://agendadidattica.unipi.it/Prod)");
                 embed_builder.AddField("Laurea in Informatica", "[Vai al sito](https://didattica.di.unipi.it/laurea-in-informatica/)");
@@ -493,7 +493,7 @@ namespace DiscordBot.Modules
             [SlashCommand("courses", "Lezioni UNIPI")]
             public async Task UnipiLessons([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("Lezioni UNIPI", User: Context.User);
+                Embed embed = DiscordData.CreateEmbed("Lezioni UNIPI", user: Context.User);
                 EmbedBuilder embed_builder = embed.ToEmbedBuilder();
                 embed_builder.WithDescription("[Calendario](https://cdn.discordapp.com/attachments/912356013108256858/1137669285251121213/Orario_settimanale_-_Orario_settimanale.jpg?ex=65169016&is=65153e96&hm=0055311a24931ed11a8db1b3c462b8be1264a4371f5aac6ebdd9292c995fd762&)");
                 embed_builder.AddField("Architettura e Sistemi Operativi", "[Classroom](https://classroom.google.com/u/2/c/NjIyMjg0ODk2OTM2)\n[Teams](https://teams.microsoft.com/l/team/19%3ad78R1wqZ_8OCtKvUSqGAhRLVm_kbb0FTD6AZIdc2eus1%40thread.tacv2/conversations?groupId=956555d6-95af-4d8c-ae35-33549b96e038&tenantId=c7456b31-a220-47f5-be52-473828670aa1)");

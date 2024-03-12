@@ -54,13 +54,6 @@ public enum EAction
     Elimina
 }
 
-public enum EActionExpanded
-{
-    Crea,
-    Elimina,
-    Modifica
-}
-
 public enum EAudioSource
 {
     Youtube,
@@ -73,18 +66,6 @@ public enum ETimerLoop
     Interval,
     Daily,
     Weekly
-}
-
-public enum EWeek
-{
-    Today,
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-    Sunday
 }
 
 public enum EMemeCategory

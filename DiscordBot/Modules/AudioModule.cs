@@ -392,7 +392,7 @@ namespace DiscordBot.Modules
 
                     var result = await AudioHandler.GetYoutubeVideoInfos(link);
                     TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-                    Embed embed = DiscordData.CreateEmbed(title, Description: $"{duration:hh\\:mm\\:ss}");
+                    Embed embed = DiscordData.CreateEmbed(title, description: $"{duration:hh\\:mm\\:ss}");
                     embed = embed.ToEmbedBuilder()
                         .WithUrl(result.Url)
                         .WithThumbnailUrl(result.Thumbnails.Last().Url)
@@ -415,7 +415,7 @@ namespace DiscordBot.Modules
 
             var result = await AudioHandler.GetYoutubeVideoInfos(text);
             TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-            Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
+            Embed embed = DiscordData.CreateEmbed(result.Title, description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
                 .WithUrl(result.Url)
                 .WithThumbnailUrl(result.Thumbnails.Last().Url)
@@ -488,7 +488,7 @@ namespace DiscordBot.Modules
 
             var result = await AudioHandler.GetYoutubeVideoInfos(text);
             TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-            Embed embed = DiscordData.CreateEmbed(result.Title, Description: $"{duration:hh\\:mm\\:ss}");
+            Embed embed = DiscordData.CreateEmbed(result.Title, description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
             .WithDescription("Musica in download...")
             .WithUrl(result.Url)

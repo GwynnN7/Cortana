@@ -12,7 +12,7 @@ namespace DiscordBot.Modules
         public async Task LightToggle()
         {
             string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
-            Embed embed = DiscordData.CreateEmbed(Title: result);
+            Embed embed = DiscordData.CreateEmbed(title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
@@ -23,14 +23,14 @@ namespace DiscordBot.Modules
 
             string result = Utility.HardwareDriver.SwitchFromEnum(element, trigger);
 
-            Embed embed = DiscordData.CreateEmbed(Title: result);
+            Embed embed = DiscordData.CreateEmbed(title: result);
             await FollowupAsync(embed: embed, ephemeral: true);
         }
 
         [SlashCommand("room", "Accendi o spegni tutti i dispositivi", runMode: RunMode.Async)]
         public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
         {
-            Embed embed = DiscordData.CreateEmbed(Title: "Procedo");
+            Embed embed = DiscordData.CreateEmbed(title: "Procedo");
             await RespondAsync(embed: embed, ephemeral: true);
 
             Utility.HardwareDriver.SwitchRoom(trigger);
