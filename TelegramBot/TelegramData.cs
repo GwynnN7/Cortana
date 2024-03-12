@@ -9,7 +9,7 @@ namespace TelegramBot
     {
         private static Data Data;
         private static TelegramBotClient Cortana;
-        private static List<long> RootPermissions = new() {  NameToID("@gwynn7"), NameToID("@alessiaat1")};
+        private static List<long> RootPermissions = [NameToID("@gwynn7"), NameToID("@alessiaat1")];
         
         public static void Init(TelegramBotClient newClient)
         {
@@ -21,6 +21,8 @@ namespace TelegramBot
         private static void LoadData()
         {
             Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
+            Console.WriteLine(Data.usernames.Count);
+            Console.WriteLine(Data.groups.Count);
         }
 
         public static void SendToUser(long userId, string message, bool notify = true)
