@@ -18,7 +18,7 @@ namespace Utility
 
         private static Dictionary<EHardwareElements, EBooleanState> HardwareStates = new();
 
-        public static NetworkStats NetStats;
+        private static NetworkStats NetStats;
 
         public static void Init()
         {
@@ -33,12 +33,12 @@ namespace Utility
             HandleNight();
         }
 
-        public static void LoadNetworkData()
+        private static void LoadNetworkData()
         {
             NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
         }
 
-        public static void HandleNight()
+        private static void HandleNight()
         {
             new UtilityTimer(Name: "night-handler", TargetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.Daily);
         }
@@ -261,17 +261,15 @@ namespace Utility
             string result;
             try
             {
-                using (var client = new SshClient(addr, usr, pass))
-                {
-                    client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
-                    client.Connect();
-                    var r = client.RunCommand(command);
-                    if (r.ExitStatus == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Comando eseguito";
-                    else result = (returnResult && r.Error.Length != 0) ? r.Error : "Comando non eseguito";
-                    string log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
-                    Functions.Log("SSH", log);
-                    client.Disconnect();
-                }
+                using var client = new SshClient(addr, usr, pass);
+                client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
+                client.Connect();
+                var r = client.RunCommand(command);
+                if (r.ExitStatus == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Comando eseguito";
+                else result = (returnResult && r.Error.Length != 0) ? r.Error : "Comando non eseguito";
+                string log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
+                Functions.Log("SSH", log);
+                client.Disconnect();
             }
             catch
             {
@@ -322,14 +320,14 @@ namespace Utility
             controller.Write(Pin, Value);
         }
 
-        public static EHardwareTrigger? TriggerStateFromString(string state)
+        private static EHardwareTrigger? TriggerStateFromString(string state)
         {
             state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
             bool res = Enum.TryParse(state, out EHardwareTrigger status);
             return res ? status : null;
         }
 
-        public static EHardwareElements? HardwareElementFromString(string element)
+        private static EHardwareElements? HardwareElementFromString(string element)
         {
             element = string.Concat(element[0].ToString().ToUpper(), element.AsSpan(1));
             bool res = Enum.TryParse(element, out EHardwareElements status);

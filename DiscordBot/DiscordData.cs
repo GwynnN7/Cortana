@@ -75,7 +75,7 @@ namespace DiscordBot
                 AFKChannel = 0,
                 BannedWords = new List<string>()
             };
-            if (!GuildSettings.ContainsKey(guild.Id)) GuildSettings.Add(guild.Id, defaultGuildSettings);
+            GuildSettings.TryAdd(guild.Id, defaultGuildSettings);
             UpdateSettings();
         }
 
@@ -123,24 +123,24 @@ namespace DiscordBot
 
         public static async void SendToChannel(string text, ECortanaChannels channel)
         {
-            var channelid = channel switch
+            var channelId = channel switch
             {
                 ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
                 ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
                 _ => DiscordIDs.CortanaLogChannelID
             };
-            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelid).SendMessageAsync(text);
+            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(text);
         }
 
         public static async void SendToChannel(Embed embed, ECortanaChannels channel)
         {
-            var channelid = channel switch
+            var channelId = channel switch
             {
                 ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
                 ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
                 _ => DiscordIDs.CortanaLogChannelID
             };
-            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelid).SendMessageAsync(embed: embed);
+            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(embed: embed);
         }
     }
 

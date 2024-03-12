@@ -7,30 +7,30 @@ namespace Utility
 {
     public static class Functions
     {
-        static public T? LoadFile<T>(string Path)
+        public static T? LoadFile<T>(string path)
         {
-            T? DataToLoad = default;
-            if (File.Exists(Path))
+            T? dataToLoad = default;
+            if (File.Exists(path))
             {
-                var file = File.ReadAllText(Path);
-                DataToLoad = JsonConvert.DeserializeObject<T>(file);
+                var file = File.ReadAllText(path);
+                dataToLoad = JsonConvert.DeserializeObject<T>(file);
             }
-            return DataToLoad;
+            return dataToLoad;
         }
 
-        static public void WriteFile<T>(string FileName, T Data, JsonSerializerSettings? options = null)
+        public static void WriteFile<T>(string fileName, T data, JsonSerializerSettings? options = null)
         {
-            var newJson = JsonConvert.SerializeObject(Data, options);
+            var newJson = JsonConvert.SerializeObject(data, options);
 
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), FileName);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
             File.WriteAllText(filePath, newJson);
         }
 
-        static public void Log(string FileName, string Log)
+        public static void Log(string fileName, string log)
         {
-            string path = $"/home/cortana/CortanaLogs/{FileName}.log";
+            string path = $"/home/cortana/CortanaLogs/{fileName}.log";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
-            logFile.WriteLine($"{DateTime.Now}: {Log}\n");
+            logFile.WriteLine($"{DateTime.Now}: {log}\n");
         }
 
         public static Stream CreateQRCode(string content, bool useNormalColors, bool useBorders)
