@@ -45,6 +45,8 @@ namespace TelegramBot
 
         public static long NameToID(string name)
         {
+            Console.WriteLine("Porco dio");
+            Console.WriteLine(name);
             foreach (var item in Data.usernames)
             {
                 if (item.Value == name) return item.Key;
