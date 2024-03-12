@@ -25,7 +25,7 @@ namespace DiscordBot
             var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json") ?? new();
 
             DiscordIDs = discordSettings.IDs;
-            discordSettings.GuildSettings = GuildSettings;
+            if(discordSettings.GuildSettings == null) discordSettings.GuildSettings = GuildSettings;
 
             foreach (var guild in Guilds)
             {

@@ -45,15 +45,15 @@ namespace DiscordBot.Modules
                 var timer = (Utility.DiscordUserTimer) sender;
 
                 var user = (SocketUser) timer.User;
-                var text_channel = (SocketTextChannel?) timer.TextChannel;
+                var textChannel = (SocketTextChannel?) timer.TextChannel;
 
                 var embed = DiscordData.CreateEmbed("Timer trascorso", user: user);
                 embed = embed.ToEmbedBuilder()
                     .AddField("Notifica", timer.Text ?? "N/A")
                     .Build();
 
-                if (text_channel == null) await user.SendMessageAsync(embed: embed);
-                else await text_channel.SendMessageAsync(embed: embed);
+                if (textChannel == null) await user.SendMessageAsync(embed: embed);
+                else await textChannel.SendMessageAsync(embed: embed);
             }
             catch
             {
