@@ -16,7 +16,7 @@ public static class UtilityModule
             CommandValue = cmdVal;
         }
     }
-    private static Dictionary<long, AnswerCommand> AnswerCommands = new ();
+    private static Dictionary<long, AnswerCommand> AnswerCommands = new();
     
     public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
     {

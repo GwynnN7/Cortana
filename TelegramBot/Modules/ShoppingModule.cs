@@ -29,7 +29,6 @@ namespace TelegramBot.Modules
                         bool result = Buy(messageStats.UserID, messageStats.Text);
                         if (result) await cortana.SendTextMessageAsync(messageStats.ChatID, "Debiti aggiornati");
                         else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non è stato possibile aggiornare i debiti");
-
                     }
                     else await cortana.SendTextMessageAsync(messageStats.ChatID, "Comando riservato al gruppo");
                     break;

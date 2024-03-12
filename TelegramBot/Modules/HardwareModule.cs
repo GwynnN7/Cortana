@@ -18,7 +18,7 @@ namespace TelegramBot.Modules
     
     public static class HardwareModule
     {
-        private static Dictionary<long, string> HardwareAction;
+        private static Dictionary<long, string> HardwareAction = new();
         
         public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
         {
