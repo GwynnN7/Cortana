@@ -9,11 +9,7 @@ namespace TelegramBot
     {
         private static Data Data;
         private static TelegramBotClient Cortana;
-        private static List<long> RootPermissions=
-        [
-            NameToID("@gwynn7"),
-            NameToID("@alessiaat1")
-        ];
+        private static List<long> RootPermissions = new() {  NameToID("@gwynn7"), NameToID("@alessiaat1")};
         
         public static void Init(TelegramBotClient newClient)
         {

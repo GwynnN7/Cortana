@@ -23,7 +23,7 @@ public static class UtilityModule
         switch (messageStats.Command)
         {
             case "qrcode":
-                if (AnswerCommands.ContainsKey(messageStats.ChatID)) AnswerCommands.Remove(messageStats.ChatID);
+                AnswerCommands.Remove(messageStats.ChatID);
                 AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.QRCODE));
                 await cortana.SendTextMessageAsync(messageStats.ChatID, "Scrivi il contenuto");
                 break;
@@ -44,7 +44,7 @@ public static class UtilityModule
                 {
                     if (messageStats.TextList.Count == 1)
                     {
-                        if (AnswerCommands.ContainsKey(messageStats.ChatID)) AnswerCommands.Remove(messageStats.ChatID);
+                        AnswerCommands.Remove(messageStats.ChatID);
                         AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.CHAT, messageStats.TextList[0]));
                         await cortana.SendTextMessageAsync(messageStats.ChatID, $"Chat con {messageStats.TextList[0]} avviata");
                     }

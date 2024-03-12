@@ -73,14 +73,14 @@ namespace TelegramBot
         }
 
 
-        private async void HandleCallback(ITelegramBotClient Cortana, Update update)
+        private void HandleCallback(ITelegramBotClient cortana, Update update)
         {
             if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.CallbackQuery.Message == null) return;
             
-            HardwareModule.ButtonCallback(Cortana, update);
+            HardwareModule.ButtonCallback(cortana, update);
         }
 
-        private Task ErrorHandler(ITelegramBotClient Cortana, Exception exception, CancellationToken cancellationToken)
+        private Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)
         {
             var errorMessage = exception switch
             {
