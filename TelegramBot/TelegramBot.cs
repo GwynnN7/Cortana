@@ -9,7 +9,6 @@ namespace TelegramBot
 {
     public class TelegramBot
     {
-
         public static void BootTelegramBot() => new TelegramBot().Main();
 
         public void Main()
@@ -33,10 +32,8 @@ namespace TelegramBot
                     HandleMessage(cortana, update);
                     break;
             }
-
             return Task.CompletedTask;
         }
-
 
         private async void HandleMessage(ITelegramBotClient cortana, Update update)
         {

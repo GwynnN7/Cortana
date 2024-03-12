@@ -4,7 +4,7 @@ namespace TelegramBot.Modules
 {
     public static class ShoppingModule
     {
-        public static Dictionary<long, List<Debts>> Debts;
+        private static Dictionary<long, List<Debts>> Debts;
         private static List<string> AllowedChannles = new()
         {
             "ProcioneSpazialeMistico"
@@ -86,7 +86,7 @@ namespace TelegramBot.Modules
             return true;
         }
 
-        static public void AddDebt(long user, double amount, long buyer)
+        private static void AddDebt(long user, double amount, long buyer)
         {
             if (!Debts.ContainsKey(user)) Debts.Add(user, new());
             if (user == buyer) return;

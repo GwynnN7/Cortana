@@ -7,8 +7,8 @@ namespace TelegramBot
 {
     public static class TelegramData
     {
-        public static Data Data;
-        public static TelegramBotClient Cortana;
+        private static Data Data;
+        private static TelegramBotClient Cortana;
         private static List<long> RootPermissions=
         [
             NameToID("@gwynn7"),
@@ -22,15 +22,15 @@ namespace TelegramBot
             ShoppingModule.LoadDebts();
         }
 
-        static public void LoadData()
+        private static void LoadData()
         {
             Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
         }
 
-        public static void SendToUser(long userID, string message, bool notify = true)
+        public static void SendToUser(long userId, string message, bool notify = true)
         {
-            ChatId Chat = new ChatId(userID);
-            Cortana.SendTextMessageAsync(Chat, message, disableNotification: !notify);
+            ChatId chat = new ChatId(userId);
+            Cortana.SendTextMessageAsync(chat, message, disableNotification: !notify);
         }
 
         public static string IDToName(long id)
@@ -71,8 +71,8 @@ namespace TelegramBot
 
     public class Data
     {
-        public Dictionary<long, string> usernames { get; }
-        public Dictionary<long, string> groups { get; }
+        public Dictionary<long, string> usernames { get; set; }
+        public Dictionary<long, string> groups { get; set; }
     }
     
     public struct MessageStats
@@ -85,13 +85,5 @@ namespace TelegramBot
         public long UserID;
         public int MessageID;
         public ChatType ChatType;
-
-        public MessageStats(long chatId, long userId, int messageId, ChatType chatType)
-        {
-            ChatID = chatId;
-            UserID = userId;
-            MessageID = messageId;
-            ChatType = chatType;
-        }
     }
 }

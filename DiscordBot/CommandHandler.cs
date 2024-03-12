@@ -50,8 +50,6 @@ namespace DiscordBot
                     case InteractionCommandError.Unsuccessful:
                         arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
-                    default:
-                        break;
                 }
                 DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
             }
@@ -80,8 +78,6 @@ namespace DiscordBot
                     case InteractionCommandError.Unsuccessful:
                         arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                         break;
-                    default:
-                        break;
                 }
                 DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
             }
@@ -109,8 +105,6 @@ namespace DiscordBot
                         break;
                     case InteractionCommandError.Unsuccessful:
                         arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                    default:
                         break;
                 }
                 DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
