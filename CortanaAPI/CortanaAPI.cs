@@ -12,8 +12,8 @@ namespace CortanaAPI
         {
             var builder = WebApplication.CreateBuilder();
 
-            Assembly RequestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
-            builder.Services.AddMvc().AddApplicationPart(RequestsHandlerAssemby);
+            Assembly requestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
+            builder.Services.AddMvc().AddApplicationPart(requestsHandlerAssemby);
             builder.Services.AddControllers();
             builder.Services.AddLogging(builder =>
             {
