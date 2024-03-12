@@ -14,20 +14,13 @@ namespace TelegramBot
         public static void Init(TelegramBotClient newClient)
         {
             Cortana = newClient;
-            Console.WriteLine("addwadadawwawwa1");
             LoadData();
-            Console.WriteLine("addwadwawdawa1");
             ShoppingModule.LoadDebts();
         }
 
         private static void LoadData()
         {
             Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
-            Console.WriteLine("adwa1");
-            Console.WriteLine(Data.usernames.Count);
-            Console.WriteLine("adwa2");
-            Console.WriteLine(Data.groups.Count);
-            Console.WriteLine("adwa3");
         }
 
         public static void SendToUser(long userId, string message, bool notify = true)
@@ -50,10 +43,9 @@ namespace TelegramBot
 
         public static long NameToID(string name)
         {
-            Console.WriteLine("Porco dio");
-            Console.WriteLine(name);
             foreach (var item in Data.usernames)
             {
+                Console.WriteLine(item.Key + " " + item.Value);
                 if (item.Value == name) return item.Key;
             }
             return -1;
