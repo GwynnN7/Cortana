@@ -79,7 +79,7 @@ namespace Utility
 
             if (state == EHardwareTrigger.On)
             {
-                if (DateTime.Now.Hour >= 17) SwitchLamp(state);
+                if (DateTime.Now.Hour >= 20) SwitchLamp(state);
                 SwitchComputer(state);
             }
             else
@@ -252,9 +252,9 @@ namespace Utility
         }
 
 
-        public static string SSH_PC(string command, bool returnResult = false)
+        public static string SSH_PC(string command, bool asRoot = true, bool returnResult = false)
         {
-            var usr = NetStats.DesktopRoot;
+            var usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
             var pass = NetStats.DesktopPassword;
             var addr = NetStats.Desktop_WLAN_IP;
 
@@ -286,7 +286,7 @@ namespace Utility
 
         public static string NotifyPC(string text)
         {
-            return SSH_PC($"/home/{NetStats.DesktopUsername}/.config/Cortana/Notify.sh \\\'{text}\\\'");
+            return SSH_PC($"/home/{NetStats.DesktopUsername}/.config/cortana/cortana-notify.sh \\\'{text}\\\'", asRoot: false);
         }
 
         public static string GetCPUTemperature()

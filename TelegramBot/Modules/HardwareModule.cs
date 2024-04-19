@@ -98,7 +98,7 @@ namespace TelegramBot.Modules
                 default:
                     if (messageStats.UserID != TelegramData.NameToID("@gwynn7")) return;
                     
-                    var result = Utility.HardwareDriver.SSH_PC(messageStats.FullMessage, true);
+                    var result = Utility.HardwareDriver.SSH_PC(messageStats.FullMessage, returnResult:true);
                     await cortana.SendTextMessageAsync(messageStats.ChatID, result);
                     
                     return;
