@@ -4,21 +4,22 @@ using System.Device.Gpio;
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
+using System.Text.Json.Serialization;
 
 namespace Utility
 {
     public static class HardwareDriver
     {
-        private const int RelayPin_0 = 23; //General
-        private const int RelayPin_1 = 24;  //Computer-OUTLET
-
-        private static int ComputerPlugsPin = RelayPin_1;
-        private static int LampPin = RelayPin_0;
-        private static int GeneralPin = RelayPin_1;
-
         private static Dictionary<EHardwareElements, EBooleanState> HardwareStates = new();
-
         private static NetworkStats NetStats;
+        
+        private const int RelayPin_0 = 14; //Lamp Orvieto
+        private const int RelayPin_1 = 23; //General/Lamp Pisa
+        private const int RelayPin_2 = 24;  //Computer-OUTLET
+
+        private static int ComputerPlugsPin => RelayPin_2;
+        private static int LampPin => NetStats.Location == ELocation.Orvieto ? RelayPin_0 : RelayPin_1;
+        private static int GeneralPin => RelayPin_1;
 
         public static void Init()
         {
@@ -32,10 +33,12 @@ namespace Utility
             //SwitchRoom(EHardwareTrigger.Off);
             HandleNight();
         }
-
+        
         private static void LoadNetworkData()
         {
-            NetStats = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
+            NetworkStats orvietoNet = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataOrvieto.json") ?? new();
+            NetworkStats pisaNet = Functions.LoadFile<NetworkStats>("Data/Global/NetworkDataPisa.json") ?? new();
+            NetStats = GetDefaultGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         }
 
         private static void HandleNight()
@@ -94,69 +97,87 @@ namespace Utility
 
         public static string SwitchLamp(EHardwareTrigger state)
         {
-            if (state == EHardwareTrigger.On)
+            
+            switch (state)
             {
-                UseGPIO(LampPin, PinValue.High);
-                HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
-                return "Lampada accesa";
+                case EHardwareTrigger.On:
+                    if (NetStats.Location == ELocation.Orvieto)
+                    {
+                        Task.Run(async () =>
+                        {
+                            UseGPIO(LampPin, PinValue.High);
+                            await Task.Delay(250);
+                            UseGPIO(LampPin, PinValue.Low);
+                        });
+                    }
+                    else UseGPIO(LampPin, PinValue.High);
+                    HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
+                    return "Lampada accesa";
+                case EHardwareTrigger.Off:
+                    if (NetStats.Location == ELocation.Orvieto)
+                    {
+                        Task.Run(async () =>
+                        {
+                            UseGPIO(LampPin, PinValue.High);
+                            await Task.Delay(250);
+                            UseGPIO(LampPin, PinValue.Low);
+                        });
+                    }
+                    else UseGPIO(LampPin, PinValue.Low);
+                    HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
+                    return "Lampada spenta";
+                default:
+                    return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
             }
-            if (state == EHardwareTrigger.Off)
-            {
-                UseGPIO(LampPin, PinValue.Low);
-                HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
-                return "Lampada spenta";
-            }
-            return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchGeneral(EHardwareTrigger state)
         {
-            if (state == EHardwareTrigger.On)
+            switch (state)
             {
-                UseGPIO(GeneralPin, PinValue.High);
-                HardwareStates[EHardwareElements.General] = EBooleanState.On;
-                return "Presa attivata";
+                case EHardwareTrigger.On:
+                    UseGPIO(GeneralPin, PinValue.High);
+                    HardwareStates[EHardwareElements.General] = EBooleanState.On;
+                    return "Presa attivata";
+                case EHardwareTrigger.Off:
+                    UseGPIO(GeneralPin, PinValue.Low);
+                    HardwareStates[EHardwareElements.General] = EBooleanState.Off;
+                    return "Presa disattivata";
+                default:
+                    return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
             }
-            if (state == EHardwareTrigger.Off)
-            {
-                UseGPIO(GeneralPin, PinValue.Low);
-                HardwareStates[EHardwareElements.General] = EBooleanState.Off;
-                return "Presa disattivata";
-            }
-            return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchComputer(EHardwareTrigger state)
         {
             var lastState = HardwareStates[EHardwareElements.Computer];
-            if (state == EHardwareTrigger.On)
+            switch (state)
             {
-                SwitchOutlets(EHardwareTrigger.On);
-                PythonCaller("WoL", NetStats.Desktop_LAN_MAC);
-                return lastState == EBooleanState.On ? "Computer già acceso" : "Computer in accensione";
+                case EHardwareTrigger.On:
+                    SwitchOutlets(EHardwareTrigger.On);
+                    PythonCaller("WoL", NetStats.Desktop_LAN_MAC);
+                    return lastState == EBooleanState.On ? "Computer già acceso" : "Computer in accensione";
+                case EHardwareTrigger.Off:
+                {
+                    HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
+                    var res = SSH_PC("poweroff");
+                    return lastState == EBooleanState.Off ? "Computer già spento" : res;
+                }
+                default:
+                    return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
             }
-            if (state == EHardwareTrigger.Off)
-            {
-                HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
-                var res = SSH_PC("poweroff");
-                return lastState == EBooleanState.Off ? "Computer già spento" : res;
-            }
-            return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static string SwitchOutlets(EHardwareTrigger state)
+        private static string SwitchOutlets(EHardwareTrigger state)
         {
-            if (state == EHardwareTrigger.On)
+            switch (state)
             {
-                UseGPIO(ComputerPlugsPin, PinValue.High);
-                HardwareStates[EHardwareElements.Outlets] = EBooleanState.On;
-                HardwareStates[EHardwareElements.Computer] = EBooleanState.On;
-                return "Ciabatta accesa";
-            }
-            else if (state == EHardwareTrigger.Off)
-            {
-                if (HardwareStates[EHardwareElements.Computer] == EBooleanState.On)
-                {
+                case EHardwareTrigger.On:
+                    UseGPIO(ComputerPlugsPin, PinValue.High);
+                    HardwareStates[EHardwareElements.Outlets] = EBooleanState.On;
+                    HardwareStates[EHardwareElements.Computer] = EBooleanState.On;
+                    return "Ciabatta accesa";
+                case EHardwareTrigger.Off when HardwareStates[EHardwareElements.Computer] == EBooleanState.On:
                     Task.Run(async () =>
                     {
                         SwitchComputer(EHardwareTrigger.Off);
@@ -172,47 +193,44 @@ namespace Utility
 
                     });
                     return "Computer e ciabatta in spegnimento";
-                }
-                UseGPIO(ComputerPlugsPin, PinValue.Low);
-                HardwareStates[EHardwareElements.Outlets] = EBooleanState.Off;
-
-                return "Ciabatta spenta";
+                case EHardwareTrigger.Off:
+                    UseGPIO(ComputerPlugsPin, PinValue.Low);
+                    HardwareStates[EHardwareElements.Outlets] = EBooleanState.Off;
+                    return "Ciabatta spenta";
+                default:
+                    return SwitchOutlets(HardwareStates[EHardwareElements.Outlets] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
             }
-            else return SwitchOutlets(HardwareStates[EHardwareElements.Outlets] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
-        public static string SwitchDisplay(EHardwareTrigger state)
+        private static string SwitchDisplay(EHardwareTrigger state)
         {
-            if (state == EHardwareTrigger.On)
+            switch (state)
             {
-                try
-                {
-                    PythonCaller("DisplayON");
-                    HardwareStates[EHardwareElements.Display] = EBooleanState.On;
-                    return "Display acceso";
-                }
-                catch
-                {
-                    return "Display non raggiungibile";
-                }
-
+                case EHardwareTrigger.On:
+                    try
+                    {
+                        PythonCaller("DisplayON");
+                        HardwareStates[EHardwareElements.Display] = EBooleanState.On;
+                        return "Display acceso";
+                    }
+                    catch
+                    {
+                        return "Display non raggiungibile";
+                    }
+                case EHardwareTrigger.Off:
+                    try
+                    {
+                        PythonCaller("DisplayOFF");
+                        HardwareStates[EHardwareElements.Display] = EBooleanState.Off;
+                        return "Display spento";
+                    }
+                    catch
+                    {
+                        return "Display non raggiungibile";
+                    }
+                default:
+                    return SwitchDisplay(HardwareStates[EHardwareElements.Display] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
             }
-            
-            if (state == EHardwareTrigger.Off)
-            {
-                try
-                {
-                    PythonCaller("DisplayOFF");
-                    HardwareStates[EHardwareElements.Display] = EBooleanState.Off;
-                    return "Display spento";
-                }
-                catch
-                {
-                    return "Display non raggiungibile";
-                }
-            }
-            
-            return SwitchDisplay(HardwareStates[EHardwareElements.Display] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
         }
 
         public static string SwitchFromEnum(EHardwareElements element, EHardwareTrigger trigger)
@@ -256,7 +274,7 @@ namespace Utility
         {
             var usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
             var pass = NetStats.DesktopPassword;
-            var addr = NetStats.Desktop_WLAN_IP;
+            var addr = NetStats.Desktop_IP;
 
             string result;
             try
@@ -299,10 +317,20 @@ namespace Utility
             string tempFormat = $"{Math.Round(average, 1).ToString(CultureInfo.InvariantCulture)}°C";
             return tempFormat;
         }
+        
+        private static string GetDefaultGateway() 
+        { 
+            var defaultGateway = 
+                from nics in NetworkInterface.GetAllNetworkInterfaces() 
+                from props in nics.GetIPProperties().GatewayAddresses 
+                where nics.OperationalStatus == OperationalStatus.Up 
+                select props.Address.ToString();
+            return defaultGateway.First();
+        }
 
         public static bool PingPC()
         {
-            return Ping(NetStats.Desktop_WLAN_IP);
+            return Ping(NetStats.Desktop_IP);
         }
 
         public static bool Ping(string ip)
@@ -348,12 +376,12 @@ namespace Utility
 
     public class NetworkStats
     {
+        [JsonConverter(typeof(JsonStringEnumConverter))]
+        public ELocation Location { get; set; }
         public string Cortana_IP { get; set; }
         public string Cortana_LAN_MAC { get; set; }
         public string Cortana_WLAN_MAC { get; set; }
-
-        public string Desktop_LAN_IP { get; set; }
-        public string Desktop_WLAN_IP { get; set; }
+        public string Desktop_IP { get; set; }
         public string Desktop_LAN_MAC { get; set; }
         public string Desktop_WLAN_MAC { get; set; }
 

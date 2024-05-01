@@ -60,6 +60,12 @@ public enum EAudioSource
     Local
 }
 
+public enum ELocation
+{
+    Orvieto,
+    Pisa
+}
+
 public enum ETimerLoop
 {
     No,

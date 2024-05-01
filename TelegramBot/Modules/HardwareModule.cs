@@ -10,7 +10,6 @@ namespace TelegramBot.Modules
         public const string BULB = "💡";
         public const string PC = "🖥";
         public const string THUNDER = "⚡";
-        public const string DISPLAY = "📺";
         public const string REBOOT = "🔄";
         public const string ON = "🟩🟩🟩";
         public const string OFF = "🟥🟥🟥";
@@ -28,7 +27,7 @@ namespace TelegramBot.Modules
                     var ip = await Utility.HardwareDriver.GetPublicIP();
                     await cortana.SendTextMessageAsync(messageStats.ChatID, $"IP: {ip}");
                     break;
-                case "temperatura":
+                case "temperature":
                     var temp = Utility.HardwareDriver.GetCPUTemperature();
                     await cortana.SendTextMessageAsync(messageStats.ChatID, $"Temperatura: {temp}");
                     break;
