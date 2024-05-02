@@ -318,7 +318,7 @@ namespace Utility
             return tempFormat;
         }
         
-        private static string GetDefaultGateway() 
+        public static string GetDefaultGateway() 
         { 
             var defaultGateway = 
                 from nics in NetworkInterface.GetAllNetworkInterfaces() 
@@ -326,6 +326,16 @@ namespace Utility
                 where nics.OperationalStatus == OperationalStatus.Up 
                 select props.Address.ToString();
             return defaultGateway.First();
+        }
+
+        public static string GetLocation()
+        {
+            return NetStats.Location switch
+            {
+                ELocation.Orvieto => "Orvieto",
+                ELocation.Pisa => "Pisa",
+                _ => "Unknown"
+            };
         }
 
         public static bool PingPC()

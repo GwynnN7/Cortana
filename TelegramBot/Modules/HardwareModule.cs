@@ -27,6 +27,10 @@ namespace TelegramBot.Modules
                     var ip = await Utility.HardwareDriver.GetPublicIP();
                     await cortana.SendTextMessageAsync(messageStats.ChatID, $"IP: {ip}");
                     break;
+                case "gateway":
+                    var gateway = Utility.HardwareDriver.GetDefaultGateway();
+                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Gateway: {gateway}");
+                    break;
                 case "temperature":
                     var temp = Utility.HardwareDriver.GetCPUTemperature();
                     await cortana.SendTextMessageAsync(messageStats.ChatID, $"Temperatura: {temp}");

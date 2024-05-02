@@ -1,5 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Utility;
 
 namespace TelegramBot.Modules;
 
@@ -22,6 +23,9 @@ public static class UtilityModule
     {
         switch (messageStats.Command)
         {
+            case "location":
+                await cortana.SendTextMessageAsync(messageStats.ChatID, HardwareDriver.GetLocation());
+                break;
             case "qrcode":
                 AnswerCommands.Remove(messageStats.ChatID);
                 AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.QRCODE));

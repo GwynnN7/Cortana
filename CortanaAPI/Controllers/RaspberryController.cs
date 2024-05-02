@@ -23,6 +23,12 @@ namespace RequestsHandler.Controllers
         {
             return Utility.HardwareDriver.GetPublicIP().Result;
         }
+        
+        [HttpGet("gateway")]
+        public string Gateway()
+        {
+            return Utility.HardwareDriver.GetDefaultGateway();
+        }
 
         [HttpGet("shutdown")]
         public string Shutdown()

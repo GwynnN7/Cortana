@@ -18,5 +18,11 @@ namespace RequestsHandler.Controllers
             var res = Utility.HardwareDriver.NotifyPC("I am online");
             return res == "0" ? "Notification sent" : res;
         }
+        
+        [HttpGet("location")]
+        public string Location()
+        {
+            return Utility.HardwareDriver.GetLocation();
+        }
     }
 }
