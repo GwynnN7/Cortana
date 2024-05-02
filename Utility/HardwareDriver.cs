@@ -13,7 +13,7 @@ namespace Utility
         private static Dictionary<EHardwareElements, EBooleanState> HardwareStates = new();
         private static NetworkStats NetStats;
         
-        private const int RelayPin_0 = 14; //Lamp Orvieto
+        private const int RelayPin_0 = 25; //Lamp Orvieto
         private const int RelayPin_1 = 23; //General/Lamp Pisa
         private const int RelayPin_2 = 24;  //Computer-OUTLET
 
