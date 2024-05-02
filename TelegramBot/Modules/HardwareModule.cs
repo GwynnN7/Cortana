@@ -33,19 +33,19 @@ namespace TelegramBot.Modules
                     break;
                 case "temperature":
                     var temp = Utility.HardwareDriver.GetCPUTemperature();
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Temperatura: {temp}");
+                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Temperature: {temp}");
                     break;
                 case "hardware":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                         await cortana.SendTextMessageAsync(messageStats.ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                     else
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "keyboard":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                         await cortana.SendTextMessageAsync(messageStats.ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
                     else
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "reboot":
                     if (TelegramData.CheckPermission(messageStats.UserID))
@@ -53,7 +53,7 @@ namespace TelegramBot.Modules
                         var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
                         await cortana.SendTextMessageAsync(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "shutdown":
                     if (TelegramData.CheckPermission(messageStats.UserID))
@@ -61,7 +61,7 @@ namespace TelegramBot.Modules
                         var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
                         await cortana.SendTextMessageAsync(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "notify":
                     if (TelegramData.CheckPermission(messageStats.UserID))
@@ -70,7 +70,7 @@ namespace TelegramBot.Modules
                         if (res == "0") await cortana.DeleteMessageAsync(messageStats.ChatID, messageStats.MessageID);
                         else await cortana.SendTextMessageAsync(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
                     break;
             }
         }

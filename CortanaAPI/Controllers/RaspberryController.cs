@@ -9,7 +9,7 @@ namespace RequestsHandler.Controllers
         [HttpGet]
         public string Get()
         {
-            return "Raspberry API, get temperature, ip and console commands";
+            return "Raspberry API, get temperature, netstats and console commands";
         }
 
         [HttpGet("temp")]
