@@ -48,7 +48,7 @@ namespace Utility
 
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
-            if (HardwareStates[EHardwareElements.Computer] == EBooleanState.Off) SwitchRoom(EHardwareTrigger.Off);
+            if (HardwareStates[EHardwareElements.Computer] == EBooleanState.Off) SwitchLamp(EHardwareTrigger.Off);
             else NotifyPC("You should go to sleep");
 
             if (DateTime.Now.Hour < 6) new UtilityTimer(Name: "safety-night-handler", Hours: 1, Minutes: 0, Seconds: 0, Callback: HandleNightCallback, TimerLocation: ETimerLocation.Utility, Loop: ETimerLoop.No);
