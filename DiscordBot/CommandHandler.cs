@@ -2,26 +2,16 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using System.Reflection;
+using Utility;
 
 namespace DiscordBot
 {
-    public class CommandHandler
+    public class CommandHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
     {
-        private readonly DiscordSocketClient client;
-        private readonly InteractionService commands;
-        private readonly IServiceProvider services;
-
-        public CommandHandler(DiscordSocketClient client, InteractionService commands, IServiceProvider services)
-        {
-            this.client = client;
-            this.commands = commands;
-            this.services = services;
-        }
-
         public async Task InitializeAsync()
         {
-            Assembly DiscordBotAssembly = Assembly.Load(new AssemblyName("DiscordBot"));
-            await commands.AddModulesAsync(DiscordBotAssembly, services);
+            Assembly discordBotAssembly = Assembly.Load(new AssemblyName("DiscordBot"));
+            await commands.AddModulesAsync(discordBotAssembly, services);
             client.InteractionCreated += HandleInteraction;
 
             commands.SlashCommandExecuted += SlashCommandExecuted;
@@ -29,86 +19,71 @@ namespace DiscordBot
             commands.ComponentCommandExecuted += ComponentCommandExecuted;
         }
 
-        private Task ComponentCommandExecuted(ComponentCommandInfo arg1, IInteractionContext arg2, IResult arg3)
+        private static Task ComponentCommandExecuted(ComponentCommandInfo arg1, IInteractionContext arg2, IResult arg3)
         {
-            if (!arg3.IsSuccess)
+            if (arg3.IsSuccess) return Task.CompletedTask;
+            switch (arg3.Error)
             {
-                switch (arg3.Error)
-                {
-                    case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+                case InteractionCommandError.UnmetPrecondition:
+                    arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.UnknownCommand:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.BadArgs:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
+                    break;
+                default:
+                    arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
+                    break;
             }
+            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }
 
-        private Task ContextCommandExecuted(ContextCommandInfo arg1, IInteractionContext arg2, IResult arg3)
+        private static Task ContextCommandExecuted(ContextCommandInfo arg1, IInteractionContext arg2, IResult arg3)
         {
-            if (!arg3.IsSuccess)
+            if (arg3.IsSuccess) return Task.CompletedTask;
+            switch (arg3.Error)
             {
-                switch (arg3.Error)
-                {
-                    case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+                case InteractionCommandError.UnmetPrecondition:
+                    arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.UnknownCommand:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.BadArgs:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
+                    break;
+                default:
+                    arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
+                    break;
             }
+            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }
 
-        private Task SlashCommandExecuted(SlashCommandInfo arg1, IInteractionContext arg2, IResult arg3)
+        private static Task SlashCommandExecuted(SlashCommandInfo arg1, IInteractionContext arg2, IResult arg3)
         {
-            if (!arg3.IsSuccess)
+            if (arg3.IsSuccess) return Task.CompletedTask;
+            switch (arg3.Error)
             {
-                switch (arg3.Error)
-                {
-                    case InteractionCommandError.UnmetPrecondition:
-                        arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.UnknownCommand:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.BadArgs:
-                        arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Exception:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                    case InteractionCommandError.Unsuccessful:
-                        arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
-                        break;
-                }
-                DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+                case InteractionCommandError.UnmetPrecondition:
+                    arg2.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.UnknownCommand:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
+                    break;
+                case InteractionCommandError.BadArgs:
+                    arg2.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
+                    break;
+                default:
+                    arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
+                    break;
             }
+            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }

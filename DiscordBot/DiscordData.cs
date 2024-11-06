@@ -2,6 +2,7 @@
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using Utility;
 
 namespace DiscordBot
 {

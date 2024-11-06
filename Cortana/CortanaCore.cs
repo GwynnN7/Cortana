@@ -1,4 +1,6 @@
-﻿namespace Cortana
+﻿using Utility;
+
+namespace Cortana
 {
     using DiscordBot;
     using TelegramBot;
@@ -6,32 +8,27 @@
 
     public class CortanaCore
     {
-        private Dictionary<ESubfunctions, Task> SubFunctionTasks;
+        private readonly Dictionary<ESubfunctions, Task> _subFunctionTasks = new Dictionary<ESubfunctions, Task>();
 
-        public CortanaCore()
+        public int BootSubFunction(ESubfunctions subFunction)
         {
-            SubFunctionTasks = new Dictionary<ESubfunctions, Task>();
-        }
-
-        public int BootSubFunction(ESubfunctions SubFunction)
-        {
-            Task SubfunctionTask;
-            switch (SubFunction)
+            Task subFunctionTask;
+            switch (subFunction)
             {
-                case ESubfunctions.CortanaAPI:
-                    SubfunctionTask = Task.Run(() => CortanaAPI.BootCortanaAPI());
+                case ESubfunctions.CortanaApi:
+                    subFunctionTask = Task.Run(CortanaApi.BootCortanaApi);
                     break;
                 case ESubfunctions.DiscordBot:
-                    SubfunctionTask = Task.Run(() => DiscordBot.BootDiscordBot());
+                    subFunctionTask = Task.Run(DiscordBot.BootDiscordBot);
                     break;
                 case ESubfunctions.TelegramBot:
-                    SubfunctionTask = Task.Run(() => TelegramBot.BootTelegramBot());
+                    subFunctionTask = Task.Run(TelegramBot.BootTelegramBot);
                     break;
                 default:
                     return -1;
             }
-            SubFunctionTasks.Add(SubFunction, SubfunctionTask);
-            return SubfunctionTask.Id;
+            _subFunctionTasks.Add(subFunction, subFunctionTask);
+            return subFunctionTask.Id;
         }
     }
 }

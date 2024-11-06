@@ -2,6 +2,7 @@
 using Discord.Interactions;
 using Discord.WebSocket;
 using IGDB;
+using Utility;
 
 namespace DiscordBot.Modules
 {
@@ -99,7 +100,7 @@ namespace DiscordBot.Modules
             [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
             public async Task CreateQR([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer NormalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer QuietZones = EAnswer.Si)
             {
-                var ImageStream = Utility.Functions.CreateQRCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
+                var ImageStream = Utility.Functions.CreateQrCode(content, NormalColor == EAnswer.Si, QuietZones == EAnswer.Si);
 
                 await RespondWithFileAsync(fileStream: ImageStream, fileName: "QRCode.png", ephemeral: Ephemeral == EAnswer.Si);
             }
@@ -330,13 +331,13 @@ namespace DiscordBot.Modules
 
                 switch(profile)
                 {
-                    case EGamingProfiles.RAWG:
+                    case EGamingProfiles.Rawg:
                         DiscordData.GamingProfile[Context.User.Id].RAWG = username;
                         break;
                     case EGamingProfiles.Steam:
                         DiscordData.GamingProfile[Context.User.Id].Steam = username;
                         break;
-                    case EGamingProfiles.GOG:
+                    case EGamingProfiles.Gog:
                         DiscordData.GamingProfile[Context.User.Id].GOG = username;
                         break;
                 }
@@ -357,13 +358,13 @@ namespace DiscordBot.Modules
 
                 switch (profile)
                 {
-                    case EGamingProfiles.RAWG:
+                    case EGamingProfiles.Rawg:
                         DiscordData.GamingProfile[Context.User.Id].RAWG = "N/A";
                         break;
                     case EGamingProfiles.Steam:
                         DiscordData.GamingProfile[Context.User.Id].Steam = "N/A";
                         break;
-                    case EGamingProfiles.GOG:
+                    case EGamingProfiles.Gog:
                         DiscordData.GamingProfile[Context.User.Id].GOG = "N/A";
                         break;
                 }

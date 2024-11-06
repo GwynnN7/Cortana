@@ -1,6 +1,8 @@
-﻿public enum ESubfunctions
+﻿namespace Utility;
+
+public enum ESubfunctions
 {
-    CortanaAPI,
+    CortanaApi,
     DiscordBot,
     TelegramBot,
 }
@@ -8,7 +10,7 @@
 public enum ETimerLocation
 {
     Global,
-    CortanaAPI,
+    CortanaApi,
     DiscordBot,
     TelegramBot,
     Utility
@@ -80,7 +82,7 @@ public enum EMemeCategory
     MoreGames,
     Anime,
     Music,
-    SFX,
+    Sfx,
     Short,
     NotLong,
     Long,
@@ -91,9 +93,9 @@ public enum EMemeCategory
 
 public enum EGamingProfiles
 {
-    RAWG,
+    Rawg,
     Steam,
-    GOG
+    Gog
 }
 
 public enum EPrivateSounds

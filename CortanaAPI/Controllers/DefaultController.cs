@@ -7,20 +7,20 @@ namespace RequestsHandler.Controllers
     public class DefaultController : ControllerBase
     {
         [HttpGet]
-        public string Get()
+        public static string Get()
         {
             return  "Hi, I'm Cortana";
         }
 
         [HttpGet("notify")]
-        public string Notify()
+        public static string Notify()
         {
-            var res = Utility.HardwareDriver.NotifyPC("I am online");
+            string res = Utility.HardwareDriver.NotifyPC("I am online");
             return res == "0" ? "Notification sent" : res;
         }
         
         [HttpGet("location")]
-        public string Location()
+        public static string Location()
         {
             return Utility.HardwareDriver.GetLocation();
         }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Utility;
 
 namespace RequestsHandler.Controllers
 {
@@ -7,37 +8,37 @@ namespace RequestsHandler.Controllers
     public class RaspberryController : ControllerBase
     {
         [HttpGet]
-        public string Get()
+        public static string Get()
         {
             return "Raspberry API, get temperature, netstats and console commands";
         }
 
         [HttpGet("temp")]
-        public string Temperature()
+        public static string Temperature()
         {
             return Utility.HardwareDriver.GetCPUTemperature();
         }
 
         [HttpGet("ip")]
-        public string IP()
+        public static string Ip()
         {
             return Utility.HardwareDriver.GetPublicIP().Result;
         }
         
         [HttpGet("gateway")]
-        public string Gateway()
+        public static string Gateway()
         {
             return Utility.HardwareDriver.GetDefaultGateway();
         }
 
         [HttpGet("shutdown")]
-        public string Shutdown()
+        public static string Shutdown()
         {
             return Utility.HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
         }
 
         [HttpGet("reboot")]
-        public string Reboot()
+        public static string Reboot()
         {
             return Utility.HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
         }

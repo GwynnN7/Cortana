@@ -71,7 +71,7 @@ public static class UtilityModule
         switch (AnswerCommands[messageStats.ChatID].Command)
         {
             case EAnswerCommands.QRCODE:
-                var imageStream = Functions.CreateQRCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
+                var imageStream = Functions.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
                 await cortana.SendPhoto(messageStats.ChatID, new InputFileStream(imageStream, "QRCODE.png"));
                 AnswerCommands.Remove(messageStats.ChatID);

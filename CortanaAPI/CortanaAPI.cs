@@ -5,30 +5,30 @@ using System.Reflection;
 
 namespace CortanaAPI
 {
-    public static class CortanaAPI
+    public static class CortanaApi
     {
-        private static WebApplication? CortanaWebAPI;
-        public static void BootCortanaAPI()
+        private static WebApplication? _cortanaWebApi;
+        public static void BootCortanaApi()
         {
-            var builder = WebApplication.CreateBuilder();
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-            Assembly requestsHandlerAssemby = Assembly.Load(new AssemblyName("CortanaAPI"));
-            builder.Services.AddMvc().AddApplicationPart(requestsHandlerAssemby);
+            Assembly requestsHandlerAssembly = Assembly.Load(new AssemblyName("CortanaAPI"));
+            builder.Services.AddMvc().AddApplicationPart(requestsHandlerAssembly);
             builder.Services.AddControllers();
-            builder.Services.AddLogging(builder =>
+            builder.Services.AddLogging(loggingBuilder =>
             {
-                builder.AddFilter("Microsoft", LogLevel.None)
+                loggingBuilder.AddFilter("Microsoft", LogLevel.None)
                        .AddFilter("System", LogLevel.None)
                        .AddFilter("NToastNotify", LogLevel.None)
                        .AddConsole();
             });
             
-            CortanaWebAPI = builder.Build();
-            CortanaWebAPI.UseHttpsRedirection();
-            CortanaWebAPI.UseAuthorization();
-            CortanaWebAPI.MapControllers();
+            _cortanaWebApi = builder.Build();
+            _cortanaWebApi.UseHttpsRedirection();
+            _cortanaWebApi.UseAuthorization();
+            _cortanaWebApi.MapControllers();
 
-            CortanaWebAPI.Run("http://localhost::8080");
+            _cortanaWebApi.Run("http://localhost::8080");
         }
     }
 }
