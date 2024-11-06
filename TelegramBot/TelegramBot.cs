@@ -50,7 +50,7 @@ namespace TelegramBot
                 FullMessage = update.Message.Text
             };
 
-            if (messageStats.UserID != TelegramData.NameToID("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessageAsync(TelegramData.NameToID("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
+            if (messageStats.UserID != TelegramData.NameToID("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramData.NameToID("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
             
             if (update.Message.Text.StartsWith('/'))
             {
@@ -70,6 +70,11 @@ namespace TelegramBot
                     UtilityModule.HandleCallback(messageStats, cortana);
                     return;
                 }
+                if (ShoppingModule.IsWaiting(messageStats.ChatID))
+                {
+                    ShoppingModule.HandleCallback(messageStats, cortana);
+                    return;
+                }
                 HardwareModule.HandleCallback(messageStats, cortana);
             }
         }
@@ -77,9 +82,10 @@ namespace TelegramBot
 
         private void HandleCallback(ITelegramBotClient cortana, Update update)
         {
-            if (update.CallbackQuery == null || update.CallbackQuery.Data == null || update.CallbackQuery.Message == null) return;
+            if (update.CallbackQuery?.Data == null || update.CallbackQuery.Message == null) return;
             
             HardwareModule.ButtonCallback(cortana, update);
+            ShoppingModule.ButtonCallback(cortana, update);
         }
 
         private Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)

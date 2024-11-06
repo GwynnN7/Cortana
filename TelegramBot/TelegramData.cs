@@ -28,7 +28,7 @@ namespace TelegramBot
         public static void SendToUser(long userId, string message, bool notify = true)
         {
             ChatId chat = new ChatId(userId);
-            Cortana.SendTextMessageAsync(chat, message, disableNotification: !notify);
+            Cortana.SendMessage(chat, message, disableNotification: !notify);
         }
 
         public static string IDToName(long id)

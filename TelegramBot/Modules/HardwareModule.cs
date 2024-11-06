@@ -25,52 +25,52 @@ namespace TelegramBot.Modules
             {
                 case "ip":
                     var ip = await Utility.HardwareDriver.GetPublicIP();
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"IP: {ip}");
+                    await cortana.SendMessage(messageStats.ChatID, $"IP: {ip}");
                     break;
                 case "gateway":
                     var gateway = Utility.HardwareDriver.GetDefaultGateway();
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Gateway: {gateway}");
+                    await cortana.SendMessage(messageStats.ChatID, $"Gateway: {gateway}");
                     break;
                 case "temperature":
                     var temp = Utility.HardwareDriver.GetCPUTemperature();
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Temperature: {temp}");
+                    await cortana.SendMessage(messageStats.ChatID, $"Temperature: {temp}");
                     break;
                 case "hardware":
                     if (TelegramData.CheckPermission(messageStats.UserID))
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                        await cortana.SendMessage(messageStats.ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                     else
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
+                        await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "keyboard":
                     if (TelegramData.CheckPermission(messageStats.UserID))
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
+                        await cortana.SendMessage(messageStats.ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
                     else
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
+                        await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "reboot":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
                         var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, res);
+                        await cortana.SendMessage(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "shutdown":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
                         var res = Utility.HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, res);
+                        await cortana.SendMessage(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
                     break;
                 case "notify":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
-                        var res = Utility.HardwareDriver.NotifyPC(messageStats.Text ?? "Hi, I am Cortana");
-                        if (res == "0") await cortana.DeleteMessageAsync(messageStats.ChatID, messageStats.MessageID);
-                        else await cortana.SendTextMessageAsync(messageStats.ChatID, res);
+                        var res = Utility.HardwareDriver.NotifyPC(messageStats.Text);
+                        if (res == "0") await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
+                        else await cortana.SendMessage(messageStats.ChatID, res);
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
                     break;
             }
         }
@@ -102,18 +102,18 @@ namespace TelegramBot.Modules
                     if (messageStats.UserID != TelegramData.NameToID("@gwynn7")) return;
                     
                     var result = Utility.HardwareDriver.SSH_PC(messageStats.FullMessage, returnResult:true);
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, result);
+                    await cortana.SendMessage(messageStats.ChatID, result);
                     
                     return;
             }
-            await cortana.DeleteMessageAsync(messageStats.ChatID, messageStats.MessageID);
+            await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
         }
         
         public static async void ButtonCallback(ITelegramBotClient cortana, Update update)
         {
             if (!TelegramData.CheckPermission(update.CallbackQuery.From.Id))
             {
-                await cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
+                await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
                 return;
             }
 
@@ -133,8 +133,8 @@ namespace TelegramBot.Modules
                 action = CreateHardwareButtons();
             }
 
-            await cortana.AnswerCallbackQueryAsync(update.CallbackQuery.Id);
-            await cortana.EditMessageReplyMarkupAsync(update.CallbackQuery.Message.Chat.Id, messageId, action);
+            await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
+            await cortana.EditMessageReplyMarkup(update.CallbackQuery.Message.Chat.Id, messageId, action);
         }
         
         private static InlineKeyboardMarkup CreateHardwareButtons()

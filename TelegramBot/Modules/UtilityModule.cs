@@ -24,12 +24,12 @@ public static class UtilityModule
         switch (messageStats.Command)
         {
             case "location":
-                await cortana.SendTextMessageAsync(messageStats.ChatID, HardwareDriver.GetLocation());
+                await cortana.SendMessage(messageStats.ChatID, HardwareDriver.GetLocation());
                 break;
             case "qrcode":
                 AnswerCommands.Remove(messageStats.ChatID);
                 AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.QRCODE));
-                await cortana.SendTextMessageAsync(messageStats.ChatID, "Scrivi il contenuto");
+                await cortana.SendMessage(messageStats.ChatID, "Scrivi il contenuto");
                 break;
             case "send":
                 if (TelegramData.CheckPermission(messageStats.UserID))
@@ -37,11 +37,11 @@ public static class UtilityModule
                     if (messageStats.TextList.Count > 1)
                     {
                         TelegramData.SendToUser(TelegramData.NameToID(messageStats.TextList[0]), string.Join(" ", messageStats.TextList.Skip(1)));
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, $"Testo inviato a {messageStats.TextList[0]}");
+                        await cortana.SendMessage(messageStats.ChatID, $"Testo inviato a {messageStats.TextList[0]}");
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Errore nel numero dei parametri");
+                    else await cortana.SendMessage(messageStats.ChatID, "Errore nel numero dei parametri");
                 }
-                else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                else await cortana.SendMessage(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                 break;
             case "join":
                 if (TelegramData.CheckPermission(messageStats.UserID))
@@ -50,16 +50,16 @@ public static class UtilityModule
                     {
                         AnswerCommands.Remove(messageStats.ChatID);
                         AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.CHAT, messageStats.TextList[0]));
-                        await cortana.SendTextMessageAsync(messageStats.ChatID, $"Chat con {messageStats.TextList[0]} avviata");
+                        await cortana.SendMessage(messageStats.ChatID, $"Chat con {messageStats.TextList[0]} avviata");
                     }
-                    else await cortana.SendTextMessageAsync(messageStats.ChatID, "Errore nel numero dei parametri");
+                    else await cortana.SendMessage(messageStats.ChatID, "Errore nel numero dei parametri");
                 }
-                else await cortana.SendTextMessageAsync(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
+                else await cortana.SendMessage(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                 break;
             case "leave":
                 if (AnswerCommands.ContainsKey(messageStats.ChatID) && AnswerCommands[messageStats.ChatID].Command == EAnswerCommands.CHAT)
                 {
-                    await cortana.SendTextMessageAsync(messageStats.ChatID, $"Chat con {AnswerCommands[messageStats.ChatID].CommandValue} terminata");
+                    await cortana.SendMessage(messageStats.ChatID, $"Chat con {AnswerCommands[messageStats.ChatID].CommandValue} terminata");
                     AnswerCommands.Remove(messageStats.ChatID);
                 }
                 break;
@@ -73,7 +73,7 @@ public static class UtilityModule
             case EAnswerCommands.QRCODE:
                 var imageStream = Functions.CreateQRCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
-                await cortana.SendPhotoAsync(messageStats.ChatID, new InputFileStream(imageStream, "QRCODE.png"));
+                await cortana.SendPhoto(messageStats.ChatID, new InputFileStream(imageStream, "QRCODE.png"));
                 AnswerCommands.Remove(messageStats.ChatID);
                 break;
             case EAnswerCommands.CHAT:
