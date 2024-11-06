@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace RequestsHandler.Controllers
+namespace CortanaAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]

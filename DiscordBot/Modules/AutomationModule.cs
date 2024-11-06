@@ -12,7 +12,7 @@ namespace DiscordBot.Modules
         [SlashCommand("lamp", "Accendi o spegni la luce")]
         public async Task LightToggle()
         {
-            string result = Utility.HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+            string result = HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
             Embed embed = DiscordData.CreateEmbed(title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
@@ -22,7 +22,7 @@ namespace DiscordBot.Modules
         {
             await DeferAsync(ephemeral: true);
 
-            string result = Utility.HardwareDriver.SwitchFromEnum(element, trigger);
+            string result = HardwareDriver.SwitchFromEnum(element, trigger);
 
             Embed embed = DiscordData.CreateEmbed(title: result);
             await FollowupAsync(embed: embed, ephemeral: true);
@@ -34,14 +34,14 @@ namespace DiscordBot.Modules
             Embed embed = DiscordData.CreateEmbed(title: "Procedo");
             await RespondAsync(embed: embed, ephemeral: true);
 
-            Utility.HardwareDriver.SwitchRoom(trigger);
+            HardwareDriver.SwitchRoom(trigger);
         }
 
         [SlashCommand("ip", "Ti dico il mio IP pubblico", runMode: RunMode.Async)]
-        public async Task GetIP()
+        public async Task GetIp()
         {
             await DeferAsync(ephemeral: true);
-            var ip = await Utility.HardwareDriver.GetPublicIP();
+            string ip = await HardwareDriver.GetPublicIp();
             await FollowupAsync($"L'IP pubblico è {ip}", ephemeral: true);
         }
     }

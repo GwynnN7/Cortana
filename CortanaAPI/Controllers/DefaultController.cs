@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
-namespace RequestsHandler.Controllers
+namespace CortanaAPI.Controllers
 {
     [Route("")]   
     [ApiController]
@@ -15,7 +15,7 @@ namespace RequestsHandler.Controllers
         [HttpGet("notify")]
         public static string Notify()
         {
-            string res = Utility.HardwareDriver.NotifyPC("I am online");
+            string res = Utility.HardwareDriver.NotifyPc("I am online");
             return res == "0" ? "Notification sent" : res;
         }
         

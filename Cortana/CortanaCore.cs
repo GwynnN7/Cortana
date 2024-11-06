@@ -8,20 +8,20 @@ namespace Cortana
 
     public class CortanaCore
     {
-        private readonly Dictionary<ESubfunctions, Task> _subFunctionTasks = new Dictionary<ESubfunctions, Task>();
+        private readonly Dictionary<ESubFunctions, Task> _subFunctionTasks = new();
 
-        public int BootSubFunction(ESubfunctions subFunction)
+        public int BootSubFunction(ESubFunctions subFunction)
         {
             Task subFunctionTask;
             switch (subFunction)
             {
-                case ESubfunctions.CortanaApi:
+                case ESubFunctions.CortanaApi:
                     subFunctionTask = Task.Run(CortanaApi.BootCortanaApi);
                     break;
-                case ESubfunctions.DiscordBot:
+                case ESubFunctions.DiscordBot:
                     subFunctionTask = Task.Run(DiscordBot.BootDiscordBot);
                     break;
-                case ESubfunctions.TelegramBot:
+                case ESubFunctions.TelegramBot:
                     subFunctionTask = Task.Run(TelegramBot.BootTelegramBot);
                     break;
                 default:

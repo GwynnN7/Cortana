@@ -8,27 +8,22 @@ namespace DiscordBot
 {
     public static class DiscordData
     {
-        private static DiscordSettings LastLoadedSettings;
-
-        public static DiscordSocketClient Cortana;
-        public static Dictionary<ulong, DateTime> TimeConnected = new();
-
-        public static DiscordIDs DiscordIDs;
-        public static Dictionary<ulong, GuildSettings> GuildSettings = new();
-
-        public static Dictionary<ulong, GamingProfileSet> GamingProfile = new();
-        public static IGDBData IGDB;
-
-        public static Dictionary<string, MemeJsonStructure> Memes = new();
-
-        public static void InitSettings(IReadOnlyCollection<SocketGuild> Guilds)
+        private static DiscordSocketClient _cortana = null!;
+        private static DiscordSettings _loadedSettings = null!;
+        public static DiscordIDs DiscordIDs { get; private set; } = null!;
+        
+        public static readonly Dictionary<ulong, DateTime> TimeConnected = new();
+        public static readonly Dictionary<ulong, GuildSettings> GuildSettings = new();
+        public static readonly Dictionary<string, MemeJsonStructure> Memes = new();
+        
+        public static void InitSettings(DiscordSocketClient client, IReadOnlyCollection<SocketGuild> guilds)
         {
-            var discordSettings = Utility.Functions.LoadFile<DiscordSettings>("Data/Discord/GuildConfig.json") ?? new();
+            DiscordSettings discordSettings = Functions.LoadFile<DiscordSettings>("Config/Discord/DiscordData.json") ?? new DiscordSettings();
 
             DiscordIDs = discordSettings.IDs;
-            if(discordSettings.GuildSettings == null) discordSettings.GuildSettings = GuildSettings;
+            _cortana = client;
 
-            foreach (var guild in Guilds)
+            foreach (SocketGuild guild in guilds)
             {
                 if (!discordSettings.GuildSettings.ContainsKey(guild.Id))
                 {
@@ -36,7 +31,7 @@ namespace DiscordBot
                     continue;
                 }
 
-                GuildSettings guildSettings = new GuildSettings()
+                var guildSettings = new GuildSettings()
                 {
                     AutoJoin = discordSettings.GuildSettings[guild.Id].AutoJoin,
                     GreetingsChannel = discordSettings.GuildSettings[guild.Id].GreetingsChannel,
@@ -45,25 +40,15 @@ namespace DiscordBot
                     BannedWords = discordSettings.GuildSettings[guild.Id].BannedWords
                 };
                 GuildSettings.Add(guild.Id, guildSettings);
-            };
-            LastLoadedSettings = discordSettings;
+            }
+            _loadedSettings = discordSettings;
             UpdateSettings();  
         }
 
         public static void LoadMemes()
         {
-            var memesDataResult = Utility.Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Data/Discord/Memes.json");
-            if (memesDataResult != null) Memes = memesDataResult.ToDictionary(entry => entry.Key, entry => entry.Value);
-        }
-
-        public static void LoadGamingProfiles()
-        {
-            GamingProfile = Utility.Functions.LoadFile<Dictionary<ulong, GamingProfileSet>>("Data/Discord/GamingProfile.json") ?? new();
-        }
-
-        public static void LoadIGDB()
-        {
-            IGDB = Utility.Functions.LoadFile<IGDBData>("Data/Global/IGDB.json") ?? new();
+            var memesDataResult = Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Config/Discord/Memes.json");
+            memesDataResult?.ToList().ForEach(x => Memes.Add(x.Key, x.Value));
         }
 
         public static void AddGuildSettings(SocketGuild guild)
@@ -74,7 +59,7 @@ namespace DiscordBot
                 Greetings = false,
                 GreetingsChannel = guild.DefaultChannel.Id,
                 AFKChannel = 0,
-                BannedWords = new List<string>()
+                BannedWords = []
             };
             GuildSettings.TryAdd(guild.Id, defaultGuildSettings);
             UpdateSettings();
@@ -85,22 +70,17 @@ namespace DiscordBot
             var jsonWriteOptions = new JsonSerializerSettings() { Formatting = Formatting.Indented };
             jsonWriteOptions.Converters.Add(new StringEnumConverter());
 
-            LastLoadedSettings.GuildSettings = GuildSettings;
+            _loadedSettings.GuildSettings = GuildSettings;
 
-            Utility.Functions.WriteFile("Data/Discord/GuildConfig.json", LastLoadedSettings, jsonWriteOptions);
-        }
-
-        public static void UpdateGamingProfile()
-        {
-            Utility.Functions.WriteFile("Data/Discord/GamingProfile.json", GamingProfile);
+            Functions.WriteFile("Config/Discord/DiscordData.json", _loadedSettings, jsonWriteOptions);
         }
 
         public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true, bool withoutAuthor = false)
         {
-            Color color = (Color)(embedColor == null ? Color.Blue : embedColor);
-            if (user == null) user = Cortana.CurrentUser;
+            Color color = (embedColor ?? Color.Blue);
+            user ??= _cortana.CurrentUser;
 
-            var embedBuilder = new EmbedBuilder()
+            EmbedBuilder embedBuilder = new EmbedBuilder()
                 .WithTitle(title)
                 .WithColor(color)
                 .WithDescription(description);
@@ -112,36 +92,36 @@ namespace DiscordBot
 
         public static async void SendToUser(string text, ulong userId)
         {
-            var user = await Cortana.GetUserAsync(userId);
+            IUser? user = await _cortana.GetUserAsync(userId);
             await user.SendMessageAsync(text);
         }
 
         public static async void SendToUser(Embed embed, ulong userId)
         {
-            var user = await Cortana.GetUserAsync(userId);
+            IUser? user = await _cortana.GetUserAsync(userId);
             await user.SendMessageAsync(embed: embed);
         }
 
         public static async void SendToChannel(string text, ECortanaChannels channel)
         {
-            var channelId = channel switch
+            ulong channelId = channel switch
             {
                 ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
                 ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
                 _ => DiscordIDs.CortanaLogChannelID
             };
-            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(text);
+            await _cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(text);
         }
 
         public static async void SendToChannel(Embed embed, ECortanaChannels channel)
         {
-            var channelId = channel switch
+            ulong channelId = channel switch
             {
                 ECortanaChannels.Cortana => DiscordIDs.CortanaChannelID,
                 ECortanaChannels.Log => DiscordIDs.CortanaLogChannelID,
                 _ => DiscordIDs.CortanaLogChannelID
             };
-            await Cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(embed: embed);
+            await _cortana.GetGuild(DiscordIDs.HomeID).GetTextChannel(channelId).SendMessageAsync(embed: embed);
         }
     }
 
@@ -169,19 +149,6 @@ namespace DiscordBot
         public ulong HomeID { get; set; }
         public ulong CortanaChannelID { get; set; }
         public ulong CortanaLogChannelID { get; set; }
-    }
-
-    public class IGDBData
-    {
-        public string ClientID { get; set; }
-        public string ClientSecret { get; set; }
-    }
-
-    public class GamingProfileSet
-    { 
-        public string RAWG { get; set; }
-        public string Steam { get; set; }
-        public string GOG { get; set; }
     }
 
     public class MemeJsonStructure

@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Utility;
 
-namespace RequestsHandler.Controllers
+namespace CortanaAPI.Controllers
 {
     [Route("[controller]")]
     [ApiController]
@@ -16,31 +16,31 @@ namespace RequestsHandler.Controllers
         [HttpGet("temp")]
         public static string Temperature()
         {
-            return Utility.HardwareDriver.GetCPUTemperature();
+            return HardwareDriver.GetCpuTemperature();
         }
 
         [HttpGet("ip")]
         public static string Ip()
         {
-            return Utility.HardwareDriver.GetPublicIP().Result;
+            return HardwareDriver.GetPublicIp().Result;
         }
         
         [HttpGet("gateway")]
         public static string Gateway()
         {
-            return Utility.HardwareDriver.GetDefaultGateway();
+            return HardwareDriver.GetDefaultGateway();
         }
 
         [HttpGet("shutdown")]
         public static string Shutdown()
         {
-            return Utility.HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
+            return HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
         }
 
         [HttpGet("reboot")]
         public static string Reboot()
         {
-            return Utility.HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
+            return HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
         }
     }
 }

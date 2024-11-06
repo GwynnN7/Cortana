@@ -11,23 +11,23 @@ namespace TelegramBot.Modules
 
         private static readonly List<long> Users =
         [
-            TelegramData.NameToID("@gwynn7"),
-            TelegramData.NameToID("@Vasile76"),
-            TelegramData.NameToID("@moostacho")
+            TelegramData.NameToId("@gwynn7"),
+            TelegramData.NameToId("@Vasile76"),
+            TelegramData.NameToId("@moostacho")
         ];
         
-        private static Dictionary<long, List<Debts>> _debts = new();
-        private static CurrentPurchase? _currentPurchase;
+        private static Dictionary<long, List<Debts>> _debts = null!;
         private static readonly Dictionary<long, EPurchaseSteps> ChannelWaitingForText = new();
+        private static CurrentPurchase? _currentPurchase;
         
         public static void LoadDebts()
         {
-            _debts = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Data/Telegram/Debts.json") ?? _debts;
+            _debts = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Config/Telegram/Debts.json") ?? _debts;
         }
         
         private static void UpdateDebts()
         {
-            Utility.Functions.WriteFile("Data/Telegram/Debts.json", _debts);
+            Utility.Functions.WriteFile("Config/Telegram/Debts.json", _debts);
         }
         
          public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
@@ -68,7 +68,7 @@ namespace TelegramBot.Modules
             var debts = string.Empty;
             foreach ((long userId, List<Debts> debtsList) in _debts)
             {
-                debts = debtsList.Aggregate("Debts\n\n", (current, debt) => current + $"{TelegramData.IDToName(userId)} owns {debt.Amount}\u20ac to {TelegramData.IDToName(debt.Towards)}\n");
+                debts = debtsList.Aggregate("Debts\n\n", (current, debt) => current + $"{TelegramData.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramData.IdToName(debt.Towards)}\n");
             }
             return debts;
         }
@@ -157,7 +157,7 @@ namespace TelegramBot.Modules
                     subPurchase.Customers.Clear();
                     foreach (string user in messageStats.FullMessage.Split())
                     {
-                        subPurchase.Customers.Add(TelegramData.NameToID(user)); //ERROR CHECK
+                        subPurchase.Customers.Add(TelegramData.NameToId(user)); //ERROR CHECK
                     }
                     break;
                 default:
@@ -219,7 +219,7 @@ namespace TelegramBot.Modules
             double totalPrice = 0;
             foreach (long userId in _currentPurchase.Purchases.Keys)
             {
-                text += $"{TelegramData.IDToName(userId)}: {_currentPurchase.Purchases[userId]}\u20ac\n";
+                text += $"{TelegramData.IdToName(userId)}: {_currentPurchase.Purchases[userId]}\u20ac\n";
                 totalPrice += _currentPurchase.Purchases[userId];
             }
             text += $"\n\nTotal: {totalPrice}";
@@ -228,7 +228,7 @@ namespace TelegramBot.Modules
 
         private static string UpdateBuyersMessage()
         {
-            return _currentPurchase == null ? "No purchase active" : _currentPurchase.History.Peek().Customers.Aggregate("Buyers of next sub-purchase [or list them in a text message]\n", (current, buyer) => current + $"{TelegramData.IDToName(buyer)} ");
+            return _currentPurchase == null ? "No purchase active" : _currentPurchase.History.Peek().Customers.Aggregate("Buyers of next sub-purchase [or list them in a text message]\n", (current, buyer) => current + $"{TelegramData.IdToName(buyer)} ");
         }
         
         public static bool IsWaiting(long chatId)
@@ -238,7 +238,7 @@ namespace TelegramBot.Modules
         
         private static bool IsChannelAllowed(long channelId)
         {
-            return AllowedChannels.Contains(TelegramData.IDToGroupName(channelId));
+            return AllowedChannels.Contains(TelegramData.IdToGroupName(channelId));
         }
         
         private static InlineKeyboardMarkup CreateOrderButtons()

@@ -4,20 +4,17 @@ using Utility;
 
 namespace TelegramBot.Modules;
 
+internal enum EAnswerCommands { Qrcode, Chat }
+
+internal struct AnswerCommand(EAnswerCommands cmd, string? cmdVal = null)
+{
+    public readonly EAnswerCommands Command = cmd;
+    public readonly string? CommandValue = cmdVal;
+}
+
 public static class UtilityModule
 {
-    enum EAnswerCommands { QRCODE, CHAT }
-    struct AnswerCommand
-    {
-        public EAnswerCommands Command;
-        public string? CommandValue;
-        public AnswerCommand(EAnswerCommands cmd, string? cmdVal = null)
-        {
-            Command = cmd;
-            CommandValue = cmdVal;
-        }
-    }
-    private static Dictionary<long, AnswerCommand> AnswerCommands = new();
+    private static readonly Dictionary<long, AnswerCommand> AnswerCommands = new();
     
     public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
     {
@@ -28,7 +25,7 @@ public static class UtilityModule
                 break;
             case "qrcode":
                 AnswerCommands.Remove(messageStats.ChatID);
-                AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.QRCODE));
+                AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.Qrcode));
                 await cortana.SendMessage(messageStats.ChatID, "Scrivi il contenuto");
                 break;
             case "send":
@@ -36,7 +33,7 @@ public static class UtilityModule
                 {
                     if (messageStats.TextList.Count > 1)
                     {
-                        TelegramData.SendToUser(TelegramData.NameToID(messageStats.TextList[0]), string.Join(" ", messageStats.TextList.Skip(1)));
+                        TelegramData.SendToUser(TelegramData.NameToId(messageStats.TextList[0]), string.Join(" ", messageStats.TextList.Skip(1)));
                         await cortana.SendMessage(messageStats.ChatID, $"Testo inviato a {messageStats.TextList[0]}");
                     }
                     else await cortana.SendMessage(messageStats.ChatID, "Errore nel numero dei parametri");
@@ -49,7 +46,7 @@ public static class UtilityModule
                     if (messageStats.TextList.Count == 1)
                     {
                         AnswerCommands.Remove(messageStats.ChatID);
-                        AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.CHAT, messageStats.TextList[0]));
+                        AnswerCommands.Add(messageStats.ChatID, new AnswerCommand(EAnswerCommands.Chat, messageStats.TextList[0]));
                         await cortana.SendMessage(messageStats.ChatID, $"Chat con {messageStats.TextList[0]} avviata");
                     }
                     else await cortana.SendMessage(messageStats.ChatID, "Errore nel numero dei parametri");
@@ -57,9 +54,9 @@ public static class UtilityModule
                 else await cortana.SendMessage(messageStats.ChatID, "Non hai l'autorizzazione per eseguire questo comando");
                 break;
             case "leave":
-                if (AnswerCommands.ContainsKey(messageStats.ChatID) && AnswerCommands[messageStats.ChatID].Command == EAnswerCommands.CHAT)
+                if (AnswerCommands.TryGetValue(messageStats.ChatID, out AnswerCommand command) && command.Command == EAnswerCommands.Chat)
                 {
-                    await cortana.SendMessage(messageStats.ChatID, $"Chat con {AnswerCommands[messageStats.ChatID].CommandValue} terminata");
+                    await cortana.SendMessage(messageStats.ChatID, $"Chat con {command.CommandValue} terminata");
                     AnswerCommands.Remove(messageStats.ChatID);
                 }
                 break;
@@ -70,14 +67,14 @@ public static class UtilityModule
     {
         switch (AnswerCommands[messageStats.ChatID].Command)
         {
-            case EAnswerCommands.QRCODE:
-                var imageStream = Functions.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
+            case EAnswerCommands.Qrcode:
+                Stream imageStream = Functions.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
                 await cortana.SendPhoto(messageStats.ChatID, new InputFileStream(imageStream, "QRCODE.png"));
                 AnswerCommands.Remove(messageStats.ChatID);
                 break;
-            case EAnswerCommands.CHAT:
-                TelegramData.SendToUser(TelegramData.NameToID(AnswerCommands[messageStats.ChatID].CommandValue!), messageStats.FullMessage);
+            case EAnswerCommands.Chat:
+                TelegramData.SendToUser(TelegramData.NameToId(AnswerCommands[messageStats.ChatID].CommandValue!), messageStats.FullMessage);
                 break;
         }
     }

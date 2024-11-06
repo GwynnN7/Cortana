@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Microsoft.Extensions.Configuration;
+using DiscordBot.Modules;
 using Microsoft.Extensions.DependencyInjection;
 using Utility;
 
@@ -11,12 +11,11 @@ namespace DiscordBot
     {
         public static void BootDiscordBot() => MainAsync().GetAwaiter().GetResult();
 
-        private static DiscordSocketClient _cortana;
+        private static DiscordSocketClient _cortana = null!;
 
         private static async Task MainAsync()
         {
             var client = new DiscordSocketClient(ConfigureSocket());
-            IConfigurationRoot config = ConfigurationBuilder();
             ServiceProvider services = ConfigureServices(client);
 
             var commands = services.GetRequiredService<InteractionService>();
@@ -37,29 +36,25 @@ namespace DiscordBot
             {
                 _cortana = client;
 
-                DiscordData.InitSettings(client.Guilds);
+                DiscordData.InitSettings(_cortana, client.Guilds);
                 DiscordData.LoadMemes();
-                DiscordData.LoadIGDB();
-                DiscordData.LoadGamingProfiles();
-                DiscordData.Cortana = _cortana;
 
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.NoMenID);
                 await commands.RegisterCommandsToGuildAsync(DiscordData.DiscordIDs.HomeID);
                 //await commands.RegisterCommandsGloballyAsync(true);
 
-                _ = new Utility.UtilityTimer(Name: "activity-timer", Hours: 0, Minutes: 0, Seconds: 10, Callback: ActivityTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
-                _ = new Utility.UtilityTimer(Name: "status-timer", Hours: 24, Minutes: 0, Seconds: 0, Callback: StatusTimerElapsed, TimerLocation: ETimerLocation.DiscordBot, Loop: ETimerLoop.Interval);
-
+                _ = new UtilityTimer(name: "activity-timer", hours: 0, minutes: 0, seconds: 10, callback: ActivityTimerElapsed, timerLocation: ETimerLocation.DiscordBot, loop: ETimerLoop.Interval);
+                
                 foreach (SocketGuild? guild in _cortana.Guilds)
                 {
-                    SocketVoiceChannel? channel = Modules.AudioHandler.GetAvailableChannel(guild);
-                    if (channel != null) Modules.AudioHandler.Connect(channel);
+                    SocketVoiceChannel? channel = AudioHandler.GetAvailableChannel(guild);
+                    if (channel != null) AudioHandler.Connect(channel);
                 }
 
                 DiscordData.SendToChannel("I'm Online", ECortanaChannels.Cortana);
             };
 
-            await client.LoginAsync(TokenType.Bot, config["token"]);
+            await client.LoginAsync(TokenType.Bot, Functions.GetConfigurationSecrets()["discord-token"]);
             await client.StartAsync();
 
             await Task.Delay(Timeout.Infinite);
@@ -98,33 +93,27 @@ namespace DiscordBot
         {
             try
             {
-                string temp = Utility.HardwareDriver.GetCPUTemperature();
+                string temp = HardwareDriver.GetCpuTemperature();
                 var activity = new Game($"on Raspberry at {temp}");
                 await _cortana.SetActivityAsync(activity);
             }
             catch
             {
-                Utility.Functions.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
+                Functions.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
             }
-        }
-
-        private static void StatusTimerElapsed(object? sender, System.Timers.ElapsedEventArgs e)
-        {
-            Embed embed = DiscordData.CreateEmbed(title: "Still alive Chief", description: Utility.HardwareDriver.GetCPUTemperature());
-            DiscordData.SendToChannel(embed: embed, ECortanaChannels.Cortana);
         }
 
         public static async Task Disconnect()
         {
-            foreach (var guild in Modules.AudioHandler.AudioClients)
+            foreach ((ulong clientId, _) in AudioHandler.AudioClients)
             {
-                DiscordData.GuildSettings[guild.Key].AutoJoin = false;
-                await Modules.AudioHandler.Play("Shutdown", guild.Key, EAudioSource.Local);
+                DiscordData.GuildSettings[clientId].AutoJoin = false;
+                await AudioHandler.Play("Shutdown", clientId, EAudioSource.Local);
                 await Task.Delay(1500);
-                Modules.AudioHandler.Disconnect(guild.Key);
+                AudioHandler.Disconnect(clientId);
             }
 
-            Utility.TimerHandler.RemoveTimers(ETimerLocation.DiscordBot);
+            TimerHandler.RemoveTimers(ETimerLocation.DiscordBot);
 
             await Task.Delay(1000);
             await _cortana.StopAsync();
@@ -135,7 +124,7 @@ namespace DiscordBot
         {
             SocketGuild? guild = (oldState.VoiceChannel ?? newState.VoiceChannel).Guild;
 
-            Modules.AudioHandler.HandleConnection(guild);
+            AudioHandler.HandleConnection(guild);
 
             if (user.Id == DiscordData.DiscordIDs.CortanaID) return;
 
@@ -150,10 +139,10 @@ namespace DiscordBot
                 DiscordData.TimeConnected.Remove(user.Id);
                 DiscordData.TimeConnected.Add(user.Id, DateTime.Now);
 
-                if (newState.VoiceChannel != Modules.AudioHandler.GetCurrentCortanaChannel(guild)) return;
+                if (newState.VoiceChannel != AudioHandler.GetCurrentCortanaChannel(guild)) return;
 
                 await Task.Delay(1000);
-                await Modules.AudioHandler.Play("Hello", newState.VoiceChannel.Guild.Id, EAudioSource.Local);
+                await AudioHandler.Play("Hello", newState.VoiceChannel.Guild.Id, EAudioSource.Local);
             }
             else if (oldState.VoiceChannel != null && newState.VoiceChannel == null)
             {
@@ -194,7 +183,7 @@ namespace DiscordBot
 
         private static Task LogAsync(LogMessage message)
         {
-            Utility.Functions.Log("Discord", message.Message);
+            Functions.Log("Discord", message.Message);
             return Task.CompletedTask;
         }
 
@@ -214,14 +203,6 @@ namespace DiscordBot
                 .AddSingleton(x => new InteractionService(x.GetRequiredService<DiscordSocketClient>()))
                 .AddSingleton<CommandHandler>()
                 .BuildServiceProvider();
-        }
-
-        private static IConfigurationRoot ConfigurationBuilder()
-        {
-            return new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("Data/Discord/Token.json")
-                .Build();
         }
     }
 }

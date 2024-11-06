@@ -1,6 +1,6 @@
 ﻿namespace Utility;
 
-public enum ESubfunctions
+public enum ESubFunctions
 {
     CortanaApi,
     DiscordBot,
@@ -18,7 +18,6 @@ public enum ETimerLocation
 
 public enum EHardwareElements
 {
-    Display,
     Computer,
     Lamp,
     Outlets,
@@ -68,6 +67,12 @@ public enum ELocation
     Pisa
 }
 
+public enum ECortanaChannels
+{
+    Cortana,
+    Log
+}
+
 public enum ETimerLoop
 {
     No,
@@ -89,27 +94,4 @@ public enum EMemeCategory
     NotShort,
     Skidaddle,
     Default
-}
-
-public enum EGamingProfiles
-{
-    Rawg,
-    Steam,
-    Gog
-}
-
-public enum EPrivateSounds
-{
-    Cortana1,
-    Cortana2,
-    Cortana3,
-    Hello,
-    Shutdown,
-    Sorry
-}
-
-public enum ECortanaChannels
-{
-    Cortana,
-    Log
 }

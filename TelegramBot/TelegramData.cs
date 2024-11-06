@@ -7,63 +7,57 @@ namespace TelegramBot
 {
     public static class TelegramData
     {
-        private static Data Data;
-        private static TelegramBotClient Cortana;
-        private static List<long> RootPermissions;
+        private static Data _data = null!;
+        private static TelegramBotClient _cortana = null!;
+        private static List<long> _rootPermissions = null!;
         
         public static void Init(TelegramBotClient newClient)
         {
-            Cortana = newClient;
+            _cortana = newClient;
+            _rootPermissions = [ NameToId("@gwynn7"), NameToId("@alessiaat1") ];
+            
             LoadData();
             ShoppingModule.LoadDebts();
-            
-            RootPermissions = [ NameToID("@gwynn7"), NameToID("@alessiaat1") ];
         }
 
         private static void LoadData()
         {
-            Data = Utility.Functions.LoadFile<Data>("Data/Telegram/Data.json") ?? new();
+            _data = Utility.Functions.LoadFile<Data>("Config/Telegram/TelegramData.json") ?? new Data();
         }
 
         public static void SendToUser(long userId, string message, bool notify = true)
         {
-            ChatId chat = new ChatId(userId);
-            Cortana.SendMessage(chat, message, disableNotification: !notify);
+            var chat = new ChatId(userId);
+            _cortana.SendMessage(chat, message, disableNotification: !notify);
         }
 
-        public static string IDToName(long id)
+        public static string IdToName(long id)
         {
-            if (!Data.usernames.ContainsKey(id)) return "";
-            return Data.usernames[id];
+            return _data.usernames.GetValueOrDefault(id, "");
         }
 
-        public static string IDToGroupName(long id)
+        public static string IdToGroupName(long id)
         {
-            if (!Data.groups.ContainsKey(id)) return "";
-            return Data.groups[id];
+            return _data.groups.GetValueOrDefault(id, "");
         }
 
-        public static long NameToID(string name)
+        public static long NameToId(string name)
         {
-            foreach (var item in Data.usernames)
-            {
-                if (item.Value == name) return item.Key;
-            }
+            foreach ((long groupId,_) in _data.usernames.Where(item => item.Value == name)) 
+                return groupId;
             return -1;
         }
 
-        public static long NameToGroupID(string name)
+        public static long NameToGroupId(string name)
         {
-            foreach (var item in Data.groups)
-            {
-                if (item.Value == name) return item.Key;
-            }
+            foreach ((long groupId, _) in _data.groups.Where(item => item.Value == name)) 
+                return groupId;
             return -1;
         }
         
         public static bool CheckPermission(long userId)
         {
-            return RootPermissions.Contains(userId);
+            return _rootPermissions.Contains(userId);
         }
     }
 

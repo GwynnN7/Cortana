@@ -4,24 +4,23 @@ namespace Utility
 {
     public abstract class TimerHandler : System.Timers.Timer
     {
-        public static Dictionary<ETimerLocation, List<TimerHandler>> TotalTimers;
+        private static readonly Dictionary<ETimerLocation, List<TimerHandler>> TotalTimers = new();
 
-        private string Name;
+        private readonly string _name;
         public string? Text { get; set; }
         
         public DateTime NextTargetTime;
-        public TimeSpan NextDeltaTime => NextTargetTime.Subtract(DateTime.Now);
         private ETimerLoop LoopType { get; }
-        private Action<object?, ElapsedEventArgs> Callback;
+        private readonly Action<object?, ElapsedEventArgs> _callback;
         protected ETimerLocation TimerLocation;
-        
 
-        public TimerHandler(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
+
+        protected TimerHandler(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
-            Name = name;
+            _name = name;
             Text = text;
             Interval = (hours * 3600 + minutes * 60 + seconds) * 1000;
-            Callback = callback;
+            _callback = callback;
             TimerLocation = timerLocation;
 
             LoopType = loop;
@@ -34,12 +33,12 @@ namespace Utility
             AddTimer(timerLocation, this);
         }
 
-        public TimerHandler(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
+        protected TimerHandler(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
-            Name = name;
+            _name = name;
             Text = text;
             Interval = targetTime.Subtract(DateTime.Now).Minutes <= 5 ? targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : targetTime.Subtract(DateTime.Now).TotalMilliseconds;
-            Callback = callback;
+            _callback = callback;
             TimerLocation = timerLocation;
 
             LoopType = loop;
@@ -56,18 +55,21 @@ namespace Utility
         {
             if (LoopType != ETimerLoop.No)
             {
-                if (LoopType == ETimerLoop.Daily) NextTargetTime = DateTime.Now.AddDays(1);
-                else if (LoopType == ETimerLoop.Weekly) NextTargetTime = DateTime.Now.AddDays(7);
-                else NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+                NextTargetTime = LoopType switch
+                {
+                    ETimerLoop.Daily => DateTime.Now.AddDays(1),
+                    ETimerLoop.Weekly => DateTime.Now.AddDays(7),
+                    _ => DateTime.Now.AddMilliseconds(Interval)
+                };
 
-                var newInterval = NextTargetTime.Subtract(DateTime.Now).TotalMilliseconds;
+                double newInterval = NextTargetTime.Subtract(DateTime.Now).TotalMilliseconds;
 
                 Interval = newInterval;
                 Enabled = true;
                 Start();
             }
 
-            Callback.Invoke(sender, args);
+            _callback.Invoke(sender, args);
 
             if(LoopType == ETimerLoop.No) RemoveTimer(this);
         }
@@ -78,71 +80,42 @@ namespace Utility
             Dispose();
         }
 
-        private static void AddTimer(ETimerLocation TimerLocation, TimerHandler Timer)
+        private static void AddTimer(ETimerLocation timerLocation, TimerHandler timer)
         {
-            if (TotalTimers == null) TotalTimers = new();
-
-            if(TotalTimers.ContainsKey(TimerLocation))
+            if(!TotalTimers.TryAdd(timerLocation, [timer]))
             {
-                TotalTimers[TimerLocation].Add(Timer);
-            }
-            else
-            {
-                TotalTimers.Add(TimerLocation, new List<TimerHandler> { Timer });
+                TotalTimers[timerLocation].Add(timer);
             }
         }
 
-        public static void RemoveTimer(TimerHandler Timer)
+        private static void RemoveTimer(TimerHandler timer)
         {
-            foreach(var TimerList in TotalTimers)
+            foreach((ETimerLocation timerLocation, List<TimerHandler>? timerList) in TotalTimers)
             {
-                if (TimerList.Value.Contains(Timer))
-                {
-                    TotalTimers[TimerList.Key].Remove(Timer);
-                    Timer.Destroy();
-                }
+                if (!timerList.Contains(timer)) continue;
+                TotalTimers[timerLocation].Remove(timer);
+                timer.Destroy();
+                break;
             }
         }
 
-        public static void RemoveTimers(ETimerLocation Location)
+        public static void RemoveTimers(ETimerLocation location)
         {
-            if (TotalTimers == null) return;
-            if (!TotalTimers.ContainsKey(Location)) return;
-            
-            foreach(var LocationTimer in TotalTimers[Location].ToList())
+            foreach ((ETimerLocation timerLocation, List<TimerHandler>? timerHandlers) in TotalTimers)
             {
-                RemoveTimer(LocationTimer);
+                if(timerLocation != location) continue;
+                foreach (TimerHandler listTimer in timerHandlers) RemoveTimer(listTimer);
             }
         }
 
-        public static void RemoveTimerByName(string name, ETimerLocation? Location = null)
+        public static void RemoveTimerByName(string name)
         {
-            if (TotalTimers == null) return;
-            if (Location != null)
+            foreach ((_, List<TimerHandler>? timerHandlers) in TotalTimers)
             {
-                if (!TotalTimers.ContainsKey(Location.Value)) return;
-
-                foreach (var LocationTimer in TotalTimers[Location.Value])
+                foreach (TimerHandler listTimer in timerHandlers.Where(listTimer => listTimer._name == name))
                 {
-                    if (LocationTimer.Name == name)
-                    {
-                        RemoveTimer(LocationTimer);
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                foreach (var TimerList in TotalTimers)
-                {
-                    foreach (var ListTimer in TimerList.Value)
-                    {
-                        if (ListTimer.Name == name)
-                        {
-                            RemoveTimer(ListTimer);
-                            return;
-                        }
-                    }
+                    RemoveTimer(listTimer);
+                    return;
                 }
             }
         }
@@ -151,28 +124,28 @@ namespace Utility
     public class DiscordUserTimer : TimerHandler
     {
         public object Guild { get; set; }
-        public object User { get; set; }
-        public object? TextChannel { get; set; }
+        public object User { get; }
+        public object? TextChannel { get; }
 
-        public DiscordUserTimer(object Guild, object User, object? TextChannel, string Name, string? Text, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLoop Loop = ETimerLoop.No, bool AutoStart = true) : base(Name, Text, TargetTime, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
+        public DiscordUserTimer(object guild, object user, object? textChannel, string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, text, targetTime, callback, ETimerLocation.DiscordBot, loop, autoStart)
         {
-            this.Guild = Guild;
-            this.User = User;
-            this.TextChannel = TextChannel;
+            Guild = guild;
+            User = user;
+            TextChannel = textChannel;
         }
 
-        public DiscordUserTimer(object Guild, object User, object? TextChannel, string Name, string? Text, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLoop Loop = ETimerLoop.No, bool AutoStart = true) : base(Name, Text, Hours, Minutes, Seconds, Callback, ETimerLocation.DiscordBot, Loop, AutoStart)
+        public DiscordUserTimer(object guild, object user, object? textChannel, string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, text, hours, minutes, seconds, callback, ETimerLocation.DiscordBot, loop, autoStart)
         {
-            this.Guild = Guild;
-            this.User = User;
-            this.TextChannel = TextChannel;
+            Guild = guild;
+            User = user;
+            TextChannel = textChannel;
         }
     }
 
     public class UtilityTimer : TimerHandler
     {
-        public UtilityTimer(string Name, DateTime TargetTime, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, ETimerLoop Loop = ETimerLoop.No, bool AutoStart = true) : base(Name, null, TargetTime, Callback, TimerLocation, Loop, AutoStart) { }
-        public UtilityTimer(string Name, int Hours, int Minutes, int Seconds, Action<object?, ElapsedEventArgs> Callback, ETimerLocation TimerLocation, ETimerLoop Loop = ETimerLoop.No, bool AutoStart = true) : base(Name, null, Hours, Minutes, Seconds, Callback, TimerLocation, Loop, AutoStart) { }
+        public UtilityTimer(string name, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, targetTime, callback, timerLocation, loop, autoStart) { }
+        public UtilityTimer(string name, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, hours, minutes, seconds, callback, timerLocation, loop, autoStart) { }
 
     }
 }

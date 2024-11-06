@@ -10,12 +10,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="Assets\Cortana.ico">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\DiscordBot\DiscordBot.csproj" />
     <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj" />
     <ProjectReference Include="..\TelegramBot\TelegramBot.csproj" />

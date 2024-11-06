@@ -1,0 +1,3 @@
+﻿alias temp='/bin/vcgencmd measure_temp'
+
+sudo apt-get install libopus0 opus-tools libopus-dev libsodium-dev -y

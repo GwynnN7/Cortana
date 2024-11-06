@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
 using QRCoder;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
@@ -44,6 +45,14 @@ namespace Utility
             using Image image = Image.Load(qrCodeAsPngByteArr);
             image.Save(imageStream, new PngEncoder());
             return imageStream;
+        }
+        
+        public static IConfigurationRoot GetConfigurationSecrets()
+        {
+            return new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("Config/Secrets.json")
+                .Build();
         }
     }
 }

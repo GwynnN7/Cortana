@@ -1,27 +1,26 @@
-﻿using Microsoft.Extensions.Configuration;
-using Telegram.Bot;
+﻿using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Modules;
+using Utility;
 
 namespace TelegramBot
 {
-    public class TelegramBot
+    public static class TelegramBot
     {
-        public static void BootTelegramBot() => new TelegramBot().Main();
+        public static void BootTelegramBot() => Main();
 
-        private void Main()
+        private static void Main()
         {
-            var config = ConfigurationBuilder();
-            var cortana = new TelegramBotClient(config["token"]);
+            var cortana = new TelegramBotClient(Functions.GetConfigurationSecrets()["telegram-token"]!);
             cortana.StartReceiving(UpdateHandler, ErrorHandler);
             
             TelegramData.Init(cortana);
-            TelegramData.SendToUser(TelegramData.NameToID("@gwynn7"), "I'm Online", false);
+            TelegramData.SendToUser(TelegramData.NameToId("@gwynn7"), "I'm Online", false);
         }
 
-        private Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
+        private static Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
         {
             switch (update.Type)
             {
@@ -31,11 +30,13 @@ namespace TelegramBot
                 case UpdateType.Message:
                     HandleMessage(cortana, update);
                     break;
+                default:
+                    return Task.CompletedTask;
             }
             return Task.CompletedTask;
         }
 
-        private async void HandleMessage(ITelegramBotClient cortana, Update update)
+        private static async void HandleMessage(ITelegramBotClient cortana, Update update)
         {
             if (update.Message == null) return;
             if (update.Message.Type != MessageType.Text || update.Message.Text == null) return;
@@ -50,7 +51,7 @@ namespace TelegramBot
                 FullMessage = update.Message.Text
             };
 
-            if (messageStats.UserID != TelegramData.NameToID("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramData.NameToID("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
+            if (messageStats.UserID != TelegramData.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramData.NameToId("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
             
             if (update.Message.Text.StartsWith('/'))
             {
@@ -80,7 +81,7 @@ namespace TelegramBot
         }
 
 
-        private void HandleCallback(ITelegramBotClient cortana, Update update)
+        private static void HandleCallback(ITelegramBotClient cortana, Update update)
         {
             if (update.CallbackQuery?.Data == null || update.CallbackQuery.Message == null) return;
             
@@ -88,23 +89,15 @@ namespace TelegramBot
             ShoppingModule.ButtonCallback(cortana, update);
         }
 
-        private Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)
+        private static Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)
         {
-            var errorMessage = exception switch
+            string errorMessage = exception switch
             {
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
             Utility.Functions.Log("Telegram", errorMessage);
             return Task.CompletedTask;
-        }
-
-        private IConfigurationRoot ConfigurationBuilder()
-        {
-            return new ConfigurationBuilder()
-                .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("Data/Telegram/Token.json")
-                .Build();
         }
     }
 }

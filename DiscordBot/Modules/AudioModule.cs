@@ -7,6 +7,8 @@ using YoutubeExplode.Common;
 using YoutubeExplode.Videos.Streams;
 using Discord;
 using Utility;
+using YoutubeExplode.Search;
+using YoutubeExplode.Videos;
 
 namespace DiscordBot.Modules
 {
@@ -14,58 +16,43 @@ namespace DiscordBot.Modules
     {
         public struct ChannelClient
         {
-            public SocketVoiceChannel VoiceChannel { get; set; }
-            public IAudioClient? AudioClient { get; set; } = null;
-            public AudioOutStream? AudioStream { get; set; } = null;
+            public SocketVoiceChannel VoiceChannel { get; }
+            public IAudioClient? AudioClient { get; } = null;
+            public AudioOutStream? AudioStream { get; } = null;
 
-            public ChannelClient(SocketVoiceChannel NewVoiceChannel, IAudioClient? NewAudioClient = null, AudioOutStream? NewAudioStream = null)
+            public ChannelClient(SocketVoiceChannel newVoiceChannel, IAudioClient? newAudioClient = null, AudioOutStream? newAudioStream = null)
             {
-                VoiceChannel = NewVoiceChannel;
-                AudioClient = NewAudioClient;
-                AudioStream = NewAudioStream;
+                VoiceChannel = newVoiceChannel;
+                AudioClient = newAudioClient;
+                AudioStream = newAudioStream;
             }
         }
 
-        public struct QueueStructure
+        private readonly struct QueueStructure(CancellationTokenSource newToken, MemoryStream newStream, ulong newGuildId)
         {
-            public CancellationTokenSource Token { get; }
-            public MemoryStream Data { get; }
-            public ulong GuildID { get; }
-
-            public QueueStructure(CancellationTokenSource NewToken, MemoryStream NewStream, ulong NewGuildID)
-            {
-                Token = NewToken;
-                Data = NewStream;
-                GuildID = NewGuildID;
-            }
+            public CancellationTokenSource Token { get; } = newToken;
+            public MemoryStream Data { get; } = newStream;
+            public ulong GuildId { get; } = newGuildId;
         }
 
-        public struct JoinStructure
+        private readonly struct JoinStructure(CancellationTokenSource newToken, Func<Task> newTask)
         {
-            public CancellationTokenSource Token { get; }
-            public ulong GuildID { get; }
-            public Func<Task> Task { get; set; }
-
-            public JoinStructure(CancellationTokenSource NewToken, ulong NewGuildID, Func<Task> NewTask)
-            {
-                Token = NewToken;
-                GuildID = NewGuildID;
-                Task = NewTask;
-            }
+            public CancellationTokenSource Token { get; } = newToken;
+            public Func<Task> Task { get; } = newTask;
         }
-        public static Dictionary<ulong, ChannelClient> AudioClients = new Dictionary<ulong, ChannelClient>();
-
-        private static Dictionary<ulong, List<QueueStructure>> AudioQueue = new Dictionary<ulong, List<QueueStructure>>();
-        private static Dictionary<ulong, List<JoinStructure>> JoinQueue = new Dictionary<ulong, List<JoinStructure>>();
+        
+        public static readonly Dictionary<ulong, ChannelClient> AudioClients = new();
+        private static readonly Dictionary<ulong, List<QueueStructure>> AudioQueue = new();
+        private static readonly Dictionary<ulong, List<JoinStructure>> JoinQueue = new();
         
         //---------------------------- Audio Functions ----------------------------------------------
 
-        private static async Task<MemoryStream> ExecuteFFMPEG(Stream? VideoStream = null, string FilePath = "")
+        private static async Task<MemoryStream> ExecuteFfmpeg(Stream? videoStream = null, string filePath = "")
         {
             var memoryStream = new MemoryStream();
             await Cli.Wrap("ffmpeg")
-                .WithArguments($" -hide_banner -loglevel debug -i {(VideoStream != null ? "pipe:0" : $"\"{FilePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
-                .WithStandardInputPipe((VideoStream != null ? PipeSource.FromStream(VideoStream) : PipeSource.Null))
+                .WithArguments($" -hide_banner -loglevel debug -i {(videoStream != null ? "pipe:0" : $"\"{filePath}\"")} -ac 2 -f s16le -ar 48000 pipe:1")
+                .WithStandardInputPipe((videoStream != null ? PipeSource.FromStream(videoStream) : PipeSource.Null))
                 .WithStandardOutputPipe(PipeTarget.ToStream(memoryStream))
                 .ExecuteAsync();
             return memoryStream;
@@ -73,115 +60,112 @@ namespace DiscordBot.Modules
 
         public static async Task<Stream> GetYoutubeAudioStream(string url)
         {
-            YoutubeClient youtube = new YoutubeClient();
-            var StreamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
-            var StreamInfo = StreamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
-            var Stream = await youtube.Videos.Streams.GetAsync(StreamInfo);
-            return Stream;
+            var youtube = new YoutubeClient();
+            StreamManifest streamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
+            IStreamInfo streamInfo = streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate();
+            Stream stream = await youtube.Videos.Streams.GetAsync(streamInfo);
+            return stream;
         }
 
-        public static async Task<YoutubeExplode.Videos.Video> GetYoutubeVideoInfos(string url)
+        public static async Task<Video> GetYoutubeVideoInfos(string url)
         {
             var youtube = new YoutubeClient();
 
-            var link = url.Split("&").First();
+            string link = url.Split("&").First();
             var substrings = new[] { "https://www.youtube.com/watch?v=", "https://youtu.be/" };
             string? result = null;
-            foreach (var sub in substrings)
+            foreach (string sub in substrings)
             {
                 if (link.StartsWith(sub)) result = link.Substring(sub.Length);
             }
-            if(result == null)
-            {
-                var videos = await youtube.Search.GetVideosAsync(url).CollectAsync(1);
-                result = videos.First().Id;
-            }
+
+            if (result != null) return await youtube.Videos.GetAsync(result);
+            IReadOnlyList<VideoSearchResult> videos = await youtube.Search.GetVideosAsync(url).CollectAsync(1);
+            result = videos.First().Id;
             return await youtube.Videos.GetAsync(result);
         }
 
-        public static async Task<bool> Play(string audio, ulong GuildID, EAudioSource Path)
+        public static async Task<bool> Play(string audio, ulong guildId, EAudioSource path)
         {
-            if (!AudioClients.ContainsKey(GuildID) || (AudioClients.ContainsKey(GuildID) && AudioClients[GuildID].AudioStream == null)) return false;
+            if (!AudioClients.ContainsKey(guildId) || (AudioClients.ContainsKey(guildId) && AudioClients[guildId].AudioStream == null)) return false;
 
-            MemoryStream MemoryStream = new MemoryStream();
-            if (Path == EAudioSource.Youtube)
+            var memoryStream = new MemoryStream();
+            switch (path)
             {
-                var Stream = await GetYoutubeAudioStream(audio);
-                MemoryStream = await ExecuteFFMPEG(VideoStream: Stream);
-            }
-            else if (Path == EAudioSource.Local)
-            {
-                audio = $"Sound/{audio}.mp3";
-                MemoryStream = await ExecuteFFMPEG(FilePath: audio);
+                case EAudioSource.Youtube:
+                {
+                    Stream stream = await GetYoutubeAudioStream(audio);
+                    memoryStream = await ExecuteFfmpeg(videoStream: stream);
+                    break;
+                }
+                case EAudioSource.Local:
+                    audio = $"Sound/{audio}.mp3";
+                    memoryStream = await ExecuteFfmpeg(filePath: audio);
+                    break;
             }
 
-            var AudioQueueItem = new QueueStructure(new CancellationTokenSource(), MemoryStream, GuildID);
-            if (AudioQueue.ContainsKey(GuildID)) AudioQueue[GuildID].Add(AudioQueueItem);
-            else AudioQueue.Add(GuildID, new List<QueueStructure>() { AudioQueueItem });
+            var audioQueueItem = new QueueStructure(new CancellationTokenSource(), memoryStream, guildId);
+            if (AudioQueue.TryGetValue(guildId, out List<QueueStructure>? queue)) queue.Add(audioQueueItem);
+            else AudioQueue.Add(guildId, [audioQueueItem]);
 
-            if (AudioQueue[GuildID].Count == 1) NextAudioQueue(GuildID);
+            if (AudioQueue[guildId].Count == 1) NextAudioQueue(guildId);
             
             return true;
         }
 
-        private static void NextAudioQueue(ulong GuildID)
+        private static void NextAudioQueue(ulong guildId)
         {
-            var AudioTask = Task.Run(() => SendBuffer(AudioQueue[GuildID][0]));
-            AudioTask.ContinueWith((NewTask) =>
+            Task audioTask = Task.Run(() => SendBuffer(AudioQueue[guildId][0]));
+            audioTask.ContinueWith((_) =>
             {
-                AudioQueue[GuildID][0].Token.Dispose();
-                AudioQueue[GuildID][0].Data.Dispose();
-                AudioQueue[GuildID].RemoveAt(0);
-                if (AudioQueue[GuildID].Count > 0) NextAudioQueue(GuildID);
+                AudioQueue[guildId][0].Token.Dispose();
+                AudioQueue[guildId][0].Data.Dispose();
+                AudioQueue[guildId].RemoveAt(0);
+                if (AudioQueue[guildId].Count > 0) NextAudioQueue(guildId);
             });
         }  
 
-        private static async Task SendBuffer(QueueStructure Item)
+        private static async Task SendBuffer(QueueStructure item)
         {
             try
             {
-                await AudioClients[Item.GuildID].AudioStream.WriteAsync(Item.Data.GetBuffer(), Item.Token.Token);
+                await AudioClients[item.GuildId].AudioStream!.WriteAsync(item.Data.GetBuffer(), item.Token.Token);
             }
             finally
             {
-                await AudioClients[Item.GuildID].AudioStream.FlushAsync();
+                await AudioClients[item.GuildId].AudioStream!.FlushAsync();
             }
         }
 
-        public static string Skip(ulong GuildID)
+        public static string Skip(ulong guildId)
         {
-            if (AudioQueue.ContainsKey(GuildID))
-            {
-                if (AudioQueue[GuildID].Count > 0)
-                {
-                    AudioQueue[GuildID][0].Token.Cancel();
-                    return "Audio skippato";
-                }
-            }
-            return "Non c'è niente da skippare";
+            if (!AudioQueue.TryGetValue(guildId, out List<QueueStructure>? audioQueue)) return "Non c'è niente da skippare";
+            if (audioQueue.Count <= 0) return "Non c'è niente da skippare";
+            audioQueue[0].Token.Cancel();
+            return "Audio skippato";
         }
 
-        public static string Clear(ulong GuildID)
+        public static string Clear(ulong guildId)
         {
-            if (AudioQueue.ContainsKey(GuildID) && AudioQueue[GuildID].Count > 0)
+            if (AudioQueue.ContainsKey(guildId) && AudioQueue[guildId].Count > 0)
             {
-                for(int i = AudioQueue[GuildID].Count - 1; i >= 0; i--)
+                for(int i = AudioQueue[guildId].Count - 1; i >= 0; i--)
                 {
                     if(i == 0)
                     {
-                        AudioQueue[GuildID][i].Token.Cancel();
+                        AudioQueue[guildId][i].Token.Cancel();
                         continue;
                     }
 
-                    AudioQueue[GuildID][i].Token.Cancel();
-                    AudioQueue[GuildID][i].Token.Dispose();
+                    AudioQueue[guildId][i].Token.Cancel();
+                    AudioQueue[guildId][i].Token.Dispose();
 
-                    AudioQueue[GuildID][i].Data.Dispose();
+                    AudioQueue[guildId][i].Data.Dispose();
 
-                    AudioQueue[GuildID].RemoveAt(i);
+                    AudioQueue[guildId].RemoveAt(i);
                 }
             
-                AudioQueue[GuildID].Clear();
+                AudioQueue[guildId].Clear();
                 return "Queue rimossa";
             }
             return "Non c'è niente in coda";
@@ -191,125 +175,106 @@ namespace DiscordBot.Modules
 
         //------------------------ Channels Checking Function ---------------------------------------
 
-        private static bool ShouldCortanaStay(SocketGuild Guild)
+        private static bool ShouldCortanaStay(SocketGuild guild)
         {
-            var CortanaChannel = GetCurrentCortanaChannel(Guild);
-            var AvailableChannels = GetAvailableChannels(Guild);
+            SocketVoiceChannel? cortanaChannel = GetCurrentCortanaChannel(guild);
+            List<SocketVoiceChannel> availableChannels = GetAvailableChannels(guild);
 
-            if (AvailableChannels.Count > 0)
-            {
-                if (CortanaChannel == null) return false;
-                else return AvailableChannels.Contains(CortanaChannel);
-            }
-            else return CortanaChannel == null;
+            if (availableChannels.Count <= 0) return cortanaChannel == null;
+            return cortanaChannel != null && availableChannels.Contains(cortanaChannel);
         }
 
-        public static bool IsChannelAvailable(SocketVoiceChannel Channel)
+        private static bool IsChannelAvailable(SocketVoiceChannel channel)
         {
-            if (Channel.Id == DiscordData.GuildSettings[Channel.Guild.Id].AFKChannel) return false;
-            if (Channel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return Channel.ConnectedUsers.Count > 1;
-            else return Channel.ConnectedUsers.Count > 0;
+            if (channel.Id == DiscordData.GuildSettings[channel.Guild.Id].AFKChannel) return false;
+            if (channel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return channel.ConnectedUsers.Count > 1;
+            return channel.ConnectedUsers.Count > 0;
         }
 
-        public static SocketVoiceChannel? GetAvailableChannel(SocketGuild Guild)
+        public static SocketVoiceChannel? GetAvailableChannel(SocketGuild guild)
         {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if(IsChannelAvailable(voiceChannel)) return voiceChannel;
-            }
-            return null;
+            return guild.VoiceChannels.FirstOrDefault(IsChannelAvailable);
         }
 
-        private static List<SocketVoiceChannel> GetAvailableChannels(SocketGuild Guild)
+        private static List<SocketVoiceChannel> GetAvailableChannels(SocketGuild guild)
         {
-            List<SocketVoiceChannel> channels = new List<SocketVoiceChannel>();
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (IsChannelAvailable(voiceChannel)) channels.Add(voiceChannel);
-            }
+            List<SocketVoiceChannel> channels = [];
+            channels.AddRange(guild.VoiceChannels.Where(IsChannelAvailable));
             return channels;
         }
 
-        public static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild Guild)
+        public static SocketVoiceChannel? GetCurrentCortanaChannel(SocketGuild guild)
         {
-            foreach (var voiceChannel in Guild.VoiceChannels)
-            {
-                if (voiceChannel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID)) return voiceChannel;
-            }
-            return null;
+            return guild.VoiceChannels.FirstOrDefault(voiceChannel => voiceChannel.ConnectedUsers.Select(x => x.Id).Contains(DiscordData.DiscordIDs.CortanaID));
         }
 
-        private static bool IsConnected(SocketVoiceChannel VoiceChannel, SocketGuild Guild)
+        private static bool IsConnected(SocketVoiceChannel voiceChannel, SocketGuild guild)
         {
-            if (AudioClients.ContainsKey(Guild.Id) && AudioClients[Guild.Id].VoiceChannel == VoiceChannel && GetCurrentCortanaChannel(Guild) == VoiceChannel) return true;
-            return false;
+            return AudioClients.TryGetValue(guild.Id, out ChannelClient client) && client.VoiceChannel == voiceChannel && GetCurrentCortanaChannel(guild) == voiceChannel;
         }
 
         //-------------------------------------------------------------------------------------------
 
         //-------------------------- Connection Functions -------------------------------------------
 
-        public static void HandleConnection(SocketGuild Guild)
+        public static void HandleConnection(SocketGuild guild)
         {
-            if (!ShouldCortanaStay(Guild))
+            if (!ShouldCortanaStay(guild))
             {
-                if (DiscordData.GuildSettings[Guild.Id].AutoJoin)
+                if (DiscordData.GuildSettings[guild.Id].AutoJoin)
                 {
-                    var channel = GetAvailableChannel(Guild);
-                    if (channel == null) Disconnect(Guild.Id);
+                    SocketVoiceChannel? channel = GetAvailableChannel(guild);
+                    if (channel == null) Disconnect(guild.Id);
                     else Connect(channel);
                 }
-                else Disconnect(Guild.Id);
+                else Disconnect(guild.Id);
             }
-            else EnsureChannel(GetCurrentCortanaChannel(Guild));
+            else EnsureChannel(GetCurrentCortanaChannel(guild));
         }
 
-        private static void AddToJoinQueue(Func<Task> TaskToAdd, ulong GuildID)
+        private static void AddToJoinQueue(Func<Task> taskToAdd, ulong guildId)
         {
-            var QueueItem = new JoinStructure(new CancellationTokenSource(), GuildID, TaskToAdd);
-            if (JoinQueue.ContainsKey(GuildID)) JoinQueue[GuildID].Add(QueueItem);
-            else JoinQueue.Add(GuildID, new List<JoinStructure>() { QueueItem });
+            var queueItem = new JoinStructure(new CancellationTokenSource(), taskToAdd);
+            if (JoinQueue.TryGetValue(guildId, out List<JoinStructure>? joinStructures)) joinStructures.Add(queueItem);
+            else JoinQueue.Add(guildId, [queueItem]);
 
-            if (JoinQueue[GuildID].Count == 1) NextJoinQueue(GuildID);
+            if (JoinQueue[guildId].Count == 1) NextJoinQueue(guildId);
         }
 
-        private static async void NextJoinQueue(ulong GuildID)
+        private static async void NextJoinQueue(ulong guildId)
         {
-            await JoinQueue[GuildID][0].Task();
+            await JoinQueue[guildId][0].Task();
 
-            JoinQueue[GuildID][0].Token.Dispose();
-            JoinQueue[GuildID].RemoveAt(0);
-            if (JoinQueue[GuildID].Count > 0)
-            {
-                JoinQueue[GuildID] = new List<JoinStructure>() { JoinQueue[GuildID].Last() };
+            JoinQueue[guildId][0].Token.Dispose();
+            JoinQueue[guildId].RemoveAt(0);
+            if (JoinQueue[guildId].Count <= 0) return;
+            JoinQueue[guildId] = [JoinQueue[guildId].Last()];
 
-                NextJoinQueue(GuildID);
-            }
+            NextJoinQueue(guildId);
         }
 
-        private static async Task Join(SocketVoiceChannel VoiceChannel)
+        private static async Task Join(SocketVoiceChannel voiceChannel)
         {
-            if (VoiceChannel == null) return;
-            SocketGuild Guild = VoiceChannel.Guild;
+            SocketGuild guild = voiceChannel.Guild;
 
             try
             {
                 await Task.Delay(1500);
 
-                if (!GetAvailableChannels(VoiceChannel.Guild).Contains(VoiceChannel)) return;
-                else if (IsConnected(VoiceChannel, Guild)) return;
+                if (!GetAvailableChannels(voiceChannel.Guild).Contains(voiceChannel)) return;
+                else if (IsConnected(voiceChannel, guild)) return;
 
-                Clear(Guild.Id);
-                DisposeConnection(Guild.Id);
+                Clear(guild.Id);
+                DisposeConnection(guild.Id);
 
-                var NewPair = new ChannelClient(VoiceChannel);
-                AudioClients.Add(Guild.Id, NewPair);
+                var newPair = new ChannelClient(voiceChannel);
+                AudioClients.Add(guild.Id, newPair);
 
-                var AudioClient = await VoiceChannel.ConnectAsync();
-                var StreamOut = AudioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
-                AudioClients[Guild.Id] = new ChannelClient(VoiceChannel, AudioClient, StreamOut);
+                IAudioClient? audioClient = await voiceChannel.ConnectAsync();
+                AudioOutStream? streamOut = audioClient.CreatePCMStream(AudioApplication.Mixed, 64000, packetLoss: 0);
+                AudioClients[guild.Id] = new ChannelClient(voiceChannel, audioClient, streamOut);
 
-                await Play("Hello", Guild.Id, EAudioSource.Local);
+                await Play("Hello", guild.Id, EAudioSource.Local);
             }
             catch
             {
@@ -317,16 +282,15 @@ namespace DiscordBot.Modules
             }
         }
 
-        private static async Task Leave(SocketVoiceChannel VoiceChannel)
+        private static async Task Leave(SocketVoiceChannel voiceChannel)
         {
-            if (VoiceChannel == null) return;
-            SocketGuild Guild = VoiceChannel.Guild;
+            SocketGuild guild = voiceChannel.Guild;
 
             try
             {
-                Clear(Guild.Id);
-                DisposeConnection(Guild.Id);
-                if (VoiceChannel == GetCurrentCortanaChannel(Guild)) await VoiceChannel.DisconnectAsync();
+                Clear(guild.Id);
+                DisposeConnection(guild.Id);
+                if (voiceChannel == GetCurrentCortanaChannel(guild)) await voiceChannel.DisconnectAsync();
             }
             catch 
             {
@@ -334,43 +298,41 @@ namespace DiscordBot.Modules
             }
         }
 
-        private static void DisposeConnection(ulong GuildID)
+        private static void DisposeConnection(ulong guildId)
         {
-            if (AudioClients.ContainsKey(GuildID))
+            if (AudioClients.ContainsKey(guildId))
             {
-                AudioClients[GuildID].AudioStream?.Dispose();
-                AudioClients[GuildID].AudioClient?.Dispose();
-                AudioClients.Remove(GuildID);
+                AudioClients[guildId].AudioStream?.Dispose();
+                AudioClients[guildId].AudioClient?.Dispose();
+                AudioClients.Remove(guildId);
             }
         }
 
-        public static string Connect(SocketVoiceChannel Channel)
+        public static string Connect(SocketVoiceChannel channel)
         {
-            if (GetCurrentCortanaChannel(Channel.Guild) == Channel) return "Sono già qui";
-            AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
+            if (GetCurrentCortanaChannel(channel.Guild) == channel) return "Sono già qui";
+            AddToJoinQueue(() => Join(channel), channel.Guild.Id);
 
             return "Arrivo";
         }
 
-        public static string Disconnect(ulong GuildID)
+        public static string Disconnect(ulong guildId)
         {
-            foreach (var Client in AudioClients)
+            foreach ((ulong clientId, ChannelClient clientChannel) in AudioClients)
             {
-                if (Client.Key == GuildID)
-                {
-                    AddToJoinQueue(() => Leave(Client.Value.VoiceChannel), GuildID);
+                if (clientId != guildId) continue;
+                AddToJoinQueue(() => Leave(clientChannel.VoiceChannel), guildId);
 
-                    return "Mi sto disconnettendo";
-                }
+                return "Mi sto disconnettendo";
             }
             return "Non sono connessa a nessun canale";
         }
 
-        public static void EnsureChannel(SocketVoiceChannel? Channel)
+        private static void EnsureChannel(SocketVoiceChannel? channel)
         {
-            if (Channel == null) return;
-            if (IsConnected(Channel, Channel.Guild)) return;
-            AddToJoinQueue(() => Join(Channel), Channel.Guild.Id);
+            if (channel == null) return;
+            if (IsConnected(channel, channel.Guild)) return;
+            AddToJoinQueue(() => Join(channel), channel.Guild.Id);
         }
 
         //-------------------------------------------------------------------------------------------
@@ -380,146 +342,117 @@ namespace DiscordBot.Modules
     public class AudioModule : InteractionModuleBase<SocketInteractionContext>
     {
         [SlashCommand("meme", "Metto un meme tra quelli disponibili")]
-        public async Task Meme([Summary("nome", "Nome del meme")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+        public async Task Meme([Summary("nome", "Nome del meme")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
         {
-            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+            await DeferAsync(ephemeral: ephemeral == EAnswer.Si);
 
-            foreach(var Meme in DiscordData.Memes)
+            foreach((string title, MemeJsonStructure memeStruct) in DiscordData.Memes)
             {
-                if (Meme.Value.Alias.Contains(name.ToLower()))
-                {
-                    string link = Meme.Value.Link;
-                    string title = Meme.Key;
+                if (!memeStruct.Alias.Contains(name.ToLower())) continue;
+                string link = memeStruct.Link;
 
-                    var result = await AudioHandler.GetYoutubeVideoInfos(link);
-                    TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
-                    Embed embed = DiscordData.CreateEmbed(title, description: $"{duration:hh\\:mm\\:ss}");
-                    embed = embed.ToEmbedBuilder()
-                        .WithUrl(result.Url)
-                        .WithThumbnailUrl(result.Thumbnails.Last().Url)
-                        .Build();
+                Video result = await AudioHandler.GetYoutubeVideoInfos(link);
+                TimeSpan duration = result.Duration ?? TimeSpan.Zero;
+                Embed embed = DiscordData.CreateEmbed(title, description: $@"{duration:hh\:mm\:ss}");
+                embed = embed.ToEmbedBuilder()
+                    .WithUrl(result.Url)
+                    .WithThumbnailUrl(result.Thumbnails[^1].Url)
+                    .Build();
 
-                    await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+                await FollowupAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 
-                    bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
-                    if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
-                    return;
-                }
+                bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
+                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
+                return;
             }
-            await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: Ephemeral == EAnswer.Si);
+            await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("metti", "Metti qualcosa da youtube", runMode: RunMode.Async)]
-        public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
-            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+            await DeferAsync(ephemeral: ephemeral == EAnswer.Si);
 
-            var result = await AudioHandler.GetYoutubeVideoInfos(text);
-            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+            Video result = await AudioHandler.GetYoutubeVideoInfos(text);
+            TimeSpan duration = result.Duration ?? TimeSpan.Zero;
             Embed embed = DiscordData.CreateEmbed(result.Title, description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
                 .WithUrl(result.Url)
-                .WithThumbnailUrl(result.Thumbnails.Last().Url)
+                .WithThumbnailUrl(result.Thumbnails[^1].Url)
                 .Build();
 
-            await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+            await FollowupAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 
             bool status = await AudioHandler.Play(result.Url, Context.Guild.Id, EAudioSource.Youtube);
             if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il video");
         }
 
         [SlashCommand("skippa", "Skippa quello che sto dicendo")]
-        public async Task Skip([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task Skip([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
             string result = AudioHandler.Skip(Context.Guild.Id);
-            await RespondAsync(result, ephemeral: Ephemeral == EAnswer.Si);
+            await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("ferma", "Rimuovi tutto quello che c'è in coda")]
-        public async Task Clear([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task Clear([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
             string result = AudioHandler.Clear(Context.Guild.Id);
-            await RespondAsync(result, ephemeral: Ephemeral == EAnswer.Si);
+            await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("connetti", "Entro nel canale dove sono stata chiamata")]
-        public async Task Join([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task Join([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
-            var Text = "Non posso connettermi se non sei in un canale";
-            foreach(var voiceChannel in Context.Guild.VoiceChannels)
+            var text = "Non posso connettermi se non sei in un canale";
+            foreach(SocketVoiceChannel? voiceChannel in Context.Guild.VoiceChannels)
             {
-                if (voiceChannel.ConnectedUsers.Contains(Context.User))
-                {
-                    Text = AudioHandler.Connect(voiceChannel);
-                    break;
-                }
+                if (!voiceChannel.ConnectedUsers.Contains(Context.User)) continue;
+                text = AudioHandler.Connect(voiceChannel);
+                break;
             }
-            await RespondAsync(Text, ephemeral: Ephemeral == EAnswer.Si);
+            await RespondAsync(text, ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("disconnetti", "Esco dal canale vocale")]
-        public async Task Disconnect([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task Disconnect([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
-            var Text = AudioHandler.Disconnect(Context.Guild.Id);
-            await RespondAsync(Text, ephemeral: Ephemeral == EAnswer.Si);
+            string text = AudioHandler.Disconnect(Context.Guild.Id);
+            await RespondAsync(text, ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("elenco-meme", "Lista dei meme disponibili")]
-        public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
+        public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
         {
             Embed embed = DiscordData.CreateEmbed("Memes");
-            var temp_embed = embed.ToEmbedBuilder();
+            var tempEmbed = embed.ToEmbedBuilder();
             foreach (EMemeCategory category in Enum.GetValues(typeof(EMemeCategory)))
             {
-                string categoryString = "";
-                foreach(var meme in DiscordData.Memes)
-                {
-                    if (meme.Value.Category == category) categoryString += $"[{meme.Key}]({meme.Value.Link})\n";
-                }
+                string categoryString = DiscordData.Memes.Where(meme => meme.Value.Category == category).Aggregate("", (current, meme) => current + $"[{meme.Key}]({meme.Value.Link})\n");
                 if (categoryString.Length == 0) continue;
-                temp_embed.AddField(category.ToString(), categoryString);
+                tempEmbed.AddField(category.ToString(), categoryString);
             }
-            await RespondAsync(embed: temp_embed.Build(), ephemeral: Ephemeral == EAnswer.Si);
+            await RespondAsync(embed: tempEmbed.Build(), ephemeral: ephemeral == EAnswer.Si);
         }
 
         [SlashCommand("scarica-musica", "Scarica una canzone da youtube", runMode: RunMode.Async)]
-        public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.No)
+        public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
         {
-            await DeferAsync(ephemeral: Ephemeral == EAnswer.Si);
+            await DeferAsync(ephemeral: ephemeral == EAnswer.Si);
 
-            var result = await AudioHandler.GetYoutubeVideoInfos(text);
-            TimeSpan duration = result.Duration != null ? result.Duration.Value : TimeSpan.Zero;
+            Video result = await AudioHandler.GetYoutubeVideoInfos(text);
+            TimeSpan duration = result.Duration ?? TimeSpan.Zero;
             Embed embed = DiscordData.CreateEmbed(result.Title, description: $"{duration:hh\\:mm\\:ss}");
             embed = embed.ToEmbedBuilder()
             .WithDescription("Musica in download...")
             .WithUrl(result.Url)
-            .WithThumbnailUrl(result.Thumbnails.Last().Url)
+            .WithThumbnailUrl(result.Thumbnails[^1].Url)
             .Build();
 
-            await FollowupAsync(embed: embed, ephemeral: Ephemeral == EAnswer.Si);
+            await FollowupAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 
-            var Stream = await AudioHandler.GetYoutubeAudioStream(result.Url);
-            await Context.Channel.SendFileAsync(Stream, result.Title + ".mp3");
-        }
-
-        [SlashCommand("metti-file", "Metti un file mp3 in locale", runMode: RunMode.Async)]
-        [RequireOwner]
-        public async Task PlayLocal([Summary("nome", "Nome del file")] EPrivateSounds sound, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer Ephemeral = EAnswer.Si)
-        {
-            string name = sound switch
-            {
-                EPrivateSounds.Sorry => "Sorry",
-                EPrivateSounds.Shutdown => "Shutdown",
-                EPrivateSounds.Hello => "Hello",
-                EPrivateSounds.Cortana1 => "Cortana_0",
-                EPrivateSounds.Cortana2 => "Cortana_1",
-                EPrivateSounds.Cortana3 => "Cortana_2",
-                _ => "Hello"
-            };
-            await RespondAsync(embed: DiscordData.CreateEmbed("Metto " + name), ephemeral: Ephemeral == EAnswer.Si);
-
-            bool status = await AudioHandler.Play(name, Context.Guild.Id, EAudioSource.Local);
-            if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso far partire l'audio");
+            Stream stream = await AudioHandler.GetYoutubeAudioStream(result.Url);
+            await Context.Channel.SendFileAsync(stream, result.Title + ".mp3");
         }
     }
 }
