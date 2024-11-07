@@ -69,7 +69,7 @@ namespace TelegramBot.Modules
             foreach ((long userId, List<Debts> debtsList) in _debts)
             {
                 debts = debtsList.Aggregate(debts, (current, debt) => current + $"{TelegramData.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramData.IdToName(debt.Towards)}\n");
-                debts += "\n\n";
+                debts += "\n";
             }
             return debts;
         }
@@ -115,7 +115,7 @@ namespace TelegramBot.Modules
                     break;
                 case "confirm-customers":
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "List the price of every item",  replyMarkup: CreateAddItemButtons("confirm-money"));
-                    ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Amount);
+                    ChannelWaitingForText[update.CallbackQuery.Message.Chat.Id] = EPurchaseSteps.Amount; //------------------------------temp
                     break;
                 case "confirm-money":
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
