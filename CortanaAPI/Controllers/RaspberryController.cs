@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Utility;
+using Processor;
 
 namespace CortanaAPI.Controllers
 {
@@ -16,31 +16,31 @@ namespace CortanaAPI.Controllers
         [HttpGet("temp")]
         public string Temperature()
         {
-            return HardwareDriver.GetCpuTemperature();
+            return Hardware.GetCpuTemperature();
         }
 
         [HttpGet("ip")]
         public string Ip()
         {
-            return HardwareDriver.GetPublicIp().Result;
+            return Hardware.GetPublicIp().Result;
         }
         
         [HttpGet("gateway")]
         public string Gateway()
         {
-            return HardwareDriver.GetDefaultGateway();
+            return Hardware.GetDefaultGateway();
         }
 
         [HttpGet("shutdown")]
         public string Shutdown()
         {
-            return HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
+            return Hardware.PowerRaspberry(EPowerOption.Shutdown);
         }
 
         [HttpGet("reboot")]
         public string Reboot()
         {
-            return HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
+            return Hardware.PowerRaspberry(EPowerOption.Reboot);
         }
     }
 }

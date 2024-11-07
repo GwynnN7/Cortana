@@ -3,7 +3,7 @@ using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Modules;
-using Utility;
+using Processor;
 
 namespace TelegramBot
 {
@@ -13,7 +13,7 @@ namespace TelegramBot
 
         private static void Main()
         {
-            var cortana = new TelegramBotClient(Functions.GetConfigurationSecrets()["telegram-token"]!);
+            var cortana = new TelegramBotClient(Software.GetConfigurationSecrets()["telegram-token"]!);
             cortana.StartReceiving(UpdateHandler, ErrorHandler);
             
             TelegramData.Init(cortana);
@@ -96,7 +96,7 @@ namespace TelegramBot
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-            Utility.Functions.Log("Telegram", errorMessage);
+            Processor.Software.Log("Telegram", errorMessage);
             return Task.CompletedTask;
         }
     }

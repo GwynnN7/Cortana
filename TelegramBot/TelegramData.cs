@@ -23,7 +23,7 @@ namespace TelegramBot
 
         private static void LoadData()
         {
-            _data = Utility.Functions.LoadFile<Data>("Config/Telegram/TelegramData.json") ?? new Data();
+            _data = Processor.Software.LoadFile<Data>("Storage/Config/Telegram/TelegramData.json") ?? new Data();
         }
 
         public static void SendToUser(long userId, string message, bool notify = true)

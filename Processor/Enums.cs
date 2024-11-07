@@ -1,4 +1,4 @@
-﻿namespace Utility;
+﻿namespace Processor;
 
 public enum ESubFunctions
 {

@@ -2,7 +2,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Utility;
+using Processor;
 
 namespace TelegramBot.Modules
 {
@@ -25,15 +25,15 @@ namespace TelegramBot.Modules
             switch (messageStats.Command)
             {
                 case "ip":
-                    string ip = await HardwareDriver.GetPublicIp();
+                    string ip = await Hardware.GetPublicIp();
                     await cortana.SendMessage(messageStats.ChatID, $"IP: {ip}");
                     break;
                 case "gateway":
-                    string gateway = HardwareDriver.GetDefaultGateway();
+                    string gateway = Hardware.GetDefaultGateway();
                     await cortana.SendMessage(messageStats.ChatID, $"Gateway: {gateway}");
                     break;
                 case "temperature":
-                    string temp = HardwareDriver.GetCpuTemperature();
+                    string temp = Hardware.GetCpuTemperature();
                     await cortana.SendMessage(messageStats.ChatID, $"Temperature: {temp}");
                     break;
                 case "hardware":
@@ -51,7 +51,7 @@ namespace TelegramBot.Modules
                 case "reboot":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
-                        string res = HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
+                        string res = Hardware.PowerRaspberry(EPowerOption.Reboot);
                         await cortana.SendMessage(messageStats.ChatID, res);
                     }
                     else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
@@ -59,7 +59,7 @@ namespace TelegramBot.Modules
                 case "shutdown":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
-                        string res = HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
+                        string res = Hardware.PowerRaspberry(EPowerOption.Shutdown);
                         await cortana.SendMessage(messageStats.ChatID, res);
                     }
                     else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
@@ -67,7 +67,7 @@ namespace TelegramBot.Modules
                 case "notify":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
-                        string res = HardwareDriver.NotifyPc(messageStats.Text);
+                        string res = Hardware.NotifyPc(messageStats.Text);
                         if (res == "0") await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
                         else await cortana.SendMessage(messageStats.ChatID, res);
                     }
@@ -82,27 +82,27 @@ namespace TelegramBot.Modules
             switch (messageStats.FullMessage)
             {
                 case HardwareEmoji.Bulb:
-                    HardwareDriver.SwitchLamp(EHardwareTrigger.Toggle);
+                    Hardware.SwitchLamp(EHardwareTrigger.Toggle);
                     break;
                 case HardwareEmoji.Pc:
-                    HardwareDriver.SwitchComputer(EHardwareTrigger.Toggle);
+                    Hardware.SwitchComputer(EHardwareTrigger.Toggle);
                     break;
                 case HardwareEmoji.Thunder:
-                    HardwareDriver.SwitchGeneral(EHardwareTrigger.Toggle);
+                    Hardware.SwitchGeneral(EHardwareTrigger.Toggle);
                     break;
                 case HardwareEmoji.On:
-                    HardwareDriver.SwitchRoom(EHardwareTrigger.On);
+                    Hardware.SwitchRoom(EHardwareTrigger.On);
                     break;
                 case HardwareEmoji.Off:
-                    HardwareDriver.SwitchRoom(EHardwareTrigger.Off);
+                    Hardware.SwitchRoom(EHardwareTrigger.Off);
                     break;
                 case HardwareEmoji.Reboot:
-                    HardwareDriver.RebootPc();
+                    Hardware.RebootPc();
                     break;
                 default:
                     if (messageStats.UserID != TelegramData.NameToId("@gwynn7")) return;
                     
-                    string result = HardwareDriver.SSH_PC(messageStats.FullMessage, returnResult:true);
+                    string result = Hardware.SSH_PC(messageStats.FullMessage, returnResult:true);
                     await cortana.SendMessage(messageStats.ChatID, result);
                     
                     return;
@@ -134,7 +134,7 @@ namespace TelegramBot.Modules
             }
             else
             {
-                if (data != "back") HardwareDriver.SwitchFromString(HardwareAction[messageId], data);
+                if (data != "back") Hardware.SwitchFromString(HardwareAction[messageId], data);
                 HardwareAction.Remove(messageId);
                 action = CreateHardwareButtons();
             }

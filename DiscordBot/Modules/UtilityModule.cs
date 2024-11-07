@@ -4,7 +4,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using IGDB;
 using Microsoft.Extensions.Configuration;
-using Utility;
+using Processor;
 using Game = IGDB.Models.Game;
 
 namespace DiscordBot.Modules
@@ -55,7 +55,7 @@ namespace DiscordBot.Modules
             [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
             public async Task Ping([Summary("ip", "IP da pingare")] string ip)
             {
-                bool result = ip == "pc" ? HardwareDriver.PingPc() : HardwareDriver.Ping(ip);
+                bool result = ip == "pc" ? Hardware.PingPc() : Hardware.Ping(ip);
 
                 if (result) await RespondAsync($"L'IP {ip} ha risposto al ping");
                 else await RespondAsync($"L'IP {ip} non ha risposto al ping");
@@ -86,7 +86,7 @@ namespace DiscordBot.Modules
             [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
             public async Task CreateQr([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer normalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer quietZones = EAnswer.Si)
             {
-                Stream imageStream = Functions.CreateQrCode(content, normalColor == EAnswer.Si, quietZones == EAnswer.Si);
+                Stream imageStream = Software.CreateQrCode(content, normalColor == EAnswer.Si, quietZones == EAnswer.Si);
 
                 await RespondWithFileAsync(fileStream: imageStream, fileName: "QRCode.png", ephemeral: ephemeral == EAnswer.Si);
             }
@@ -187,7 +187,7 @@ namespace DiscordBot.Modules
 
             private static async Task<Embed?> GetGameEmbedAsync(string game, int count)
             {
-                IConfigurationRoot secrets = Functions.GetConfigurationSecrets();
+                IConfigurationRoot secrets = Software.GetConfigurationSecrets();
                 var igdb = new IGDBClient(secrets["igdb-id"], secrets["igdb-secret"]);
                 const string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
                 var query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";

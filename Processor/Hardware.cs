@@ -6,9 +6,9 @@ using System.Globalization;
 using System.Net.NetworkInformation;
 using System.Text.Json.Serialization;
 
-namespace Utility
+namespace Processor
 {
-    public static class HardwareDriver
+    public static class Hardware
     {
         private static readonly Dictionary<EHardwareElements, EBooleanState> HardwareStates;
         private static readonly NetworkStats NetStats;
@@ -21,7 +21,7 @@ namespace Utility
         private static int LampPin => NetStats.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
         private static int GeneralPin => RelayPin1;
 
-        static HardwareDriver()
+        static Hardware()
         {
             NetStats = GetLocationNetworkData();
             HardwareStates = new Dictionary<EHardwareElements, EBooleanState>();
@@ -36,8 +36,8 @@ namespace Utility
         
         private static NetworkStats GetLocationNetworkData()
         {
-            NetworkStats orvietoNet = Functions.LoadFile<NetworkStats>("Config/Network/NetworkDataOrvieto.json") ?? new NetworkStats();
-            NetworkStats pisaNet = Functions.LoadFile<NetworkStats>("Config/Network/NetworkDataPisa.json") ?? new NetworkStats();
+            NetworkStats orvietoNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataOrvieto.json") ?? new NetworkStats();
+            NetworkStats pisaNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataPisa.json") ?? new NetworkStats();
             return GetDefaultGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         }
 
@@ -235,7 +235,7 @@ namespace Utility
         public static string SSH_PC(string command, bool asRoot = true, bool returnResult = false)
         {
             string usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
-            string pass = Functions.GetConfigurationSecrets()["desktop-password"]!;
+            string pass = Software.GetConfigurationSecrets()["desktop-password"]!;
             string addr = NetStats.Desktop_IP;
 
             string result;
@@ -248,7 +248,7 @@ namespace Utility
                 if (r.ExitStatus == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Command executed";
                 else result = (returnResult && r.Error.Length != 0) ? r.Error : "Command not executed";
                 var log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
-                Functions.Log("SSH", log);
+                Software.Log("SSH", log);
                 client.Disconnect();
             }
             catch

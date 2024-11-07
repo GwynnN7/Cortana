@@ -1,6 +1,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Utility;
+using Processor;
 
 namespace TelegramBot.Modules;
 
@@ -21,7 +21,7 @@ public static class UtilityModule
         switch (messageStats.Command)
         {
             case "location":
-                await cortana.SendMessage(messageStats.ChatID, HardwareDriver.GetLocation());
+                await cortana.SendMessage(messageStats.ChatID, Hardware.GetLocation());
                 break;
             case "qrcode":
                 AnswerCommands.Remove(messageStats.ChatID);
@@ -68,7 +68,7 @@ public static class UtilityModule
         switch (AnswerCommands[messageStats.ChatID].Command)
         {
             case EAnswerCommands.Qrcode:
-                Stream imageStream = Functions.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
+                Stream imageStream = Software.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
                 await cortana.SendPhoto(messageStats.ChatID, new InputFileStream(imageStream, "QRCODE.png"));
                 AnswerCommands.Remove(messageStats.ChatID);

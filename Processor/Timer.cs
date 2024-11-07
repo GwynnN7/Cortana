@@ -1,10 +1,10 @@
 ﻿using System.Timers;
 
-namespace Utility
+namespace Processor
 {
-    public abstract class TimerHandler : System.Timers.Timer
+    public abstract class Timer : System.Timers.Timer
     {
-        private static readonly Dictionary<ETimerLocation, List<TimerHandler>> TotalTimers = new();
+        private static readonly Dictionary<ETimerLocation, List<Timer>> TotalTimers = new();
 
         private readonly string _name;
         public string? Text { get; set; }
@@ -15,7 +15,7 @@ namespace Utility
         protected ETimerLocation TimerLocation;
 
 
-        protected TimerHandler(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
+        protected Timer(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
             _name = name;
             Text = text;
@@ -33,7 +33,7 @@ namespace Utility
             AddTimer(timerLocation, this);
         }
 
-        protected TimerHandler(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
+        protected Timer(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop, bool autoStart)
         {
             _name = name;
             Text = text;
@@ -80,7 +80,7 @@ namespace Utility
             Dispose();
         }
 
-        private static void AddTimer(ETimerLocation timerLocation, TimerHandler timer)
+        private static void AddTimer(ETimerLocation timerLocation, Timer timer)
         {
             if(!TotalTimers.TryAdd(timerLocation, [timer]))
             {
@@ -88,9 +88,9 @@ namespace Utility
             }
         }
 
-        private static void RemoveTimer(TimerHandler timer)
+        private static void RemoveTimer(Timer timer)
         {
-            foreach((ETimerLocation timerLocation, List<TimerHandler>? timerList) in TotalTimers)
+            foreach((ETimerLocation timerLocation, List<Timer>? timerList) in TotalTimers)
             {
                 if (!timerList.Contains(timer)) continue;
                 TotalTimers[timerLocation].Remove(timer);
@@ -101,18 +101,18 @@ namespace Utility
 
         public static void RemoveTimers(ETimerLocation location)
         {
-            foreach ((ETimerLocation timerLocation, List<TimerHandler>? timerHandlers) in TotalTimers)
+            foreach ((ETimerLocation timerLocation, List<Timer>? timerHandlers) in TotalTimers)
             {
                 if(timerLocation != location) continue;
-                foreach (TimerHandler listTimer in timerHandlers) RemoveTimer(listTimer);
+                foreach (Timer listTimer in timerHandlers) RemoveTimer(listTimer);
             }
         }
 
         public static void RemoveTimerByName(string name)
         {
-            foreach ((_, List<TimerHandler>? timerHandlers) in TotalTimers)
+            foreach ((_, List<Timer>? timerHandlers) in TotalTimers)
             {
-                foreach (TimerHandler listTimer in timerHandlers.Where(listTimer => listTimer._name == name))
+                foreach (Timer listTimer in timerHandlers.Where(listTimer => listTimer._name == name))
                 {
                     RemoveTimer(listTimer);
                     return;
@@ -121,7 +121,7 @@ namespace Utility
         }
     }
 
-    public class DiscordUserTimer : TimerHandler
+    public class DiscordUserTimer : Timer
     {
         public object Guild { get; set; }
         public object User { get; }
@@ -142,7 +142,7 @@ namespace Utility
         }
     }
 
-    public class UtilityTimer : TimerHandler
+    public class UtilityTimer : Timer
     {
         public UtilityTimer(string name, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, targetTime, callback, timerLocation, loop, autoStart) { }
         public UtilityTimer(string name, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLocation timerLocation, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, hours, minutes, seconds, callback, timerLocation, loop, autoStart) { }

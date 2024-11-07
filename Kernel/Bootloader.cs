@@ -1,12 +1,12 @@
-﻿using Utility;
+﻿using Processor;
 
-namespace Cortana
+namespace Kernel
 {
     using DiscordBot;
     using TelegramBot;
     using CortanaAPI;
 
-    public class CortanaCore
+    public class Bootloader
     {
         private readonly Dictionary<ESubFunctions, Task> _subFunctionTasks = new();
 

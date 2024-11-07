@@ -15,14 +15,14 @@ namespace CortanaAPI.Controllers
         [HttpGet("notify")]
         public string Notify()
         {
-            string res = Utility.HardwareDriver.NotifyPc("I am online");
+            string res = Processor.Hardware.NotifyPc("I am online");
             return res == "0" ? "Notification sent" : res;
         }
         
         [HttpGet("location")]
         public string Location()
         {
-            return Utility.HardwareDriver.GetLocation();
+            return Processor.Hardware.GetLocation();
         }
     }
 }

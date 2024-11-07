@@ -6,7 +6,7 @@ using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Videos.Streams;
 using Discord;
-using Utility;
+using Processor;
 using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
 
@@ -99,7 +99,7 @@ namespace DiscordBot.Modules
                     break;
                 }
                 case EAudioSource.Local:
-                    audio = $"Sound/{audio}.mp3";
+                    audio = $"Storage/Sound/{audio}.mp3";
                     memoryStream = await ExecuteFfmpeg(filePath: audio);
                     break;
             }

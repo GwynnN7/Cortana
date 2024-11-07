@@ -1,8 +1,8 @@
-using Utility;
+using Processor;
 
-namespace Cortana
+namespace Kernel
 {
-    public static class Cortana
+    public static class Kernel
     {
         private static void Main() => BootCortana().GetAwaiter().GetResult();
 
@@ -12,10 +12,10 @@ namespace Cortana
 
             Console.WriteLine("Booting up...");
 
-            var handler = new CortanaCore();
+            var handler = new Bootloader();
             Console.WriteLine("Sub-functions Handler is ready");
             
-            Console.WriteLine($"Loading data for {HardwareDriver.GetLocation()}");
+            Console.WriteLine($"Loading data for {Hardware.GetLocation()}");
             await Task.Delay(500);
 
             int threadId = handler.BootSubFunction(ESubFunctions.CortanaApi);

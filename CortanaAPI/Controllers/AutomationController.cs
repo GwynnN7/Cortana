@@ -15,13 +15,13 @@ namespace CortanaAPI.Controllers
         [HttpGet("{device}")]
         public string PowerDevice([FromRoute] string device)
         {
-            return Utility.HardwareDriver.SwitchFromString(device, "toggle");
+            return Processor.Hardware.SwitchFromString(device, "toggle");
         }
 
         [HttpGet("{device}/{state}")]
         public string PowerDevice([FromRoute] string device, [FromRoute] string state)
         {
-            return Utility.HardwareDriver.SwitchFromString(device, state);
+            return Processor.Hardware.SwitchFromString(device, state);
         }
     }
 }

@@ -2,7 +2,7 @@
 using Discord.WebSocket;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Utility;
+using Processor;
 
 namespace DiscordBot
 {
@@ -18,7 +18,7 @@ namespace DiscordBot
         
         public static void InitSettings(DiscordSocketClient client, IReadOnlyCollection<SocketGuild> guilds)
         {
-            DiscordSettings discordSettings = Functions.LoadFile<DiscordSettings>("Config/Discord/DiscordData.json") ?? new DiscordSettings();
+            DiscordSettings discordSettings = Software.LoadFile<DiscordSettings>("Storage/Config/Discord/DiscordData.json") ?? new DiscordSettings();
 
             DiscordIDs = discordSettings.IDs;
             _cortana = client;
@@ -47,7 +47,7 @@ namespace DiscordBot
 
         public static void LoadMemes()
         {
-            var memesDataResult = Functions.LoadFile<Dictionary<string, MemeJsonStructure>>("Config/Discord/Memes.json");
+            var memesDataResult = Software.LoadFile<Dictionary<string, MemeJsonStructure>>("Storage/Config/Discord/Memes.json");
             memesDataResult?.ToList().ForEach(x => Memes.Add(x.Key, x.Value));
         }
 
@@ -72,7 +72,7 @@ namespace DiscordBot
 
             _loadedSettings.GuildSettings = GuildSettings;
 
-            Functions.WriteFile("Config/Discord/DiscordData.json", _loadedSettings, jsonWriteOptions);
+            Software.WriteFile("Storage/Config/Discord/DiscordData.json", _loadedSettings, jsonWriteOptions);
         }
 
         public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true, bool withoutAuthor = false)

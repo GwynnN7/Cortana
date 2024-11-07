@@ -23,12 +23,12 @@ namespace TelegramBot.Modules
         
         public static void LoadDebts()
         {
-            _debts = Utility.Functions.LoadFile<Dictionary<long, List<Debts>>>("Config/Telegram/Debts.json") ?? _debts;
+            _debts = Processor.Software.LoadFile<Dictionary<long, List<Debts>>>("Storage/Config/Telegram/Debts.json") ?? _debts;
         }
         
         private static void UpdateDebts()
         {
-            Utility.Functions.WriteFile("Config/Telegram/Debts.json", _debts);
+            Processor.Software.WriteFile("Storage/Config/Telegram/Debts.json", _debts);
         }
         
          public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)

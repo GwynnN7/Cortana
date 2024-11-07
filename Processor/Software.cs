@@ -4,9 +4,9 @@ using QRCoder;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
 
-namespace Utility
+namespace Processor
 {
-    public static class Functions
+    public static class Software
     {
         public static T? LoadFile<T>(string path)
         {
@@ -51,7 +51,7 @@ namespace Utility
         {
             return new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("Config/Secrets.json")
+                .AddJsonFile("Storage/Config/Secrets.json")
                 .Build();
         }
     }
