@@ -1,6 +1,7 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using UnitsNet;
 
 namespace TelegramBot.Modules
 {
@@ -80,6 +81,9 @@ namespace TelegramBot.Modules
             
             string data = update.CallbackQuery.Data!;
             int messageId = update.CallbackQuery.Message!.MessageId;
+            
+            if(!data.StartsWith("shopping-")) return;
+            data = data["shopping-".Length..];
 
             await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
 
@@ -92,7 +96,7 @@ namespace TelegramBot.Modules
                         TotalAmount = 0
                     };
                     _currentPurchase.History.Push(subPurchase);
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("confirm-customers"));
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
                     ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Buyers);
                     break;
                 
@@ -114,7 +118,7 @@ namespace TelegramBot.Modules
                     _currentPurchase = null;
                     break;
                 case "confirm-customers":
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "List the price of every item",  replyMarkup: CreateAddItemButtons("confirm-money"));
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "List the price of every item",  replyMarkup: CreateAddItemButtons("shopping-confirm-money"));
                     ChannelWaitingForText[update.CallbackQuery.Message.Chat.Id] = EPurchaseSteps.Amount; //------------------------------temp
                     break;
                 case "confirm-money":
@@ -131,7 +135,7 @@ namespace TelegramBot.Modules
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "Options", replyMarkup: CreateOrderButtons());
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, _currentPurchase.MessageId, UpdateCurrentPurchaseMessage());
                     break;
-                case "return":
+                case "back":
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "Options", replyMarkup: CreateOrderButtons());
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, _currentPurchase.MessageId, UpdateCurrentPurchaseMessage());
                     break;
@@ -247,14 +251,14 @@ namespace TelegramBot.Modules
             var rows = new InlineKeyboardButton[3][];
 
             rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Add", "add");
+            rows[0][0] = InlineKeyboardButton.WithCallbackData("Add", "shopping-add");
             
             rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Pay", "pay");
+            rows[1][0] = InlineKeyboardButton.WithCallbackData("Pay", "shopping-pay");
             
             rows[2] = new InlineKeyboardButton[2];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("Undo", "undo");
-            rows[2][1] = InlineKeyboardButton.WithCallbackData("Cancel", "cancel");
+            rows[2][0] = InlineKeyboardButton.WithCallbackData("Undo", "shopping-undo");
+            rows[2][1] = InlineKeyboardButton.WithCallbackData("Cancel", "shopping-cancel");
 
             return new InlineKeyboardMarkup(rows);
         }
@@ -267,7 +271,7 @@ namespace TelegramBot.Modules
             rows[0][0] = InlineKeyboardButton.WithCallbackData("Confirm", confirmType);
             
             rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("<<", "return");
+            rows[1][0] = InlineKeyboardButton.WithCallbackData("<<", "shopping-back");
 
             return new InlineKeyboardMarkup(rows);
         }

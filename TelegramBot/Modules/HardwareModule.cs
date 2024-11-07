@@ -113,15 +113,19 @@ namespace TelegramBot.Modules
         public static async void ButtonCallback(ITelegramBotClient cortana, Update update)
         {
             if(update.CallbackQuery == null) return;
+
+            string data = update.CallbackQuery.Data!;
+            int messageId = update.CallbackQuery.Message!.MessageId;
+            
+            if(!data.StartsWith("hardware-")) return;
+            data = data["hardware-".Length..];
             
             if (!TelegramData.CheckPermission(update.CallbackQuery!.From.Id))
             {
                 await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
                 return;
             }
-
-            string data = update.CallbackQuery.Data!;
-            int messageId = update.CallbackQuery.Message!.MessageId;
+            
             InlineKeyboardMarkup action;
 
             if (HardwareAction.TryAdd(messageId, data))
@@ -144,13 +148,13 @@ namespace TelegramBot.Modules
             var rows = new InlineKeyboardButton[Enum.GetValues(typeof(EHardwareElements)).Length + 1][];
 
             rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "room");
+            rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "hardware-room");
 
             var index = 1;
             foreach (string element in Enum.GetNames(typeof(EHardwareElements)))
             {
                 rows[index] = new InlineKeyboardButton[1];
-                rows[index][0] = InlineKeyboardButton.WithCallbackData(element, element.ToLower());
+                rows[index][0] = InlineKeyboardButton.WithCallbackData(element, $"hardware-{element.ToLower()}");
                 index++;
             }
 
@@ -163,14 +167,14 @@ namespace TelegramBot.Modules
             var rows = new InlineKeyboardButton[3][];
 
             rows[0] = new InlineKeyboardButton[2];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("On", "on");
-            rows[0][1] = InlineKeyboardButton.WithCallbackData("Off", "off");
+            rows[0][0] = InlineKeyboardButton.WithCallbackData("On", "hardware-on");
+            rows[0][1] = InlineKeyboardButton.WithCallbackData("Off", "hardware-off");
 
             rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Toggle", "toggle");
+            rows[1][0] = InlineKeyboardButton.WithCallbackData("Toggle", "hardware-toggle");
 
             rows[2] = new InlineKeyboardButton[1];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("<<", "back");
+            rows[2][0] = InlineKeyboardButton.WithCallbackData("<<", "hardware-back");
 
             var keyboard = new InlineKeyboardMarkup(rows);
             return keyboard;
