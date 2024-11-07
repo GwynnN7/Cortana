@@ -36,8 +36,9 @@ namespace TelegramBot.Modules
             switch (messageStats.Command)
             {
                 case "purchase":
-                    if (IsChannelAllowed(messageStats.ChatID))
+                    if (!IsChannelAllowed(messageStats.ChatID))
                     {
+                        Console.WriteLine(messageStats.ChatID);
                         if (_currentPurchase != null)
                         {
                             await cortana.SendMessage(messageStats.ChatID, "Complete the current active purchase first!");
