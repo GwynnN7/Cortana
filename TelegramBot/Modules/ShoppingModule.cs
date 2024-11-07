@@ -65,10 +65,11 @@ namespace TelegramBot.Modules
 
         private static string GetDebts()
         {
-            var debts = string.Empty;
+            var debts = "Debts\n\n";
             foreach ((long userId, List<Debts> debtsList) in _debts)
             {
-                debts = debtsList.Aggregate("Debts\n\n", (current, debt) => current + $"{TelegramData.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramData.IdToName(debt.Towards)}\n");
+                debts = debtsList.Aggregate(debts, (current, debt) => current + $"{TelegramData.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramData.IdToName(debt.Towards)}\n");
+                debts += "\n\n";
             }
             return debts;
         }
@@ -243,7 +244,7 @@ namespace TelegramBot.Modules
         
         private static InlineKeyboardMarkup CreateOrderButtons()
         {
-            var rows = new InlineKeyboardButton[4][];
+            var rows = new InlineKeyboardButton[3][];
 
             rows[0] = new InlineKeyboardButton[1];
             rows[0][0] = InlineKeyboardButton.WithCallbackData("Add", "add");
