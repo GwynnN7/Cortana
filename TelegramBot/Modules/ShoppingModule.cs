@@ -164,6 +164,7 @@ namespace TelegramBot.Modules
                     {
                         subPurchase.Customers.Add(TelegramData.NameToId(user)); //ERROR CHECK
                     }
+                    await cortana.EditMessageText(messageStats.ChatID, messageStats.MessageID, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
                     break;
                 default:
                     //Error
