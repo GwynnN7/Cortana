@@ -7,7 +7,7 @@ namespace CortanaAPI.Controllers
     public class DefaultController : ControllerBase
     {
         [HttpGet]
-        public static string Get()
+        public string Get()
         {
             return  "Hi, I'm Cortana";
         }
