@@ -50,7 +50,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Routing
 
 ```http
-  GET cortana-api.ddns.net/{route}
+  GET cortana-api.ddns.net/${route}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
