@@ -36,9 +36,8 @@ namespace TelegramBot.Modules
             switch (messageStats.Command)
             {
                 case "purchase":
-                    if (!IsChannelAllowed(messageStats.ChatID))
+                    if (IsChannelAllowed(messageStats.ChatID))
                     {
-                        Console.WriteLine(messageStats.ChatID);
                         if (_currentPurchase != null)
                         {
                             await cortana.SendMessage(messageStats.ChatID, "Complete the current active purchase first!");
@@ -130,7 +129,7 @@ namespace TelegramBot.Modules
                     double amount = lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count;
                     foreach (long customer in lastSubPurchase.Customers)
                     {
-                        _currentPurchase.Purchases[customer] += amount;
+                        _currentPurchase.Purchases[customer] += Math.Round(amount, 2);
                     }
 
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "Options", replyMarkup: CreateOrderButtons());
