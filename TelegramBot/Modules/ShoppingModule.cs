@@ -93,7 +93,8 @@ namespace TelegramBot.Modules
                     var subPurchase = new SubPurchase()
                     {
                         Customers = Users,
-                        TotalAmount = 0
+                        TotalAmount = 0,
+                        InteractionMessage = messageId
                     };
                     _currentPurchase.History.Push(subPurchase);
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
@@ -164,7 +165,7 @@ namespace TelegramBot.Modules
                     {
                         subPurchase.Customers.Add(TelegramData.NameToId(user)); //ERROR CHECK
                     }
-                    await cortana.EditMessageText(messageStats.ChatID, messageStats.MessageID, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
+                    await cortana.EditMessageText(messageStats.ChatID, subPurchase.InteractionMessage, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
                     break;
                 default:
                     //Error
@@ -295,6 +296,7 @@ namespace TelegramBot.Modules
     {
         public List<long> Customers = [];
         public double TotalAmount;
+        public int InteractionMessage;
         public readonly List<int> MessagesToDelete = [];
     }
 }
