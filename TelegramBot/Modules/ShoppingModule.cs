@@ -147,7 +147,7 @@ namespace TelegramBot.Modules
             if(_currentPurchase == null) return;
             if(!IsWaiting(messageStats.ChatID)) return;
 
-            SubPurchase subPurchase = _currentPurchase.History.Pop();
+            SubPurchase subPurchase = _currentPurchase.History.Peek();
             var thumbsUpReaction = new ReactionTypeEmoji { Emoji = "👍" };
             
             switch (ChannelWaitingForText[messageStats.ChatID])
@@ -172,7 +172,6 @@ namespace TelegramBot.Modules
             }
             await cortana.SetMessageReaction(messageStats.ChatID, messageStats.MessageID, [thumbsUpReaction]);
             subPurchase.MessagesToDelete.Add(messageStats.MessageID);
-            _currentPurchase.History.Push(subPurchase);
         }
         
         private static void RemoveExistingDebts()
