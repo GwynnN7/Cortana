@@ -14,10 +14,11 @@ namespace TelegramBot
         public static void Init(TelegramBotClient newClient)
         {
             _cortana = newClient;
-            _rootPermissions = [ NameToId("@gwynn7"), NameToId("@alessiaat1") ];
             
             LoadData();
             ShoppingModule.LoadDebts();
+            
+            _rootPermissions = [ NameToId("@gwynn7"), NameToId("@alessiaat1") ];
         }
 
         private static void LoadData()
