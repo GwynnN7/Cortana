@@ -8,37 +8,37 @@ namespace CortanaAPI.Controllers
     public class RaspberryController : ControllerBase
     {
         [HttpGet]
-        public static string Get()
+        public string Get()
         {
             return "Raspberry API, get temperature, netstats and console commands";
         }
 
         [HttpGet("temp")]
-        public static string Temperature()
+        public string Temperature()
         {
             return HardwareDriver.GetCpuTemperature();
         }
 
         [HttpGet("ip")]
-        public static string Ip()
+        public string Ip()
         {
             return HardwareDriver.GetPublicIp().Result;
         }
         
         [HttpGet("gateway")]
-        public static string Gateway()
+        public string Gateway()
         {
             return HardwareDriver.GetDefaultGateway();
         }
 
         [HttpGet("shutdown")]
-        public static string Shutdown()
+        public string Shutdown()
         {
             return HardwareDriver.PowerRaspberry(EPowerOption.Shutdown);
         }
 
         [HttpGet("reboot")]
-        public static string Reboot()
+        public string Reboot()
         {
             return HardwareDriver.PowerRaspberry(EPowerOption.Reboot);
         }

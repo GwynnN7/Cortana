@@ -235,7 +235,7 @@ namespace Utility
         public static string SSH_PC(string command, bool asRoot = true, bool returnResult = false)
         {
             string usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
-            string pass = NetStats.DesktopPassword;
+            string pass = Functions.GetConfigurationSecrets()["desktop-password"]!;
             string addr = NetStats.Desktop_IP;
 
             string result;
@@ -356,6 +356,5 @@ namespace Utility
         public string CortanaUsername { get; set; }
         public string DesktopUsername { get; set; }
         public string DesktopRoot { get; set; }
-        public string DesktopPassword { get; set; }
     }
 }

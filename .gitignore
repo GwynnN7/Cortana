@@ -4,4 +4,4 @@ obj
 /.vscode
 .idea/
 desktop.ini
-Secrets.json
+Config/*
