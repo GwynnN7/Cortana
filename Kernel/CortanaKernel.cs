@@ -2,7 +2,7 @@ using Processor;
 
 namespace Kernel
 {
-    public static class Kernel
+    public static class CortanaKernel
     {
         private static void Main() => BootCortana().GetAwaiter().GetResult();
 

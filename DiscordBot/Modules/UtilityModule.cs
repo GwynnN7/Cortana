@@ -344,12 +344,12 @@ namespace DiscordBot.Modules
             }
 
             [SlashCommand("modify-banned-words", "Aggiungo o rimuovo parole bannate da questo server")]
-            public async Task ShowBannedWords([Summary("action", "Cosa vuoi fare?")] EAction action, [Summary("word", "Parola bannata")] string word)
+            public async Task ShowBannedWords([Summary("action", "Cosa vuoi fare?")] EListAction action, [Summary("word", "Parola bannata")] string word)
             {
                 word = word.ToLower();
                 switch(action)
                 {
-                    case EAction.Crea:
+                    case EListAction.Crea:
                         if(DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
                         {
                             await RespondAsync("Questa parola è già presente tra quelle bannate in questo server");
@@ -358,7 +358,7 @@ namespace DiscordBot.Modules
                         DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Add(word);
                         await RespondAsync("Parola aggiunta con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");                   
                         break;
-                    case EAction.Elimina:
+                    case EListAction.Elimina:
                         if(!DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
                         {
                             await RespondAsync("Questa parola non è presente tra quelle bannate in questo server");

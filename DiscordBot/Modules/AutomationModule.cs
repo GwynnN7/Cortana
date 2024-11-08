@@ -12,13 +12,13 @@ namespace DiscordBot.Modules
         [SlashCommand("lamp", "Accendi o spegni la luce")]
         public async Task LightToggle()
         {
-            string result = Hardware.SwitchLamp(EHardwareTrigger.Toggle);
+            string result = Hardware.SwitchLamp(ETrigger.Toggle);
             Embed embed = DiscordData.CreateEmbed(title: result);
             await RespondAsync(embed: embed, ephemeral: true);
         }
 
         [SlashCommand("hardware", "Interagisci con l'hardware in camera", runMode: RunMode.Async)]
-        public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EHardwareElements element, [Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
+        public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EGpio element, [Summary("azione", "Cosa vuoi fare?")] ETrigger trigger)
         {
             await DeferAsync(ephemeral: true);
 
@@ -29,7 +29,7 @@ namespace DiscordBot.Modules
         }
 
         [SlashCommand("room", "Accendi o spegni tutti i dispositivi", runMode: RunMode.Async)]
-        public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] EHardwareTrigger trigger)
+        public async Task BootUp([Summary("azione", "Cosa vuoi fare?")] ETrigger trigger)
         {
             Embed embed = DiscordData.CreateEmbed(title: "Procedo");
             await RespondAsync(embed: embed, ephemeral: true);

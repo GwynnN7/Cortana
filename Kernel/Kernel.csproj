@@ -4,7 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <StartupObject>Kernel.Kernel</StartupObject>
+    <StartupObject>Kernel.CortanaKernel</StartupObject>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
 
@@ -13,10 +13,6 @@
     <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj" />
     <ProjectReference Include="..\TelegramBot\TelegramBot.csproj" />
     <ProjectReference Include="..\Processor\Processor.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Storage\" />
   </ItemGroup>
 
 </Project>

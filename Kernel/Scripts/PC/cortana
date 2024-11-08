@@ -3,6 +3,10 @@
 if [ "$1" = "log" ]; then
     blue='\033[0;34m';
     echo -e "${blue}$(cortana) ➤  $(cortana raspberry temp)";
+elif [ "$1" = "copy" ]; then
+    mv ~/Programming/Cortana/Kernel/Storage ~/.config/cortana/
+    scp -r ~/Programming/Cortana cortana@192.168.178.117:~/
+    mv ~/.config/cortana/Storage ~/Programming/Cortana/Kernel/
 else
     api="http://cortana-api.ddns.net:8080";
     url=$(echo "$@" | sed 's! !\/!g')

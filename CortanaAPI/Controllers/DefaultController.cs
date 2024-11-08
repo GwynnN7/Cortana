@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Processor;
 
 namespace CortanaAPI.Controllers
 {
@@ -15,14 +16,14 @@ namespace CortanaAPI.Controllers
         [HttpGet("notify")]
         public string Notify()
         {
-            string res = Processor.Hardware.NotifyPc("I am online");
+            string res = Hardware.CommandPc(EComputerCommand.Notify, "I am online");
             return res == "0" ? "Notification sent" : res;
         }
         
         [HttpGet("location")]
         public string Location()
         {
-            return Processor.Hardware.GetLocation();
+            return Hardware.GetLocation();
         }
     }
 }

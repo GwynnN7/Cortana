@@ -96,9 +96,9 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 ```bash
 curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel STS
 
-echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.bashrc
-echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.bashrc
-source ~/.bashrc
+echo 'export DOTNET_ROOT=$HOME/.dotnet' >> ~/.zshrc
+echo 'export PATH=$PATH:$HOME/.dotnet' >> ~/.zshrc
+source ~/.zshrc
 
 dotnet --version
 ```
@@ -107,7 +107,7 @@ dotnet --version
 ```bash
 echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.bashrc
 
-sudo apt-get install ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
+sudo apt-get install zsh ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
 ```
 ---
 
@@ -129,9 +129,7 @@ dotnet run
 
 ```bash
 git clone https://github.com/GwynbleiddN7/Cortana.git
-mv Cortana/Kernel/Scripts/cortana-run ./
-
-chmod +x cortana-run
+cd cortana-run
 ./cortana-run 
 
 (run 'cortana-run --help' for more commands)

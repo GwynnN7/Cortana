@@ -1,5 +1,6 @@
 ﻿namespace Processor;
 
+// KERNEL RELATED
 public enum ESubFunctions
 {
     CortanaApi,
@@ -7,6 +8,46 @@ public enum ESubFunctions
     TelegramBot,
 }
 
+
+// HARDWARE RELATED
+public enum EGpio
+{
+    Computer,
+    Lamp,
+    Outlets,
+    General
+}
+public enum EStatus
+{
+    On,
+    Off
+}
+public enum ETrigger
+{
+    On,
+    Off,
+    Toggle
+}
+public enum EPowerOption
+{
+    Shutdown,
+    Reboot
+}
+public enum EComputerCommand
+{
+    PowerOn,
+    Shutdown,
+    Reboot,
+    Notify
+}
+public enum ELocation
+{
+    Orvieto,
+    Pisa
+}
+
+
+// TIMER RELATED
 public enum ETimerLocation
 {
     Global,
@@ -15,64 +56,6 @@ public enum ETimerLocation
     TelegramBot,
     Utility
 }
-
-public enum EHardwareElements
-{
-    Computer,
-    Lamp,
-    Outlets,
-    General
-}
-
-public enum EBooleanState
-{
-    On,
-    Off
-}
-
-public enum EHardwareTrigger
-{
-    On,
-    Off,
-    Toggle
-}
-
-public enum EPowerOption
-{
-    Shutdown,
-    Reboot
-}
-
-public enum EAnswer
-{
-    Si,
-    No
-}
-
-public enum EAction
-{
-    Crea,
-    Elimina
-}
-
-public enum EAudioSource
-{
-    Youtube,
-    Local
-}
-
-public enum ELocation
-{
-    Orvieto,
-    Pisa
-}
-
-public enum ECortanaChannels
-{
-    Cortana,
-    Log
-}
-
 public enum ETimerLoop
 {
     No,
@@ -81,6 +64,28 @@ public enum ETimerLoop
     Weekly
 }
 
+
+// DISCORD RELATED
+public enum EAnswer
+{
+    Si,
+    No
+}
+public enum EAudioSource
+{
+    Youtube,
+    Local
+}
+public enum EListAction
+{
+    Crea,
+    Elimina
+}
+public enum ECortanaChannels
+{
+    Cortana,
+    Log
+}
 public enum EMemeCategory
 {
     Games,

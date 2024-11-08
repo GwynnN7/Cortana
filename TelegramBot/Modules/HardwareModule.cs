@@ -67,7 +67,7 @@ namespace TelegramBot.Modules
                 case "notify":
                     if (TelegramData.CheckPermission(messageStats.UserID))
                     {
-                        string res = Hardware.NotifyPc(messageStats.Text);
+                        string res = Hardware.CommandPc(EComputerCommand.Notify, messageStats.Text);
                         if (res == "0") await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
                         else await cortana.SendMessage(messageStats.ChatID, res);
                     }
@@ -82,27 +82,27 @@ namespace TelegramBot.Modules
             switch (messageStats.FullMessage)
             {
                 case HardwareEmoji.Bulb:
-                    Hardware.SwitchLamp(EHardwareTrigger.Toggle);
+                    Hardware.SwitchLamp(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.Pc:
-                    Hardware.SwitchComputer(EHardwareTrigger.Toggle);
+                    Hardware.SwitchComputer(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.Thunder:
-                    Hardware.SwitchGeneral(EHardwareTrigger.Toggle);
+                    Hardware.SwitchGeneral(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.On:
-                    Hardware.SwitchRoom(EHardwareTrigger.On);
+                    Hardware.SwitchRoom(ETrigger.On);
                     break;
                 case HardwareEmoji.Off:
-                    Hardware.SwitchRoom(EHardwareTrigger.Off);
+                    Hardware.SwitchRoom(ETrigger.Off);
                     break;
                 case HardwareEmoji.Reboot:
-                    Hardware.RebootPc();
+                    Hardware.CommandPc(EComputerCommand.Reboot);
                     break;
                 default:
                     if (messageStats.UserID != TelegramData.NameToId("@gwynn7")) return;
-                    
-                    string result = Hardware.SSH_PC(messageStats.FullMessage, returnResult:true);
+
+                    Hardware.SendPc(messageStats.FullMessage, asRoot: true, result: out string result);
                     await cortana.SendMessage(messageStats.ChatID, result);
                     
                     return;
@@ -145,13 +145,13 @@ namespace TelegramBot.Modules
         
         private static InlineKeyboardMarkup CreateHardwareButtons()
         {
-            var rows = new InlineKeyboardButton[Enum.GetValues(typeof(EHardwareElements)).Length + 1][];
+            var rows = new InlineKeyboardButton[Enum.GetValues(typeof(EGpio)).Length + 1][];
 
             rows[0] = new InlineKeyboardButton[1];
             rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "hardware-room");
 
             var index = 1;
-            foreach (string element in Enum.GetNames(typeof(EHardwareElements)))
+            foreach (string element in Enum.GetNames(typeof(EGpio)))
             {
                 rows[index] = new InlineKeyboardButton[1];
                 rows[index][0] = InlineKeyboardButton.WithCallbackData(element, $"hardware-{element.ToLower()}");

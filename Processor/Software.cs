@@ -30,7 +30,7 @@ namespace Processor
         {
             var path = $"/home/cortana/CortanaLogs/{fileName}.log";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
-            logFile.WriteLine($"{DateTime.Now}: {log}\n");
+            logFile.WriteLine($"{DateTime.Now}\n {log}\n");
         }
 
         public static Stream CreateQrCode(string content, bool useNormalColors, bool useBorders)

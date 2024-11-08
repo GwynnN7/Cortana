@@ -10,7 +10,7 @@ namespace Processor
 {
     public static class Hardware
     {
-        private static readonly Dictionary<EHardwareElements, EBooleanState> HardwareStates;
+        private static readonly Dictionary<EGpio, EStatus> HardwareStates;
         private static readonly NetworkStats NetStats;
         
         private const int RelayPin0 = 25; //Lamp Orvieto
@@ -24,10 +24,10 @@ namespace Processor
         static Hardware()
         {
             NetStats = GetLocationNetworkData();
-            HardwareStates = new Dictionary<EHardwareElements, EBooleanState>();
-            foreach (EHardwareElements element in Enum.GetValues(typeof(EHardwareElements)))
+            HardwareStates = new Dictionary<EGpio, EStatus>();
+            foreach (EGpio element in Enum.GetValues(typeof(EGpio)))
             {
-                HardwareStates.Add(element, EBooleanState.Off);
+                HardwareStates.Add(element, EStatus.Off);
             }
 
             //SwitchRoom(EHardwareTrigger.Off);
@@ -43,8 +43,8 @@ namespace Processor
 
         private static void HandleNightCallback(object? sender, EventArgs e)
         {
-            if (HardwareStates[EHardwareElements.Computer] == EBooleanState.Off) SwitchLamp(EHardwareTrigger.Off);
-            else NotifyPc("You should go to sleep");
+            if (HardwareStates[EGpio.Computer] == EStatus.Off) SwitchLamp(ETrigger.Off);
+            else CommandPc(EComputerCommand.Notify, "You should go to sleep");
 
             if (DateTime.Now.Hour < 6) 
                 _ = new UtilityTimer(name: "safety-night-handler", hours: 1, minutes: 0, seconds: 0, callback: HandleNightCallback, timerLocation: ETimerLocation.Utility, loop: ETimerLoop.No);
@@ -58,14 +58,14 @@ namespace Processor
                     Task.Run(async () =>
                     {
                         await Task.Delay(1000);
-                        PythonCaller("Power", "shutdown");
+                        ScriptRunner("power", "shutdown");
                     });
                     return "Raspberry powering off";
                 case EPowerOption.Reboot:
                     Task.Run(async () =>
                     {
                         await Task.Delay(1000);
-                        PythonCaller("Power", "reboot");
+                        ScriptRunner("power", "reboot");
                     });
                     return "Raspberry rebooting";
                 default:
@@ -73,10 +73,10 @@ namespace Processor
             }
         }
 
-        public static string SwitchRoom(EHardwareTrigger state)
+        public static string SwitchRoom(ETrigger state)
         {
 
-            if (state == EHardwareTrigger.On)
+            if (state == ETrigger.On)
             {
                 if (DateTime.Now.Hour >= 20) SwitchLamp(state);
                 SwitchComputer(state);
@@ -90,11 +90,11 @@ namespace Processor
             return "Working on it";
         }
 
-        public static string SwitchLamp(EHardwareTrigger state)
+        public static string SwitchLamp(ETrigger state)
         {
             switch (state)
             {
-                case EHardwareTrigger.On when HardwareStates[EHardwareElements.Lamp] == EBooleanState.Off:
+                case ETrigger.On when HardwareStates[EGpio.Lamp] == EStatus.Off:
                     if (NetStats.Location == ELocation.Orvieto)
                     {
                         Task.Run(async () =>
@@ -105,9 +105,9 @@ namespace Processor
                         });
                     }
                     else UseGpio(LampPin, PinValue.High);
-                    HardwareStates[EHardwareElements.Lamp] = EBooleanState.On;
+                    HardwareStates[EGpio.Lamp] = EStatus.On;
                     return "Lamp on";
-                case EHardwareTrigger.Off when HardwareStates[EHardwareElements.Lamp] == EBooleanState.On:
+                case ETrigger.Off when HardwareStates[EGpio.Lamp] == EStatus.On:
                     if (NetStats.Location == ELocation.Orvieto)
                     {
                         Task.Run(async () =>
@@ -118,62 +118,62 @@ namespace Processor
                         });
                     }
                     else UseGpio(LampPin, PinValue.Low);
-                    HardwareStates[EHardwareElements.Lamp] = EBooleanState.Off;
+                    HardwareStates[EGpio.Lamp] = EStatus.Off;
                     return "Lamp off";
-                case EHardwareTrigger.Toggle:
-                    return SwitchLamp(HardwareStates[EHardwareElements.Lamp] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+                case ETrigger.Toggle:
+                    return SwitchLamp(HardwareStates[EGpio.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
                 default:
                     return "Nothing to do";
             }
         }
 
-        public static string SwitchGeneral(EHardwareTrigger state)
+        public static string SwitchGeneral(ETrigger state)
         {
             if (NetStats.Location == ELocation.Pisa) return SwitchLamp(state);
             
             switch (state)
             {
-                case EHardwareTrigger.On:
+                case ETrigger.On:
                     UseGpio(GeneralPin, PinValue.High);
-                    HardwareStates[EHardwareElements.General] = EBooleanState.On;
+                    HardwareStates[EGpio.General] = EStatus.On;
                     return "Power on";
-                case EHardwareTrigger.Off:
+                case ETrigger.Off:
                     UseGpio(GeneralPin, PinValue.Low);
-                    HardwareStates[EHardwareElements.General] = EBooleanState.Off;
+                    HardwareStates[EGpio.General] = EStatus.Off;
                     return "Power off";
-                case EHardwareTrigger.Toggle:
+                case ETrigger.Toggle:
                 default:
-                    return SwitchGeneral(HardwareStates[EHardwareElements.General] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+                    return SwitchGeneral(HardwareStates[EGpio.General] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
 
-        public static string SwitchComputer(EHardwareTrigger state)
+        public static string SwitchComputer(ETrigger state)
         {
-            EBooleanState lastState = HardwareStates[EHardwareElements.Computer];
+            EStatus lastState = HardwareStates[EGpio.Computer];
             switch (state)
             {
-                case EHardwareTrigger.On:
-                    SwitchOutlets(EHardwareTrigger.On);
-                    PythonCaller("WoL", NetStats.Desktop_LAN_MAC);
-                    return lastState == EBooleanState.On ? "Computer already on" : "Computer booting up";
-                case EHardwareTrigger.Off:
-                    HardwareStates[EHardwareElements.Computer] = EBooleanState.Off;
-                    string res = SSH_PC("poweroff");
-                    return lastState == EBooleanState.Off ? "Computer already off" : res;
-                case EHardwareTrigger.Toggle:
+                case ETrigger.On:
+                    CommandPc(EComputerCommand.PowerOn);
+                    HardwareStates[EGpio.Computer] = EStatus.On;
+                    return lastState == EStatus.On ? "Computer already on" : "Computer booting up";
+                case ETrigger.Off:
+                    string result = CommandPc(EComputerCommand.Shutdown);
+                    HardwareStates[EGpio.Computer] = EStatus.Off;
+                    return lastState == EStatus.Off ? "Computer already off" : result;
+                case ETrigger.Toggle:
                 default:
-                    return SwitchComputer(HardwareStates[EHardwareElements.Computer] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+                    return SwitchComputer(HardwareStates[EGpio.Computer] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
 
-        private static string SwitchOutlets(EHardwareTrigger state)
+        private static string SwitchOutlets(ETrigger state)
         {
             switch (state)
             {
-                case EHardwareTrigger.Off when HardwareStates[EHardwareElements.Computer] == EBooleanState.On:
+                case ETrigger.Off when HardwareStates[EGpio.Computer] == EStatus.On:
                     Task.Run(async () =>
                     {
-                        SwitchComputer(EHardwareTrigger.Off);
+                        SwitchComputer(ETrigger.Off);
                         await Task.Delay(1000);
 
                         DateTime start = DateTime.Now;
@@ -182,32 +182,32 @@ namespace Processor
                         if ((DateTime.Now - start).Seconds < 3) await Task.Delay(25000);
                         else await Task.Delay(5000);
 
-                        SwitchOutlets(EHardwareTrigger.Off);
+                        SwitchOutlets(ETrigger.Off);
                     });
                     return "Computer and outlets shutting down";
-                case EHardwareTrigger.On:
+                case ETrigger.On:
                     UseGpio(ComputerPlugsPin, PinValue.High);
-                    HardwareStates[EHardwareElements.Outlets] = EBooleanState.On;
-                    HardwareStates[EHardwareElements.Computer] = EBooleanState.On;
+                    HardwareStates[EGpio.Outlets] = EStatus.On;
+                    HardwareStates[EGpio.Computer] = EStatus.On; //Computer automatically turns on
                     return "Outlets on";
-                case EHardwareTrigger.Off:
+                case ETrigger.Off:
                     UseGpio(ComputerPlugsPin, PinValue.Low);
-                    HardwareStates[EHardwareElements.Outlets] = EBooleanState.Off;
+                    HardwareStates[EGpio.Outlets] = EStatus.Off;
                     return "Outlets off";
-                case EHardwareTrigger.Toggle:
+                case ETrigger.Toggle:
                 default:
-                    return SwitchOutlets(HardwareStates[EHardwareElements.Outlets] == EBooleanState.On ? EHardwareTrigger.Off : EHardwareTrigger.On);
+                    return SwitchOutlets(HardwareStates[EGpio.Outlets] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
 
-        public static string SwitchFromEnum(EHardwareElements element, EHardwareTrigger trigger)
+        public static string SwitchFromEnum(EGpio element, ETrigger trigger)
         {
             string result = element switch
             {
-                EHardwareElements.Lamp => SwitchLamp(trigger),
-                EHardwareElements.Computer => SwitchComputer(trigger),
-                EHardwareElements.Outlets => SwitchOutlets(trigger),
-                EHardwareElements.General => SwitchGeneral(trigger),
+                EGpio.Lamp => SwitchLamp(trigger),
+                EGpio.Computer => SwitchComputer(trigger),
+                EGpio.Outlets => SwitchOutlets(trigger),
+                EGpio.General => SwitchGeneral(trigger),
                 _ => "Hardware device not listed"
             };
             return result;
@@ -217,8 +217,8 @@ namespace Processor
         {
             element = element.ToLower();
             trigger = trigger.ToLower();
-            EHardwareElements? elementResult = HardwareElementFromString(element);
-            EHardwareTrigger? triggerResult = TriggerStateFromString(trigger);
+            EGpio? elementResult = HardwareElementFromString(element);
+            ETrigger? triggerResult = TriggerStateFromString(trigger);
             if (triggerResult == null) return "Invalid action";
             if (elementResult != null) return SwitchFromEnum(elementResult.Value, triggerResult.Value);
             return element == "room" ? SwitchRoom(triggerResult.Value) : "Hardware device not listed";
@@ -232,41 +232,76 @@ namespace Processor
         }
 
 
-        public static string SSH_PC(string command, bool asRoot = true, bool returnResult = false)
+        public static string CommandPc(EComputerCommand command, string? args = null)
         {
+            string result;
+            switch (command)
+            {
+                case EComputerCommand.PowerOn:
+                {
+                    result = HardwareStates[EGpio.Computer] == EStatus.On
+                        ? "Computer already on"
+                        : "Computer booting up";
+                    SwitchOutlets(ETrigger.On);
+                    ScriptRunner("wake-on-lan", NetStats.Desktop_LAN_MAC);
+                    HardwareStates[EGpio.Computer] = EStatus.On;
+                    break;
+                }
+                case EComputerCommand.Shutdown:
+                {
+                    SendPc("shutdown", asRoot: true, result: out result);
+                    result = HardwareStates[EGpio.Computer] == EStatus.Off
+                        ? "Computer already off"
+                        : result;
+                    HardwareStates[EGpio.Computer] = EStatus.Off;
+                    break;
+                }
+                case EComputerCommand.Reboot:
+                    SendPc("reboot", asRoot: true, result: out result);
+                    break;
+                case EComputerCommand.Notify:
+                    SendPc($"notify {args}", asRoot: false, result: out result);
+                    break;
+                default:
+                    result = "Command not found";
+                    break;
+            }
+
+            return result;
+        }
+        
+        public static bool SendPc(string command, bool asRoot, out string result)
+        {
+            var scriptPath = $"/home/{NetStats.DesktopUsername}/.config/cortana/cortana-script.sh";
+            
             string usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
             string pass = Software.GetConfigurationSecrets()["desktop-password"]!;
             string addr = NetStats.Desktop_IP;
-
-            string result;
+            
             try
             {
                 using var client = new SshClient(addr, usr, pass);
                 client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
                 client.Connect();
-                SshCommand r = client.RunCommand(command);
-                if (r.ExitStatus == 0) result = (returnResult && r.Result.Length != 0) ? r.Result : "Command executed";
-                else result = (returnResult && r.Error.Length != 0) ? r.Error : "Command not executed";
-                var log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}\nError: {r.Error}";
+
+                string cmd = $"{scriptPath} {command}".Trim();
+                SshCommand r = client.RunCommand(cmd);
+                if (r.ExitStatus == 0) result = r.Result.Trim().Length > 0 && !r.Result.Trim().Equals("0") ? r.Result : "Command executed successfully.\n";
+                else result = r.Error.Trim().Length > 0 ? r.Error : "There was an error executing the command.\n";
+                result = result.Trim();
+                
+                var log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}Error: {r.Error}\n----\n";
                 Software.Log("SSH", log);
+                
                 client.Disconnect();
+                
+                return r.ExitStatus == 0;
             }
             catch
             {
-                result = "Computer not reachable";
+                result = "Sorry, I couldn't send the command";
+                return false;
             }
-            return result;
-        }
-
-
-        public static string RebootPc()
-        {
-            return SSH_PC("reboot");
-        }
-
-        public static string NotifyPc(string text)
-        {
-            return SSH_PC($@"/home/{NetStats.DesktopUsername}/.config/cortana/cortana-notify.sh \'{text}\'", asRoot: false);
         }
 
         public static string GetCpuTemperature()
@@ -315,27 +350,29 @@ namespace Processor
             controller.Write(pin, value);
         }
 
-        private static EHardwareTrigger? TriggerStateFromString(string state)
+        private static ETrigger? TriggerStateFromString(string state)
         {
             state = string.Concat(state[0].ToString().ToUpper(), state.AsSpan(1));
-            bool res = Enum.TryParse(state, out EHardwareTrigger status);
+            bool res = Enum.TryParse(state, out ETrigger status);
             return res ? status : null;
         }
 
-        private static EHardwareElements? HardwareElementFromString(string element)
+        private static EGpio? HardwareElementFromString(string element)
         {
             element = string.Concat(element[0].ToString().ToUpper(), element.AsSpan(1));
-            bool res = Enum.TryParse(element, out EHardwareElements status);
+            bool res = Enum.TryParse(element, out EGpio status);
             return res ? status : null;
         }
 
-        private static void PythonCaller(string fileName, string args = "", bool stdRedirect = false)
+        private static void ScriptRunner(string fileName, string args = "", bool stdRedirect = false)
         {
             Process.Start(new ProcessStartInfo()
             {
-                FileName = "python",
-                Arguments = $"Python/{fileName}.py {args}",
-                RedirectStandardOutput = stdRedirect
+                FileName = "zsh",
+                Arguments = $"-c Scripts/{fileName}.sh \"{args}\"",
+                RedirectStandardOutput = stdRedirect,
+                UseShellExecute = false,
+                CreateNoWindow = true
             });
         }
     }
