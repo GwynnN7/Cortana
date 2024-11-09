@@ -13,9 +13,9 @@ public enum ESubFunctions
 public enum EGpio
 {
     Computer,
+    ComputerPower,
     Lamp,
-    Outlets,
-    General
+    Generic
 }
 public enum EStatus
 {
@@ -46,15 +46,27 @@ public enum ELocation
     Pisa
 }
 
+public enum EHardwareInfo
+{
+    Location,
+    Ip,
+    Gateway,
+    Temperature
+}
+
+// SOFTWARE RELATED
+public enum EStreamType
+{
+    Audio,
+    Video
+}
 
 // TIMER RELATED
-public enum ETimerLocation
+public enum ETimerType
 {
-    Global,
-    CortanaApi,
-    DiscordBot,
-    TelegramBot,
-    Utility
+    Utility,
+    Discord,
+    Telegram
 }
 public enum ETimerLoop
 {
@@ -70,11 +82,6 @@ public enum EAnswer
 {
     Si,
     No
-}
-public enum EAudioSource
-{
-    Youtube,
-    Local
 }
 public enum EListAction
 {

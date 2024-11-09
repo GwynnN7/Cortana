@@ -3,7 +3,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using IGDB;
-using Microsoft.Extensions.Configuration;
 using Processor;
 using Game = IGDB.Models.Game;
 
@@ -18,13 +17,12 @@ namespace DiscordBot.Modules
             [SlashCommand("comandi", "Vi mostro le categorie dei miei comandi")]
             public async Task ShowCommands()
             {
-                Embed commandsEmbed = DiscordData.CreateEmbed("Comandi", withTimeStamp: false);
+                Embed commandsEmbed = DiscordUtils.CreateEmbed("Comandi", withTimeStamp: false);
                 commandsEmbed = commandsEmbed.ToEmbedBuilder()
+                    .AddField("/utility", "Funzioni di utility")
                     .AddField("/media", "Gestione audio dei canali vocali")
                     .AddField("/domotica", "Domotica personale riservata")
                     .AddField("/timer", "Gestione timer e sveglie")
-                    .AddField("/personal", "Comandi per gli utenti")
-                    .AddField("/utility", "Funzioni di utility")
                     .AddField("/random", "Scelte random")
                     .AddField("/games", "Comandi per videogames")
                     .AddField("/gestione", "Gestione Server Discord")
@@ -33,56 +31,8 @@ namespace DiscordBot.Modules
                 await RespondAsync(embed: commandsEmbed);
             }
 
-            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
-            public async Task GetAvatar([Summary("user", "Di chi vuoi vedere l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
-            {
-                string url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
-                Embed embed = DiscordData.CreateEmbed("Profile Picture", user);
-                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
-                await RespondAsync(embed: embed);
-            }
+            // From Utility
             
-            [SlashCommand("my-code", "Vi mando il mio codice")]
-            public async Task SendMyCode([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
-            {
-                Embed githubEmbed = DiscordData.CreateEmbed("Github");
-                githubEmbed = githubEmbed.ToEmbedBuilder()
-                    .AddField("Cortana", "[Vai al codice](https://github.com/GwynbleiddN7/Cortana)")
-                    .Build();
-                await RespondAsync(embed: githubEmbed, ephemeral: ephemeral == EAnswer.Si);
-            }
-
-            [SlashCommand("ping", "Pinga un IP", runMode: RunMode.Async)]
-            public async Task Ping([Summary("ip", "IP da pingare")] string ip)
-            {
-                bool result = ip == "pc" ? Hardware.PingPc() : Hardware.Ping(ip);
-
-                if (result) await RespondAsync($"L'IP {ip} ha risposto al ping");
-                else await RespondAsync($"L'IP {ip} non ha risposto al ping");
-            }
-
-            [SlashCommand("tempo-in-voice", "Da quanto tempo state in chat vocale?")]
-            public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? user = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
-            {
-                user ??= Context.User;
-                if (DiscordData.TimeConnected.TryGetValue(user.Id, out DateTime time))
-                {
-                    TimeSpan deltaTime = DateTime.Now.Subtract(time);
-                    var connectionTime = "Sei connesso da";
-                    if (deltaTime.Hours > 0) connectionTime += $" {deltaTime.Hours} ore";
-                    if (deltaTime.Minutes > 0) connectionTime += $" {deltaTime.Minutes} minuti";
-                    if (deltaTime.Seconds > 0) connectionTime += $" {deltaTime.Seconds} secondi";
-
-                    Embed embed = DiscordData.CreateEmbed(title: connectionTime, user: user);
-                    await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
-                }
-                else
-                {
-                    Embed embed = DiscordData.CreateEmbed(title: "Non connesso alla chat vocale", user: user);
-                    await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
-                }
-            }
-
             [SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
             public async Task CreateQr([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No, [Summary("colore-base", "Vuoi il colore bianco normale?")] EAnswer normalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer quietZones = EAnswer.Si)
             {
@@ -90,12 +40,44 @@ namespace DiscordBot.Modules
 
                 await RespondWithFileAsync(fileStream: imageStream, fileName: "QRCode.png", ephemeral: ephemeral == EAnswer.Si);
             }
+            
+            // Discord-specific
+            
+            [SlashCommand("avatar", "Vi mando la vostra immagine profile")]
+            public async Task GetAvatar([Summary("user", "Di chi vuoi vedere l'immagine?")] SocketUser user, [Summary("grandezza", "Grandezza dell'immagine [Da 64px a 4096px, inserisci un numero da 1 a 7]"), MaxValue(7), MinValue(1)] int size = 4)
+            {
+                string url = user.GetAvatarUrl(size: Convert.ToUInt16(Math.Pow(2, size + 5)));
+                Embed embed = DiscordUtils.CreateEmbed("Profile Picture", user);
+                embed = embed.ToEmbedBuilder().WithImageUrl(url).Build();
+                await RespondAsync(embed: embed);
+            }
 
+            [SlashCommand("tempo-in-voice", "Da quanto tempo state in chat vocale?")]
+            public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? user = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
+            {
+                user ??= Context.User;
+                if (DiscordUtils.TimeConnected.TryGetValue(user.Id, out DateTime time))
+                {
+                    TimeSpan deltaTime = DateTime.Now.Subtract(time);
+                    var connectionTime = "Sei connesso da";
+                    if (deltaTime.Hours > 0) connectionTime += $" {deltaTime.Hours} ore";
+                    if (deltaTime.Minutes > 0) connectionTime += $" {deltaTime.Minutes} minuti";
+                    if (deltaTime.Seconds > 0) connectionTime += $" {deltaTime.Seconds} secondi";
+
+                    Embed embed = DiscordUtils.CreateEmbed(title: connectionTime, user: user);
+                    await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+                }
+                else
+                {
+                    Embed embed = DiscordUtils.CreateEmbed(title: "Non connesso alla chat vocale", user: user);
+                    await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+                }
+            }
 
             [SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
             public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
             {
-                Embed embed = DiscordData.CreateEmbed("Conta Parole");
+                Embed embed = DiscordUtils.CreateEmbed("Conta Parole");
                 embed = embed.ToEmbedBuilder()
                     .AddField("Parole", content.Split(" ").Length)
                     .AddField("Caratteri", content.Replace(" ", "").Length)
@@ -133,7 +115,7 @@ namespace DiscordBot.Modules
                 }
             }
 
-            [SlashCommand("code", "Converto un messaggio sotto forma di codice")]
+            [SlashCommand("code", "Converto un testo sotto forma di codice")]
             public async Task ToCode()
             {
                 await RespondWithModalAsync<CodeModal>("to-code");
@@ -187,8 +169,7 @@ namespace DiscordBot.Modules
 
             private static async Task<Embed?> GetGameEmbedAsync(string game, int count)
             {
-                IConfigurationRoot secrets = Software.GetConfigurationSecrets();
-                var igdb = new IGDBClient(secrets["igdb-id"], secrets["igdb-secret"]);
+                var igdb = new IGDBClient(Software.Secrets.IgdbClient,Software.Secrets.IgdbSecret);
                 const string fields = "cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
                 var query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";
                 Game[]? games = await igdb.QueryAsync<Game>(IGDBClient.Endpoints.Games, query: query);
@@ -213,7 +194,7 @@ namespace DiscordBot.Modules
                 Game foundGame = sortedGames[count];
 
                 string coverId = foundGame.Cover != null ? foundGame.Cover.Value.ImageId : "nocover_qhhlj6";
-                Embed gameEmbed = DiscordData.CreateEmbed(foundGame.Name, withTimeStamp: false);
+                Embed gameEmbed = DiscordUtils.CreateEmbed(foundGame.Name, withTimeStamp: false);
                 gameEmbed = gameEmbed.ToEmbedBuilder()
                     .WithDescription($"[Vai alla pagina IGDB]({foundGame.Url})")
                     .WithThumbnailUrl($"https://images.igdb.com/igdb/image/upload/t_cover_big/{coverId}.jpg")
@@ -274,7 +255,7 @@ namespace DiscordBot.Modules
             public async Task RandomNumber([Summary("minimo", "Minimo [0 default]")] int min = 0, [Summary("massimo", "Massimo [100 default]")] int max = 100, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
             {
                 var randomNumber = Convert.ToString(new Random().Next(min, max));
-                Embed embed = DiscordData.CreateEmbed(title: randomNumber);
+                Embed embed = DiscordUtils.CreateEmbed(title: randomNumber);
                 await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
             }
 
@@ -283,7 +264,7 @@ namespace DiscordBot.Modules
             {
                 var dicesResults = "";
                 for (var i = 0; i < dices; i++) dicesResults += Convert.ToString(new Random().Next(1, 7)) + " ";
-                Embed embed = DiscordData.CreateEmbed(title: dicesResults);
+                Embed embed = DiscordUtils.CreateEmbed(title: dicesResults);
                 await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
             }
 
@@ -293,7 +274,7 @@ namespace DiscordBot.Modules
                 var list = new List<string>{"Testa","Croce"};
                 int index = new Random().Next(list.Count);
                 string result = list[index];
-                Embed embed = DiscordData.CreateEmbed(title: result);
+                Embed embed = DiscordUtils.CreateEmbed(title: result);
                 await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
             }
 
@@ -303,7 +284,7 @@ namespace DiscordBot.Modules
                 string[] separatedList = options.Split(" ");
                 int index = new Random().Next(separatedList.Length);
                 string result = separatedList[index];
-                Embed embed = DiscordData.CreateEmbed(title: result);
+                Embed embed = DiscordUtils.CreateEmbed(title: result);
                 await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
             }
 
@@ -320,7 +301,7 @@ namespace DiscordBot.Modules
                     }
                 }
 
-                List<SocketGuildUser> users = availableUsers.Where(user => !user.IsBot || (user.IsBot && user.Id == DiscordData.DiscordIDs.CortanaID && cortana == EAnswer.Si)).ToList();
+                List<SocketGuildUser> users = availableUsers.Where(user => !user.IsBot || (user.IsBot && user.Id == DiscordUtils.Data.CortanaId && cortana == EAnswer.Si)).ToList();
 
                 SocketGuildUser chosenUser = users[new Random().Next(0, users.Count)];
                 await RespondAsync($"Ho scelto {chosenUser.Mention}", ephemeral: ephemeral == EAnswer.Si);
@@ -333,12 +314,12 @@ namespace DiscordBot.Modules
             [SlashCommand("banned-words", "Vi mostro le parole bannate in questo server")]
             public async Task ShowBannedWords()
             {
-                if(DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Count == 0)
+                if(DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Count == 0)
                 {
                     await RespondAsync("Non ci sono parole vietate in questo server");
                     return;
                 }
-                string bannedWordsList = DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Aggregate("Ecco le parole bannate di questo server:\n```\n", (current, word) => current + (word + "\n"));
+                string bannedWordsList = DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Aggregate("Ecco le parole bannate di questo server:\n```\n", (current, word) => current + (word + "\n"));
                 bannedWordsList += "```";
                 await RespondAsync(bannedWordsList);
             }
@@ -350,32 +331,32 @@ namespace DiscordBot.Modules
                 switch(action)
                 {
                     case EListAction.Crea:
-                        if(DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+                        if(DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
                         {
                             await RespondAsync("Questa parola è già presente tra quelle bannate in questo server");
                             return;
                         }
-                        DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Add(word);
+                        DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Add(word);
                         await RespondAsync("Parola aggiunta con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");                   
                         break;
                     case EListAction.Elimina:
-                        if(!DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+                        if(!DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
                         {
                             await RespondAsync("Questa parola non è presente tra quelle bannate in questo server");
                             return;
                         }
-                        DiscordData.GuildSettings[Context.Guild.Id].BannedWords.Remove(word);
+                        DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Remove(word);
                         await RespondAsync("Parola rimossa con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
                         break;
                 }
-                DiscordData.UpdateSettings();
+                DiscordUtils.UpdateSettings();
             }
 
             [SlashCommand("kick", "Kicko un utente dal server")]
             public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                if (user.Id == DiscordUtils.Data.ChiefId) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordUtils.Data.CortanaId) await RespondAsync("Divertente");
                 else
                 {
                     await user.KickAsync(reason: reason);
@@ -386,8 +367,8 @@ namespace DiscordBot.Modules
             [SlashCommand("ban", "Banno un utente dal server")]
             public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                if (user.Id == DiscordUtils.Data.ChiefId) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordUtils.Data.CortanaId) await RespondAsync("Divertente");
                 else
                 {
                     await user.BanAsync(reason: reason);
@@ -398,8 +379,8 @@ namespace DiscordBot.Modules
             [SlashCommand("imposta-timeout", "Timeouto un utente dal server")]
             public async Task SetTimeoutMember([Summary("user", "Chi vuoi timeoutare?")] SocketGuildUser user, [Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")] double timeout = 10)
             {
-                if (user.Id == DiscordData.DiscordIDs.ChiefID) await RespondAsync("Non farei mai una cosa simile");
-                else if (user.Id == DiscordData.DiscordIDs.CortanaID) await RespondAsync("Divertente");
+                if (user.Id == DiscordUtils.Data.ChiefId) await RespondAsync("Non farei mai una cosa simile");
+                else if (user.Id == DiscordUtils.Data.CortanaId) await RespondAsync("Divertente");
                 else
                 {
                     await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));

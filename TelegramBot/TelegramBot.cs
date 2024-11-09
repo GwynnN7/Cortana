@@ -13,11 +13,11 @@ namespace TelegramBot
 
         private static void Main()
         {
-            var cortana = new TelegramBotClient(Software.GetConfigurationSecrets()["telegram-token"]!);
+            var cortana = new TelegramBotClient(Software.Secrets.TelegramToken);
             cortana.StartReceiving(UpdateHandler, ErrorHandler);
             
-            TelegramData.Init(cortana);
-            TelegramData.SendToUser(TelegramData.NameToId("@gwynn7"), "I'm Online", false);
+            TelegramUtils.Init(cortana);
+            TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), "I'm Online", false);
         }
 
         private static Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
@@ -44,14 +44,14 @@ namespace TelegramBot
             
             var messageStats = new MessageStats
             {
-                ChatID = update.Message.Chat.Id,
-                UserID = update.Message.From?.Id ?? update.Message.Chat.Id,
-                MessageID = update.Message.MessageId,
+                ChatId = update.Message.Chat.Id,
+                UserId = update.Message.From?.Id ?? update.Message.Chat.Id,
+                MessageId = update.Message.MessageId,
                 ChatType = update.Message.Chat.Type,
                 FullMessage = update.Message.Text
             };
 
-            if (messageStats.UserID != TelegramData.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramData.NameToId("@gwynn7"), messageStats.ChatID, messageStats.MessageID);
+            if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
             
             if (update.Message.Text.StartsWith('/'))
             {
@@ -66,12 +66,12 @@ namespace TelegramBot
             }
             else
             {
-                if (UtilityModule.IsWaiting(messageStats.ChatID))
+                if (UtilityModule.IsWaiting(messageStats.ChatId))
                 {
                     UtilityModule.HandleCallback(messageStats, cortana);
                     return;
                 }
-                if (ShoppingModule.IsWaiting(messageStats.ChatID))
+                if (ShoppingModule.IsWaiting(messageStats.ChatId))
                 {
                     ShoppingModule.HandleCallback(messageStats, cortana);
                     return;
@@ -96,7 +96,7 @@ namespace TelegramBot
                 ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
                 _ => exception.ToString()
             };
-            Processor.Software.Log("Telegram", errorMessage);
+            Software.Log("Telegram", errorMessage);
             return Task.CompletedTask;
         }
     }

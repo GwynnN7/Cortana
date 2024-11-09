@@ -37,7 +37,7 @@ namespace DiscordBot
                     arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                     break;
             }
-            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+            DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }
@@ -60,7 +60,7 @@ namespace DiscordBot
                     arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                     break;
             }
-            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+            DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }
@@ -83,7 +83,7 @@ namespace DiscordBot
                     arg2.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
                     break;
             }
-            DiscordData.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+            DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
 
             return Task.CompletedTask;
         }
@@ -97,7 +97,7 @@ namespace DiscordBot
             }
             catch (Exception ex)
             {
-                DiscordData.SendToChannel($"C'è stato un problema in HandleInteraction: {ex.StackTrace}", ECortanaChannels.Log);
+                DiscordUtils.SendToChannel($"C'è stato un problema in HandleInteraction: {ex.StackTrace}", ECortanaChannels.Log);
                 if (arg.Type == InteractionType.ApplicationCommand) await arg.GetOriginalResponseAsync().ContinueWith(async (msg) => await msg.Result.DeleteAsync());
             }
         }

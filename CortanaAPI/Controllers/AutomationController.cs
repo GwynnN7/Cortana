@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Processor;
 
 namespace CortanaAPI.Controllers
 {
@@ -7,21 +8,18 @@ namespace CortanaAPI.Controllers
     public class AutomationController : ControllerBase
     {
         [HttpGet]
-        public string Get()
+        public ContentResult Get()
         {
-            return "Automation API, specify device to toggle and specify action to perform a different one";
+            string html = Software.LoadHtml("Documentation");
+            html = html.Replace("{{route}}", "Automation API");
+            return base.Content(html, "text/html");
         }
 
         [HttpGet("{device}")]
-        public string PowerDevice([FromRoute] string device)
+        public IActionResult PowerDevice([FromRoute] string device, [FromQuery] string? t)
         {
-            return Processor.Hardware.SwitchFromString(device, "toggle");
-        }
-
-        [HttpGet("{device}/{state}")]
-        public string PowerDevice([FromRoute] string device, [FromRoute] string state)
-        {
-            return Processor.Hardware.SwitchFromString(device, state);
+            Hardware.SwitchFromString(device, t ?? "toggle");
+            return Redirect("http://cortana-api.ddns.net:8080/automation/");
         }
     }
 }

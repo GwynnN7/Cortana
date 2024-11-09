@@ -8,22 +8,16 @@ namespace CortanaAPI.Controllers
     public class DefaultController : ControllerBase
     {
         [HttpGet]
-        public string Get()
+        public ContentResult Get()
         {
-            return  "Hi, I'm Cortana";
+            return base.Content(Software.LoadHtml("Home"), "text/html");
         }
 
         [HttpGet("notify")]
-        public string Notify()
+        public IActionResult Notify([FromQuery] string? text)
         {
-            string res = Hardware.CommandPc(EComputerCommand.Notify, "I am online");
-            return res == "0" ? "Notification sent" : res;
-        }
-        
-        [HttpGet("location")]
-        public string Location()
-        {
-            return Hardware.GetLocation();
+            Hardware.CommandPc(EComputerCommand.Notify, text ?? "Hi, I'm Cortana");
+            return Redirect("http://cortana-api.ddns.net:8080/");
         }
     }
 }

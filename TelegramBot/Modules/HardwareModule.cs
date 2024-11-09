@@ -26,88 +26,88 @@ namespace TelegramBot.Modules
             {
                 case "ip":
                     string ip = await Hardware.GetPublicIp();
-                    await cortana.SendMessage(messageStats.ChatID, $"IP: {ip}");
+                    await cortana.SendMessage(messageStats.ChatId, $"IP: {ip}");
                     break;
                 case "gateway":
                     string gateway = Hardware.GetDefaultGateway();
-                    await cortana.SendMessage(messageStats.ChatID, $"Gateway: {gateway}");
+                    await cortana.SendMessage(messageStats.ChatId, $"Gateway: {gateway}");
                     break;
                 case "temperature":
                     string temp = Hardware.GetCpuTemperature();
-                    await cortana.SendMessage(messageStats.ChatID, $"Temperature: {temp}");
+                    await cortana.SendMessage(messageStats.ChatId, $"Temperature: {temp}");
                     break;
                 case "hardware":
-                    if (TelegramData.CheckPermission(messageStats.UserID))
-                        await cortana.SendMessage(messageStats.ChatID, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
+                    if (TelegramUtils.CheckPermission(messageStats.UserId))
+                        await cortana.SendMessage(messageStats.ChatId, "Hardware Keyboard", replyMarkup: CreateHardwareButtons());
                     else
-                        await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
+                        await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
                     break;
                 case "keyboard":
-                    if (TelegramData.CheckPermission(messageStats.UserID))
-                        await cortana.SendMessage(messageStats.ChatID, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
+                    if (TelegramUtils.CheckPermission(messageStats.UserId))
+                        await cortana.SendMessage(messageStats.ChatId, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
                     else
-                        await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
+                        await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
                     break;
                 case "reboot":
-                    if (TelegramData.CheckPermission(messageStats.UserID))
+                    if (TelegramUtils.CheckPermission(messageStats.UserId))
                     {
                         string res = Hardware.PowerRaspberry(EPowerOption.Reboot);
-                        await cortana.SendMessage(messageStats.ChatID, res);
+                        await cortana.SendMessage(messageStats.ChatId, res);
                     }
-                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
                     break;
                 case "shutdown":
-                    if (TelegramData.CheckPermission(messageStats.UserID))
+                    if (TelegramUtils.CheckPermission(messageStats.UserId))
                     {
                         string res = Hardware.PowerRaspberry(EPowerOption.Shutdown);
-                        await cortana.SendMessage(messageStats.ChatID, res);
+                        await cortana.SendMessage(messageStats.ChatId, res);
                     }
-                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
                     break;
                 case "notify":
-                    if (TelegramData.CheckPermission(messageStats.UserID))
+                    if (TelegramUtils.CheckPermission(messageStats.UserId))
                     {
                         string res = Hardware.CommandPc(EComputerCommand.Notify, messageStats.Text);
-                        if (res == "0") await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
-                        else await cortana.SendMessage(messageStats.ChatID, res);
+                        if (res == "0") await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                        else await cortana.SendMessage(messageStats.ChatId, res);
                     }
-                    else await cortana.SendMessage(messageStats.ChatID, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
                     break;
             }
         }
         
         public static async void HandleCallback(MessageStats messageStats, ITelegramBotClient cortana)
         {
-            if (!TelegramData.CheckPermission(messageStats.UserID) || messageStats.ChatType != ChatType.Private) return;
+            if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return;
             switch (messageStats.FullMessage)
             {
                 case HardwareEmoji.Bulb:
-                    Hardware.SwitchLamp(ETrigger.Toggle);
+                    Hardware.PowerLamp(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.Pc:
-                    Hardware.SwitchComputer(ETrigger.Toggle);
+                    Hardware.PowerComputer(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.Thunder:
-                    Hardware.SwitchGeneral(ETrigger.Toggle);
+                    Hardware.PowerGeneric(ETrigger.Toggle);
                     break;
                 case HardwareEmoji.On:
-                    Hardware.SwitchRoom(ETrigger.On);
+                    Hardware.HandleRoom(ETrigger.On);
                     break;
                 case HardwareEmoji.Off:
-                    Hardware.SwitchRoom(ETrigger.Off);
+                    Hardware.HandleRoom(ETrigger.Off);
                     break;
                 case HardwareEmoji.Reboot:
                     Hardware.CommandPc(EComputerCommand.Reboot);
                     break;
                 default:
-                    if (messageStats.UserID != TelegramData.NameToId("@gwynn7")) return;
+                    if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7")) return;
 
-                    Hardware.SendPc(messageStats.FullMessage, asRoot: true, result: out string result);
-                    await cortana.SendMessage(messageStats.ChatID, result);
+                    Hardware.SendCommand(messageStats.FullMessage, asRoot: true, result: out string result);
+                    await cortana.SendMessage(messageStats.ChatId, result);
                     
                     return;
             }
-            await cortana.DeleteMessage(messageStats.ChatID, messageStats.MessageID);
+            await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
         }
         
         public static async void ButtonCallback(ITelegramBotClient cortana, Update update)
@@ -120,7 +120,7 @@ namespace TelegramBot.Modules
             if(!data.StartsWith("hardware-")) return;
             data = data["hardware-".Length..];
             
-            if (!TelegramData.CheckPermission(update.CallbackQuery!.From.Id))
+            if (!TelegramUtils.CheckPermission(update.CallbackQuery!.From.Id))
             {
                 await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
                 return;

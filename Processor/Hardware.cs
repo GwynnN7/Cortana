@@ -19,7 +19,7 @@ namespace Processor
 
         private static int ComputerPlugsPin => RelayPin2;
         private static int LampPin => NetStats.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
-        private static int GeneralPin => RelayPin1;
+        private static int GenericPin => RelayPin1;
 
         static Hardware()
         {
@@ -29,68 +29,36 @@ namespace Processor
             {
                 HardwareStates.Add(element, EStatus.Off);
             }
-
-            //SwitchRoom(EHardwareTrigger.Off);
-            _ = new UtilityTimer(name: "night-handler", targetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), callback: HandleNightCallback, timerLocation: ETimerLocation.Utility, loop: ETimerLoop.Daily);
-        }
-        
-        private static NetworkStats GetLocationNetworkData()
-        {
-            NetworkStats orvietoNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataOrvieto.json") ?? new NetworkStats();
-            NetworkStats pisaNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataPisa.json") ?? new NetworkStats();
-            return GetDefaultGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
-        }
-
-        private static void HandleNightCallback(object? sender, EventArgs e)
-        {
-            if (HardwareStates[EGpio.Computer] == EStatus.Off) SwitchLamp(ETrigger.Off);
-            else CommandPc(EComputerCommand.Notify, "You should go to sleep");
-
-            if (DateTime.Now.Hour < 6) 
-                _ = new UtilityTimer(name: "safety-night-handler", hours: 1, minutes: 0, seconds: 0, callback: HandleNightCallback, timerLocation: ETimerLocation.Utility, loop: ETimerLoop.No);
+            _ = new UtilityTimer(name: "night-handler", targetTime: new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), callback: HandleNightCallback, loop: ETimerLoop.Daily);
         }
 
         public static string PowerRaspberry(EPowerOption option)
         {
-            switch (option)
+            Task.Run(async () =>
             {
-                case EPowerOption.Shutdown:
-                    Task.Run(async () =>
-                    {
-                        await Task.Delay(1000);
+                await Task.Delay(1000);
+                switch (option)
+                {
+                    case EPowerOption.Shutdown:
                         ScriptRunner("power", "shutdown");
-                    });
-                    return "Raspberry powering off";
-                case EPowerOption.Reboot:
-                    Task.Run(async () =>
-                    {
-                        await Task.Delay(1000);
+                        break;
+                    case EPowerOption.Reboot:
                         ScriptRunner("power", "reboot");
-                    });
-                    return "Raspberry rebooting";
-                default:
-                    return "Command not found";
-            }
+                        break;
+                }
+            });
+            return "Command executed";
         }
-
-        public static string SwitchRoom(ETrigger state)
+        
+        public static string HandleRoom(ETrigger state)
         {
+            if (state == ETrigger.Off || DateTime.Now.Hour >= 18) PowerLamp(state);
+            PowerComputer(state, bPower: true);
 
-            if (state == ETrigger.On)
-            {
-                if (DateTime.Now.Hour >= 20) SwitchLamp(state);
-                SwitchComputer(state);
-            }
-            else
-            {
-                SwitchLamp(state);
-                SwitchOutlets(state);
-            }
-
-            return "Working on it";
+            return "Command executed";
         }
-
-        public static string SwitchLamp(ETrigger state)
+        
+        public static string PowerLamp(ETrigger state)
         {
             switch (state)
             {
@@ -121,117 +89,47 @@ namespace Processor
                     HardwareStates[EGpio.Lamp] = EStatus.Off;
                     return "Lamp off";
                 case ETrigger.Toggle:
-                    return SwitchLamp(HardwareStates[EGpio.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
                 default:
-                    return "Nothing to do";
+                    return PowerLamp(HardwareStates[EGpio.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
 
-        public static string SwitchGeneral(ETrigger state)
+        public static string PowerGeneric(ETrigger state)
         {
-            if (NetStats.Location == ELocation.Pisa) return SwitchLamp(state);
+            if (NetStats.Location == ELocation.Pisa) return PowerLamp(state);
             
             switch (state)
             {
                 case ETrigger.On:
-                    UseGpio(GeneralPin, PinValue.High);
-                    HardwareStates[EGpio.General] = EStatus.On;
-                    return "Power on";
+                    UseGpio(GenericPin, PinValue.High);
+                    HardwareStates[EGpio.Generic] = EStatus.On;
+                    return "Generic device on";
                 case ETrigger.Off:
-                    UseGpio(GeneralPin, PinValue.Low);
-                    HardwareStates[EGpio.General] = EStatus.Off;
-                    return "Power off";
+                    UseGpio(GenericPin, PinValue.Low);
+                    HardwareStates[EGpio.Generic] = EStatus.Off;
+                    return "Generic device off";
                 case ETrigger.Toggle:
                 default:
-                    return SwitchGeneral(HardwareStates[EGpio.General] == EStatus.On ? ETrigger.Off : ETrigger.On);
+                    return PowerGeneric(HardwareStates[EGpio.Generic] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
-
-        public static string SwitchComputer(ETrigger state)
-        {
-            EStatus lastState = HardwareStates[EGpio.Computer];
-            switch (state)
-            {
-                case ETrigger.On:
-                    CommandPc(EComputerCommand.PowerOn);
-                    HardwareStates[EGpio.Computer] = EStatus.On;
-                    return lastState == EStatus.On ? "Computer already on" : "Computer booting up";
-                case ETrigger.Off:
-                    string result = CommandPc(EComputerCommand.Shutdown);
-                    HardwareStates[EGpio.Computer] = EStatus.Off;
-                    return lastState == EStatus.Off ? "Computer already off" : result;
-                case ETrigger.Toggle:
-                default:
-                    return SwitchComputer(HardwareStates[EGpio.Computer] == EStatus.On ? ETrigger.Off : ETrigger.On);
-            }
-        }
-
-        private static string SwitchOutlets(ETrigger state)
+        
+        public static string PowerComputer(ETrigger state, bool bPower = false)
         {
             switch (state)
             {
-                case ETrigger.Off when HardwareStates[EGpio.Computer] == EStatus.On:
-                    Task.Run(async () =>
-                    {
-                        SwitchComputer(ETrigger.Off);
-                        await Task.Delay(1000);
-
-                        DateTime start = DateTime.Now;
-                        while (PingPc() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
-
-                        if ((DateTime.Now - start).Seconds < 3) await Task.Delay(25000);
-                        else await Task.Delay(5000);
-
-                        SwitchOutlets(ETrigger.Off);
-                    });
-                    return "Computer and outlets shutting down";
                 case ETrigger.On:
                     UseGpio(ComputerPlugsPin, PinValue.High);
-                    HardwareStates[EGpio.Outlets] = EStatus.On;
-                    HardwareStates[EGpio.Computer] = EStatus.On; //Computer automatically turns on
-                    return "Outlets on";
+                    HardwareStates[EGpio.ComputerPower] = EStatus.On;
+                    return CommandPc(EComputerCommand.PowerOn);
                 case ETrigger.Off:
-                    UseGpio(ComputerPlugsPin, PinValue.Low);
-                    HardwareStates[EGpio.Outlets] = EStatus.Off;
-                    return "Outlets off";
+                    return bPower ? RemoveComputerPower() : CommandPc(EComputerCommand.Shutdown);
                 case ETrigger.Toggle:
                 default:
-                    return SwitchOutlets(HardwareStates[EGpio.Outlets] == EStatus.On ? ETrigger.Off : ETrigger.On);
+                    return PowerComputer(HardwareStates[EGpio.Computer] == EStatus.On ? ETrigger.Off : ETrigger.On);
             }
         }
-
-        public static string SwitchFromEnum(EGpio element, ETrigger trigger)
-        {
-            string result = element switch
-            {
-                EGpio.Lamp => SwitchLamp(trigger),
-                EGpio.Computer => SwitchComputer(trigger),
-                EGpio.Outlets => SwitchOutlets(trigger),
-                EGpio.General => SwitchGeneral(trigger),
-                _ => "Hardware device not listed"
-            };
-            return result;
-        }
-
-        public static string SwitchFromString(string element, string trigger)
-        {
-            element = element.ToLower();
-            trigger = trigger.ToLower();
-            EGpio? elementResult = HardwareElementFromString(element);
-            ETrigger? triggerResult = TriggerStateFromString(trigger);
-            if (triggerResult == null) return "Invalid action";
-            if (elementResult != null) return SwitchFromEnum(elementResult.Value, triggerResult.Value);
-            return element == "room" ? SwitchRoom(triggerResult.Value) : "Hardware device not listed";
-        }
-
-        public static async Task<string> GetPublicIp()
-        {
-            using var client = new HttpClient();
-            string ip = await client.GetStringAsync("https://api.ipify.org");
-            return ip;
-        }
-
-
+        
         public static string CommandPc(EComputerCommand command, string? args = null)
         {
             string result;
@@ -242,14 +140,13 @@ namespace Processor
                     result = HardwareStates[EGpio.Computer] == EStatus.On
                         ? "Computer already on"
                         : "Computer booting up";
-                    SwitchOutlets(ETrigger.On);
-                    ScriptRunner("wake-on-lan", NetStats.Desktop_LAN_MAC);
+                    ScriptRunner("wake-on-lan", NetStats.DesktopLanMac);
                     HardwareStates[EGpio.Computer] = EStatus.On;
                     break;
                 }
                 case EComputerCommand.Shutdown:
                 {
-                    SendPc("shutdown", asRoot: true, result: out result);
+                    SendCommand("shutdown", asRoot: true, result: out result);
                     result = HardwareStates[EGpio.Computer] == EStatus.Off
                         ? "Computer already off"
                         : result;
@@ -257,26 +154,25 @@ namespace Processor
                     break;
                 }
                 case EComputerCommand.Reboot:
-                    SendPc("reboot", asRoot: true, result: out result);
+                    SendCommand("reboot", asRoot: true, result: out result);
                     break;
                 case EComputerCommand.Notify:
-                    SendPc($"notify {args}", asRoot: false, result: out result);
+                    SendCommand($"notify {args}", asRoot: false, result: out result);
                     break;
                 default:
                     result = "Command not found";
                     break;
             }
-
             return result;
         }
         
-        public static bool SendPc(string command, bool asRoot, out string result)
+        public static bool SendCommand(string command, bool asRoot, out string result)
         {
             var scriptPath = $"/home/{NetStats.DesktopUsername}/.config/cortana/cortana-script.sh";
             
             string usr = asRoot ? NetStats.DesktopRoot : NetStats.DesktopUsername;
-            string pass = Software.GetConfigurationSecrets()["desktop-password"]!;
-            string addr = NetStats.Desktop_IP;
+            string pass = Software.Secrets.DesktopPassword;
+            string addr = NetStats.DesktopIp;
             
             try
             {
@@ -303,7 +199,39 @@ namespace Processor
                 return false;
             }
         }
+        
+        private static string RemoveComputerPower()
+        {
+            if (HardwareStates[EGpio.Computer] == EStatus.On)
+            {
+                Task.Run(async () =>
+                {
+                    PowerComputer(ETrigger.Off);
+                    await Task.Delay(1000);
 
+                    DateTime start = DateTime.Now;
+                    while (PingPc() && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
+
+                    if ((DateTime.Now - start).Seconds < 3) await Task.Delay(25000);
+                    else await Task.Delay(5000);
+
+                    RemoveComputerPower();
+                });
+                return "Removing power after computer is off";
+            }
+            UseGpio(ComputerPlugsPin, PinValue.Low);
+            HardwareStates[EGpio.ComputerPower] = EStatus.Off;
+
+            return "Power removed";
+        }
+        
+        public static async Task<string> GetPublicIp()
+        {
+            using var client = new HttpClient();
+            string ip = await client.GetStringAsync("https://api.ipify.org");
+            return ip;
+        }
+        
         public static string GetCpuTemperature()
         {
             using var cpuTemperature = new CpuTemperature();
@@ -333,8 +261,7 @@ namespace Processor
                 _ => "Unknown"
             };
         }
-
-        public static bool PingPc() => Ping(NetStats.Desktop_IP);
+        
         public static bool Ping(string ip)
         {
             using var pingSender = new Ping();
@@ -342,12 +269,65 @@ namespace Processor
 
             return reply.Status == IPStatus.Success;
         }
+        
+        public static string SwitchFromEnum(EGpio element, ETrigger trigger)
+        {
+            return element switch
+            {
+                EGpio.Lamp => PowerLamp(trigger),
+                EGpio.Computer => PowerComputer(trigger),
+                EGpio.ComputerPower => PowerComputer(trigger, bPower: true),
+                EGpio.Generic => PowerGeneric(trigger),
+                _ => "Hardware device not listed"
+            };
+        }
 
+        public static string SwitchFromString(string element, string trigger)
+        {
+            element = element.ToLower();
+            trigger = trigger.ToLower();
+            EGpio? elementResult = HardwareElementFromString(element);
+            ETrigger? triggerResult = TriggerStateFromString(trigger);
+            if (triggerResult == null) return "Invalid action";
+            if (elementResult != null) return SwitchFromEnum(elementResult.Value, triggerResult.Value);
+            return element == "room" ? HandleRoom(triggerResult.Value) : "Hardware device not listed";
+        }
+        
+        
+        private static bool PingPc() => Ping(NetStats.DesktopIp);
+        
         private static void UseGpio(int pin, PinValue value)
         {
             using var controller = new GpioController();
             controller.OpenPin(pin, PinMode.Output);
             controller.Write(pin, value);
+        }
+        private static void ScriptRunner(string fileName, string args = "", bool stdRedirect = false)
+        {
+            Process.Start(new ProcessStartInfo()
+            {
+                FileName = "zsh",
+                Arguments = $"-c Scripts/{fileName}.sh \"{args}\"",
+                RedirectStandardOutput = stdRedirect,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            });
+        }
+        
+        private static NetworkStats GetLocationNetworkData()
+        {
+            var orvietoNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataOrvieto.json");
+            var pisaNet = Software.LoadFile<NetworkStats>("Storage/Config/Network/NetworkDataPisa.json");
+            return GetDefaultGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
+        }
+
+        private static void HandleNightCallback(object? sender, EventArgs e)
+        {
+            if (HardwareStates[EGpio.Computer] == EStatus.Off) PowerLamp(ETrigger.Off);
+            else CommandPc(EComputerCommand.Notify, "You should go to sleep");
+
+            if (DateTime.Now.Hour < 6) 
+                _ = new UtilityTimer(name: "safety-night-handler", hours: 1, minutes: 0, seconds: 0, callback: HandleNightCallback, loop: ETimerLoop.No);
         }
 
         private static ETrigger? TriggerStateFromString(string state)
@@ -363,35 +343,26 @@ namespace Processor
             bool res = Enum.TryParse(element, out EGpio status);
             return res ? status : null;
         }
-
-        private static void ScriptRunner(string fileName, string args = "", bool stdRedirect = false)
-        {
-            Process.Start(new ProcessStartInfo()
-            {
-                FileName = "zsh",
-                Arguments = $"-c Scripts/{fileName}.sh \"{args}\"",
-                RedirectStandardOutput = stdRedirect,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
-        }
     }
-
-    public class NetworkStats
+    
+    public readonly struct NetworkStats()
     {
         [JsonConverter(typeof(JsonStringEnumConverter))]
-        public ELocation Location { get; set; }
-        public string Cortana_IP { get; set; }
-        public string Cortana_LAN_MAC { get; set; }
-        public string Cortana_WLAN_MAC { get; set; }
-        public string Desktop_IP { get; set; }
-        public string Desktop_LAN_MAC { get; set; }
-        public string Desktop_WLAN_MAC { get; set; }
+        public ELocation Location { get; }
+        public string CortanaIp { get; }
+        public string CortanaLanMac { get; }
+        public string CortanaWlanMac { get; }
+        public string DesktopIp { get; }
+        public string DesktopLanMac { get; }
+        public string DesktopWlanMac { get; }
+        public string SubnetMask { get; }
+        public string Gateway { get; }
+        public string CortanaUsername { get; }
+        public string DesktopUsername { get; }
+        public string DesktopRoot { get; }
 
-        public string SubnetMask { get; set; }
-        public string Gateway { get; set; }
-        public string CortanaUsername { get; set; }
-        public string DesktopUsername { get; set; }
-        public string DesktopRoot { get; set; }
+        [JsonConstructor]
+        public NetworkStats(ELocation location, string cortanaIp, string cortanaLanMac, string cortanaWlanMac, string desktopIp, string desktopLanMac, string desktopWlanMac, string subnetMask, string gateway, string cortanaUsername, string desktopUsername, string desktopRoot) : this() => 
+            (Location, CortanaIp, CortanaLanMac, CortanaWlanMac, DesktopIp, DesktopLanMac, DesktopWlanMac, SubnetMask, Gateway, CortanaUsername, DesktopUsername, DesktopRoot) = (location, cortanaIp, cortanaLanMac, cortanaWlanMac, desktopIp, desktopLanMac, desktopWlanMac, subnetMask, gateway, cortanaUsername, desktopUsername, desktopRoot);
     }
 }

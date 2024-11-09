@@ -1,29 +1,26 @@
-﻿using Telegram.Bot;
+﻿using Newtonsoft.Json;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Modules;
+using Processor;
 
 namespace TelegramBot
 {
-    public static class TelegramData
+    public static class TelegramUtils
     {
-        private static Data _data = null!;
+        private static readonly DataStruct Data;
         private static TelegramBotClient _cortana = null!;
-        private static List<long> _rootPermissions = null!;
+
+        static TelegramUtils()
+        {
+            Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
+            ShoppingModule.LoadDebts();
+        }
         
         public static void Init(TelegramBotClient newClient)
         {
             _cortana = newClient;
-            
-            LoadData();
-            ShoppingModule.LoadDebts();
-            
-            _rootPermissions = [ NameToId("@gwynn7"), NameToId("@alessiaat1") ];
-        }
-
-        private static void LoadData()
-        {
-            _data = Processor.Software.LoadFile<Data>("Storage/Config/Telegram/TelegramData.json") ?? new Data();
         }
 
         public static void SendToUser(long userId, string message, bool notify = true)
@@ -34,38 +31,40 @@ namespace TelegramBot
 
         public static string IdToName(long id)
         {
-            return _data.usernames.GetValueOrDefault(id, "");
+            return Data.Usernames.GetValueOrDefault(id, "");
         }
 
         public static string IdToGroupName(long id)
         {
-            return _data.groups.GetValueOrDefault(id, "");
+            return Data.Groups.GetValueOrDefault(id, "");
         }
 
         public static long NameToId(string name)
         {
-            foreach ((long groupId,_) in _data.usernames.Where(item => item.Value == name)) 
+            foreach ((long groupId,_) in Data.Usernames.Where(item => item.Value == name)) 
                 return groupId;
             return -1;
         }
 
         public static long NameToGroupId(string name)
         {
-            foreach ((long groupId, _) in _data.groups.Where(item => item.Value == name)) 
+            foreach ((long groupId, _) in Data.Groups.Where(item => item.Value == name)) 
                 return groupId;
             return -1;
         }
         
         public static bool CheckPermission(long userId)
         {
-            return _rootPermissions.Contains(userId);
+            return Data.RootPermissions.Contains(userId);
         }
     }
 
-    public class Data
+    [method: JsonConstructor]
+    public readonly struct DataStruct(Dictionary<long, string> usernames, Dictionary<long, string> groups, List<long> permissions)
     {
-        public Dictionary<long, string> usernames { get; set; }
-        public Dictionary<long, string> groups { get; set; }
+        public Dictionary<long, string> Usernames { get; } = usernames;
+        public Dictionary<long, string> Groups { get; } = groups;
+        public List<long> RootPermissions { get; } = permissions;
     }
     
     public struct MessageStats
@@ -74,9 +73,9 @@ namespace TelegramBot
         public string Command;
         public string Text;
         public List<string> TextList;
-        public long ChatID;
-        public long UserID;
-        public int MessageID;
+        public long ChatId;
+        public long UserId;
+        public int MessageId;
         public ChatType ChatType;
     }
 }

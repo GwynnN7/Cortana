@@ -60,13 +60,13 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Automation
 
 ```http
-  GET cortana-api.ddns.net/automation/{device}/{state}
+  GET cortana-api.ddns.net/automation/{device}?t={trigger}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
 | `device`      | `string` | **Device** to interact with | **computer**, **lamp**, **outlets**, **general**, **room** |
-| `state`      | `string` | **Action** for the device | **on**, **off**, **toggle** <=> ***empty***  |
+| `trigger`      | `string` | **Action** for the device | **on**, **off**, **toggle** <=> ***empty***  |
 
 #### Raspberry
 
@@ -76,7 +76,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** to execute | **temperature**, **ip**, **gateway**, **shutdown**, **reboot**  |
+| `action`      | `string` | **Function** to execute | **temperature**, **location**, **ip**, **gateway**, **shutdown**, **reboot**  |
 
 #### Utility
 
@@ -86,7 +86,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** to execute | **notify**, **location** |
+| `action`      | `string` | **Function** to execute | **notify** (?text=message) |
 
 ---
 
