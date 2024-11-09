@@ -15,7 +15,6 @@ namespace TelegramBot
         static TelegramUtils()
         {
             Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
-            ShoppingModule.LoadDebts();
         }
         
         public static void Init(TelegramBotClient newClient)

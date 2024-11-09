@@ -1,8 +1,29 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using UnitsNet;
+using Processor;
 
+/*
+ *  purchase
+ *    debts x
+ *    new
+ *      add
+ *        require-text users
+ *          require-text money
+ *            new
+ *          back
+ *            new
+ *        back
+ *          new
+ *      pay
+ *        purchase x
+ *      undo
+ *        new
+ *      cancel
+ *        purchase
+ *
+ * 
+ */
 namespace TelegramBot.Modules
 {
     internal enum EPurchaseSteps { Buyers, Amount }
@@ -17,18 +38,19 @@ namespace TelegramBot.Modules
             TelegramUtils.NameToId("@moostacho")
         ];
         
-        private static Dictionary<long, List<Debts>> _debts = null!;
-        private static readonly Dictionary<long, EPurchaseSteps> ChannelWaitingForText = new();
         private static CurrentPurchase? _currentPurchase;
-        
-        public static void LoadDebts()
+        private static readonly Dictionary<long, List<Debts>> Debts;
+        private static readonly Dictionary<long, EPurchaseSteps> ChannelWaitingForText;
+
+        static ShoppingModule()
         {
-            _debts = Processor.Software.LoadFile<Dictionary<long, List<Debts>>>("Storage/Config/Telegram/Debts.json") ?? _debts;
+            Debts = Software.LoadFile<Dictionary<long, List<Debts>>>("Storage/Config/Telegram/Debts.json") ?? new Dictionary<long, List<Debts>>();
+            ChannelWaitingForText = new Dictionary<long, EPurchaseSteps>();
         }
         
         private static void UpdateDebts()
         {
-            Processor.Software.WriteFile("Storage/Config/Telegram/Debts.json", _debts);
+            Software.WriteFile("Storage/Config/Telegram/Debts.json", Debts);
         }
         
          public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
@@ -43,22 +65,8 @@ namespace TelegramBot.Modules
                             await cortana.SendMessage(messageStats.ChatId, "Complete the current active purchase first!");
                             return;
                         }
-
-                        _currentPurchase = new CurrentPurchase
-                        {
-                            Buyer = messageStats.UserId
-                        };
-
-                        foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
-                        
-                        Message msg = await cortana.SendMessage(messageStats.ChatId, UpdateCurrentPurchaseMessage());
-                        _currentPurchase.MessageId = msg.MessageId;
-                        await cortana.SendMessage(messageStats.ChatId, "Options", replyMarkup: CreateOrderButtons());
+                        await cortana.SendMessage(messageStats.ChatId, "Start a new purchase or check your current debts", replyMarkup: CreatePurchaseButtons());
                     }
-                    else await cortana.SendMessage(messageStats.ChatId, "Comando riservato a specifici gruppi");
-                    break;
-                case "debt":
-                    if (IsChannelAllowed(messageStats.ChatId)) await cortana.SendMessage(messageStats.ChatId, GetDebts());
                     else await cortana.SendMessage(messageStats.ChatId, "Comando riservato a specifici gruppi");
                     break;
             }
@@ -67,7 +75,7 @@ namespace TelegramBot.Modules
         private static string GetDebts()
         {
             var debts = "Debts\n\n";
-            foreach ((long userId, List<Debts> debtsList) in _debts)
+            foreach ((long userId, List<Debts> debtsList) in Debts)
             {
                 debts = debtsList.Aggregate(debts, (current, debt) => current + $"{TelegramUtils.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramUtils.IdToName(debt.Towards)}\n");
                 debts += "\n";
@@ -77,7 +85,7 @@ namespace TelegramBot.Modules
         
         public static async void ButtonCallback(ITelegramBotClient cortana, Update update)
         {
-            if(_currentPurchase == null || update.CallbackQuery == null) return;
+            if(update.CallbackQuery == null) return;
             
             string data = update.CallbackQuery.Data!;
             int messageId = update.CallbackQuery.Message!.MessageId;
@@ -89,56 +97,91 @@ namespace TelegramBot.Modules
 
             switch (data)
             {
+                case "new-purchase":
+                    if (_currentPurchase != null)
+                    {
+                        await cortana.SendMessage(update.CallbackQuery.Message.Chat.Id, "Complete the current active purchase first!");
+                        return;
+                    }
+
+                    _currentPurchase = new CurrentPurchase
+                    {
+                        Buyer = update.CallbackQuery.From.Id
+                    };
+                    foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
+                    Message msg = await cortana.SendMessage(update.CallbackQuery.Message.Chat.Id, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
+                    _currentPurchase.MessageId = msg.MessageId;
+                    break;
+                case "show-debts":
+                    await cortana.SendMessage(update.CallbackQuery.Message.Chat.Id, GetDebts());
+                    break;
                 case "add":
+                    if (_currentPurchase == null)
+                    {
+                        await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
+                        return;
+                    }
                     var subPurchase = new SubPurchase()
                     {
                         Customers = Users,
-                        TotalAmount = 0,
-                        InteractionMessage = messageId
+                        TotalAmount = 0
                     };
                     _currentPurchase.History.Push(subPurchase);
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
                     ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Buyers);
                     break;
-                
-                case "pay":
-                    RemoveExistingDebts();
-                    
-                    await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
-                    await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
-                    _currentPurchase = null;
-                    
-                    UpdateDebts();
-                    break;
-                case "undo":
-                    break;
-                case "cancel":
-                    await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
-                    await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
-                    await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, _currentPurchase.MessageId);
-                    _currentPurchase = null;
-                    break;
                 case "confirm-customers":
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "List the price of every item",  replyMarkup: CreateAddItemButtons("shopping-confirm-money"));
-                    ChannelWaitingForText[update.CallbackQuery.Message.Chat.Id] = EPurchaseSteps.Amount; //------------------------------temp
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, $"List the price of every item for {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons("shopping-confirm-money"));
+                    ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Amount);
                     break;
                 case "confirm-money":
+                {
+                    if (_currentPurchase == null)
+                    {
+                        await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
+                        return;
+                    }
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
                     await cortana.DeleteMessages(update.CallbackQuery.Message.Chat.Id, lastSubPurchase.MessagesToDelete);
                     lastSubPurchase.MessagesToDelete.Clear();
                     
-                    double amount = lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count;
-                    foreach (long customer in lastSubPurchase.Customers)
+                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 2);
+                    if (amount > 0) foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] += amount;
+                    else _currentPurchase.History.Pop();
+                    
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
+                    break;
+                }
+                case "pay":
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage());
+                    RemoveExistingDebts();
+                    UpdateDebts();
+                    _currentPurchase = null;
+                    break;
+                case "undo":
+                {
+                    if (_currentPurchase == null)
                     {
-                        _currentPurchase.Purchases[customer] += Math.Round(amount, 2);
+                        await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
+                        return;
                     }
 
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "Options", replyMarkup: CreateOrderButtons());
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, _currentPurchase.MessageId, UpdateCurrentPurchaseMessage());
+                    if (!_currentPurchase.History.TryPop(out SubPurchase? lastSubPurchase)) return;
+                    
+                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 2);
+                    if (amount == 0) return;
+                    
+                    foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] -= amount;
+
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
+                    break;
+                }
+                case "cancel":
+                    await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
+                    _currentPurchase = null;
                     break;
                 case "back":
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, "Options", replyMarkup: CreateOrderButtons());
-                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, _currentPurchase.MessageId, UpdateCurrentPurchaseMessage());
+                    await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
                     break;
             }
         }
@@ -149,47 +192,66 @@ namespace TelegramBot.Modules
             if(!IsWaiting(messageStats.ChatId)) return;
 
             SubPurchase subPurchase = _currentPurchase.History.Peek();
-            var thumbsUpReaction = new ReactionTypeEmoji { Emoji = "👍" };
+            subPurchase.MessagesToDelete.Add(messageStats.MessageId);
+            
+            var reaction = new ReactionTypeEmoji { Emoji = "👍" };
+            var failedReaction = new ReactionTypeEmoji { Emoji = "👍" };
             
             switch (ChannelWaitingForText[messageStats.ChatId])
             {
                 case EPurchaseSteps.Amount:
+                    double newAmount = 0;
                     foreach (string amount in messageStats.FullMessage.Split())
                     {
-                        subPurchase.TotalAmount += double.Parse(amount); //ERROR CHECK
+                        try {
+                            newAmount += double.Parse(amount);
+                        }
+                        catch {
+                            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [failedReaction]);
+                            return;
+                        }
                     }
+                    subPurchase.TotalAmount += newAmount;
                     break;
                 case EPurchaseSteps.Buyers:
-                    subPurchase.Customers.Clear();
+                    var newCustomers = new List<long>();
                     foreach (string user in messageStats.FullMessage.Split())
                     {
-                        subPurchase.Customers.Add(TelegramUtils.NameToId(user)); //ERROR CHECK
+                        try {
+                            newCustomers.Add(TelegramUtils.NameToId(user));
+                        }
+                        catch {
+                            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [failedReaction]);
+                            return;
+                        }
                     }
-                    await cortana.EditMessageText(messageStats.ChatId, subPurchase.InteractionMessage, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
+                    if(subPurchase.Customers.OrderBy(x => x).SequenceEqual(newCustomers.OrderBy(x => x))) break;
+                    subPurchase.Customers.Clear();
+                    subPurchase.Customers.AddRange(newCustomers);
+                    await cortana.EditMessageText(messageStats.ChatId, _currentPurchase.MessageId, UpdateBuyersMessage(), replyMarkup: CreateAddItemButtons("shopping-confirm-customers"));
                     break;
                 default:
-                    //Error
+                    reaction = failedReaction;
                     break;
             }
-            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [thumbsUpReaction]);
-            subPurchase.MessagesToDelete.Add(messageStats.MessageId);
+            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [reaction]);
         }
         
         private static void RemoveExistingDebts()
         {
             if(_currentPurchase == null) return;
             long buyerId = _currentPurchase.Buyer;
-            if(!_debts.ContainsKey(buyerId)) _debts.Add(buyerId, []);
-            for (int i = _debts[buyerId].Count - 1; i >= 0; i--)
+            if(!Debts.ContainsKey(buyerId)) Debts.Add(buyerId, []);
+            for (int i = Debts[buyerId].Count - 1; i >= 0; i--)
             {
                 foreach (long customerId in _currentPurchase.Purchases.Keys)
                 {
-                    if(customerId == buyerId || _debts[buyerId][i].Towards != customerId) continue;
+                    if(customerId == buyerId || Debts[buyerId][i].Towards != customerId) continue;
  
-                    double newDebt = Math.Round(_debts[buyerId][i].Amount - _currentPurchase.Purchases[customerId], 2);
+                    double newDebt = Math.Round(Debts[buyerId][i].Amount - _currentPurchase.Purchases[customerId], 2);
                         
-                    if(newDebt > 0) _debts[buyerId][i].Amount = newDebt;
-                    else _debts[buyerId].RemoveAt(i);
+                    if(newDebt > 0) Debts[buyerId][i].Amount = newDebt;
+                    else Debts[buyerId].RemoveAt(i);
                         
                     if(newDebt >= 0) _currentPurchase.Purchases.Remove(customerId);
                     else _currentPurchase.Purchases[customerId] = -newDebt;
@@ -204,18 +266,17 @@ namespace TelegramBot.Modules
         
         private static void AddReversedDebt(long buyer, long customer, double amount)
         {
-            if(!_debts.ContainsKey(customer)) _debts.Add(customer, []);
+            if(!Debts.ContainsKey(customer)) Debts.Add(customer, []);
             
-            if(!_debts[customer].Exists(x => x.Towards == buyer)) _debts[customer].Add(new Debts() { Towards = buyer, Amount = Math.Round(amount, 2) });
+            if(!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts() { Towards = buyer, Amount = Math.Round(amount, 2) });
             else
             {
-                foreach (Debts debt in _debts[customer].Where(debt => debt.Towards == buyer))
+                foreach (Debts debt in Debts[customer].Where(debt => debt.Towards == buyer))
                 {
                     debt.Amount = Math.Round(debt.Amount + amount, 2);
                 }
             }
         }
- 
         
         private static string UpdateCurrentPurchaseMessage()
         {
@@ -232,19 +293,34 @@ namespace TelegramBot.Modules
             return text;
         }
 
+        private static string GetCurrentBuyers()
+        {
+            return _currentPurchase == null ? "" : _currentPurchase.History.Peek().Customers.Aggregate("", (current, buyer) => current + $"{TelegramUtils.IdToName(buyer)} ");
+        }
         private static string UpdateBuyersMessage()
         {
-            return _currentPurchase == null ? "No purchase active" : _currentPurchase.History.Peek().Customers.Aggregate("Buyers of next sub-purchase [or list them in a text message]\n", (current, buyer) => current + $"{TelegramUtils.IdToName(buyer)} ");
+            return _currentPurchase == null ? "No purchase active" : $"Buyers of next items [or list them in a text message]{GetCurrentBuyers()}\n";
         }
         
         public static bool IsWaiting(long chatId)
         {
             return ChannelWaitingForText.ContainsKey(chatId);
         }
-        
         private static bool IsChannelAllowed(long channelId)
         {
             return AllowedChannels.Contains(TelegramUtils.IdToGroupName(channelId));
+        }
+
+        private static InlineKeyboardMarkup CreatePurchaseButtons()
+        {
+            var rows = new InlineKeyboardButton[2][];
+            rows[0] = new InlineKeyboardButton[1];
+            rows[0][0] = InlineKeyboardButton.WithCallbackData("New Purchase", "shopping-new-purchase");
+            
+            rows[1] = new InlineKeyboardButton[1];
+            rows[1][0] = InlineKeyboardButton.WithCallbackData("Show Debts", "shopping-show-debts");
+            
+            return new InlineKeyboardMarkup(rows);
         }
         
         private static InlineKeyboardMarkup CreateOrderButtons()
@@ -296,7 +372,6 @@ namespace TelegramBot.Modules
     {
         public List<long> Customers = [];
         public double TotalAmount;
-        public int InteractionMessage;
         public readonly List<int> MessagesToDelete = [];
     }
 }
