@@ -33,7 +33,6 @@ namespace DiscordBot
             client.Ready += async () =>
             {
                 DiscordUtils.InitSettings(client);
-                Console.WriteLine(DiscordUtils.Data.HomeId); //----------------------------------------------------------------------------------------
                 await commands.RegisterCommandsToGuildAsync(DiscordUtils.Data.NoMenId);
                 await commands.RegisterCommandsToGuildAsync(DiscordUtils.Data.HomeId);
                 //await commands.RegisterCommandsGloballyAsync(true);

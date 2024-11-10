@@ -14,7 +14,7 @@ namespace TelegramBot
         static TelegramUtils()
         {
             Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
-            Console.WriteLine($"{Data.Groups.Count} {Data.Usernames.Count} {Data.RootPermissions.Count}"); //-----------------------------------------------
+            Console.WriteLine($"Nums: {Data.Groups.Count} {Data.Usernames.Count} {Data.RootPermissions.Count}\n"); //-----------------------------------------------
         }
         
         public static void Init(TelegramBotClient newClient)
