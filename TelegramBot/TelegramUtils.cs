@@ -2,7 +2,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using TelegramBot.Modules;
 using Processor;
 
 namespace TelegramBot
@@ -15,6 +14,7 @@ namespace TelegramBot
         static TelegramUtils()
         {
             Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
+            Console.WriteLine($"{Data.Groups.Count} {Data.Usernames.Count} {Data.RootPermissions.Count}"); //-----------------------------------------------
         }
         
         public static void Init(TelegramBotClient newClient)

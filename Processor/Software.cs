@@ -38,7 +38,7 @@ namespace Processor
             const string path = "../CortanaAPI/HTML";
             try
             {
-                return File.ReadAllText($"{path}/{name}/html");
+                return File.ReadAllText($"{path}/{name}.html");
             }
             catch (Exception ex) { throw new CortanaException(ex.Message, ex); }
         }
