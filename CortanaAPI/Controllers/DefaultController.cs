@@ -13,6 +13,13 @@ namespace CortanaAPI.Controllers
             return base.Content(Software.LoadHtml("Home"), "text/html");
         }
 
+        [HttpGet("image")]
+        public IActionResult GetImage()
+        {
+            byte[] b = System.IO.File.ReadAllBytes("../../Kernel/Storage/Assets/cortana.jpg");        
+            return File(b, "image/jpeg");
+        }
+
         [HttpGet("notify")]
         public IActionResult Notify([FromQuery] string? text)
         {

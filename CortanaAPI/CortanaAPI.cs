@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using Microsoft.Extensions.FileProviders;
 
 namespace CortanaAPI
 {
@@ -25,6 +26,12 @@ namespace CortanaAPI
             
             _cortanaWebApi = builder.Build();
             _cortanaWebApi.UseHttpsRedirection();
+            _cortanaWebApi.UseStaticFiles(new StaticFileOptions 
+            {
+                FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Storage/Assets")),
+                RequestPath = "/resources"
+            });
+
             _cortanaWebApi.UseAuthorization();
             _cortanaWebApi.MapControllers();
 
