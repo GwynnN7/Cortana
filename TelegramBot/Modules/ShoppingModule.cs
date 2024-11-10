@@ -1,4 +1,5 @@
-﻿using Telegram.Bot;
+﻿using Newtonsoft.Json;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Processor;
@@ -102,7 +103,7 @@ namespace TelegramBot.Modules
                     }
                     var subPurchase = new SubPurchase()
                     {
-                        Customers = Users,
+                        Customers = Users.ToList(),
                         TotalAmount = 0
                     };
                     _currentPurchase.History.Push(subPurchase);
@@ -236,13 +237,15 @@ namespace TelegramBot.Modules
                 {
                     if(customerId == buyerId || Debts[buyerId][i].Towards != customerId) continue;
  
-                    double newDebt = Math.Round(Debts[buyerId][i].Amount - _currentPurchase.Purchases[customerId], 2);
+                    double newDebt = Debts[buyerId][i].Amount - _currentPurchase.Purchases[customerId];
                         
                     if(newDebt > 0) Debts[buyerId][i].Amount = newDebt;
                     else Debts[buyerId].RemoveAt(i);
                         
                     if(newDebt >= 0) _currentPurchase.Purchases.Remove(customerId);
                     else _currentPurchase.Purchases[customerId] = -newDebt;
+
+                    _currentPurchase.Purchases[customerId] = Math.Round(_currentPurchase.Purchases[customerId], 2);
                 }
             }
 
@@ -256,7 +259,7 @@ namespace TelegramBot.Modules
         {
             if(!Debts.ContainsKey(customer)) Debts.Add(customer, []);
             
-            if(!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts() { Towards = buyer, Amount = Math.Round(amount, 2) });
+            if(!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts(towards: buyer, amount: Math.Round(amount, 2) ));
             else
             {
                 foreach (Debts debt in Debts[customer].Where(debt => debt.Towards == buyer))
@@ -287,7 +290,7 @@ namespace TelegramBot.Modules
         }
         private static string UpdateBuyersMessage()
         {
-            return _currentPurchase == null ? "No purchase active" : $"Buyers of next items [or list them in a text message]{GetCurrentBuyers()}\n";
+            return _currentPurchase == null ? "No purchase active" : $"Buyers of next items [or list them in a text message]\n{GetCurrentBuyers()}\n";
         }
         
         public static bool IsWaiting(long chatId)
@@ -342,10 +345,13 @@ namespace TelegramBot.Modules
         }
     }
 
-    public class Debts
+    [method: JsonConstructor]
+    public class Debts(
+        double amount, 
+        long towards)
     {
-        public double Amount { get; set; }
-        public long Towards { get; init; }
+        public double Amount { get; set; } = amount;
+        public long Towards { get; init; } = towards;
     }
 
     public class CurrentPurchase
