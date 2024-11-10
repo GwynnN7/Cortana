@@ -1,6 +1,6 @@
 ﻿using Processor;
 
-namespace Kernel
+namespace CortanaKernel
 {
     using DiscordBot;
     using TelegramBot;

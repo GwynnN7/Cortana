@@ -3,66 +3,52 @@ using Processor;
 
 namespace CortanaAPI.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class RaspberryController : ControllerBase
     {
         [HttpGet]
-        public ContentResult Get()
+        public IActionResult Get()
         {
-            string html = Software.LoadHtml("Documentation");
-            html = html.Replace("{{route}}", "Raspberry API");
-            return base.Content(html, "text/html");
+            return Redirect("http://cortana-api.ddns.net:8080");
         }
 
         [HttpGet("temperature")]
-        public ContentResult Temperature()
+        public static string Temperature()
         {
-            string html = Software.LoadHtml("Info");
-            html = html.Replace("{{type}}", "Temperature");
-            html = html.Replace("{{value}}", Hardware.GetCpuTemperature());
-            return base.Content(html, "text/html");
+            return Hardware.GetCpuTemperature();
         }
 
         [HttpGet("ip")]
-        public ContentResult Ip()
+        public static string Ip()
         {
-            string html = Software.LoadHtml("Info");
-            html = html.Replace("{{type}}", "IP");
-            html = html.Replace("{{value}}", Hardware.GetPublicIp().Result);
-            return base.Content(html, "text/html");
+            return Hardware.GetPublicIp().Result;
         }
         
         [HttpGet("gateway")]
-        public ContentResult Gateway()
+        public static string Gateway()
         {
-            string html = Software.LoadHtml("Info");
-            html = html.Replace("{{type}}", "Gateway");
-            html = html.Replace("{{value}}", Hardware.GetDefaultGateway());
-            return base.Content(html, "text/html");
+            return Hardware.GetDefaultGateway();
         }
         
         [HttpGet("location")]
-        public ContentResult Location()
+        public static string Location()
         {
-            string html = Software.LoadHtml("Info");
-            html = html.Replace("{{type}}", "Location");
-            html = html.Replace("{{value}}", Hardware.GetLocation());
-            return base.Content(html, "text/html");
+            return Hardware.GetLocation();
         }
 
         [HttpGet("shutdown")]
         public IActionResult Shutdown()
         {
             Hardware.PowerRaspberry(EPowerOption.Shutdown);
-            return Redirect("http://cortana-api.ddns.net:8080/raspberry");
+            return Redirect("http://cortana-api.ddns.net:8080");
         }
 
         [HttpGet("reboot")]
         public IActionResult Reboot()
         {
             Hardware.PowerRaspberry(EPowerOption.Reboot);
-            return Redirect("http://cortana-api.ddns.net:8080/raspberry");
+            return Redirect("http://cortana-api.ddns.net:8080");
         }
     }
 }

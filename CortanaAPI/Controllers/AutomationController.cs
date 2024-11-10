@@ -3,23 +3,21 @@ using Processor;
 
 namespace CortanaAPI.Controllers
 {
-    [Route("[controller]")]
+    [Route("api/[controller]")]
     [ApiController]
     public class AutomationController : ControllerBase
     {
         [HttpGet]
-        public ContentResult Get()
+        public IActionResult Get()
         {
-            string html = Software.LoadHtml("Documentation");
-            html = html.Replace("{{route}}", "Automation API");
-            return base.Content(html, "text/html");
+            return Redirect("http://cortana-api.ddns.net:8080");
         }
 
         [HttpGet("{device}")]
         public IActionResult PowerDevice([FromRoute] string device, [FromQuery] string? t)
         {
             Hardware.SwitchFromString(device, t ?? "toggle");
-            return Redirect("http://cortana-api.ddns.net:8080/automation/");
+            return Redirect("http://cortana-api.ddns.net:8080");
         }
     }
 }

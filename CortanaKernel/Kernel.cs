@@ -1,8 +1,8 @@
 using Processor;
 
-namespace Kernel
+namespace CortanaKernel
 {
-    public static class CortanaKernel
+    public static class Kernel
     {
         private static void Main() => BootCortana().GetAwaiter().GetResult();
 

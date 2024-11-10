@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CortanaAPI", "CortanaAPI\Co
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Processor", "Processor\Processor.csproj", "{14DC3278-E390-4561-95A3-6D65B0E931B3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kernel", "Kernel\Kernel.csproj", "{34334AA4-8943-424F-BB59-91650B20FF5B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaKernel", "CortanaKernel\CortanaKernel.csproj", "{34334AA4-8943-424F-BB59-91650B20FF5B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

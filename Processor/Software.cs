@@ -53,7 +53,7 @@ namespace Processor
 
         public static void Log(string fileName, string log)
         {
-            var path = $"/home/cortana/Cortana/Kernel/Log/{fileName}.log";
+            var path = $"/home/cortana/Cortana/CortanaKernel/Log/{fileName}.log";
             using StreamWriter logFile = File.Exists(path) ? File.AppendText(path) : File.CreateText(path);
             logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
         }

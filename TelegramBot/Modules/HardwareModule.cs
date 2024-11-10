@@ -12,8 +12,8 @@ namespace TelegramBot.Modules
         public const string Pc = "🖥";
         public const string Thunder = "⚡";
         public const string Reboot = "🔄";
-        public const string On = "🟩🟩🟩";
-        public const string Off = "🟥🟥🟥";
+        public const string On = "\ud83c\udf15\ud83c\udf15\ud83c\udf15";
+        public const string Off = "\ud83c\udf11\ud83c\udf11\ud83c\udf11";
     }
     
     public static class HardwareModule

@@ -8,10 +8,14 @@ if (($# == 1)) then
     elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
 	    pkill -SIGKILL CortanaKernel;
 	  elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-      echo "--update";
+      echo "cortana-run --update -u  git fetch and pull";
+      echo "cortana-run --reset -r   git fetch and reset"
+      echo "cortana-run --kill -k    kill active process"
+      echo "cortana-run              run cortana"
     fi
 elif (($# == 0)) then
-  cd ./Kernel || exit;
+  cd ./CortanaKernel || exit;
   mkdir -p Log
   nohup dotnet run >>Log/Log.log 2>>Log/Error.log & disown;
+  echo "Cortana booting up..."
 fi

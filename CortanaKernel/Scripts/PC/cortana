@@ -4,11 +4,9 @@ if [ "$1" = "log" ]; then
     blue='\033[0;34m';
     echo -e "${blue}$(cortana) ➤  $(cortana raspberry temp)";
 elif [ "$1" = "copy" ]; then
-    mv ~/Programming/Cortana/Kernel/Storage ~/.config/cortana/
-    scp -r ~/Programming/Cortana cortana@192.168.178.117:~/
-    mv ~/.config/cortana/Storage ~/Programming/Cortana/Kernel/
+    rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=':- ~/Programming/Cortana/.gitignore' ~/Programming/Cortana cortana@192.168.178.117:~/
 else
-    api="http://cortana-api.ddns.net:8080";
+    api="http://cortana-api.ddns.net:8080/api";
     url=$(echo "$@" | sed 's! !\/!g')
     curl --silent -w '\n' "$api/${url}";
 fi

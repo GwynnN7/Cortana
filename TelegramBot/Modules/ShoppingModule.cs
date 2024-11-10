@@ -3,27 +3,6 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Processor;
 
-/*
- *  purchase
- *    debts x
- *    new
- *      add
- *        require-text users
- *          require-text money
- *            new
- *          back
- *            new
- *        back
- *          new
- *      pay
- *        purchase x
- *      undo
- *        new
- *      cancel
- *        purchase
- *
- * 
- */
 namespace TelegramBot.Modules
 {
     internal enum EPurchaseSteps { Buyers, Amount }
@@ -195,7 +174,7 @@ namespace TelegramBot.Modules
             subPurchase.MessagesToDelete.Add(messageStats.MessageId);
             
             var reaction = new ReactionTypeEmoji { Emoji = "👍" };
-            var failedReaction = new ReactionTypeEmoji { Emoji = "👍" };
+            var failedReaction = new ReactionTypeEmoji { Emoji = "\u274c" };
             
             switch (ChannelWaitingForText[messageStats.ChatId])
             {

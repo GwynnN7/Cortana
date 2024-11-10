@@ -13,7 +13,7 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 
 ### Modules
 
-- **Kernel**
+- **CortanaKernel**
 - **Processor**
 - **Cortana API**
 - **Discord Bot**
@@ -47,10 +47,16 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 
 ## API Reference
 
+#### Home 
+
+```http 
+   http://cortana-api.ddns.net:8080/
+```
+
 #### Routing
 
 ```http
-  GET cortana-api.ddns.net/{route}
+  GET cortana-api.ddns.net:8080/api/{route}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -60,7 +66,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Automation
 
 ```http
-  GET cortana-api.ddns.net/automation/{device}?t={trigger}
+  GET cortana-api.ddns.net:8080/api/automation/{device}?t={trigger}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -71,7 +77,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Raspberry
 
 ```http
-  GET cortana-api.ddns.net/raspberry/{action}
+  GET cortana-api.ddns.net:8080/api/raspberry/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -81,7 +87,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Utility
 
 ```http
-  GET cortana-api.ddns.net/utility/{action}
+  GET cortana-api.ddns.net:8080/api/utility/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -121,11 +127,11 @@ git clone https://github.com/GwynbleiddN7/Cortana.git
 cd Cortana
 dotnet build
 
-cd Kernel
+cd CortanaKernel
 dotnet run
 ```
 
-### Use Script
+### Use Script for Background
 
 ```bash
 git clone https://github.com/GwynbleiddN7/Cortana.git
