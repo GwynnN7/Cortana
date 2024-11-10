@@ -62,8 +62,11 @@ namespace TelegramBot
     [method: JsonConstructor]
     public readonly struct DataStruct(Dictionary<long, string> usernames, Dictionary<long, string> groups, List<long> permissions)
     {
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public Dictionary<long, string> Usernames { get; } = usernames;
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public Dictionary<long, string> Groups { get; } = groups;
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public List<long> RootPermissions { get; } = permissions;
     }
     
