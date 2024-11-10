@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using System.Text.Json.Serialization;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -14,7 +14,6 @@ namespace TelegramBot
         static TelegramUtils()
         {
             Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
-            Console.WriteLine($"Nums: {Data.Groups.Count} {Data.Usernames.Count} {Data.RootPermissions.Count}\n"); //-----------------------------------------------
         }
         
         public static void Init(TelegramBotClient newClient)
@@ -54,17 +53,22 @@ namespace TelegramBot
         
         public static bool CheckPermission(long userId)
         {
-            return true;
             return Data.RootPermissions.Contains(userId);
         }
     }
 
-    [method: JsonConstructor]
-    public struct DataStruct(Dictionary<long, string> usernames, Dictionary<long, string> groups, List<long> permissions)
+    [method: Newtonsoft.Json.JsonConstructor]
+    public readonly struct DataStruct(
+        Dictionary<long, string> usernames, 
+        Dictionary<long, string> groups, 
+        List<long> rootPermissions)
     {
-        public Dictionary<long, string> Usernames { get; set; } = usernames;
-        public Dictionary<long, string> Groups { get; set; } = groups;
-        public List<long> RootPermissions { get; set; } = permissions;
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<long, string> Usernames { get; } = usernames;
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public Dictionary<long, string> Groups { get; } = groups;
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
+        public List<long> RootPermissions { get; } = rootPermissions;
     }
     
     public struct MessageStats

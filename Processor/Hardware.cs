@@ -344,25 +344,35 @@ namespace Processor
             return res ? status : null;
         }
     }
-    
-    public readonly struct NetworkStats()
+
+    [method: JsonConstructor]
+    public readonly struct NetworkStats(
+        ELocation location,
+        string cortanaIp,
+        string cortanaLanMac,
+        string cortanaWlanMac,
+        string desktopIp,
+        string desktopLanMac,
+        string desktopWlanMac,
+        string subnetMask,
+        string gateway,
+        string cortanaUsername,
+        string desktopUsername,
+        string desktopRoot)
     {
         [JsonConverter(typeof(JsonStringEnumConverter))]
-        public ELocation Location { get; }
-        public string CortanaIp { get; }
-        public string CortanaLanMac { get; }
-        public string CortanaWlanMac { get; }
-        public string DesktopIp { get; }
-        public string DesktopLanMac { get; }
-        public string DesktopWlanMac { get; }
-        public string SubnetMask { get; }
-        public string Gateway { get; }
-        public string CortanaUsername { get; }
-        public string DesktopUsername { get; }
-        public string DesktopRoot { get; }
+        public ELocation Location { get; } = location;
+        public string CortanaIp { get; } = cortanaIp;
+        public string CortanaLanMac { get; } = cortanaLanMac;
+        public string CortanaWlanMac { get; } = cortanaWlanMac;
+        public string DesktopIp { get; } = desktopIp;
+        public string DesktopLanMac { get; } = desktopLanMac;
+        public string DesktopWlanMac { get; } = desktopWlanMac;
+        public string SubnetMask { get; } = subnetMask;
+        public string Gateway { get; } = gateway;
+        public string CortanaUsername { get; } = cortanaUsername;
+        public string DesktopUsername { get; } = desktopUsername;
+        public string DesktopRoot { get; } = desktopRoot;
 
-        [JsonConstructor]
-        public NetworkStats(ELocation location, string cortanaIp, string cortanaLanMac, string cortanaWlanMac, string desktopIp, string desktopLanMac, string desktopWlanMac, string subnetMask, string gateway, string cortanaUsername, string desktopUsername, string desktopRoot) : this() => 
-            (Location, CortanaIp, CortanaLanMac, CortanaWlanMac, DesktopIp, DesktopLanMac, DesktopWlanMac, SubnetMask, Gateway, CortanaUsername, DesktopUsername, DesktopRoot) = (location, cortanaIp, cortanaLanMac, cortanaWlanMac, desktopIp, desktopLanMac, desktopWlanMac, subnetMask, gateway, cortanaUsername, desktopUsername, desktopRoot);
     }
 }

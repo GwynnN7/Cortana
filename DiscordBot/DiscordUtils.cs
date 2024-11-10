@@ -1,6 +1,6 @@
-﻿using Discord;
+﻿using System.Text.Json.Serialization;
+using Discord;
 using Discord.WebSocket;
-using Newtonsoft.Json;
 using Processor;
 
 namespace DiscordBot
@@ -37,14 +37,14 @@ namespace DiscordBot
 
         public static void AddGuildSettings(SocketGuild guild)
         {
-            var defaultGuildSettings = new GuildSettings()
-            {
-                AutoJoin = false,
-                Greetings = false,
-                GreetingsChannel = guild.DefaultChannel.Id,
-                AfkChannel = null,
-                BannedWords = []
-            };
+            var defaultGuildSettings = new GuildSettings
+            (
+                autoJoin: false,
+                greetings: false,
+                greetingsChannel: guild.DefaultChannel.Id,
+                afkChannel: null,
+                bannedWords: []
+            );
             GuildSettings.Add(guild.Id, defaultGuildSettings);
             UpdateSettings();
         }
@@ -104,16 +104,22 @@ namespace DiscordBot
         }
     }
 
-    public class GuildSettings
+    [method: Newtonsoft.Json.JsonConstructor]
+    public class GuildSettings(
+        bool autoJoin,
+        bool greetings,
+        ulong greetingsChannel,
+        ulong? afkChannel,
+        List<string> bannedWords)
     {
-        public required bool AutoJoin { get; set; }
-        public required bool Greetings { get; set; }
-        public required ulong GreetingsChannel { get; set; }
-        public required ulong? AfkChannel { get; set; }
-        public required List<string> BannedWords { get; init; }
+        public bool AutoJoin { get; set; } = autoJoin;
+        public bool Greetings { get; set; } = greetings;
+        public ulong GreetingsChannel { get; set; } = greetingsChannel;
+        public ulong? AfkChannel { get; set; } = afkChannel;
+        public List<string> BannedWords { get; } = bannedWords;
     }
 
-    [method: JsonConstructor]
+    [method: Newtonsoft.Json.JsonConstructor]
     public readonly struct DataStruct(
         ulong cortanaId,
         ulong chiefId,
@@ -130,11 +136,16 @@ namespace DiscordBot
         public ulong CortanaLogChannelId { get; } = cortanaLogChannelId;
     }
     
-    [method: JsonConstructor]
-    public readonly struct MemeJsonStructure(List<string> alias, string link, EMemeCategory category)
+    [method: Newtonsoft.Json.JsonConstructor]
+    public readonly struct MemeJsonStructure(
+        List<string> alias, 
+        string link, 
+        EMemeCategory category)
     {
+        [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public List<string> Alias { get; } = alias;
         public string Link { get; } = link;
+        [JsonConverter(typeof(JsonStringEnumConverter))]
         public EMemeCategory Category { get; } = category;
     }
 }
