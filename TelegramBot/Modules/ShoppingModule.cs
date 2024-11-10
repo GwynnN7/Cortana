@@ -110,11 +110,13 @@ namespace TelegramBot.Modules
                     ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Buyers);
                     break;
                 case "confirm-customers":
+                    ChannelWaitingForText.Remove(update.CallbackQuery.Message.Chat.Id);
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, $"List the price of every item for {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons("shopping-confirm-money"));
                     ChannelWaitingForText.Add(update.CallbackQuery.Message.Chat.Id, EPurchaseSteps.Amount);
                     break;
                 case "confirm-money":
                 {
+                    ChannelWaitingForText.Remove(update.CallbackQuery.Message.Chat.Id);
                     if (_currentPurchase == null)
                     {
                         await cortana.DeleteMessage(update.CallbackQuery.Message.Chat.Id, messageId);
@@ -160,6 +162,7 @@ namespace TelegramBot.Modules
                     _currentPurchase = null;
                     break;
                 case "back":
+                    ChannelWaitingForText.Remove(update.CallbackQuery.Message.Chat.Id);
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
                     break;
             }

@@ -131,7 +131,7 @@ cd CortanaKernel
 dotnet run
 ```
 
-### Use Script for Background
+### Use Script [runs in background]
 
 ```bash
 git clone https://github.com/GwynbleiddN7/Cortana.git
