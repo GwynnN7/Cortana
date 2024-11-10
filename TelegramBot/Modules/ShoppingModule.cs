@@ -173,6 +173,12 @@ namespace TelegramBot.Modules
             if(_currentPurchase == null) return;
             if(!IsWaiting(messageStats.ChatId)) return;
 
+            if (_currentPurchase.Buyer != messageStats.UserId)
+            {
+                await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                return;
+            }
+
             SubPurchase subPurchase = _currentPurchase.History.Peek();
             subPurchase.MessagesToDelete.Add(messageStats.MessageId);
             

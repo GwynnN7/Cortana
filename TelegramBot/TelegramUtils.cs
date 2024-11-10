@@ -29,26 +29,30 @@ namespace TelegramBot
 
         public static string IdToName(long id)
         {
-            return Data.Usernames.GetValueOrDefault(id, "");
+            if (Data.Usernames.TryGetValue(id, out string? name))
+                return name;
+            throw new CortanaException("User not found");
         }
 
         public static string IdToGroupName(long id)
         {
-            return Data.Groups.GetValueOrDefault(id, "");
+            if (Data.Groups.TryGetValue(id, out string? name))
+                return name;
+            throw new CortanaException("Group not found");
         }
 
         public static long NameToId(string name)
         {
             foreach ((long groupId,_) in Data.Usernames.Where(item => item.Value == name)) 
                 return groupId;
-            return -1;
+            throw new CortanaException("User not found");
         }
 
         public static long NameToGroupId(string name)
         {
             foreach ((long groupId, _) in Data.Groups.Where(item => item.Value == name)) 
                 return groupId;
-            return -1;
+            throw new CortanaException("Group not found");
         }
         
         public static bool CheckPermission(long userId)
