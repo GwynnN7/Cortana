@@ -7,13 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc" Version="2.2.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <ProjectReference Include="..\Processor\Processor.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Processor\Processor.csproj" />
+    <Reference Include="Microsoft.AspNetCore"/>
+    <Reference Include="Microsoft.AspNetCore.StaticFiles"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
   </ItemGroup>
 
 </Project>

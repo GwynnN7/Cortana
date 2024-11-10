@@ -89,8 +89,9 @@ namespace Processor
                     HardwareStates[EGpio.Lamp] = EStatus.Off;
                     return "Lamp off";
                 case ETrigger.Toggle:
-                default:
                     return PowerLamp(HardwareStates[EGpio.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
+                default:
+                    return "Already done";
             }
         }
 

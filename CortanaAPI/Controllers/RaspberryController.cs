@@ -14,25 +14,25 @@ namespace CortanaAPI.Controllers
         }
 
         [HttpGet("temperature")]
-        public static string Temperature()
+        public string Temperature()
         {
             return Hardware.GetCpuTemperature();
         }
 
         [HttpGet("ip")]
-        public static string Ip()
+        public string Ip()
         {
             return Hardware.GetPublicIp().Result;
         }
         
         [HttpGet("gateway")]
-        public static string Gateway()
+        public string Gateway()
         {
             return Hardware.GetDefaultGateway();
         }
         
         [HttpGet("location")]
-        public static string Location()
+        public string Location()
         {
             return Hardware.GetLocation();
         }
