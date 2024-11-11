@@ -54,12 +54,13 @@ namespace TelegramBot.Modules
 
         private static string GetDebts()
         {
-            var debts = "Debts\n\n";
+            var debts = "";
             foreach ((long userId, List<Debts> debtsList) in Debts)
             {
-                debts = debtsList.Aggregate(debts, (current, debt) => current + $"{TelegramUtils.IdToName(userId)} owns {debt.Amount}\u20ac to {TelegramUtils.IdToName(debt.Towards)}\n");
-                debts += "\n";
+                debts += $"{TelegramUtils.IdToName(userId)} owns:\n";
+                debts = debtsList.Aggregate(debts, (current, debt) => current + $"    ~ {debt.Amount}\u20ac to {TelegramUtils.IdToName(debt.Towards)}\n");
             }
+            if(debts == "") debts = "No debts are owned";
             return debts;
         }
         
@@ -187,7 +188,7 @@ namespace TelegramBot.Modules
             subPurchase.MessagesToDelete.Add(messageStats.MessageId);
             
             var reaction = new ReactionTypeEmoji { Emoji = "👍" };
-            var failedReaction = new ReactionTypeEmoji { Emoji = "\u274c" };
+            var failedReaction = new ReactionTypeEmoji { Emoji = "👎" };
             
             switch (ChannelWaitingForText[messageStats.ChatId])
             {
@@ -274,14 +275,14 @@ namespace TelegramBot.Modules
         {
             if (_currentPurchase == null) return "No purchase active";
             
-            var text = $"Purchase {DateTime.Now:dd/MM/yyyy}\n\n";
+            var text = $"Purchase date: {DateTime.Now:dd/MM/yyyy}\n\n";
             double totalPrice = 0;
             foreach (long userId in _currentPurchase.Purchases.Keys)
             {
                 text += $"{TelegramUtils.IdToName(userId)}: {Math.Round(_currentPurchase.Purchases[userId],2)}\u20ac\n";
                 totalPrice += _currentPurchase.Purchases[userId];
             }
-            text += $"\n\nTotal: {Math.Round(totalPrice,2)}\u20ac";
+            text += $"\nTotal: {Math.Round(totalPrice,2)}\u20ac";
             
             return text;
         }
@@ -292,7 +293,7 @@ namespace TelegramBot.Modules
         }
         private static string UpdateBuyersMessage()
         {
-            return _currentPurchase == null ? "No purchase active" : $"Buyers of next items [or list them in a text message]\n{GetCurrentBuyers()}\n";
+            return _currentPurchase == null ? "No purchase active" : $"Buyers of next items [or list them in a text message]\n{GetCurrentBuyers()}";
         }
         
         public static bool IsWaiting(long chatId)

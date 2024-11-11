@@ -50,7 +50,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Home 
 
 ```http 
-   http://cortana-api.ddns.net:8080/
+  http://cortana-api.ddns.net:8080/
 ```
 
 #### Routing
