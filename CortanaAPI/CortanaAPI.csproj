@@ -9,14 +9,10 @@
   <ItemGroup>
     <ProjectReference Include="..\Processor\Processor.csproj" />
   </ItemGroup>
-
   <ItemGroup>
-    <Reference Include="Microsoft.AspNetCore"/>
-    <Reference Include="Microsoft.AspNetCore.StaticFiles"/>
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
 </Project>

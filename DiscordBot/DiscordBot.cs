@@ -33,9 +33,7 @@ namespace DiscordBot
             client.Ready += async () =>
             {
                 DiscordUtils.InitSettings(client);
-                await commands.RegisterCommandsToGuildAsync(DiscordUtils.Data.NoMenId);
-                await commands.RegisterCommandsToGuildAsync(DiscordUtils.Data.HomeId);
-                //await commands.RegisterCommandsGloballyAsync(true);
+                await commands.RegisterCommandsGloballyAsync();
 
                 _ = new UtilityTimer(name: "discord-activity-timer", hours: 0, minutes: 0, seconds: 10, callback: ActivityTimerElapsed, loop: ETimerLoop.Interval);
                 
