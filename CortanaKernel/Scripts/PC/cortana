@@ -2,7 +2,7 @@
 
 if [ "$1" = "log" ]; then
     blue='\033[0;34m';
-    echo -e "${blue}$(cortana) ➤  $(cortana raspberry temp)";
+    echo -e "${blue}$(cortana) ➤ $(cortana raspberry temperature)";
 elif [ "$1" = "copy" ]; then
     rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=':- ~/Programming/Cortana/.gitignore' ~/Programming/Cortana cortana@192.168.178.117:~/
 else

@@ -16,7 +16,7 @@ namespace CortanaAPI.Controllers
 		[HttpGet("notify")]
 		public IActionResult Notify([FromQuery] string? text)
 		{
-			Hardware.CommandPc(EComputerCommand.Notify, text ?? "Hi, I\'m Cortana");
+			Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
 			return Redirect("http://cortana-api.ddns.net:8080");
 		}
 	}

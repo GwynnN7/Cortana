@@ -127,8 +127,8 @@ namespace TelegramBot.Modules
                     await cortana.DeleteMessages(update.CallbackQuery.Message.Chat.Id, lastSubPurchase.MessagesToDelete);
                     lastSubPurchase.MessagesToDelete.Clear();
                     
-                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 2);
-                    if (amount > 0) foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] += amount;
+                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 3);
+                    if (amount > 0) foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] = Math.Round(_currentPurchase.Purchases[customer] + amount, 2);
                     else _currentPurchase.History.Pop();
                     
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
@@ -150,10 +150,10 @@ namespace TelegramBot.Modules
 
                     if (!_currentPurchase.History.TryPop(out SubPurchase? lastSubPurchase)) return;
                     
-                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 2);
+                    double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 3);
                     if (amount == 0) return;
                     
-                    foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] -= amount;
+                    foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] = Math.Round(_currentPurchase.Purchases[customer] - amount, 3);
 
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
                     break;
@@ -231,21 +231,19 @@ namespace TelegramBot.Modules
             if(_currentPurchase == null) return;
             long buyerId = _currentPurchase.Buyer;
             if(!Debts.ContainsKey(buyerId)) Debts.Add(buyerId, []);
-            for (int i = Debts[buyerId].Count - 1; i >= 0; i--)
+            foreach(Debts debt in Debts[buyerId].ToList())
             {
-                foreach (long customerId in _currentPurchase.Purchases.Keys)
+                foreach ((long customerId, double amount) in _currentPurchase.Purchases)
                 {
-                    if(customerId == buyerId || Debts[buyerId][i].Towards != customerId) continue;
+                    if(customerId == buyerId || debt.Towards != customerId) continue;
  
-                    double newDebt = Debts[buyerId][i].Amount - _currentPurchase.Purchases[customerId];
+                    double newDebt = debt.Amount - amount;
                         
-                    if(newDebt > 0) Debts[buyerId][i].Amount = newDebt;
-                    else Debts[buyerId].RemoveAt(i);
+                    if(newDebt > 0) debt.Amount = newDebt;
+                    else Debts[buyerId].Remove(debt);
                         
                     if(newDebt >= 0) _currentPurchase.Purchases.Remove(customerId);
-                    else _currentPurchase.Purchases[customerId] = -newDebt;
-
-                    _currentPurchase.Purchases[customerId] = Math.Round(_currentPurchase.Purchases[customerId], 2);
+                    else _currentPurchase.Purchases[customerId] = Math.Round(-newDebt, 3);
                 }
             }
 
@@ -259,12 +257,12 @@ namespace TelegramBot.Modules
         {
             if(!Debts.ContainsKey(customer)) Debts.Add(customer, []);
             
-            if(!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts(towards: buyer, amount: Math.Round(amount, 2) ));
+            if(!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts(towards: buyer, amount: Math.Round(amount, 3) ));
             else
             {
                 foreach (Debts debt in Debts[customer].Where(debt => debt.Towards == buyer))
                 {
-                    debt.Amount = Math.Round(debt.Amount + amount, 2);
+                    debt.Amount = Math.Round(debt.Amount + amount, 3);
                 }
             }
         }
@@ -277,10 +275,11 @@ namespace TelegramBot.Modules
             double totalPrice = 0;
             foreach (long userId in _currentPurchase.Purchases.Keys)
             {
-                text += $"{TelegramUtils.IdToName(userId)}: {_currentPurchase.Purchases[userId]}\u20ac\n";
+                text += $"{TelegramUtils.IdToName(userId)}: {Math.Round(_currentPurchase.Purchases[userId],2)}\u20ac\n";
                 totalPrice += _currentPurchase.Purchases[userId];
             }
-            text += $"\n\nTotal: {totalPrice}";
+            text += $"\n\nTotal: {Math.Round(totalPrice,2)}\u20ac";
+            
             return text;
         }
 
@@ -351,7 +350,7 @@ namespace TelegramBot.Modules
         long towards)
     {
         public double Amount { get; set; } = amount;
-        public long Towards { get; init; } = towards;
+        public long Towards { get; } = towards;
     }
 
     public class CurrentPurchase
