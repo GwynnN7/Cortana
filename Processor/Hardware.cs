@@ -308,7 +308,7 @@ namespace Processor
             Process.Start(new ProcessStartInfo()
             {
                 FileName = "zsh",
-                Arguments = $"-c Scripts/{fileName}.sh \"{args}\"",
+                Arguments = $"-c \"Scripts/{fileName}.sh {args}\"",
                 RedirectStandardOutput = stdRedirect,
                 UseShellExecute = false,
                 CreateNoWindow = true

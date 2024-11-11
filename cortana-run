@@ -1,12 +1,14 @@
 #!/usr/bin/zsh
+cd ~/Cortana || exit
 
 if (($# == 1)) then
     if [ "$1" = "--update" ] || [ "$1" = "-u" ]; then
-	    git pull . main;
+	    git fetch --all && git pull;
     elif [ "$1" = "--reset" ] || [ "$1" = "-r" ]; then
 	    git fetch --all && git reset --hard origin/main;
     elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
-	    pkill -SIGKILL CortanaKernel;
+	    killall dotnet;
+        echo "Cortana killed"
 	  elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
       echo "cortana-run --update -u  git fetch and pull";
       echo "cortana-run --reset -r   git fetch and reset"
@@ -16,6 +18,7 @@ if (($# == 1)) then
 elif (($# == 0)) then
   cd ./CortanaKernel || exit;
   mkdir -p Log
+  rm -f Log/*
   nohup dotnet run >>Log/Log.log 2>>Log/Error.log & disown;
   echo "Cortana booting up..."
 fi

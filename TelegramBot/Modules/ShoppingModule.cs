@@ -124,11 +124,14 @@ namespace TelegramBot.Modules
                         return;
                     }
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
-                    await cortana.DeleteMessages(update.CallbackQuery.Message.Chat.Id, lastSubPurchase.MessagesToDelete);
-                    lastSubPurchase.MessagesToDelete.Clear();
+                    if (lastSubPurchase.MessagesToDelete.Count > 0)
+                    {
+                        await cortana.DeleteMessages(update.CallbackQuery.Message.Chat.Id, lastSubPurchase.MessagesToDelete);
+                        lastSubPurchase.MessagesToDelete.Clear();
+                    }
                     
                     double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 3);
-                    if (amount > 0) foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] = Math.Round(_currentPurchase.Purchases[customer] + amount, 2);
+                    if (amount != 0) foreach (long customer in lastSubPurchase.Customers) _currentPurchase.Purchases[customer] = Math.Round(_currentPurchase.Purchases[customer] + amount, 3);
                     else _currentPurchase.History.Pop();
                     
                     await cortana.EditMessageText(update.CallbackQuery.Message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
