@@ -57,8 +57,9 @@ namespace TelegramBot.Modules
             var debts = "";
             foreach ((long userId, List<Debts> debtsList) in Debts)
             {
+                if(debtsList.Count == 0) continue;
                 debts += $"{TelegramUtils.IdToName(userId)} owns:\n";
-                debts = debtsList.Aggregate(debts, (current, debt) => current + $"    ~ {debt.Amount}\u20ac to {TelegramUtils.IdToName(debt.Towards)}\n");
+                debts = debtsList.Aggregate(debts, (current, debt) => current + $"    - {Math.Round(debt.Amount, 2)}\u20ac to {TelegramUtils.IdToName(debt.Towards)}\n");
             }
             if(debts == "") debts = "No debts are owned";
             return debts;
@@ -279,7 +280,7 @@ namespace TelegramBot.Modules
             double totalPrice = 0;
             foreach (long userId in _currentPurchase.Purchases.Keys)
             {
-                text += $"{TelegramUtils.IdToName(userId)}: {Math.Round(_currentPurchase.Purchases[userId],2)}\u20ac\n";
+                text += $"{TelegramUtils.IdToName(userId)}: {Math.Round(_currentPurchase.Purchases[userId], 2)}\u20ac\n";
                 totalPrice += _currentPurchase.Purchases[userId];
             }
             text += $"\nTotal: {Math.Round(totalPrice,2)}\u20ac";
