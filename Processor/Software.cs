@@ -35,9 +35,8 @@ namespace Processor
 
         public static string LoadHtml(string name)
         {
-            const string path = "../CortanaAPI/HTML";
-            try
-            {
+            const string path = "Storage/Assets/HTML";
+            try {
                 return File.ReadAllText($"{path}/{name}.html");
             }
             catch (Exception ex) { throw new CortanaException(ex.Message, ex); }

@@ -1,4 +1,4 @@
-![Logo](https://github.com/GwynbleiddN7/Cortana/blob/main/Kernel/Storage/Assets/cortana.jpg)
+![Logo](https://github.com/GwynbleiddN7/Cortana/blob/main/CortanaKernel/Storage/Assets/cortana.jpg)
 
 # Cortana
 
