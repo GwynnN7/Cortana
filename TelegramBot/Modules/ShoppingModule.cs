@@ -169,7 +169,7 @@ namespace TelegramBot.Modules
                 default:
                 {
                     if (!data.StartsWith("user:")) return;
-                    string user = data["users:".Length..];
+                    string user = data["user:".Length..];
                     long userId = TelegramUtils.NameToId(user);
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
                     if (!lastSubPurchase.Customers.Remove(userId)) lastSubPurchase.Customers.Add(userId);
@@ -325,15 +325,15 @@ namespace TelegramBot.Modules
             for (var i = 0; i < Users.Count; i++)
             {
                 SubPurchase subPurchase = _currentPurchase.History.Peek();
-                string sign = subPurchase.Customers.Contains(Users[i]) ? "-" : "+";
+                string sign = subPurchase.Customers.Contains(Users[i]) ? "\u2796" : "\u2795";
                 
                 string customer = TelegramUtils.IdToName(Users[i]);
                 rows[i] = new InlineKeyboardButton[1];
-                rows[i][0] = InlineKeyboardButton.WithCallbackData($"[{sign}] {customer}", $"shopping-user:{customer}");
+                rows[i][0] = InlineKeyboardButton.WithCallbackData($"{sign} {customer} {sign}", $"shopping-user:{customer}");
             }
             
             rows[Users.Count] = new InlineKeyboardButton[1];
-            rows[Users.Count][0] = InlineKeyboardButton.WithCallbackData("Go to Shopping List", "shopping-list");
+            rows[Users.Count][0] = InlineKeyboardButton.WithCallbackData("Next", "shopping-list");
 
             return new InlineKeyboardMarkup(rows);
         }
