@@ -52,8 +52,6 @@ namespace TelegramBot
                 ChatType = update.Message.Chat.Type,
                 FullMessage = update.Message.Text
             };
-
-            if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
             
             if (update.Message.Text.StartsWith('/'))
             {
@@ -62,19 +60,23 @@ namespace TelegramBot
                 messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
                 messageStats.Text = string.Join(" ", messageStats.TextList);
 
-                if (messageStats.Command == "menu") 
-                    CreateHomeMenu(cortana, messageStats.ChatId);
-                else
+                if (messageStats.Command != "menu") 
                 {
                     HardwareModule.ExecCommand(messageStats, cortana);
                     ShoppingModule.ExecCommand(messageStats, cortana);
                 }
+                else CreateHomeMenu(cortana, messageStats.ChatId);
             }
             else
             {
                 if (UtilityModule.IsWaiting(messageStats.ChatId)) UtilityModule.HandleCallback(messageStats, cortana);
                 else if (ShoppingModule.IsWaiting(messageStats.ChatId)) ShoppingModule.HandleCallback(messageStats, cortana);
-                else HardwareModule.HandleCallback(messageStats, cortana);
+                else
+                {
+                    HardwareModule.HandleCallback(messageStats, cortana);
+                    if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) 
+                        await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
+                }
             }
         }
 
@@ -89,13 +91,13 @@ namespace TelegramBot
             switch (command)
             {
                 case "home":
-                    CreateHomeMenu(cortana, update.CallbackQuery.Message!.Chat.Id);
+                    CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
                     break;
                 case "automation":
-                    HardwareModule.CreateAutomationMenu(cortana, message);
+                    HardwareModule.CreateAutomationMenu(cortana, update);
                     break;
                 case "raspberry":
-                    HardwareModule.CreateRaspberryMenu(cortana, message);
+                    HardwareModule.CreateRaspberryMenu(cortana, update);
                     break;
                 case "utility":
                     UtilityModule.CreateUtilityMenu(cortana, message);
@@ -108,9 +110,10 @@ namespace TelegramBot
             }
         }
 
-        private static async void CreateHomeMenu(ITelegramBotClient cortana, long chatId)
+        private static async void CreateHomeMenu(ITelegramBotClient cortana, long chatId, int? messageId = null)
         {
-            await cortana.SendMessage(chatId, "Home menu", replyMarkup: CreateMenuButtons());
+            if(messageId.HasValue) await cortana.EditMessageText(chatId, messageId.Value, "Cortana Home", replyMarkup: CreateMenuButtons());
+            else await cortana.SendMessage(chatId, "Cortana Home", replyMarkup: CreateMenuButtons());
         }
         
         private static InlineKeyboardMarkup CreateMenuButtons()

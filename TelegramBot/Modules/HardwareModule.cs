@@ -40,22 +40,25 @@ namespace TelegramBot.Modules
             }
         }
         
-        public static async void CreateAutomationMenu(ITelegramBotClient cortana, Message message)
+        public static async void CreateAutomationMenu(ITelegramBotClient cortana, Update update)
         {
+            Message message = update.CallbackQuery!.Message!;
             HardwareAction.Remove(message.Id);
             
-            if (TelegramUtils.CheckPermission(message.From!.Id))
+            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
             else
-                await cortana.EditMessageText(message.Chat.Id, message.Id, "Sorry, you can't use this command", replyMarkup: CreateReturnButton());
+                await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, "Sorry, you can't use this command");
         }
         
-        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Message message)
+        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Update update)
         {
-            if (TelegramUtils.CheckPermission(message.From!.Id))
-                await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Controls", replyMarkup: CreateRaspberryButtons());
+            Message message = update.CallbackQuery!.Message!;
+            
+            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
+                await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Handler", replyMarkup: CreateRaspberryButtons());
             else
-                await cortana.EditMessageText(message.Chat.Id, message.Id, "Sorry, you can't access raspberry's controls", replyMarkup: CreateReturnButton());
+                await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, "Sorry, you can't access raspberry's controls");
         }
         
         public static async void HandleCallback(MessageStats messageStats, ITelegramBotClient cortana)
@@ -176,16 +179,6 @@ namespace TelegramBot.Modules
             
             rows[3] = new InlineKeyboardButton[1];
             rows[3][0] = InlineKeyboardButton.WithCallbackData("<<", "home");
-
-            return new InlineKeyboardMarkup(rows);
-        }
-        
-        private static InlineKeyboardMarkup CreateReturnButton()
-        {
-            var rows = new InlineKeyboardButton[1][];
-            
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("<<", "home");
 
             return new InlineKeyboardMarkup(rows);
         }
