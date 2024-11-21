@@ -119,17 +119,17 @@ public static class UtilityModule
             case EAnswerCommands.Qrcode:
                 Stream imageStream = Software.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
-                AnswerCommands.Remove(messageStats.ChatId);
                 await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
                 await cortana.SendPhoto(messageStats.ChatId, new InputFileStream(imageStream, "QRCODE.png"));
                 CreateUtilityMenu(cortana, AnswerCommands[messageStats.ChatId].InteractionMessage);
+                AnswerCommands.Remove(messageStats.ChatId);
                 break;
             case EAnswerCommands.Notification:
                 string result = Hardware.CommandPc(EComputerCommand.Notify, messageStats.FullMessage);
-                AnswerCommands.Remove(messageStats.ChatId);
                 if (result == "0") await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                else await cortana.SendMessage(messageStats.ChatId, result);
+                else await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id, result, true);
                 CreateUtilityMenu(cortana, AnswerCommands[messageStats.ChatId].InteractionMessage);
+                AnswerCommands.Remove(messageStats.ChatId);
                 break;
             case EAnswerCommands.Chat:
                 if (AnswerCommands[messageStats.ChatId].CommandValue != null)
@@ -137,21 +137,29 @@ public static class UtilityModule
                     TelegramUtils.SendToUser(long.Parse(AnswerCommands[messageStats.ChatId].CommandValue!), messageStats.FullMessage);
                     break;
                 }
-                
+
                 if (messageStats.TextList.Count == 1)
                 {
                     try
                     {
-                        AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat, AnswerCommands[messageStats.ChatId].Update, AnswerCommands[messageStats.ChatId].InteractionMessage, TelegramUtils.NameToId(messageStats.TextList[0]).ToString());
+                        AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat,
+                            AnswerCommands[messageStats.ChatId].Update,
+                            AnswerCommands[messageStats.ChatId].InteractionMessage,
+                            TelegramUtils.NameToId(messageStats.TextList[0]).ToString());
                         await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                        await cortana.EditMessageText(messageStats.ChatId, AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {messageStats.TextList[0]}", replyMarkup: CreateLeaveButton());
+                        await cortana.EditMessageText(messageStats.ChatId,
+                            AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId,
+                            $"Currently chatting with {messageStats.TextList[0]}", replyMarkup: CreateLeaveButton());
                     }
                     catch
                     {
-                        await cortana.SendMessage(messageStats.ChatId, "Sorry, I can't find that username. Please try again");
+                        await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id,
+                            "Sorry, I can't find that username. Please try again", true);
                     }
                 }
-                else await cortana.SendMessage(messageStats.ChatId, "Sorry, I can't understand the answer. Please try again with a single tag");
+                else
+                    await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id,
+                        "Sorry, I can't understand the answer. Please try again with a single tag", true);
                 break;
         }
     }
