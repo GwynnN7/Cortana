@@ -1,15 +1,9 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using Processor;
 using Telegram.Bot.Types.Enums;
+using Processor;
 
-/*
- * Automation
- * Raspberry
- * Utility
- * 
- */
 namespace TelegramBot.Modules
 {
     internal static class HardwareEmoji
@@ -30,11 +24,10 @@ namespace TelegramBot.Modules
         {
             switch (messageStats.Command)
             {
-                case "keyboard":
+                case "domotica":
                     if (TelegramUtils.CheckPermission(messageStats.UserId))
-                        await cortana.SendMessage(messageStats.ChatId, "Hardware Toggle Keyboard", replyMarkup: CreateHardwareToggles());
-                    else
-                        await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
+                        await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
+                    else await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
                     break;
                 case "ssh":
                     if (TelegramUtils.CheckPermission(messageStats.UserId))
@@ -42,38 +35,24 @@ namespace TelegramBot.Modules
                         Hardware.SendCommand(messageStats.Text, asRoot: true, result: out string result);
                         await cortana.SendMessage(messageStats.ChatId, result);
                     }
-                    else await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
-                    break;
-                case "notify":
-                    if (TelegramUtils.CheckPermission(messageStats.UserId))
-                    {
-                        string res = Hardware.CommandPc(EComputerCommand.Notify, messageStats.Text);
-                        if (res == "0") await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                        else await cortana.SendMessage(messageStats.ChatId, res);
-                    }
-                    else await cortana.SendMessage(messageStats.ChatId, "Not enough privileges");
+                    else await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
                     break;
             }
         }
         
-        public static async void CreateAutomationMenu(ITelegramBotClient cortana, Update update)
+        public static async void CreateAutomationMenu(ITelegramBotClient cortana, Message message)
         {
-            if(update.CallbackQuery == null) return;
-            Message message = update.CallbackQuery.Message!;
             HardwareAction.Remove(message.Id);
             
-            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
+            if (TelegramUtils.CheckPermission(message.From!.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
             else
-                await cortana.EditMessageText(message.Chat.Id, message.Id, "Sorry, you can't use the hardware", replyMarkup: CreateReturnButton());
+                await cortana.EditMessageText(message.Chat.Id, message.Id, "Sorry, you can't use this command", replyMarkup: CreateReturnButton());
         }
         
-        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Update update)
+        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Message message)
         {
-            if(update.CallbackQuery == null) return;
-            Message message = update.CallbackQuery.Message!;
-            
-            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
+            if (TelegramUtils.CheckPermission(message.From!.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Controls", replyMarkup: CreateRaspberryButtons());
             else
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Sorry, you can't access raspberry's controls", replyMarkup: CreateReturnButton());
@@ -113,7 +92,6 @@ namespace TelegramBot.Modules
             if(update.CallbackQuery == null) return;
             
             int messageId = update.CallbackQuery.Message!.MessageId;
-            long chatId = update.CallbackQuery.Message.Chat.Id;
 
             if (command.StartsWith("raspberry-"))
             {
@@ -121,33 +99,27 @@ namespace TelegramBot.Modules
                 {
                     case "ip":
                         string ip = await Hardware.GetPublicIp();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, $"IP: {ip}", false);
-                        //await cortana.EditMessageText(chatId, messageId, $"IP: {ip}", replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, $"IP: {ip}");
                         break;
                     case "gateway":
                         string gateway = Hardware.GetDefaultGateway();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Gateway: {gateway}", true);
-                        //await cortana.EditMessageText(chatId, messageId, $"Gateway: {gateway}", replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Gateway: {gateway}");
                         break;
                     case "location":
                         string location = Hardware.GetLocation();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Location: {location}", false);
-                        //await cortana.EditMessageText(chatId, messageId, $"Location: {location}", replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Location: {location}");
                         break;
                     case "temperature":
                         string temp = Hardware.GetCpuTemperature();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Temperature: {temp}", true);
-                        //await cortana.EditMessageText(chatId, messageId, $"Temperature: {temp}", replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Temperature: {temp}");
                         break;
                     case "reboot":
                         string rebootResult = Hardware.PowerRaspberry(EPowerOption.Reboot);
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  rebootResult);
-                        //await cortana.EditMessageText(chatId, messageId, rebootResult, replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  rebootResult, true);
                         break;
                     case "shutdown":
                         string shutdownResult = Hardware.PowerRaspberry(EPowerOption.Shutdown);
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  shutdownResult);
-                        //await cortana.EditMessageText(chatId, messageId, shutdownResult, replyMarkup: CreateReturnButton());
+                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  shutdownResult, true);
                         break;
                 }
             }
@@ -157,7 +129,8 @@ namespace TelegramBot.Modules
 
                 if (!HardwareAction.TryAdd(messageId, command))
                 {
-                    Hardware.SwitchFromString(HardwareAction[messageId], command);
+                    string result = Hardware.SwitchFromString(HardwareAction[messageId], command);
+                    await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, result);
                     return;
                 }
                 await cortana.EditMessageReplyMarkup(update.CallbackQuery.Message.Chat.Id, messageId, replyMarkup: CreateOnOffButtons());

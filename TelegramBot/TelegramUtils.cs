@@ -77,6 +77,7 @@ namespace TelegramBot
     
     public struct MessageStats
     {
+        public Message Message;
         public string FullMessage;
         public string Command;
         public string Text;

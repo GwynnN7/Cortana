@@ -45,6 +45,7 @@ namespace TelegramBot
             
             var messageStats = new MessageStats
             {
+                Message = update.Message,
                 ChatId = update.Message.Chat.Id,
                 UserId = update.Message.From?.Id ?? update.Message.Chat.Id,
                 MessageId = update.Message.MessageId,
@@ -61,11 +62,11 @@ namespace TelegramBot
                 messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
                 messageStats.Text = string.Join(" ", messageStats.TextList);
 
-                if (messageStats.Command == "home") await cortana.SendMessage(messageStats.ChatId, "Home", replyMarkup: CreateMenuButtons());
+                if (messageStats.Command == "menu") 
+                    CreateHomeMenu(cortana, messageStats.ChatId);
                 else
                 {
                     HardwareModule.ExecCommand(messageStats, cortana);
-                    UtilityModule.ExecCommand(messageStats, cortana);
                     ShoppingModule.ExecCommand(messageStats, cortana);
                 }
             }
@@ -83,24 +84,33 @@ namespace TelegramBot
             if(update.CallbackQuery == null) return;
 
             string command = update.CallbackQuery.Data!;
+            Message message = update.CallbackQuery.Message!;
 
             switch (command)
             {
+                case "home":
+                    CreateHomeMenu(cortana, update.CallbackQuery.Message!.Chat.Id);
+                    break;
                 case "automation":
-                    HardwareModule.CreateAutomationMenu(cortana, update);
+                    HardwareModule.CreateAutomationMenu(cortana, message);
                     break;
                 case "raspberry":
-                    HardwareModule.CreateRaspberryMenu(cortana, update);
+                    HardwareModule.CreateRaspberryMenu(cortana, message);
                     break;
                 case "utility":
-                    UtilityModule.CreateUtilityMenu(cortana, update);
+                    UtilityModule.CreateUtilityMenu(cortana, message);
                     break;
                 default:
                     if(command.StartsWith("hardware-")) HardwareModule.ButtonCallback(cortana, update, command["hardware-".Length..]);
                     else if(command.StartsWith("shopping-")) ShoppingModule.ButtonCallback(cortana, update, command["shopping-".Length..]);
-                    else if(command.StartsWith("utility-")) ShoppingModule.ButtonCallback(cortana, update, command["utility-".Length..]);
+                    else if(command.StartsWith("utility-")) UtilityModule.ButtonCallback(cortana, update, command["utility-".Length..]);
                     break;
             }
+        }
+
+        private static async void CreateHomeMenu(ITelegramBotClient cortana, long chatId)
+        {
+            await cortana.SendMessage(chatId, "Home menu", replyMarkup: CreateMenuButtons());
         }
         
         private static InlineKeyboardMarkup CreateMenuButtons()

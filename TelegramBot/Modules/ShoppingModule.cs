@@ -112,7 +112,7 @@ namespace TelegramBot.Modules
                     await cortana.EditMessageText(message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddCustomerButtons());
                     break;
                 case "list":
-                    await cortana.EditMessageText(message.Chat.Id, messageId, $"Send me the cost the products bought by {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons());
+                    await cortana.EditMessageText(message.Chat.Id, messageId, $"Send me the cost of the products bought by {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons());
                     ChannelWaitingForText.Add(message.Chat.Id);
                     break;
                 case "confirm":
