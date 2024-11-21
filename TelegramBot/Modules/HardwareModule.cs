@@ -59,7 +59,7 @@ namespace TelegramBot.Modules
         public static async void CreateAutomationMenu(ITelegramBotClient cortana, Update update)
         {
             if(update.CallbackQuery == null) return;
-            Message message = update.Message!;
+            Message message = update.CallbackQuery.Message!;
             HardwareAction.Remove(message.Id);
             
             if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
@@ -71,7 +71,7 @@ namespace TelegramBot.Modules
         public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Update update)
         {
             if(update.CallbackQuery == null) return;
-            Message message = update.Message!;
+            Message message = update.CallbackQuery.Message!;
             
             if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Controls", replyMarkup: CreateRaspberryButtons());
