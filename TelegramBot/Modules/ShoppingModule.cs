@@ -64,19 +64,13 @@ namespace TelegramBot.Modules
             return debts;
         }
         
-        public static async void ButtonCallback(ITelegramBotClient cortana, Update update)
+        public static async void ButtonCallback(ITelegramBotClient cortana, Update update, string command)
         {
-            if(update.CallbackQuery == null) return;
-            
-            string data = update.CallbackQuery.Data!;
-            Message message = update.CallbackQuery.Message!;
-            
-            if(!data.StartsWith("shopping-")) return;
-            data = data["shopping-".Length..];
-
+            if (update.CallbackQuery == null) return;
             await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
-
-            switch (data)
+            
+            Message message = update.CallbackQuery.Message!;
+            switch (command)
             {
                 case "new-purchase":
                     if (_currentPurchase != null)
@@ -84,11 +78,7 @@ namespace TelegramBot.Modules
                         await cortana.SendMessage(message.Chat.Id, "Complete the current active purchase first!");
                         return;
                     }
-
-                    _currentPurchase = new CurrentPurchase
-                    {
-                        Buyer = update.CallbackQuery.From.Id
-                    };
+                    _currentPurchase = new CurrentPurchase{ Buyer = update.CallbackQuery.From.Id };
                     foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
                     await cortana.SendMessage(message.Chat.Id, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
                     break;
@@ -96,12 +86,12 @@ namespace TelegramBot.Modules
                     await cortana.SendMessage(message.Chat.Id, GetDebts());
                     break;
                 default:
-                    HandlePurchase(cortana, message, data);
+                    HandlePurchase(cortana, message, command);
                     break;
             }
         }
 
-        private static async void HandlePurchase(ITelegramBotClient cortana, Message message, string data)
+        private static async void HandlePurchase(ITelegramBotClient cortana, Message message, string command)
         {
             int messageId = message.MessageId;
             if (_currentPurchase == null)
@@ -110,7 +100,7 @@ namespace TelegramBot.Modules
                 return;
             }
             
-            switch (data)
+            switch (command)
             {
                 case "add":
                     var subPurchase = new SubPurchase()
@@ -168,11 +158,12 @@ namespace TelegramBot.Modules
                     break;
                 default:
                 {
-                    if (!data.StartsWith("user:")) return;
-                    string user = data["user:".Length..];
+                    if (!command.StartsWith("user:")) return;
+                    string user = command["user:".Length..];
                     long userId = TelegramUtils.NameToId(user);
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
                     if (!lastSubPurchase.Customers.Remove(userId)) lastSubPurchase.Customers.Add(userId);
+                    if(lastSubPurchase.Customers.Count == 0) lastSubPurchase.Customers = Users.ToList();
                     await cortana.EditMessageText(message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddCustomerButtons());
                     break;
                 }
@@ -325,11 +316,11 @@ namespace TelegramBot.Modules
             for (var i = 0; i < Users.Count; i++)
             {
                 SubPurchase subPurchase = _currentPurchase.History.Peek();
-                string sign = subPurchase.Customers.Contains(Users[i]) ? "\u2796" : "\u2795";
+                string sign = subPurchase.Customers.Contains(Users[i]) ? "\u2705" : "\u274c";
                 
                 string customer = TelegramUtils.IdToName(Users[i]);
                 rows[i] = new InlineKeyboardButton[1];
-                rows[i][0] = InlineKeyboardButton.WithCallbackData($"{sign} {customer} {sign}", $"shopping-user:{customer}");
+                rows[i][0] = InlineKeyboardButton.WithCallbackData($"{sign} {customer}", $"shopping-user:{customer}");
             }
             
             rows[Users.Count] = new InlineKeyboardButton[1];

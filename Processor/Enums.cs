@@ -13,7 +13,7 @@ public enum ESubFunctions
 public enum EGpio
 {
     Computer,
-    ComputerPower,
+    Power,
     Lamp,
     Generic
 }

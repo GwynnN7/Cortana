@@ -63,6 +63,10 @@ public static class UtilityModule
         }
     }
     
+    public static async void CreateUtilityMenu(ITelegramBotClient cortana, Update update)
+    {
+    }
+    
     public static async void HandleCallback(MessageStats messageStats, ITelegramBotClient cortana)
     {
         switch (AnswerCommands[messageStats.ChatId].Command)

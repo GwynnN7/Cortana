@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Modules;
 using Processor;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
 {
@@ -60,33 +61,62 @@ namespace TelegramBot
                 messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
                 messageStats.Text = string.Join(" ", messageStats.TextList);
 
-                HardwareModule.ExecCommand(messageStats, cortana);
-                UtilityModule.ExecCommand(messageStats, cortana);
-                ShoppingModule.ExecCommand(messageStats, cortana);
+                if (messageStats.Command == "home") await cortana.SendMessage(messageStats.ChatId, "Home", replyMarkup: CreateMenuButtons());
+                else
+                {
+                    HardwareModule.ExecCommand(messageStats, cortana);
+                    UtilityModule.ExecCommand(messageStats, cortana);
+                    ShoppingModule.ExecCommand(messageStats, cortana);
+                }
             }
             else
             {
-                if (UtilityModule.IsWaiting(messageStats.ChatId))
-                {
-                    UtilityModule.HandleCallback(messageStats, cortana);
-                    return;
-                }
-                if (ShoppingModule.IsWaiting(messageStats.ChatId))
-                {
-                    ShoppingModule.HandleCallback(messageStats, cortana);
-                    return;
-                }
-                HardwareModule.HandleCallback(messageStats, cortana);
+                if (UtilityModule.IsWaiting(messageStats.ChatId)) UtilityModule.HandleCallback(messageStats, cortana);
+                else if (ShoppingModule.IsWaiting(messageStats.ChatId)) ShoppingModule.HandleCallback(messageStats, cortana);
+                else HardwareModule.HandleCallback(messageStats, cortana);
             }
         }
 
 
         private static void HandleCallback(ITelegramBotClient cortana, Update update)
         {
-            if (update.CallbackQuery?.Data == null || update.CallbackQuery.Message == null) return;
-            
-            HardwareModule.ButtonCallback(cortana, update);
-            ShoppingModule.ButtonCallback(cortana, update);
+            if(update.CallbackQuery == null) return;
+
+            string command = update.CallbackQuery.Data!;
+
+            switch (command)
+            {
+                case "automation":
+                    HardwareModule.CreateAutomationMenu(cortana, update);
+                    break;
+                case "raspberry":
+                    HardwareModule.CreateRaspberryMenu(cortana, update);
+                    break;
+                case "utility":
+                    UtilityModule.CreateUtilityMenu(cortana, update);
+                    break;
+                default:
+                    if(command.StartsWith("hardware-")) HardwareModule.ButtonCallback(cortana, update, command["hardware-".Length..]);
+                    else if(command.StartsWith("shopping-")) ShoppingModule.ButtonCallback(cortana, update, command["shopping-".Length..]);
+                    else if(command.StartsWith("utility-")) ShoppingModule.ButtonCallback(cortana, update, command["utility-".Length..]);
+                    break;
+            }
+        }
+        
+        private static InlineKeyboardMarkup CreateMenuButtons()
+        {
+            var rows = new InlineKeyboardButton[3][];
+
+            rows[0] = new InlineKeyboardButton[1];
+            rows[0][0] = InlineKeyboardButton.WithCallbackData("Automation", "automation");
+
+            rows[1] = new InlineKeyboardButton[1];
+            rows[1][0] = InlineKeyboardButton.WithCallbackData("Raspberry", "raspberry");
+
+            rows[2] = new InlineKeyboardButton[1];
+            rows[2][0] = InlineKeyboardButton.WithCallbackData("Utility", "utility");
+
+            return new InlineKeyboardMarkup(rows);
         }
 
         private static Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)

@@ -121,7 +121,7 @@ namespace Processor
             {
                 case ETrigger.On:
                     UseGpio(ComputerPlugsPin, PinValue.High);
-                    HardwareStates[EGpio.ComputerPower] = EStatus.On;
+                    HardwareStates[EGpio.Power] = EStatus.On;
                     return CommandPc(EComputerCommand.PowerOn);
                 case ETrigger.Off:
                     return bPower ? RemoveComputerPower() : CommandPc(EComputerCommand.Shutdown);
@@ -221,7 +221,7 @@ namespace Processor
                 return "Removing power after computer is off";
             }
             UseGpio(ComputerPlugsPin, PinValue.Low);
-            HardwareStates[EGpio.ComputerPower] = EStatus.Off;
+            HardwareStates[EGpio.Power] = EStatus.Off;
 
             return "Power removed";
         }
@@ -277,7 +277,7 @@ namespace Processor
             {
                 EGpio.Lamp => PowerLamp(trigger),
                 EGpio.Computer => PowerComputer(trigger),
-                EGpio.ComputerPower => PowerComputer(trigger, bPower: true),
+                EGpio.Power => PowerComputer(trigger, bPower: true),
                 EGpio.Generic => PowerGeneric(trigger),
                 _ => "Hardware device not listed"
             };
