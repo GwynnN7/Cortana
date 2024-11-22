@@ -59,6 +59,7 @@ public static class UtilityModule
         switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
         {
             case ETelegramChatArg.Qrcode:
+                await cortana.SendChatAction(messageStats.ChatId, ChatAction.UploadPhoto);
                 Stream imageStream = Software.CreateQrCode(content: messageStats.FullMessage, useNormalColors: false, useBorders: true);
                 imageStream.Position = 0;
                 await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
@@ -67,6 +68,7 @@ public static class UtilityModule
                 TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
                 break;
             case ETelegramChatArg.Chat:
+                await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
                 if (TelegramUtils.ChatArgs[messageStats.ChatId].HasArg) {
                     TelegramUtils.SendToUser(TelegramUtils.ChatArgs[messageStats.ChatId].ArgLong, messageStats.FullMessage);
                     break;
@@ -105,6 +107,7 @@ public static class UtilityModule
                             break;
                         }
                     }
+                    CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
                 }
                 catch
                 {

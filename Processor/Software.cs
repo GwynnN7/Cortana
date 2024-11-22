@@ -79,7 +79,7 @@ namespace Processor
             IStreamInfo streamInfo = type switch
             {
                 EStreamType.Audio => streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate(),
-                EStreamType.Video => streamManifest.GetVideoStreams().GetWithHighestVideoQuality(),
+                EStreamType.Video => streamManifest.GetMuxedStreams().GetWithHighestBitrate(),
                 _ => streamManifest.GetAudioOnlyStreams().GetWithHighestBitrate(),
             };
             
