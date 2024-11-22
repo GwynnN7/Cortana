@@ -138,10 +138,12 @@ namespace TelegramBot.Modules
                 switch (command["utility-".Length..])
                 {
                     case "notify":
+                        await cortana.SendChatAction(chatId, ChatAction.Typing);
                         if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Notification, callbackQuery, callbackQuery.Message),callbackQuery))
                             await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton());
                         break;
                     case "ping":
+                        await cortana.SendChatAction(chatId, ChatAction.FindLocation);
                         if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Ping, callbackQuery, callbackQuery.Message),callbackQuery))
                             await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton());
                         break;

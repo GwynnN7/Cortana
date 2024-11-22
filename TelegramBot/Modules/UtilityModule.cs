@@ -116,11 +116,12 @@ public static class UtilityModule
                     }
                 }
                 catch {
-                    await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that video or it's too big. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that video or it's too big", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
                 }
                 finally {
+                    await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
                     CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+                    TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
                 }
                 break;
         }

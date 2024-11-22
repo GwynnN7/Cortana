@@ -65,7 +65,7 @@ namespace TelegramBot
         public static bool TryAddChatArg(long chatId, TelegramChatArg arg, CallbackQuery callbackQuery)
         {
             if(ChatArgs.TryAdd(chatId, arg)) return true;
-            _cortana.AnswerCallbackQuery(callbackQuery.Id, "You already have an interaction going on! Finish it before continuing");
+            _cortana.AnswerCallbackQuery(callbackQuery.Id, "You already have an interaction going on! Finish it before continuing", true);
             return false;
         }
         
