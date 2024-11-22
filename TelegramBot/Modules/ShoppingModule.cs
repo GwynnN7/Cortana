@@ -50,6 +50,66 @@ namespace TelegramBot.Modules
                     break;
             }
         }
+         
+        public static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+        {
+            await cortana.AnswerCallbackQuery(callbackQuery.Id);
+            
+            Message message = callbackQuery.Message!;
+            switch (command)
+            {
+                case "new-purchase":
+                    if (_currentPurchase != null)
+                    {
+                        await cortana.SendMessage(message.Chat.Id, "Complete the current active purchase first!");
+                        return;
+                    }
+                    _currentPurchase = new CurrentPurchase{ Buyer = callbackQuery.From.Id };
+                    foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
+                    await cortana.SendMessage(message.Chat.Id, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
+                    break;
+                case "show-debts":
+                    await cortana.SendMessage(message.Chat.Id, GetDebts());
+                    break;
+                default:
+                    HandlePurchase(cortana, message, command);
+                    break;
+            }
+        }
+        
+        public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+        {
+            if(_currentPurchase == null) return;
+            if(!IsWaiting(messageStats.ChatId)) return;
+
+            if (_currentPurchase.Buyer != messageStats.UserId)
+            {
+                await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                return;
+            }
+            
+            _currentPurchase.MessagesToDelete.Add(messageStats.MessageId);
+            
+            var reaction = new ReactionTypeEmoji { Emoji = "👍" };
+            var failedReaction = new ReactionTypeEmoji { Emoji = "👎" };
+            
+            double newAmount = 0;
+            foreach (string amount in messageStats.FullMessage.Split())
+            {
+                try {
+                    newAmount += double.Parse(amount);
+                }
+                catch {
+                    await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [failedReaction]);
+                    return;
+                }
+            }
+            
+            SubPurchase subPurchase = _currentPurchase.History.Peek();
+            subPurchase.TotalAmount += newAmount;
+            
+            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [reaction]);
+        }
 
         private static string GetDebts()
         {
@@ -62,33 +122,6 @@ namespace TelegramBot.Modules
             }
             if(debts == "") debts = "No debts are owned";
             return debts;
-        }
-        
-        public static async void ButtonCallback(ITelegramBotClient cortana, Update update, string command)
-        {
-            if (update.CallbackQuery == null) return;
-            await cortana.AnswerCallbackQuery(update.CallbackQuery.Id);
-            
-            Message message = update.CallbackQuery.Message!;
-            switch (command)
-            {
-                case "new-purchase":
-                    if (_currentPurchase != null)
-                    {
-                        await cortana.SendMessage(message.Chat.Id, "Complete the current active purchase first!");
-                        return;
-                    }
-                    _currentPurchase = new CurrentPurchase{ Buyer = update.CallbackQuery.From.Id };
-                    foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
-                    await cortana.SendMessage(message.Chat.Id, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
-                    break;
-                case "show-debts":
-                    await cortana.SendMessage(message.Chat.Id, GetDebts());
-                    break;
-                default:
-                    HandlePurchase(cortana, message, command);
-                    break;
-            }
         }
 
         private static async void HandlePurchase(ITelegramBotClient cortana, Message message, string command)
@@ -170,40 +203,6 @@ namespace TelegramBot.Modules
             }
         }
         
-        public static async void HandleCallback(MessageStats messageStats, ITelegramBotClient cortana)
-        {
-            if(_currentPurchase == null) return;
-            if(!IsWaiting(messageStats.ChatId)) return;
-
-            if (_currentPurchase.Buyer != messageStats.UserId)
-            {
-                await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                return;
-            }
-            
-            _currentPurchase.MessagesToDelete.Add(messageStats.MessageId);
-            
-            var reaction = new ReactionTypeEmoji { Emoji = "👍" };
-            var failedReaction = new ReactionTypeEmoji { Emoji = "👎" };
-            
-            double newAmount = 0;
-            foreach (string amount in messageStats.FullMessage.Split())
-            {
-                try {
-                    newAmount += double.Parse(amount);
-                }
-                catch {
-                    await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [failedReaction]);
-                    return;
-                }
-            }
-            
-            SubPurchase subPurchase = _currentPurchase.History.Peek();
-            subPurchase.TotalAmount += newAmount;
-            
-            await cortana.SetMessageReaction(messageStats.ChatId, messageStats.MessageId, [reaction]);
-        }
-        
         private static void RemoveExistingDebts()
         {
             if(_currentPurchase == null) return;
@@ -281,65 +280,48 @@ namespace TelegramBot.Modules
 
         private static InlineKeyboardMarkup CreatePurchaseButtons()
         {
-            var rows = new InlineKeyboardButton[2][];
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("New Purchase", "shopping-new-purchase");
-            
-            rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Show Debts", "shopping-show-debts");
-            
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("New Purchase", "shopping-new-purchase")
+                .AddNewRow()
+                .AddButton("Show Debts", "shopping-show-debts");
         }
         
         private static InlineKeyboardMarkup CreateOrderButtons()
         {
-            var rows = new InlineKeyboardButton[3][];
-
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Add", "shopping-add");
-            
-            rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Pay", "shopping-pay");
-            
-            rows[2] = new InlineKeyboardButton[2];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("Undo", "shopping-undo");
-            rows[2][1] = InlineKeyboardButton.WithCallbackData("Cancel", "shopping-cancel");
-
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("Add", "shopping-add")
+                .AddNewRow()
+                .AddButton("Pay", "shopping-pay")
+                .AddNewRow()
+                .AddButton("Undo", "shopping-undo")
+                .AddButton("Cancel", "shopping-cancel");
         }
         
         private static InlineKeyboardMarkup CreateAddCustomerButtons()
         {
             if (_currentPurchase == null || _currentPurchase.History.Count == 0) throw new CortanaException("No purchase active");
-            
-            var rows = new InlineKeyboardButton[Users.Count + 1][];
-            for (var i = 0; i < Users.Count; i++)
+
+            var inlineKeyboard = new InlineKeyboardMarkup();
+            foreach (long user in Users)
             {
                 SubPurchase subPurchase = _currentPurchase.History.Peek();
-                string sign = subPurchase.Customers.Contains(Users[i]) ? "\u2705" : "\u274c";
+                string sign = subPurchase.Customers.Contains(user) ? "\u2705" : "\u274c";
                 
-                string customer = TelegramUtils.IdToName(Users[i]);
-                rows[i] = new InlineKeyboardButton[1];
-                rows[i][0] = InlineKeyboardButton.WithCallbackData($"{sign} {customer}", $"shopping-user:{customer}");
+                string customer = TelegramUtils.IdToName(user);
+                inlineKeyboard.AddButton($"{sign} {customer}", $"shopping-user:{customer}");
+                inlineKeyboard.AddNewRow();
             }
             
-            rows[Users.Count] = new InlineKeyboardButton[1];
-            rows[Users.Count][0] = InlineKeyboardButton.WithCallbackData("Next", "shopping-list");
-
-            return new InlineKeyboardMarkup(rows);
+            inlineKeyboard.AddButton("Next", "shopping-list");
+            return inlineKeyboard;
         }
         
         private static InlineKeyboardMarkup CreateAddItemButtons()
         {
-            var rows = new InlineKeyboardButton[2][];
-
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Confirm", "shopping-confirm");
-            
-            rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Cancel", "shopping-back");
-
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("Confirm", "shopping-confirm")
+                .AddNewRow()
+                .AddButton("Cancel", "shopping-back");
         }
     }
 

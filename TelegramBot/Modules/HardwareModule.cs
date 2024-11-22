@@ -40,28 +40,28 @@ namespace TelegramBot.Modules
             }
         }
         
-        public static async void CreateAutomationMenu(ITelegramBotClient cortana, Update update)
+        public static async void CreateAutomationMenu(ITelegramBotClient cortana, CallbackQuery callbackQuery)
         {
-            Message message = update.CallbackQuery!.Message!;
+            Message message = callbackQuery.Message!;
             HardwareAction.Remove(message.Id);
             
-            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
+            if (TelegramUtils.CheckPermission(callbackQuery.From.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
             else
-                await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, "Sorry, you can't use this command");
+                await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't use this command");
         }
         
-        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Update update)
+        public static async void CreateRaspberryMenu(ITelegramBotClient cortana, CallbackQuery callbackQuery)
         {
-            Message message = update.CallbackQuery!.Message!;
+            Message message = callbackQuery.Message!;
             
-            if (TelegramUtils.CheckPermission(update.CallbackQuery.From.Id))
+            if (TelegramUtils.CheckPermission(callbackQuery.From.Id))
                 await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Handler", replyMarkup: CreateRaspberryButtons());
             else
-                await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, "Sorry, you can't access raspberry's controls");
+                await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
         }
         
-        public static async void HandleCallback(MessageStats messageStats, ITelegramBotClient cortana)
+        public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
         {
             if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return;
             switch (messageStats.FullMessage)
@@ -90,11 +90,9 @@ namespace TelegramBot.Modules
             await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
         }
         
-        public static async void ButtonCallback(ITelegramBotClient cortana, Update update, string command)
+        public static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
         {
-            if(update.CallbackQuery == null) return;
-            
-            int messageId = update.CallbackQuery.Message!.MessageId;
+            int messageId = callbackQuery.Message!.MessageId;
 
             if (command.StartsWith("raspberry-"))
             {
@@ -102,27 +100,27 @@ namespace TelegramBot.Modules
                 {
                     case "ip":
                         string ip = await Hardware.GetPublicIp();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, $"IP: {ip}");
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id, $"IP: {ip}");
                         break;
                     case "gateway":
                         string gateway = Hardware.GetDefaultGateway();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Gateway: {gateway}");
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id,  $"Gateway: {gateway}");
                         break;
                     case "location":
                         string location = Hardware.GetLocation();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Location: {location}");
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id,  $"Location: {location}");
                         break;
                     case "temperature":
                         string temp = Hardware.GetCpuTemperature();
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  $"Temperature: {temp}");
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id,  $"Temperature: {temp}");
                         break;
                     case "reboot":
                         string rebootResult = Hardware.PowerRaspberry(EPowerOption.Reboot);
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  rebootResult, true);
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id,  rebootResult, true);
                         break;
                     case "shutdown":
                         string shutdownResult = Hardware.PowerRaspberry(EPowerOption.Shutdown);
-                        await cortana.AnswerCallbackQuery(update.CallbackQuery.Id,  shutdownResult, true);
+                        await cortana.AnswerCallbackQuery(callbackQuery.Id,  shutdownResult, true);
                         break;
                 }
             }
@@ -133,95 +131,64 @@ namespace TelegramBot.Modules
                 if (!HardwareAction.TryAdd(messageId, command))
                 {
                     string result = Hardware.SwitchFromString(HardwareAction[messageId], command);
-                    await cortana.AnswerCallbackQuery(update.CallbackQuery.Id, result);
+                    await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
                     return;
                 }
-                await cortana.EditMessageReplyMarkup(update.CallbackQuery.Message.Chat.Id, messageId, replyMarkup: CreateOnOffButtons());
+                await cortana.EditMessageReplyMarkup(callbackQuery.Message.Chat.Id, messageId, replyMarkup: CreateOnOffButtons());
             }
         }
         
         private static InlineKeyboardMarkup CreateAutomationButtons()
         {
-            var rows = new InlineKeyboardButton[Enum.GetValues(typeof(EGpio)).Length + 2][];
-
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Room", "hardware-automation-room");
-
-            var index = 1;
+            InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup()
+                .AddButton("Room", "hardware-automation-room")
+                .AddNewRow();
+            
             foreach (string element in Enum.GetNames(typeof(EGpio)))
             {
-                rows[index] = new InlineKeyboardButton[1];
-                rows[index][0] = InlineKeyboardButton.WithCallbackData(element, $"hardware-automation-{element.ToLower()}");
-                index++;
+                inlineKeyboard.AddButton(element, $"hardware-automation-{element.ToLower()}");
+                inlineKeyboard.AddNewRow();
             }
-            
-            rows[index] = new InlineKeyboardButton[1];
-            rows[index][0] = InlineKeyboardButton.WithCallbackData("<<", "home");
-
-            return new InlineKeyboardMarkup(rows);
+            inlineKeyboard.AddButton("<<", "home");
+            return inlineKeyboard;
         }
         
         private static InlineKeyboardMarkup CreateRaspberryButtons()
         {
-            var rows = new InlineKeyboardButton[4][];
-
-            rows[0] = new InlineKeyboardButton[2];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Shutdown", "hardware-raspberry-shutdown");
-            rows[0][1] = InlineKeyboardButton.WithCallbackData("Reboot", "hardware-raspberry-reboot");
-
-            rows[1] = new InlineKeyboardButton[2];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Temperature", "hardware-raspberry-temperature");
-            rows[1][1] = InlineKeyboardButton.WithCallbackData("IP", "hardware-raspberry-ip");
-
-            rows[2] = new InlineKeyboardButton[2];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("Location", "hardware-raspberry-location");
-            rows[2][1] = InlineKeyboardButton.WithCallbackData("Gateway", "hardware-raspberry-gateway");
-            
-            rows[3] = new InlineKeyboardButton[1];
-            rows[3][0] = InlineKeyboardButton.WithCallbackData("<<", "home");
-
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("Shutdown", "hardware-raspberry-shutdown")
+                .AddButton("Reboot", "hardware-raspberry-reboot")
+                .AddNewRow()
+                .AddButton("Temperature", "hardware-raspberry-temperature")
+                .AddButton("IP", "hardware-raspberry-ip")
+                .AddNewRow()
+                .AddButton("Location", "hardware-raspberry-location")
+                .AddButton("Gateway", "hardware-raspberry-gateway")
+                .AddNewRow()
+                .AddButton("<<", "home");
         }
 
         private static InlineKeyboardMarkup CreateOnOffButtons()
         {
-            var rows = new InlineKeyboardButton[3][];
-
-            rows[0] = new InlineKeyboardButton[2];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("On", "hardware-automation-on");
-            rows[0][1] = InlineKeyboardButton.WithCallbackData("Off", "hardware-automation-off");
-
-            rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Toggle", "hardware-automation-toggle");
-
-            rows[2] = new InlineKeyboardButton[1];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("<<", "automation");
-
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("On", "hardware-automation-on")
+                .AddButton("Off", "hardware-automation-off")
+                .AddNewRow()
+                .AddButton("Toggle", "hardware-automation-toggle")
+                .AddNewRow()
+                .AddButton("<<", "automation");
         }
 
         private static ReplyKeyboardMarkup CreateHardwareToggles()
         {
-            var keyboard =
-                new KeyboardButton[][]
-                {
-                    [
-                        new KeyboardButton(HardwareEmoji.Bulb),
-                        new KeyboardButton(HardwareEmoji.Thunder)
-                    ],
-                    [
-                        new KeyboardButton(HardwareEmoji.Pc),
-                        new KeyboardButton(HardwareEmoji.Reboot)
-                    ],
-                    [
-                        new KeyboardButton(HardwareEmoji.On),
-                    ],
-                    [
-                        new KeyboardButton(HardwareEmoji.Off),
-                    ],
-
-                };
-            return new ReplyKeyboardMarkup(keyboard);
+            return new ReplyKeyboardMarkup(true)
+                .AddButtons(HardwareEmoji.Bulb, HardwareEmoji.Thunder)
+                .AddNewRow()
+                .AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot)
+                .AddNewRow()
+                .AddButton(HardwareEmoji.On)
+                .AddNewRow()
+                .AddButton(HardwareEmoji.Off);
         }
     }
 }

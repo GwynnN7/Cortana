@@ -26,10 +26,10 @@ namespace TelegramBot
             switch (update.Type)
             {
                 case UpdateType.CallbackQuery:
-                    HandleCallback(cortana, update);
+                    HandleCallbackQuery(cortana, update.CallbackQuery!);
                     break;
                 case UpdateType.Message:
-                    HandleMessage(cortana, update);
+                    HandleMessage(cortana, update.Message!);
                     break;
                 default:
                     return Task.CompletedTask;
@@ -37,26 +37,36 @@ namespace TelegramBot
             return Task.CompletedTask;
         }
 
-        private static async void HandleMessage(ITelegramBotClient cortana, Update update)
+        private static void HandleMessage(ITelegramBotClient cortana, Message message)
         {
-            if (update.Message == null) return;
-            if (update.Message.Type != MessageType.Text || update.Message.Text == null) return;
-            if (update.Message.From == null || update.Message.From.IsBot) return;
+            switch (message.Type)
+            {
+                case MessageType.Text:
+                    HandleTextMessage(cortana, message);
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private static async void HandleTextMessage(ITelegramBotClient cortana, Message message)
+        {
+            if (message.From == null || message.From.IsBot || message.Text == null) return;
             
             var messageStats = new MessageStats
             {
-                Message = update.Message,
-                ChatId = update.Message.Chat.Id,
-                UserId = update.Message.From?.Id ?? update.Message.Chat.Id,
-                MessageId = update.Message.MessageId,
-                ChatType = update.Message.Chat.Type,
-                FullMessage = update.Message.Text,
-                Text = update.Message.Text,
+                Message = message,
+                ChatId = message.Chat.Id,
+                UserId = message.From?.Id ?? message.Chat.Id,
+                MessageId = message.MessageId,
+                ChatType = message.Chat.Type,
+                FullMessage = message.Text,
+                Text = message.Text,
                 TextList = [],
                 Command = ""
             };
             
-            if (update.Message.Text.StartsWith('/'))
+            if (message.Text.StartsWith('/'))
             {
                 messageStats.FullMessage = messageStats.FullMessage[1..];
                 messageStats.Command = messageStats.FullMessage.Split(" ").First().Replace("@CortanaAIBot", "");
@@ -72,24 +82,21 @@ namespace TelegramBot
             }
             else
             {
-                if (UtilityModule.IsWaiting(messageStats.ChatId)) UtilityModule.HandleCallback(messageStats, cortana);
-                else if (ShoppingModule.IsWaiting(messageStats.ChatId)) ShoppingModule.HandleCallback(messageStats, cortana);
+                if (UtilityModule.IsWaiting(messageStats.ChatId)) UtilityModule.HandleTextMessage(cortana, messageStats);
+                else if (ShoppingModule.IsWaiting(messageStats.ChatId)) ShoppingModule.HandleTextMessage(cortana, messageStats);
                 else
                 {
-                    HardwareModule.HandleCallback(messageStats, cortana);
+                    HardwareModule.HandleTextMessage(cortana, messageStats);
                     if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) 
                         await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
                 }
             }
         }
 
-
-        private static void HandleCallback(ITelegramBotClient cortana, Update update)
+        private static void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
         {
-            if(update.CallbackQuery == null) return;
-
-            string command = update.CallbackQuery.Data!;
-            Message message = update.CallbackQuery.Message!;
+            string command = callbackQuery.Data!;
+            Message message = callbackQuery.Message!;
 
             switch (command)
             {
@@ -97,18 +104,18 @@ namespace TelegramBot
                     CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
                     break;
                 case "automation":
-                    HardwareModule.CreateAutomationMenu(cortana, update);
+                    HardwareModule.CreateAutomationMenu(cortana, callbackQuery);
                     break;
                 case "raspberry":
-                    HardwareModule.CreateRaspberryMenu(cortana, update);
+                    HardwareModule.CreateRaspberryMenu(cortana, callbackQuery);
                     break;
                 case "utility":
                     UtilityModule.CreateUtilityMenu(cortana, message);
                     break;
                 default:
-                    if(command.StartsWith("hardware-")) HardwareModule.ButtonCallback(cortana, update, command["hardware-".Length..]);
-                    else if(command.StartsWith("shopping-")) ShoppingModule.ButtonCallback(cortana, update, command["shopping-".Length..]);
-                    else if(command.StartsWith("utility-")) UtilityModule.ButtonCallback(cortana, update, command["utility-".Length..]);
+                    if(command.StartsWith("hardware-")) HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
+                    else if(command.StartsWith("shopping-")) ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
+                    else if(command.StartsWith("utility-")) UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
                     break;
             }
         }
@@ -121,18 +128,12 @@ namespace TelegramBot
         
         private static InlineKeyboardMarkup CreateMenuButtons()
         {
-            var rows = new InlineKeyboardButton[3][];
-
-            rows[0] = new InlineKeyboardButton[1];
-            rows[0][0] = InlineKeyboardButton.WithCallbackData("Automation", "automation");
-
-            rows[1] = new InlineKeyboardButton[1];
-            rows[1][0] = InlineKeyboardButton.WithCallbackData("Raspberry", "raspberry");
-
-            rows[2] = new InlineKeyboardButton[1];
-            rows[2][0] = InlineKeyboardButton.WithCallbackData("Utility", "utility");
-
-            return new InlineKeyboardMarkup(rows);
+            return new InlineKeyboardMarkup()
+                .AddButton("Automation", "automation")
+                .AddNewRow()
+                .AddButton("Raspberry", "raspberry")
+                .AddNewRow()
+                .AddButton("Utility", "utility");
         }
 
         private static Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)
