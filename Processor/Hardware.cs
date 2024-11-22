@@ -183,8 +183,9 @@ namespace Processor
 
                 string cmd = $"{scriptPath} {command}".Trim();
                 SshCommand r = client.RunCommand(cmd);
-                if (r.ExitStatus == 0) result = r.Result.Trim().Length > 0 && !r.Result.Trim().Equals("0") ? r.Result : "Command executed successfully.\n";
-                else result = r.Error.Trim().Length > 0 ? r.Error : "There was an error executing the command.\n";
+                
+                if (r.ExitStatus == 0) result = r.Result.Trim().Length > 0 && !r.Result.Trim().Equals("0") ? r.Result : "Command executed successfully\n";
+                else result = r.Error.Trim().Length > 0 ? r.Error : "There was an error executing the command\n";
                 result = result.Trim();
                 
                 var log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}Error: {r.Error}\n----\n";
@@ -229,8 +230,7 @@ namespace Processor
         public static async Task<string> GetPublicIp()
         {
             using var client = new HttpClient();
-            string ip = await client.GetStringAsync("https://api.ipify.org");
-            return ip;
+            return await client.GetStringAsync("https://api.ipify.org");
         }
         
         public static string GetCpuTemperature()
@@ -266,9 +266,15 @@ namespace Processor
         public static bool Ping(string ip)
         {
             using var pingSender = new Ping();
-            PingReply reply = pingSender.Send(ip, 2000);
-
-            return reply.Status == IPStatus.Success;
+            try
+            {
+                PingReply reply = pingSender.Send(ip, 2000);
+                return reply.Status == IPStatus.Success;
+            }
+            catch
+            {
+                return false;
+            }
         }
         
         public static string SwitchFromEnum(EGpio element, ETrigger trigger)

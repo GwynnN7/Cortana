@@ -3,6 +3,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Processor;
 using Telegram.Bot.Types.Enums;
+using File = System.IO.File;
 using Video = YoutubeExplode.Videos.Video;
 
 namespace TelegramBot.Modules;
@@ -89,30 +90,37 @@ public static class UtilityModule
             case ETelegramChatArg.AudioDownloader:
             case ETelegramChatArg.VideoDownloader:
                 await cortana.SendChatAction(messageStats.ChatId, ChatAction.UploadVideo);
-                try
-                {
+                try {
                     Video videoInfos = await Software.GetYoutubeVideoInfos(messageStats.FullMessage);
                     switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
                     {
                         case ETelegramChatArg.VideoDownloader:
                         {
-                            Stream stream = await Software.GetYoutubeStream(messageStats.FullMessage, EStreamType.Video);
-                            await cortana.SendVideo(messageStats.ChatId, new InputFileStream(stream, videoInfos.Title));
+                            Software.DownloadVideo(messageStats.FullMessage);
+                            if(File.Exists("video.mp4"))
+                            {
+                                Stream stream = File.OpenRead("video.mp4");
+                                await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(stream, videoInfos.Title));
+                                File.Delete("video.mp4");
+                            }
+                            else throw new CortanaException("Video not found");
+                            
                             break;
                         }
                         case ETelegramChatArg.AudioDownloader:
                         {
-                            Stream stream = await Software.GetYoutubeStream(messageStats.FullMessage, EStreamType.Audio);
-                            await cortana.SendAudio(messageStats.ChatId, new InputFileStream(stream, videoInfos.Title));
+                            Stream stream = await Software.GetAudioStream(messageStats.FullMessage);
+                            await cortana.SendAudio(messageStats.ChatId, InputFile.FromStream(stream, videoInfos.Title));
                             break;
                         }
                     }
-                    CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
                 }
-                catch
-                {
+                catch {
                     await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that video. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that video or it's too big. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                }
+                finally {
+                    CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
                 }
                 break;
         }

@@ -56,7 +56,7 @@ namespace DiscordBot.Modules
 
         public static async Task<bool> PlayMusic(string audio, ulong guildId)
         {
-            Stream stream = await Software.GetYoutubeStream(audio, EStreamType.Audio);
+            Stream stream = await Software.GetAudioStream(audio);
             MemoryStream memoryStream = await ExecuteFfmpeg(videoStream: stream);
             
             return Play(memoryStream, guildId);
@@ -369,7 +369,7 @@ namespace DiscordBot.Modules
 
             await FollowupAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 
-            Stream stream = await Software.GetYoutubeStream(result.Url, EStreamType.Audio);
+            Stream stream = await Software.GetAudioStream(result.Url);
             await Context.Channel.SendFileAsync(stream, result.Title + ".mp3");
         }
         

@@ -8,5 +8,8 @@ elif [ "$1" = "notify" ]; then
     all=( "${@}" )
     substring="${all[*]:1}"
     notify-send -u low -a Cortana -i "./cortana.jpg" "$substring"
+else 
+  "$@"
+  exit
 fi
 echo 0

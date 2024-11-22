@@ -54,13 +54,6 @@ public enum EHardwareInfo
     Temperature
 }
 
-// SOFTWARE RELATED
-public enum EStreamType
-{
-    Audio,
-    Video
-}
-
 // TIMER RELATED
 public enum ETimerType
 {
