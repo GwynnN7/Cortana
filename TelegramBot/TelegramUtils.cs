@@ -10,10 +10,12 @@ namespace TelegramBot
     {
         private static readonly DataStruct Data;
         private static TelegramBotClient _cortana = null!;
+        public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
 
         static TelegramUtils()
         {
             Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
+            ChatArgs = new Dictionary<long, TelegramChatArg>();
         }
         
         public static void Init(TelegramBotClient newClient)
@@ -59,6 +61,19 @@ namespace TelegramBot
         {
             return Data.RootPermissions.Contains(userId);
         }
+
+        public static bool TryAddChatArg(long chatId, TelegramChatArg arg, CallbackQuery callbackQuery)
+        {
+            if(ChatArgs.TryAdd(chatId, arg)) return true;
+            _cortana.AnswerCallbackQuery(callbackQuery.Id, "You already have an interaction going on! Finish it before continuing");
+            return false;
+        }
+        
+        public static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery)
+        {
+            try { await cortana.AnswerCallbackQuery(callbackQuery!.Id, text, true); }
+            catch { await cortana.SendMessage(chatId, text); }
+        }
     }
 
     [method: Newtonsoft.Json.JsonConstructor]
@@ -73,6 +88,17 @@ namespace TelegramBot
         public Dictionary<long, string> Groups { get; } = groups;
         [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
         public List<long> RootPermissions { get; } = rootPermissions;
+    }
+    
+    public readonly struct TelegramChatArg(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, object? arg = null)
+    {
+        public readonly CallbackQuery CallbackQuery = callbackQuery;
+        public readonly Message InteractionMessage = interactionMessage;
+        public readonly ETelegramChatArg Type = type;
+        public string ArgString => (string)arg!;
+        public long ArgLong => (long)arg!;
+        public bool HasArg => arg != null;
+
     }
     
     public struct MessageStats

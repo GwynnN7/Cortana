@@ -19,12 +19,10 @@ namespace TelegramBot.Modules
         
         private static CurrentPurchase? _currentPurchase;
         private static readonly Dictionary<long, List<Debts>> Debts;
-        private static readonly List<long> ChannelWaitingForText;
 
         static ShoppingModule()
         {
             Debts = Software.LoadFile<Dictionary<long, List<Debts>>>("Storage/Config/Telegram/Debts.json") ?? new Dictionary<long, List<Debts>>();
-            ChannelWaitingForText = [];
         }
         
         private static void UpdateDebts()
@@ -72,7 +70,7 @@ namespace TelegramBot.Modules
                     await cortana.SendMessage(message.Chat.Id, GetDebts());
                     break;
                 default:
-                    HandlePurchase(cortana, message, command);
+                    HandlePurchase(cortana, callbackQuery, command);
                     break;
             }
         }
@@ -80,7 +78,6 @@ namespace TelegramBot.Modules
         public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
         {
             if(_currentPurchase == null) return;
-            if(!IsWaiting(messageStats.ChatId)) return;
 
             if (_currentPurchase.Buyer != messageStats.UserId)
             {
@@ -124,9 +121,11 @@ namespace TelegramBot.Modules
             return debts;
         }
 
-        private static async void HandlePurchase(ITelegramBotClient cortana, Message message, string command)
+        private static async void HandlePurchase(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
         {
+            Message message = callbackQuery.Message!;
             int messageId = message.MessageId;
+            
             if (_currentPurchase == null)
             {
                 await cortana.DeleteMessage(message.Chat.Id, messageId);
@@ -145,12 +144,12 @@ namespace TelegramBot.Modules
                     await cortana.EditMessageText(message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddCustomerButtons());
                     break;
                 case "list":
-                    await cortana.EditMessageText(message.Chat.Id, messageId, $"Send me the cost of the products bought by {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons());
-                    ChannelWaitingForText.Add(message.Chat.Id);
+                    if(TelegramUtils.TryAddChatArg(message.Chat.Id, new TelegramChatArg(ETelegramChatArg.Shopping, callbackQuery, message), callbackQuery))
+                        await cortana.EditMessageText(message.Chat.Id, messageId, $"Send me the cost of the products bought by {GetCurrentBuyers()}",  replyMarkup: CreateAddItemButtons());
                     break;
                 case "confirm":
                 {
-                    ChannelWaitingForText.Remove(message.Chat.Id);
+                    TelegramUtils.ChatArgs.Remove(message.Chat.Id);
 
                     SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
                     double amount = Math.Round(lastSubPurchase.TotalAmount / lastSubPurchase.Customers.Count, 3);
@@ -186,7 +185,7 @@ namespace TelegramBot.Modules
                     _currentPurchase = null;
                     break;
                 case "back":
-                    ChannelWaitingForText.Remove(message.Chat.Id);
+                    TelegramUtils.ChatArgs.Remove(message.Chat.Id);
                     await cortana.EditMessageText(message.Chat.Id, messageId, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
                     break;
                 default:
@@ -269,10 +268,6 @@ namespace TelegramBot.Modules
             return _currentPurchase == null ? "No purchase active" : $"Customers of the new shopping list:\n{GetCurrentBuyers()}";
         }
         
-        public static bool IsWaiting(long chatId)
-        {
-            return ChannelWaitingForText.Contains(chatId);
-        }
         private static bool IsChannelAllowed(long channelId)
         {
             return AllowedChannels.Contains(TelegramUtils.IdToGroupName(channelId));

@@ -4,6 +4,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Modules;
 using Processor;
+using Telegram.Bot.Polling;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace TelegramBot
@@ -15,7 +16,7 @@ namespace TelegramBot
         private static void Main()
         {
             var cortana = new TelegramBotClient(Software.Secrets.TelegramToken);
-            cortana.StartReceiving(UpdateHandler, ErrorHandler);
+            cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions{ DropPendingUpdates=true });
             
             TelegramUtils.Init(cortana);
             TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), "I'm Online", false);
@@ -44,8 +45,6 @@ namespace TelegramBot
                 case MessageType.Text:
                     HandleTextMessage(cortana, message);
                     break;
-                default:
-                    break;
             }
         }
 
@@ -65,7 +64,28 @@ namespace TelegramBot
                 TextList = [],
                 Command = ""
             };
-            
+
+            if (TelegramUtils.ChatArgs.TryGetValue(messageStats.ChatId, out TelegramChatArg chatArg))
+            {
+                switch (chatArg.Type)
+                {
+                    case ETelegramChatArg.Qrcode:
+                    case ETelegramChatArg.Chat:
+                    case ETelegramChatArg.AudioDownloader:
+                    case ETelegramChatArg.VideoDownloader:
+                        UtilityModule.HandleTextMessage(cortana, messageStats);
+                        break;
+                    case ETelegramChatArg.Notification:
+                    case ETelegramChatArg.Ping:
+                        HardwareModule.HandleTextMessage(cortana, messageStats);
+                        break;
+                    case ETelegramChatArg.Shopping:
+                        ShoppingModule.HandleTextMessage(cortana, messageStats);
+                        break;
+                }
+                return;
+            }
+                
             if (message.Text.StartsWith('/'))
             {
                 messageStats.FullMessage = messageStats.FullMessage[1..];
@@ -82,13 +102,9 @@ namespace TelegramBot
             }
             else
             {
-                if (UtilityModule.IsWaiting(messageStats.ChatId)) UtilityModule.HandleTextMessage(cortana, messageStats);
-                else if (ShoppingModule.IsWaiting(messageStats.ChatId)) ShoppingModule.HandleTextMessage(cortana, messageStats);
-                else
-                {
-                    HardwareModule.HandleTextMessage(cortana, messageStats);
-                    if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) 
-                        await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
+                HardwareModule.HandleKeyboardCallback(cortana, messageStats);
+                if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private) {
+                    await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
                 }
             }
         }
@@ -97,7 +113,7 @@ namespace TelegramBot
         {
             string command = callbackQuery.Data!;
             Message message = callbackQuery.Message!;
-
+            
             switch (command)
             {
                 case "home":
@@ -109,8 +125,11 @@ namespace TelegramBot
                 case "raspberry":
                     HardwareModule.CreateRaspberryMenu(cortana, callbackQuery);
                     break;
-                case "utility":
-                    UtilityModule.CreateUtilityMenu(cortana, message);
+                case "hardware_utility":
+                    HardwareModule.CreateHardwareUtilityMenu(cortana, message);
+                    break;
+                case "software_utility":
+                    UtilityModule.CreateSoftwareUtilityMenu(cortana, message);
                     break;
                 default:
                     if(command.StartsWith("hardware-")) HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
@@ -133,7 +152,11 @@ namespace TelegramBot
                 .AddNewRow()
                 .AddButton("Raspberry", "raspberry")
                 .AddNewRow()
-                .AddButton("Utility", "utility");
+                .AddButton("Hardware", "hardware_utility")
+                .AddNewRow()
+                .AddButton("Utility", "software_utility")
+                .AddNewRow()
+                .AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynbleiddN7/Cortana"));
         }
 
         private static Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)

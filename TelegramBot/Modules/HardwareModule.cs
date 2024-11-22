@@ -6,16 +6,6 @@ using Processor;
 
 namespace TelegramBot.Modules
 {
-    internal static class HardwareEmoji
-    {
-        public const string Bulb = "💡";
-        public const string Pc = "🖥";
-        public const string Thunder = "⚡";
-        public const string Reboot = "🔄";
-        public const string On = "\ud83c\udf15\ud83c\udf15\ud83c\udf15";
-        public const string Off = "\ud83c\udf11\ud83c\udf11\ud83c\udf11";
-    }
-    
     public static class HardwareModule
     {
         private static readonly Dictionary<long, string> HardwareAction = new();
@@ -61,7 +51,12 @@ namespace TelegramBot.Modules
                 await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
         }
         
-        public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+        public static async void CreateHardwareUtilityMenu(ITelegramBotClient cortana, Message message)
+        {
+            await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Utility", replyMarkup: CreateUtilityButtons());
+        }
+        
+        public static async void HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
         {
             if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return;
             switch (messageStats.FullMessage)
@@ -136,6 +131,47 @@ namespace TelegramBot.Modules
                 }
                 await cortana.EditMessageReplyMarkup(callbackQuery.Message.Chat.Id, messageId, replyMarkup: CreateOnOffButtons());
             }
+            else if (command.StartsWith("utility-"))
+            {
+                long chatId = callbackQuery.Message.Chat.Id;
+                
+                switch (command["utility-".Length..])
+                {
+                    case "notify":
+                        if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Notification, callbackQuery, callbackQuery.Message),callbackQuery))
+                            await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton());
+                        break;
+                    case "ping":
+                        if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Ping, callbackQuery, callbackQuery.Message),callbackQuery))
+                            await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton());
+                        break;
+                    case "cancel":
+                        TelegramUtils.ChatArgs.Remove(chatId);
+                        CreateHardwareUtilityMenu(cortana, callbackQuery.Message);
+                        return;
+                }
+            }
+        }
+        
+        public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+        {
+            switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
+            {
+                case ETelegramChatArg.Notification:
+                    string result = Hardware.CommandPc(EComputerCommand.Notify, messageStats.FullMessage);
+                    await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                    TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+                    TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+                    break;
+                case ETelegramChatArg.Ping:
+                    string output = Hardware.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
+                    await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                    TelegramUtils.AnswerOrMessage(cortana, output, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+                    TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+                    break;
+            }
         }
         
         private static InlineKeyboardMarkup CreateAutomationButtons()
@@ -167,6 +203,16 @@ namespace TelegramBot.Modules
                 .AddNewRow()
                 .AddButton("<<", "home");
         }
+        
+        private static InlineKeyboardMarkup CreateUtilityButtons()
+        {
+            return new InlineKeyboardMarkup()
+                .AddButton("Ping", "hardware-utility-ping")
+                .AddNewRow()
+                .AddButton("Desktop Notification", "hardware-utility-notify")
+                .AddNewRow()
+                .AddButton("<<", "home");
+        }
 
         private static InlineKeyboardMarkup CreateOnOffButtons()
         {
@@ -177,6 +223,12 @@ namespace TelegramBot.Modules
                 .AddButton("Toggle", "hardware-automation-toggle")
                 .AddNewRow()
                 .AddButton("<<", "automation");
+        }
+        
+        private static InlineKeyboardMarkup CreateCancelButton()
+        {
+            return new InlineKeyboardMarkup()
+                .AddButton("<<", "hardware-utility-cancel");
         }
 
         private static ReplyKeyboardMarkup CreateHardwareToggles()
@@ -190,5 +242,15 @@ namespace TelegramBot.Modules
                 .AddNewRow()
                 .AddButton(HardwareEmoji.Off);
         }
+    }
+    
+    internal static class HardwareEmoji
+    {
+        public const string Bulb = "💡";
+        public const string Pc = "🖥";
+        public const string Thunder = "⚡";
+        public const string Reboot = "🔄";
+        public const string On = "\ud83c\udf15\ud83c\udf15\ud83c\udf15";
+        public const string Off = "\ud83c\udf11\ud83c\udf11\ud83c\udf11";
     }
 }

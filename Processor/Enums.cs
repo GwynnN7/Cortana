@@ -77,6 +77,20 @@ public enum ETimerLoop
 }
 
 
+// TELEGRAM RELATED
+
+public enum ETelegramChatArg
+{
+    Qrcode, 
+    Chat, 
+    Notification,
+    Ping,
+    Shopping,
+    AudioDownloader,
+    VideoDownloader
+}
+
+
 // DISCORD RELATED
 public enum EAnswer
 {
