@@ -50,7 +50,10 @@ namespace TelegramBot
                 UserId = update.Message.From?.Id ?? update.Message.Chat.Id,
                 MessageId = update.Message.MessageId,
                 ChatType = update.Message.Chat.Type,
-                FullMessage = update.Message.Text
+                FullMessage = update.Message.Text,
+                Text = update.Message.Text,
+                TextList = [],
+                Command = ""
             };
             
             if (update.Message.Text.StartsWith('/'))

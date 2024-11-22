@@ -138,21 +138,18 @@ public static class UtilityModule
                     break;
                 }
 
-                if (messageStats.TextList.Count == 1)
+                try
                 {
-                    try
-                    {
-                        AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat, AnswerCommands[messageStats.ChatId].Update, AnswerCommands[messageStats.ChatId].InteractionMessage, TelegramUtils.NameToId(messageStats.TextList[0]).ToString());
-                        await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                        await cortana.EditMessageText(messageStats.ChatId, AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {messageStats.TextList[0]}", replyMarkup: CreateLeaveButton());
-                    }
-                    catch
-                    {
-                        AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
-                    }
+                    string user = messageStats.FullMessage.Trim();
+                    AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat, AnswerCommands[messageStats.ChatId].Update, AnswerCommands[messageStats.ChatId].InteractionMessage, TelegramUtils.NameToId(user).ToString());
+                    await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                    await cortana.EditMessageText(messageStats.ChatId, AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {user}", replyMarkup: CreateLeaveButton());
                 }
-                else
-                    AnswerOrMessage(cortana, "Sorry, I can't understand the answer. Please try again with a single tag", messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
+                catch
+                {
+                    AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
+                }
+
                 break;
         }
     }
