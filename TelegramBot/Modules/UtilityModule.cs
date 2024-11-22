@@ -126,8 +126,8 @@ public static class UtilityModule
                 break;
             case EAnswerCommands.Notification:
                 string result = Hardware.CommandPc(EComputerCommand.Notify, messageStats.FullMessage);
-                if (result == "0") await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                else await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id, result, true);
+                await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+                AnswerOrMessage(cortana, result, messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
                 CreateUtilityMenu(cortana, AnswerCommands[messageStats.ChatId].InteractionMessage);
                 AnswerCommands.Remove(messageStats.ChatId);
                 break;
@@ -142,30 +142,26 @@ public static class UtilityModule
                 {
                     try
                     {
-                        AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat,
-                            AnswerCommands[messageStats.ChatId].Update,
-                            AnswerCommands[messageStats.ChatId].InteractionMessage,
-                            TelegramUtils.NameToId(messageStats.TextList[0]).ToString());
+                        AnswerCommands[messageStats.ChatId] = new AnswerCommand(EAnswerCommands.Chat, AnswerCommands[messageStats.ChatId].Update, AnswerCommands[messageStats.ChatId].InteractionMessage, TelegramUtils.NameToId(messageStats.TextList[0]).ToString());
                         await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-                        await cortana.EditMessageText(messageStats.ChatId,
-                            AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId,
-                            $"Currently chatting with {messageStats.TextList[0]}", replyMarkup: CreateLeaveButton());
+                        await cortana.EditMessageText(messageStats.ChatId, AnswerCommands[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {messageStats.TextList[0]}", replyMarkup: CreateLeaveButton());
                     }
                     catch
                     {
-                        await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id,
-                            "Sorry, I can't find that username. Please try again", true);
+                        AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
                     }
                 }
                 else
-                    await cortana.AnswerCallbackQuery(AnswerCommands[messageStats.ChatId].Update.CallbackQuery!.Id,
-                        "Sorry, I can't understand the answer. Please try again with a single tag", true);
+                    AnswerOrMessage(cortana, "Sorry, I can't understand the answer. Please try again with a single tag", messageStats.ChatId, AnswerCommands[messageStats.ChatId].Update.CallbackQuery);
                 break;
         }
     }
 
-    public static bool IsWaiting(long chatId)
+    private static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery)
     {
-        return AnswerCommands.ContainsKey(chatId);
+        try { await cortana.AnswerCallbackQuery(callbackQuery!.Id, text, true); }
+        catch { await cortana.SendMessage(chatId, text); }
     }
+
+    public static bool IsWaiting(long chatId) => AnswerCommands.ContainsKey(chatId);
 }
