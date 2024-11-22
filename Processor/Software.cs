@@ -79,29 +79,43 @@ namespace Processor
             IStreamInfo audioStreamInfo = streamManifest
                 .GetAudioStreams()
                 .Where(s => s.Container == Container.Mp4)
+                .Where(s => s.Size.MegaBytes < 50)
                 .GetWithHighestBitrate();
             Stream stream = await youtube.Videos.Streams.GetAsync(audioStreamInfo);
             return stream;
         }
 
-        public static async void DownloadVideo(string url)
+        public static async Task DownloadVideo(string url)
         {
             var youtube = new YoutubeClient();
             StreamManifest streamManifest = await youtube.Videos.Streams.GetManifestAsync(url);
+            IStreamInfo[] qualityVideo = GetVideoStreamInfos(streamManifest, 50, 50);
+            IStreamInfo[] balancedVideo = GetVideoStreamInfos(streamManifest, 30, 50);
+            
+            await youtube.Videos.DownloadAsync(qualityVideo, new ConversionRequestBuilder("Storage/temp_video_quality.mp4").Build());
+            await youtube.Videos.DownloadAsync(balancedVideo, new ConversionRequestBuilder("Storage/temp_video_balanced.mp4").Build());
+        }
+
+        private static IStreamInfo[] GetVideoStreamInfos(StreamManifest streamManifest, int maxVideoSize, int maxFileSize)
+        {
+            IVideoStreamInfo videoStreamInfo = streamManifest
+                .GetVideoStreams()
+                .Where(s => s.Container == Container.Mp4)
+                .Where(s => s.Size.MegaBytes < maxVideoSize)
+                .GetWithHighestVideoQuality();
             
             IStreamInfo audioStreamInfo = streamManifest
                 .GetAudioStreams()
                 .Where(s => s.Container == Container.Mp4)
+                .Where(s => s.Size.MegaBytes < maxFileSize - videoStreamInfo.Size.MegaBytes)
                 .GetWithHighestBitrate();
-
-            IVideoStreamInfo videoStreamInfo = streamManifest
-                .GetVideoStreams()
-                .Where(s => s.Container == Container.Mp4)
-                .Where(s => s.Size.MegaBytes < 50)
-                .GetWithHighestVideoQuality();
             
-            IStreamInfo[] streamInfos = [audioStreamInfo, videoStreamInfo];
-            await youtube.Videos.DownloadAsync(streamInfos, new ConversionRequestBuilder("video.mp4").Build());
+            return [audioStreamInfo, videoStreamInfo];
+        }
+
+        public static Stream? GetStreamFromFile(string path)
+        {
+            return File.Exists(path) ? File.OpenRead(path) : null;
         }
 
         public static async Task<Video> GetYoutubeVideoInfos(string url)

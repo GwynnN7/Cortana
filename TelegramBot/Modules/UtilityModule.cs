@@ -96,14 +96,13 @@ public static class UtilityModule
                     {
                         case ETelegramChatArg.VideoDownloader:
                         {
-                            Software.DownloadVideo(messageStats.FullMessage);
-                            if(File.Exists("video.mp4"))
-                            {
-                                Stream stream = File.OpenRead("video.mp4");
-                                await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(stream, videoInfos.Title));
-                                File.Delete("video.mp4");
-                            }
-                            else throw new CortanaException("Video not found");
+                            await Software.DownloadVideo(messageStats.FullMessage);
+                            Stream? qualityVideo = Software.GetStreamFromFile("Storage/temp_video_quality.mp4");
+                            Stream? balancedVideo = Software.GetStreamFromFile("Storage/temp_video_balanced.mp4");
+                            
+                            if(qualityVideo != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(qualityVideo, $"quality_{videoInfos.Title}"), caption: $"Quality {videoInfos.Title}");
+                            if(balancedVideo != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(balancedVideo, $"balanced_{videoInfos.Title}"), caption: $"Balanced {videoInfos.Title}");
+                            else throw new CortanaException("Video file downloaded not found in Storage/");
                             
                             break;
                         }
@@ -116,9 +115,12 @@ public static class UtilityModule
                     }
                 }
                 catch {
-                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that video or it's too big", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, either I can't find that video on YouTube or it's size is greater than 50MB", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
                 }
                 finally {
+                    File.Delete("Storage/temp_video_quality.mp4");
+                    File.Delete("Storage/temp_video_balanced.mp4");
+                    
                     await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
                     CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
                     TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
