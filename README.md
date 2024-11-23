@@ -47,16 +47,18 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 
 ## API Reference
 
+Note: "**cortana-api**" is a placeholder for the actual address, which is private.
+
 #### Home 
 
 ```http 
-  http://cortana-api.ddns.net:8080/
+  http://cortana-api/
 ```
 
 #### Routing
 
 ```http
-  GET cortana-api.ddns.net:8080/api/{route}
+  GET cortana-api/api/{route}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -66,7 +68,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Automation
 
 ```http
-  GET cortana-api.ddns.net:8080/api/automation/{device}?t={trigger}
+  GET cortana-api/api/automation/{device}?t={trigger}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -77,7 +79,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Raspberry
 
 ```http
-  GET cortana-api.ddns.net:8080/api/raspberry/{action}
+  GET cortana-api/api/raspberry/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -87,7 +89,7 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 #### Utility
 
 ```http
-  GET cortana-api.ddns.net:8080/api/utility/{action}
+  GET cortana-api/api/utility/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
