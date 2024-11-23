@@ -148,7 +148,7 @@ namespace TelegramBot
         private static InlineKeyboardMarkup CreateMenuButtons()
         {
             return new InlineKeyboardMarkup()
-                .AddButton("Automation", "automation")
+                .AddButton("Domotica", "automation")
                 .AddNewRow()
                 .AddButton("Raspberry", "raspberry")
                 .AddNewRow()
