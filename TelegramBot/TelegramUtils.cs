@@ -97,6 +97,7 @@ namespace TelegramBot
         public readonly ETelegramChatArg Type = type;
         public string ArgString => (string)arg!;
         public long ArgLong => (long)arg!;
+        public EVideoQuality ArgVideoQuality => (EVideoQuality)arg!;
         public bool HasArg => arg != null;
 
     }

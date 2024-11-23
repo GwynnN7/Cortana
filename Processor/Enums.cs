@@ -83,6 +83,12 @@ public enum ETelegramChatArg
     VideoDownloader
 }
 
+public enum EVideoQuality
+{
+    BestVideo,
+    BestAudio,
+    Balanced
+}
 
 // DISCORD RELATED
 public enum EAnswer
@@ -111,6 +117,5 @@ public enum EMemeCategory
     NotLong,
     Long,
     NotShort,
-    Skidaddle,
     Default
 }

@@ -38,8 +38,8 @@ namespace DiscordBot.Modules
         }
         
         public static readonly Dictionary<ulong, ChannelClient> AudioClients = new();
-        private static readonly Dictionary<ulong, List<QueueStructure>> AudioQueue = new();
-        private static readonly Dictionary<ulong, List<JoinStructure>> JoinQueue = new();
+        private static readonly Dictionary<ulong, Queue<QueueStructure>> AudioQueue = new();
+        private static readonly Dictionary<ulong, Queue<JoinStructure>> JoinQueue = new();
         
         //---------------------------- Audio Functions ----------------------------------------------
 
@@ -74,8 +74,13 @@ namespace DiscordBot.Modules
             if (!AudioClients.TryGetValue(guildId, out ChannelClient client) || client.AudioStream == null) return false;
             
             var audioQueueItem = new QueueStructure(new CancellationTokenSource(), memoryStream, guildId);
-            if (AudioQueue.TryGetValue(guildId, out List<QueueStructure>? queue)) queue.Add(audioQueueItem);
-            else AudioQueue.Add(guildId, [audioQueueItem]);
+            if (AudioQueue.TryGetValue(guildId, out Queue<QueueStructure>? queueStructures)) queueStructures.Enqueue(audioQueueItem);
+            else
+            {
+                var queue = new Queue<QueueStructure>();
+                queue.Enqueue(audioQueueItem);
+                AudioQueue.Add(guildId, queue);
+            }
 
             if (AudioQueue[guildId].Count == 1) NextAudioQueue(guildId);
             return true;
@@ -83,12 +88,12 @@ namespace DiscordBot.Modules
 
         private static void NextAudioQueue(ulong guildId)
         {
-            Task audioTask = Task.Run(() => SendBuffer(AudioQueue[guildId][0]));
-            audioTask.ContinueWith((_) =>
+            Task audioTask = Task.Run(() => SendBuffer(AudioQueue[guildId].Peek()));
+            audioTask.ContinueWith(_ =>
             {
-                AudioQueue[guildId][0].Token.Dispose();
-                AudioQueue[guildId][0].Data.Dispose();
-                AudioQueue[guildId].RemoveAt(0);
+                if (!AudioQueue[guildId].TryDequeue(out QueueStructure queueItem)) return;
+                queueItem.Token.Dispose();
+                queueItem.Data.Dispose();
                 if (AudioQueue[guildId].Count > 0) NextAudioQueue(guildId);
             });
         }  
@@ -105,30 +110,24 @@ namespace DiscordBot.Modules
 
         public static string Skip(ulong guildId)
         {
-            if (!AudioQueue.TryGetValue(guildId, out List<QueueStructure>? audioQueue)) return "Non c'è niente da skippare";
+            if (!AudioQueue.TryGetValue(guildId, out Queue<QueueStructure>? audioQueue)) return "Non c'è niente da skippare";
             if (audioQueue.Count <= 0) return "Non c'è niente da skippare";
-            audioQueue[0].Token.Cancel();
+            audioQueue.Peek().Token.Cancel();
             return "Audio skippato";
         }
 
         public static string Clear(ulong guildId)
         {
-            if (!AudioQueue.TryGetValue(guildId, out List<QueueStructure>? queue) || queue.Count <= 0) return "Non c'è niente in coda";
-            for(int i = queue.Count - 1; i >= 0; i--)
-            {
-                if(i == 0)
-                {
-                    queue[i].Token.Cancel();
-                    continue;
-                }
-
-                queue[i].Token.Cancel();
-                queue[i].Token.Dispose();
-                queue[i].Data.Dispose();
-                queue.RemoveAt(i);
-            }
-
+            if (!AudioQueue.TryGetValue(guildId, out Queue<QueueStructure>? queue) || queue.Count <= 0) return "Non c'è niente in coda";
+            var copyQueue = new Queue<QueueStructure>(queue);
             queue.Clear();
+            while (copyQueue.Count > 0)
+            {
+                QueueStructure queueItem = copyQueue.Dequeue();
+                queueItem.Token.Cancel();
+                queueItem.Token.Dispose();
+                queueItem.Data.Dispose();
+            }
             return "Queue rimossa";
         }
         
@@ -196,20 +195,24 @@ namespace DiscordBot.Modules
         private static void AddToJoinQueue(Func<Task> taskToAdd, ulong guildId)
         {
             var queueItem = new JoinStructure(new CancellationTokenSource(), taskToAdd);
-            if (JoinQueue.TryGetValue(guildId, out List<JoinStructure>? joinStructures)) joinStructures.Add(queueItem);
-            else JoinQueue.Add(guildId, [queueItem]);
+            if (JoinQueue.TryGetValue(guildId, out Queue<JoinStructure>? joinStructures)) joinStructures.Enqueue(queueItem);
+            else
+            {
+                var queue = new Queue<JoinStructure>();
+                queue.Enqueue(queueItem);
+                JoinQueue.Add(guildId, queue);
+            }
 
             if (JoinQueue[guildId].Count == 1) NextJoinQueue(guildId);
         }
 
         private static async void NextJoinQueue(ulong guildId)
         {
-            await JoinQueue[guildId][0].Task();
-
-            JoinQueue[guildId][0].Token.Dispose();
-            JoinQueue[guildId].RemoveAt(0);
+            JoinStructure joinItem = JoinQueue[guildId].Dequeue();
+            await joinItem.Task();
+            joinItem.Token.Dispose();
             if (JoinQueue[guildId].Count <= 0) return;
-            JoinQueue[guildId] = [JoinQueue[guildId].Last()];
+            while(JoinQueue[guildId].Count != 1) JoinQueue[guildId].Dequeue();
 
             NextJoinQueue(guildId);
         }
@@ -394,7 +397,7 @@ namespace DiscordBot.Modules
                 await FollowupAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 
                 bool status = await AudioHandler.PlayMusic(result.Url, Context.Guild.Id);
-                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mandare il meme");
+                if (!status) await Context.Channel.SendMessageAsync("Non sono connessa a nessun canale, non posso mettere il meme");
                 return;
             }
             await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: ephemeral == EAnswer.Si);

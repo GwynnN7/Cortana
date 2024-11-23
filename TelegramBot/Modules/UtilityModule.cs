@@ -39,7 +39,18 @@ public static class UtilityModule
                     await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the audio", replyMarkup: CreateCancelButton());
                 break;
             case "video":
-                if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message), callbackQuery))
+                await cortana.EditMessageText(chatId, messageId, "Choose Video Quality", replyMarkup: CreateVideoDownloadButtons());
+                break;
+            case "video-video_prio":
+                if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestVideo), callbackQuery))
+                    await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
+                break;
+            case "video-audio_prio":
+                if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestAudio), callbackQuery))
+                    await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
+                break;
+            case "video-balanced":
+                if(TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.Balanced), callbackQuery))
                     await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
                 break;
             case "cancel":
@@ -96,14 +107,10 @@ public static class UtilityModule
                     {
                         case ETelegramChatArg.VideoDownloader:
                         {
-                            await Software.DownloadVideo(messageStats.FullMessage);
-                            Stream? qualityVideo = Software.GetStreamFromFile("Storage/temp_video_quality.mp4");
-                            Stream? balancedVideo = Software.GetStreamFromFile("Storage/temp_video_balanced.mp4");
-                            
-                            if(qualityVideo != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(qualityVideo, $"quality_{videoInfos.Title}"), caption: $"Quality {videoInfos.Title}");
-                            if(balancedVideo != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(balancedVideo, $"balanced_{videoInfos.Title}"), caption: $"Balanced {videoInfos.Title}");
+                            await Software.DownloadVideo(messageStats.FullMessage, TelegramUtils.ChatArgs[messageStats.ChatId].ArgVideoQuality, 50);
+                            Stream? videoStream = Software.GetStreamFromFile("Storage/temp_video.mp4");
+                            if(videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, videoInfos.Title), caption: videoInfos.Title);
                             else throw new CortanaException("Video file downloaded not found in Storage/");
-                            
                             break;
                         }
                         case ETelegramChatArg.AudioDownloader:
@@ -115,12 +122,11 @@ public static class UtilityModule
                     }
                 }
                 catch {
-                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, either I can't find that video on YouTube or it's size is greater than 50MB", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+                    TelegramUtils.AnswerOrMessage(cortana, "Sorry, either I can't find that video on YouTube or its size is greater than 50MB", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
                 }
                 finally {
-                    File.Delete("Storage/temp_video_quality.mp4");
-                    File.Delete("Storage/temp_video_balanced.mp4");
-                    
+                    if(File.Exists("Storage/temp_video.mp4")) File.Delete("Storage/temp_video.mp4");
+
                     await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
                     CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
                     TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
@@ -141,6 +147,18 @@ public static class UtilityModule
             .AddButton("Download Video", "utility-video")
             .AddNewRow()
             .AddButton("<<", "home");
+    }
+    
+    private static InlineKeyboardMarkup CreateVideoDownloadButtons()
+    {
+        return new InlineKeyboardMarkup()
+            .AddButton("Prioritize Video Quality", "utility-video-video_prio")
+            .AddNewRow()
+            .AddButton("Prioritize Audio Quality", "utility-video-audio_prio")
+            .AddNewRow()
+            .AddButton("Balance Video and Audio", "utility-video-balanced")
+            .AddNewRow()
+            .AddButton("<<", "utility-video");
     }
     
     private static InlineKeyboardMarkup CreateLeaveButton()
