@@ -17,27 +17,27 @@ public static class Kernel
 
 		Console.WriteLine($"Compilation completed at {Hardware.GetCpuTemperature()}, loading data for {Hardware.GetLocation()}");
 		await Task.Delay(500);
+		
+		Console.WriteLine("Initiating Bootloader...");
 
-		var handler = new Bootloader();
-		Console.WriteLine("Bootloader initiated");
-
-		int threadId = handler.BootSubFunction(ESubFunctions.CortanaApi);
-		Console.WriteLine($"Cortana API ready on Task {threadId}, check on http://cortana-api.ddns.net:8080/");
+		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
+		Console.WriteLine($"Cortana API ready on Thread {threadId}");
 		await Task.Delay(500);
 
-		threadId = handler.BootSubFunction(ESubFunctions.DiscordBot);
-		Console.WriteLine($"Discord Bot booting up on Task {threadId}, wait for a verification on Discord!");
+		threadId = Bootloader.BootSubFunction(ESubFunctions.DiscordBot);
+		Console.WriteLine($"Discord Bot booting up on Thread {threadId}");
 		await Task.Delay(500);
 
-		threadId = handler.BootSubFunction(ESubFunctions.TelegramBot);
-		Console.WriteLine($"Telegram Bot booting up on Task {threadId},  wait for a verification on Telegram!");
+		threadId = Bootloader.BootSubFunction(ESubFunctions.TelegramBot);
+		Console.WriteLine($"Telegram Bot booting up on Thread {threadId}");
 		await Task.Delay(500);
 
 		Console.WriteLine("Boot Completed, I'm Online!");
-		handler.WaitSubFunctions();
+		Console.CancelKeyPress += (_, __) => Bootloader.StopSubFunctions();
+		Bootloader.WaitSubFunctions();
 
 		Console.WriteLine("Shutting Down...");
-		handler.StopSubFunctions();
+		Bootloader.StopSubFunctions();
 
 		return Task.CompletedTask;
 	}

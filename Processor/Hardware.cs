@@ -22,7 +22,7 @@ public static class Hardware
 		NetStats = GetLocationNetworkData();
 		HardwareStates = new Dictionary<EDevice, EStatus>();
 		foreach (EDevice element in Enum.GetValues<EDevice>()) HardwareStates.Add(element, EStatus.Off);
-		_ = new Timer("night-handler", new UtilityTimerPayload(null), new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
+		_ = new Timer("night-handler", null, new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
 			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
 	}
 
@@ -334,7 +334,7 @@ public static class Hardware
 		else CommandPc(EComputerCommand.Notify, "You should go to sleep");
 
 		if (DateTime.Now.Hour < 6)
-			_ = new Timer("safety-night-handler", new UtilityTimerPayload(null), (1, 0, 0), HandleNightCallback, ETimerType.Utility);
+			_ = new Timer("safety-night-handler", null, (1, 0, 0), HandleNightCallback, ETimerType.Utility);
 	}
 
 	private static ETrigger? TriggerStateFromString(string state)

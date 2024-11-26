@@ -138,15 +138,21 @@ public static class HardwareModule
 				{
 					case "timer":
 						await cortana.EditMessageText(chatId, messageId, "Select the action of the timer", replyMarkup: CreateOnOffTimerButtons());
+						await cortana.AnswerCallbackQuery(callbackQuery.Id, "{sec}s {min}m {hours}h {days}d");
 						break;
 					case var _ when command.StartsWith("timer-"):
 						command = command["timer-".Length..];
 						if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.HardwareTimer, callbackQuery, callbackQuery.Message, command), callbackQuery))
-							await cortana.EditMessageText(chatId, messageId, "Timer format: {seconds}s {minutes}m {hours}h {days}d", replyMarkup: CreateCancelButton());
+							await cortana.EditMessageText(chatId, messageId, "Set the timer for the action", replyMarkup: CreateCancelButton("automation"));
+						break;
+					case "cancel":
+						TelegramUtils.ChatArgs.Remove(chatId);
+						CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[chatId].CallbackQuery);
 						break;
 					default:
 						string result = Hardware.SwitchFromString(HardwareAction[messageId], command);
 						await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
+						CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[chatId].CallbackQuery);
 						break;
 				}
 				return;
@@ -160,16 +166,16 @@ public static class HardwareModule
 			{
 				case "notify":
 					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Notification, callbackQuery, callbackQuery.Message), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton());
+						await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton("utility"));
 					break;
 				case "ping":
 					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Ping, callbackQuery, callbackQuery.Message), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton());
+						await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton("utility"));
 					break;
 				case "cancel":
 					TelegramUtils.ChatArgs.Remove(chatId);
 					CreateHardwareUtilityMenu(cortana, callbackQuery.Message);
-					return;
+					break;
 			}
 		}
 	}
@@ -183,16 +189,16 @@ public static class HardwareModule
 				string result = Hardware.CommandPc(EComputerCommand.Notify, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
-				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.Ping:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.FindLocation);
 				string output = Hardware.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				TelegramUtils.AnswerOrMessage(cortana, output, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
-				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.HardwareTimer:
 				(int s, int m, int h, int d) times = (0, 0, 0, 0);
@@ -217,9 +223,6 @@ public static class HardwareModule
 							case "d":
 								times.h = value*24;
 								break;
-							default:
-								TelegramUtils.AnswerOrMessage(cortana, "Time unit not recognized, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
-								return;
 						}
 					}
 					else
@@ -228,24 +231,27 @@ public static class HardwareModule
 						return;
 					}
 				}
+				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+				
 				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], TelegramUtils.ChatArgs[messageStats.ChatId].ArgString);
-				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload(messageStats.ChatId, messageStats.UserId, hardwarePattern), 
+				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), 
 					(times.s, times.m, times.h), HardwareTimerFinished, ETimerType.Telegram);
-				TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:dddd dd MMMM at HH:mm:ss}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+				
+				TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				break;
 		}
 	}
 	
-	private static async void HardwareTimerFinished(object? sender, ElapsedEventArgs args)
+	private static void HardwareTimerFinished(object? sender, ElapsedEventArgs args)
 	{
 		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
 
 		try
 		{
-			if (timer.Payload is not TelegramTimerPayload payload) return;
-			(string device, string action) action = ((string, string))(payload.Arg ?? throw new CortanaException("Payload argument is null"));
-			string result = Hardware.SwitchFromString(action.device, action.action);
+			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
+			string result = Hardware.SwitchFromString(payload.Arg.device, payload.Arg.device);
 			TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with: {result}");
 		}
 		catch(Exception e)
@@ -317,10 +323,10 @@ public static class HardwareModule
 			.AddButton("<<", "automation");
 	}
 
-	private static InlineKeyboardMarkup CreateCancelButton()
+	private static InlineKeyboardMarkup CreateCancelButton(string path)
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("<<", "hardware-utility-cancel");
+			.AddButton("<<", $"hardware-{path}-cancel");
 	}
 
 	private static ReplyKeyboardMarkup CreateHardwareToggles()

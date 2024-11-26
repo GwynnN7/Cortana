@@ -3,23 +3,22 @@ using System.Timers;
 
 namespace Processor;
 
-public abstract record TimerArg(object? Arg);
-public record TelegramTimerPayload(long ChatId, long UserId, object? Arg) : TimerArg(Arg);
-public record DiscordTimerPayload(object User, object? TextChannel, object? Arg) : TimerArg(Arg);
-public record UtilityTimerPayload(object? Arg) : TimerArg(Arg);
+public record TimerArg<T>(T? Arg);
+public record TelegramTimerPayload<T>(long ChatId, long UserId, T? Arg) : TimerArg<T>(Arg);
+public record DiscordTimerPayload<T>(object User, object? TextChannel, T? Arg) : TimerArg<T>(Arg);
 
 public class Timer : System.Timers.Timer
 {
 	private static readonly Dictionary<ETimerType, List<Timer>> TotalTimers = new();
 	public DateTime NextTargetTime { get; private set; }
 	public ETimerType TimerType { get; }
-	public TimerArg Payload { get; }
+	public object? Payload { get; }
 	private string Tag { get; }
 	private ETimerLoop LoopType { get; }
 	
 	private Action<object?, ElapsedEventArgs> Callback { get; }
 	
-	public Timer(string tag, TimerArg payload, Times times, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	public Timer(string tag, object? payload, Times times, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
 	{
 		Tag = tag;
 		Payload = payload;
@@ -37,11 +36,12 @@ public class Timer : System.Timers.Timer
 		SaveTimer();
 	}
 
-	public Timer(string tag, TimerArg payload, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	public Timer(string tag, object? payload, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
 	{
 		Tag = tag;
 		Payload = payload;
-		Interval = targetTime.CompareTo(DateTime.Now) <= 0 ? targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+		if(Interval <= 0) Interval = 1000;
 		Callback = callback;
 		TimerType = timerType;
 

@@ -69,11 +69,11 @@ public static class TelegramUtils
 		return false;
 	}
 
-	public static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery)
+	public static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery, bool showAlert = true)
 	{
 		try
 		{
-			await cortana.AnswerCallbackQuery(callbackQuery!.Id, text, true);
+			await cortana.AnswerCallbackQuery(callbackQuery!.Id, text, showAlert);
 		}
 		catch
 		{

@@ -10,9 +10,7 @@ if (($# == 1)) then
 	    git fetch --all && git reset --hard origin/main;
         mv ~/Config ~/Cortana/CortanaKernel/Storage/
     elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
-        killall --quiet --ignore-case --wait CortanaKernel;
-        killall --quiet --ignore-case --wait Cortana;
-        killall --queit --ignore-case --wait dotnet;
+        killall -s SIGINT --quiet --ignore-case --wait Cortana;
         echo "Cortana killed"
 	  elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
       echo "cortana-run --update -u  git fetch and pull";

@@ -40,7 +40,7 @@ public static class DiscordBot
 			DiscordUtils.InitSettings(client);
 			await commands.RegisterCommandsGloballyAsync();
 
-			_ = new Timer("discord-activity-timer", new UtilityTimerPayload(null), (0, 0, 10), ActivityTimerElapsed, ETimerType.Utility, ETimerLoop.Interval);
+			_ = new Timer("discord-activity-timer", null, (0, 0, 10), ActivityTimerElapsed, ETimerType.Utility, ETimerLoop.Interval);
 
 			foreach (SocketGuild? guild in DiscordUtils.Cortana.Guilds)
 			{

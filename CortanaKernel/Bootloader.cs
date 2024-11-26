@@ -3,11 +3,11 @@ using Processor;
 
 namespace CortanaKernel;
 
-public class Bootloader
+public static class Bootloader
 {
-	private readonly List<SubFunctionsTasks> _subFunctionTasks = [];
+	private static readonly List<SubFunctionsTasks> SubFunctionTasks = [];
 
-	public int BootSubFunction(ESubFunctions subFunction)
+	public static int BootSubFunction(ESubFunctions subFunction)
 	{
 		var token = new CancellationTokenSource();
 		Task subFunctionTask = subFunction switch
@@ -23,29 +23,29 @@ public class Bootloader
 			subFunctionTask.Dispose();
 		});
 		var newTask = new SubFunctionsTasks(subFunction, subFunctionTask, token);
-		_subFunctionTasks.Add(newTask);
+		SubFunctionTasks.Add(newTask);
 		return subFunctionTask.Id;
 	}
 
-	public void StopSubFunctions()
+	public static void StopSubFunctions()
 	{
-		foreach (SubFunctionsTasks subFunctionTask in _subFunctionTasks) subFunctionTask.CancellationToken.Cancel();
-		_subFunctionTasks.Clear();
+		foreach (SubFunctionsTasks subFunctionTask in SubFunctionTasks) subFunctionTask.CancellationToken.Cancel();
+		SubFunctionTasks.Clear();
 	}
 
-	public void StopSubFunction(ESubFunctions subFunction)
+	public static void StopSubFunction(ESubFunctions subFunction)
 	{
-		foreach (SubFunctionsTasks subFunctionTask in _subFunctionTasks.Where(func => func.SubFunctionType == subFunction))
+		foreach (SubFunctionsTasks subFunctionTask in SubFunctionTasks.Where(func => func.SubFunctionType == subFunction))
 		{
 			subFunctionTask.CancellationToken.Cancel();
-			_subFunctionTasks.Remove(subFunctionTask);
+			SubFunctionTasks.Remove(subFunctionTask);
 			break;
 		}
 	}
 
-	public void WaitSubFunctions()
+	public static void WaitSubFunctions()
 	{
-		foreach (SubFunctionsTasks subFunctionTask in _subFunctionTasks) subFunctionTask.SubFunctionTask.Wait();
+		foreach (SubFunctionsTasks subFunctionTask in SubFunctionTasks) subFunctionTask.SubFunctionTask.Wait();
 	}
 
 	private readonly record struct SubFunctionsTasks(
