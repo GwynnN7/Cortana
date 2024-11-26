@@ -22,9 +22,11 @@ public class Timer : System.Timers.Timer
 	{
 		Tag = tag;
 		Payload = payload;
-		Interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
 		Callback = callback;
 		TimerType = timerType;
+		
+		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
+		Interval = interval > 0 ? interval : 1000;
 
 		LoopType = loop;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
@@ -40,10 +42,11 @@ public class Timer : System.Timers.Timer
 	{
 		Tag = tag;
 		Payload = payload;
-		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
-		if(Interval <= 0) Interval = 1000;
 		Callback = callback;
 		TimerType = timerType;
+		
+		double interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+		Interval = interval > 0 ? interval : targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds;
 
 		LoopType = loop;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
