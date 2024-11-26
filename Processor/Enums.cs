@@ -3,119 +3,126 @@
 // KERNEL RELATED
 public enum ESubFunctions
 {
-    CortanaApi,
-    DiscordBot,
-    TelegramBot,
+	CortanaApi,
+	DiscordBot,
+	TelegramBot
 }
-
 
 // HARDWARE RELATED
 public enum EGpio
 {
-    Computer,
-    Power,
-    Lamp,
-    Generic
+	Computer,
+	Power,
+	Lamp,
+	Generic
 }
+
 public enum EStatus
 {
-    On,
-    Off
+	On,
+	Off
 }
+
 public enum ETrigger
 {
-    On,
-    Off,
-    Toggle
+	On,
+	Off,
+	Toggle
 }
+
 public enum EPowerOption
 {
-    Shutdown,
-    Reboot
+	Shutdown,
+	Reboot
 }
+
 public enum EComputerCommand
 {
-    PowerOn,
-    Shutdown,
-    Reboot,
-    Notify
+	PowerOn,
+	Shutdown,
+	Reboot,
+	Notify
 }
+
 public enum ELocation
 {
-    Orvieto,
-    Pisa
+	Orvieto,
+	Pisa
 }
 
 public enum EHardwareInfo
 {
-    Location,
-    Ip,
-    Gateway,
-    Temperature
+	Location,
+	Ip,
+	Gateway,
+	Temperature
 }
 
 // TIMER RELATED
 public enum ETimerType
 {
-    Utility,
-    Discord,
-    Telegram
-}
-public enum ETimerLoop
-{
-    No,
-    Interval,
-    Daily,
-    Weekly
+	Utility,
+	Discord,
+	Telegram
 }
 
+public enum ETimerLoop
+{
+	No,
+	Interval,
+	Daily,
+	Weekly
+}
 
 // TELEGRAM RELATED
 
 public enum ETelegramChatArg
 {
-    Qrcode, 
-    Chat, 
-    Notification,
-    Ping,
-    Shopping,
-    AudioDownloader,
-    VideoDownloader
+	Qrcode,
+	Chat,
+	Notification,
+	Ping,
+	Shopping,
+	AudioDownloader,
+	VideoDownloader
 }
 
 public enum EVideoQuality
 {
-    BestVideo,
-    BestAudio,
-    Balanced
+	BestVideo,
+	BestAudio,
+	Balanced
 }
 
 // DISCORD RELATED
 public enum EAnswer
 {
-    Si,
-    No
+	Si,
+	No
 }
+
 public enum EListAction
 {
-    Crea,
-    Elimina
+	Crea,
+	Elimina
 }
+
 public enum ECortanaChannels
 {
-    Cortana,
-    Log
+	Cortana,
+	Log
 }
+
 public enum EMemeCategory
 {
-    Games,
-    MoreGames,
-    Anime,
-    Music,
-    Sfx,
-    Short,
-    NotLong,
-    Long,
-    NotShort,
-    Default
+	Games,
+	MoreGames,
+	Anime,
+	Music,
+	Sfx,
+	Short,
+	NotLong,
+	Long,
+	NotShort,
+	Default
 }

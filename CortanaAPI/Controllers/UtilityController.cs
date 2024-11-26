@@ -1,23 +1,22 @@
 using Microsoft.AspNetCore.Mvc;
 using Processor;
 
-namespace CortanaAPI.Controllers
+namespace CortanaAPI.Controllers;
+
+[Route("api/[controller]")]
+[ApiController]
+public class UtilityController : ControllerBase
 {
-	[Route("api/[controller]")]
-	[ApiController]
-	public class UtilityController : ControllerBase
+	[HttpGet]
+	public IActionResult Get()
 	{
-		[HttpGet]
-		public IActionResult Get()
-		{
-			return Redirect("http://cortana-api.ddns.net:8080");
-		}
-        
-		[HttpGet("notify")]
-		public IActionResult Notify([FromQuery] string? text)
-		{
-			Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
-			return Redirect("http://cortana-api.ddns.net:8080");
-		}
+		return Redirect("http://cortana-api.ddns.net:8080");
+	}
+
+	[HttpGet("notify")]
+	public IActionResult Notify([FromQuery] string? text)
+	{
+		Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
+		return Redirect("http://cortana-api.ddns.net:8080");
 	}
 }

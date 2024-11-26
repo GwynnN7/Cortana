@@ -1,22 +1,32 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <StartupObject>CortanaKernel.Kernel</StartupObject>
-    <OutputType>Exe</OutputType>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <StartupObject>CortanaKernel.Kernel</StartupObject>
+        <OutputType>Exe</OutputType>
+        <AssemblyName>Cortana</AssemblyName>
+        <LangVersion>default</LangVersion>
+        <IsPackable>false</IsPackable>
+        <Title>Cortana</Title>
+        <Authors>Gwynn7</Authors>
+        <PackageProjectUrl>https://github.com/GwynbleiddN7/Cortana</PackageProjectUrl>
+        <PackageIcon>Storage\Assets\cortana.jpg</PackageIcon>
+        <RepositoryUrl>https://github.com/GwynbleiddN7/Cortana</RepositoryUrl>
+        <Company>Gwynn7</Company>
+        <Product>Cortana</Product>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\DiscordBot\DiscordBot.csproj" />
-    <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj" />
-    <ProjectReference Include="..\TelegramBot\TelegramBot.csproj" />
-    <ProjectReference Include="..\Processor\Processor.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\DiscordBot\DiscordBot.csproj"/>
+        <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj"/>
+        <ProjectReference Include="..\TelegramBot\TelegramBot.csproj"/>
+        <ProjectReference Include="..\Processor\Processor.csproj"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
+    </ItemGroup>
 
 </Project>

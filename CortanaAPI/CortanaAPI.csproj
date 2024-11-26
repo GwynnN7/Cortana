@@ -1,18 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+        <IsPackable>false</IsPackable>
+        <Title>CortanaAPI</Title>
+        <Authors>Gwynn7</Authors>
+        <PackageProjectUrl>https://github.com/GwynbleiddN7/Cortana</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/GwynbleiddN7/Cortana</RepositoryUrl>
+        <Company>Gwynn7</Company>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\Processor\Processor.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Processor\Processor.csproj"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0"/>
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
 
 </Project>

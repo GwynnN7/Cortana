@@ -11,6 +11,7 @@ if (($# == 1)) then
         mv ~/Config ~/Cortana/CortanaKernel/Storage/
     elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
         killall --quiet --ignore-case --wait CortanaKernel;
+        killall --quiet --ignore-case --wait Cortana;
         killall --queit --ignore-case --wait dotnet;
         echo "Cortana killed"
 	  elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
