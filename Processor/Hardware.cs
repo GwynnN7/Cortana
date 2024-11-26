@@ -14,15 +14,16 @@ public static class Hardware
 	private const int RelayPin0 = 25; //Lamp Orvieto
 	private const int RelayPin1 = 23; //General/Lamp Pisa
 	private const int RelayPin2 = 24; //Computer-OUTLET
-	private static readonly Dictionary<EGpio, EStatus> HardwareStates;
+	private static readonly Dictionary<EDevice, EStatus> HardwareStates;
 	private static readonly NetworkStats NetStats;
 
 	static Hardware()
 	{
 		NetStats = GetLocationNetworkData();
-		HardwareStates = new Dictionary<EGpio, EStatus>();
-		foreach (EGpio element in Enum.GetValues(typeof(EGpio))) HardwareStates.Add(element, EStatus.Off);
-		_ = new UtilityTimer("night-handler", new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), HandleNightCallback, ETimerLoop.Daily);
+		HardwareStates = new Dictionary<EDevice, EStatus>();
+		foreach (EDevice element in Enum.GetValues<EDevice>()) HardwareStates.Add(element, EStatus.Off);
+		_ = new Timer("night-handler", new UtilityTimerPayload(null), new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
+			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
 	}
 
 	private static int ComputerPlugsPin => RelayPin2;
@@ -59,7 +60,7 @@ public static class Hardware
 	{
 		switch (state)
 		{
-			case ETrigger.On when HardwareStates[EGpio.Lamp] == EStatus.Off:
+			case ETrigger.On when HardwareStates[EDevice.Lamp] == EStatus.Off:
 				if (NetStats.Location == ELocation.Orvieto)
 					Task.Run(async () =>
 					{
@@ -68,9 +69,9 @@ public static class Hardware
 						UseGpio(LampPin, PinValue.Low);
 					});
 				else UseGpio(LampPin, PinValue.High);
-				HardwareStates[EGpio.Lamp] = EStatus.On;
+				HardwareStates[EDevice.Lamp] = EStatus.On;
 				return "Lamp on";
-			case ETrigger.Off when HardwareStates[EGpio.Lamp] == EStatus.On:
+			case ETrigger.Off when HardwareStates[EDevice.Lamp] == EStatus.On:
 				if (NetStats.Location == ELocation.Orvieto)
 					Task.Run(async () =>
 					{
@@ -79,10 +80,10 @@ public static class Hardware
 						UseGpio(LampPin, PinValue.Low);
 					});
 				else UseGpio(LampPin, PinValue.Low);
-				HardwareStates[EGpio.Lamp] = EStatus.Off;
+				HardwareStates[EDevice.Lamp] = EStatus.Off;
 				return "Lamp off";
 			case ETrigger.Toggle:
-				return PowerLamp(HardwareStates[EGpio.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
+				return PowerLamp(HardwareStates[EDevice.Lamp] == EStatus.On ? ETrigger.Off : ETrigger.On);
 			default:
 				return "Already done";
 		}
@@ -96,15 +97,15 @@ public static class Hardware
 		{
 			case ETrigger.On:
 				UseGpio(GenericPin, PinValue.High);
-				HardwareStates[EGpio.Generic] = EStatus.On;
+				HardwareStates[EDevice.Generic] = EStatus.On;
 				return "Generic device on";
 			case ETrigger.Off:
 				UseGpio(GenericPin, PinValue.Low);
-				HardwareStates[EGpio.Generic] = EStatus.Off;
+				HardwareStates[EDevice.Generic] = EStatus.Off;
 				return "Generic device off";
 			case ETrigger.Toggle:
 			default:
-				return PowerGeneric(HardwareStates[EGpio.Generic] == EStatus.On ? ETrigger.Off : ETrigger.On);
+				return PowerGeneric(HardwareStates[EDevice.Generic] == EStatus.On ? ETrigger.Off : ETrigger.On);
 		}
 	}
 
@@ -114,13 +115,13 @@ public static class Hardware
 		{
 			case ETrigger.On:
 				UseGpio(ComputerPlugsPin, PinValue.High);
-				HardwareStates[EGpio.Power] = EStatus.On;
+				HardwareStates[EDevice.Power] = EStatus.On;
 				return CommandPc(EComputerCommand.PowerOn);
 			case ETrigger.Off:
 				return bPower ? RemoveComputerPower() : CommandPc(EComputerCommand.Shutdown);
 			case ETrigger.Toggle:
 			default:
-				return PowerComputer(HardwareStates[EGpio.Computer] == EStatus.On ? ETrigger.Off : ETrigger.On);
+				return PowerComputer(HardwareStates[EDevice.Computer] == EStatus.On ? ETrigger.Off : ETrigger.On);
 		}
 	}
 
@@ -131,20 +132,20 @@ public static class Hardware
 		{
 			case EComputerCommand.PowerOn:
 			{
-				result = HardwareStates[EGpio.Computer] == EStatus.On
+				result = HardwareStates[EDevice.Computer] == EStatus.On
 					? "Computer already on"
 					: "Computer booting up";
 				ScriptRunner("wake-on-lan", NetStats.DesktopLanMac);
-				HardwareStates[EGpio.Computer] = EStatus.On;
+				HardwareStates[EDevice.Computer] = EStatus.On;
 				break;
 			}
 			case EComputerCommand.Shutdown:
 			{
 				SendCommand("shutdown", true, out result);
-				result = HardwareStates[EGpio.Computer] == EStatus.Off
+				result = HardwareStates[EDevice.Computer] == EStatus.Off
 					? "Computer already off"
 					: result;
-				HardwareStates[EGpio.Computer] = EStatus.Off;
+				HardwareStates[EDevice.Computer] = EStatus.Off;
 				break;
 			}
 			case EComputerCommand.Reboot:
@@ -198,7 +199,7 @@ public static class Hardware
 
 	private static string RemoveComputerPower()
 	{
-		if (HardwareStates[EGpio.Computer] == EStatus.On)
+		if (HardwareStates[EDevice.Computer] == EStatus.On)
 		{
 			Task.Run(async () =>
 			{
@@ -217,7 +218,7 @@ public static class Hardware
 		}
 
 		UseGpio(ComputerPlugsPin, PinValue.Low);
-		HardwareStates[EGpio.Power] = EStatus.Off;
+		HardwareStates[EDevice.Power] = EStatus.Off;
 
 		return "Power removed";
 	}
@@ -272,27 +273,27 @@ public static class Hardware
 		}
 	}
 
-	public static string SwitchFromEnum(EGpio element, ETrigger trigger)
+	public static string SwitchFromEnum(EDevice device, ETrigger trigger)
 	{
-		return element switch
+		return device switch
 		{
-			EGpio.Lamp => PowerLamp(trigger),
-			EGpio.Computer => PowerComputer(trigger),
-			EGpio.Power => PowerComputer(trigger, true),
-			EGpio.Generic => PowerGeneric(trigger),
+			EDevice.Lamp => PowerLamp(trigger),
+			EDevice.Computer => PowerComputer(trigger),
+			EDevice.Power => PowerComputer(trigger, true),
+			EDevice.Generic => PowerGeneric(trigger),
 			_ => "Hardware device not listed"
 		};
 	}
 
-	public static string SwitchFromString(string element, string trigger)
+	public static string SwitchFromString(string device, string trigger)
 	{
-		element = element.ToLower();
+		device = device.ToLower();
 		trigger = trigger.ToLower();
-		EGpio? elementResult = HardwareElementFromString(element);
+		EDevice? elementResult = HardwareElementFromString(device);
 		ETrigger? triggerResult = TriggerStateFromString(trigger);
 		if (triggerResult == null) return "Invalid action";
 		if (elementResult != null) return SwitchFromEnum(elementResult.Value, triggerResult.Value);
-		return element == "room" ? HandleRoom(triggerResult.Value) : "Hardware device not listed";
+		return device == "room" ? HandleRoom(triggerResult.Value) : "Hardware device not listed";
 	}
 
 
@@ -329,11 +330,11 @@ public static class Hardware
 
 	private static void HandleNightCallback(object? sender, EventArgs e)
 	{
-		if (HardwareStates[EGpio.Computer] == EStatus.Off) PowerLamp(ETrigger.Off);
+		if (HardwareStates[EDevice.Computer] == EStatus.Off) PowerLamp(ETrigger.Off);
 		else CommandPc(EComputerCommand.Notify, "You should go to sleep");
 
 		if (DateTime.Now.Hour < 6)
-			_ = new UtilityTimer("safety-night-handler", 1, 0, 0, HandleNightCallback);
+			_ = new Timer("safety-night-handler", new UtilityTimerPayload(null), (1, 0, 0), HandleNightCallback, ETimerType.Utility);
 	}
 
 	private static ETrigger? TriggerStateFromString(string state)
@@ -343,10 +344,10 @@ public static class Hardware
 		return res ? status : null;
 	}
 
-	private static EGpio? HardwareElementFromString(string element)
+	private static EDevice? HardwareElementFromString(string device)
 	{
-		element = string.Concat(element[0].ToString().ToUpper(), element.AsSpan(1));
-		bool res = Enum.TryParse(element, out EGpio status);
+		device = string.Concat(device[0].ToString().ToUpper(), device.AsSpan(1));
+		bool res = Enum.TryParse(device, out EDevice status);
 		return res ? status : null;
 	}
 }

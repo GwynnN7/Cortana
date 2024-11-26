@@ -1,55 +1,59 @@
-﻿using System.Timers;
+﻿global using Times = (int Seconds, int Minutes, int Hours);
+using System.Timers;
 
 namespace Processor;
 
-public abstract class Timer : System.Timers.Timer
+public abstract record TimerArg(object? Arg);
+public record TelegramTimerPayload(long ChatId, long UserId, object? Arg) : TimerArg(Arg);
+public record DiscordTimerPayload(object User, object? TextChannel, object? Arg) : TimerArg(Arg);
+public record UtilityTimerPayload(object? Arg) : TimerArg(Arg);
+
+public class Timer : System.Timers.Timer
 {
 	private static readonly Dictionary<ETimerType, List<Timer>> TotalTimers = new();
-
-	public DateTime NextTargetTime;
-
-
-	protected Timer(string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop, bool autoStart)
-	{
-		Name = name;
-		Text = text;
-		Interval = (hours * 3600 + minutes * 60 + seconds) * 1000;
-		Callback = callback;
-		TimerType = timerType;
-
-		LoopType = loop;
-		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-
-		Elapsed += TimerElapsed;
-		AutoReset = false;
-		if (autoStart) Start();
-
-		SaveTimer();
-	}
-
-	protected Timer(string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop, bool autoStart)
-	{
-		Name = name;
-		Text = text;
-		Interval = targetTime.Subtract(DateTime.Now).Minutes <= 5 ? targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : targetTime.Subtract(DateTime.Now).TotalMilliseconds;
-		Callback = callback;
-		TimerType = timerType;
-
-		LoopType = loop;
-		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-
-		Elapsed += TimerElapsed;
-		AutoReset = false;
-		if (autoStart) Start();
-
-		SaveTimer();
-	}
-
-	private string Name { get; }
-	public string? Text { get; }
+	public DateTime NextTargetTime { get; private set; }
+	public ETimerType TimerType { get; }
+	public TimerArg Payload { get; }
+	private string Tag { get; }
 	private ETimerLoop LoopType { get; }
-	private ETimerType TimerType { get; }
+	
 	private Action<object?, ElapsedEventArgs> Callback { get; }
+	
+	public Timer(string tag, TimerArg payload, Times times, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	{
+		Tag = tag;
+		Payload = payload;
+		Interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
+		Callback = callback;
+		TimerType = timerType;
+
+		LoopType = loop;
+		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+
+		Elapsed += TimerElapsed;
+		AutoReset = false;
+		if (autoStart) Start();
+
+		SaveTimer();
+	}
+
+	public Timer(string tag, TimerArg payload, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	{
+		Tag = tag;
+		Payload = payload;
+		Interval = targetTime.CompareTo(DateTime.Now) <= 0 ? targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds : targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+		Callback = callback;
+		TimerType = timerType;
+
+		LoopType = loop;
+		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+
+		Elapsed += TimerElapsed;
+		AutoReset = false;
+		if (autoStart) Start();
+
+		SaveTimer();
+	}
 
 	private void TimerElapsed(object? sender, ElapsedEventArgs args)
 	{
@@ -105,11 +109,11 @@ public abstract class Timer : System.Timers.Timer
 		}
 	}
 
-	public static void RemoveTimerByName(string name)
+	public static void RemoveTimerByTag(string tag)
 	{
 		foreach ((_, List<Timer>? timerHandlers) in TotalTimers)
 		{
-			foreach (Timer listTimer in timerHandlers.Where(listTimer => listTimer.Name == name))
+			foreach (Timer listTimer in timerHandlers.Where(listTimer => listTimer.Tag == tag))
 			{
 				RemoveTimer(listTimer);
 				return;
@@ -117,76 +121,18 @@ public abstract class Timer : System.Timers.Timer
 		}
 	}
 
-	public static List<DiscordTimer> GetDiscordTimers()
+	public static List<Timer> GetDiscordTimers()
 	{
-		return TotalTimers[ETimerType.Discord].ConvertAll(timer => (DiscordTimer)timer);
+		return TotalTimers[ETimerType.Discord];
 	}
 
-	public static List<TelegramTimer> GetTelegramTimers()
+	public static List<Timer> GetTelegramTimers()
 	{
-		return TotalTimers[ETimerType.Telegram].ConvertAll(timer => (TelegramTimer)timer);
+		return TotalTimers[ETimerType.Telegram];
 	}
 
-	public static List<UtilityTimer> GetUtilityTimers()
+	public static List<Timer> GetUtilityTimers()
 	{
-		return TotalTimers[ETimerType.Utility].ConvertAll(timer => (UtilityTimer)timer);
-	}
-}
-
-public class DiscordTimer : Timer
-{
-	public DiscordTimer(object user, object? textChannel, string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No,
-		bool autoStart = true) : base(name, text, targetTime, callback,
-		ETimerType.Discord, loop, autoStart)
-	{
-		User = user;
-		TextChannel = textChannel;
-	}
-
-	public DiscordTimer(object user, object? textChannel, string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No,
-		bool autoStart = true) : base(name, text, hours,
-		minutes, seconds, callback, ETimerType.Discord, loop, autoStart)
-	{
-		User = user;
-		TextChannel = textChannel;
-	}
-
-	public object User { get; }
-	public object? TextChannel { get; }
-}
-
-public class TelegramTimer : Timer
-{
-	public TelegramTimer(long userId, int chatId, string name, string? text, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) :
-		base(name, text, targetTime, callback,
-			ETimerType.Telegram, loop, autoStart)
-	{
-		ChatId = chatId;
-		UserId = userId;
-	}
-
-	public TelegramTimer(long userId, int chatId, string name, string? text, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No,
-		bool autoStart = true) : base(name, text, hours, minutes,
-		seconds, callback, ETimerType.Telegram, loop, autoStart)
-	{
-		ChatId = chatId;
-		UserId = userId;
-	}
-
-	public int ChatId { get; }
-	public long UserId { get; }
-}
-
-public class UtilityTimer : Timer
-{
-	public UtilityTimer(string name, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, targetTime, callback,
-		ETimerType.Utility, loop, autoStart)
-	{
-	}
-
-	public UtilityTimer(string name, int hours, int minutes, int seconds, Action<object?, ElapsedEventArgs> callback, ETimerLoop loop = ETimerLoop.No, bool autoStart = true) : base(name, null, hours,
-		minutes, seconds, callback, ETimerType.Utility,
-		loop, autoStart)
-	{
+		return TotalTimers[ETimerType.Utility];
 	}
 }

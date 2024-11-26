@@ -38,7 +38,7 @@ public class CommandHandler(DiscordSocketClient client, InteractionService comma
 				break;
 		}
 
-		DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+		DiscordUtils.SendToChannel($"C'è stato un problema:\n```{arg3.Error}: {arg3.ErrorReason}```", ECortanaChannels.Log);
 
 		return Task.CompletedTask;
 	}
@@ -62,7 +62,7 @@ public class CommandHandler(DiscordSocketClient client, InteractionService comma
 				break;
 		}
 
-		DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+		DiscordUtils.SendToChannel($"C'è stato un problema:\n```{arg3.Error}: {arg3.ErrorReason}```", ECortanaChannels.Log);
 
 		return Task.CompletedTask;
 	}
@@ -86,7 +86,7 @@ public class CommandHandler(DiscordSocketClient client, InteractionService comma
 				break;
 		}
 
-		DiscordUtils.SendToChannel($"C'è stato un problema: {arg3.Error}: {arg3.ErrorReason}", ECortanaChannels.Log);
+		DiscordUtils.SendToChannel($"C'è stato un problema:\n```{arg3.Error}: {arg3.ErrorReason}```", ECortanaChannels.Log);
 
 		return Task.CompletedTask;
 	}
@@ -100,7 +100,7 @@ public class CommandHandler(DiscordSocketClient client, InteractionService comma
 		}
 		catch (Exception ex)
 		{
-			DiscordUtils.SendToChannel($"C'è stato un problema in HandleInteraction: {ex.StackTrace}", ECortanaChannels.Log);
+			DiscordUtils.SendToChannel($"C'è stato un problema in HandleInteraction:\n```{ex.Message}```", ECortanaChannels.Log);
 			if (arg.Type == InteractionType.ApplicationCommand) await arg.GetOriginalResponseAsync().ContinueWith(async msg => await msg.Result.DeleteAsync());
 		}
 	}

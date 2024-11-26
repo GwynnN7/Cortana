@@ -9,7 +9,7 @@ public enum ESubFunctions
 }
 
 // HARDWARE RELATED
-public enum EGpio
+public enum EDevice
 {
 	Computer,
 	Power,
@@ -82,6 +82,7 @@ public enum ETelegramChatArg
 	Chat,
 	Notification,
 	Ping,
+	HardwareTimer,
 	Shopping,
 	AudioDownloader,
 	VideoDownloader

@@ -17,7 +17,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	}
 
 	[SlashCommand("hardware", "Interagisci con i dispositivi hardware", runMode: RunMode.Async)]
-	public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EGpio element, [Summary("azione", "Cosa vuoi fare?")] ETrigger trigger)
+	public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EDevice element, [Summary("azione", "Cosa vuoi fare?")] ETrigger trigger)
 	{
 		await DeferAsync(true);
 

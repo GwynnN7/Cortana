@@ -81,6 +81,7 @@ public static class TelegramBot
 					break;
 				case ETelegramChatArg.Notification:
 				case ETelegramChatArg.Ping:
+				case ETelegramChatArg.HardwareTimer:
 					HardwareModule.HandleTextMessage(cortana, messageStats);
 					break;
 				case ETelegramChatArg.Shopping:

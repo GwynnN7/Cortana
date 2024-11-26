@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using DiscordBot.Modules;
 using Microsoft.Extensions.DependencyInjection;
 using Processor;
+using Timer = Processor.Timer;
 
 namespace DiscordBot;
 
@@ -39,7 +40,7 @@ public static class DiscordBot
 			DiscordUtils.InitSettings(client);
 			await commands.RegisterCommandsGloballyAsync();
 
-			_ = new UtilityTimer("discord-activity-timer", 0, 0, 10, ActivityTimerElapsed, ETimerLoop.Interval);
+			_ = new Timer("discord-activity-timer", new UtilityTimerPayload(null), (0, 0, 10), ActivityTimerElapsed, ETimerType.Utility, ETimerLoop.Interval);
 
 			foreach (SocketGuild? guild in DiscordUtils.Cortana.Guilds)
 			{
