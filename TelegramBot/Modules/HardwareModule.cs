@@ -152,7 +152,7 @@ public static class HardwareModule
 					default:
 						string result = Hardware.SwitchFromString(HardwareAction[messageId], command);
 						await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
-						CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[chatId].CallbackQuery);
+						CreateAutomationMenu(cortana, callbackQuery);
 						break;
 				}
 				return;

@@ -9,13 +9,17 @@ if (($# == 1)) then
         yes | rm -rf *
 	    git fetch --all && git reset --hard origin/main;
         mv ~/Config ~/Cortana/CortanaKernel/Storage/
-    elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
+    elif [ "$1" = "--stop" ] || [ "$1" = "-s" ]; then
         killall -s SIGINT --quiet --ignore-case --wait Cortana;
+        echo "Cortana stopped"
+    elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]; then
+        killall --quiet --ignore-case --wait Cortana;
         echo "Cortana killed"
-	  elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+	elif [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
       echo "cortana-run --update -u  git fetch and pull";
       echo "cortana-run --reset -r   git fetch and reset"
       echo "cortana-run --kill -k    kill active process"
+      echo "cortana-run --stop -s    stop process by code"
       echo "cortana-run              run cortana"
     fi
 elif (($# == 0)) then
