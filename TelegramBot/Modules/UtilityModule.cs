@@ -58,14 +58,14 @@ public static class UtilityModule
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
-				TelegramUtils.ChatArgs.Remove(chatId);
 				CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 			case "leave":
 				if (!TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg chatArg) || chatArg.Type != ETelegramChatArg.Chat) return;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Chat with {chatArg.ArgString} ended");
-				TelegramUtils.ChatArgs.Remove(chatId);
 				CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 		}
 	}
