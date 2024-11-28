@@ -4,45 +4,48 @@ namespace CortanaKernel;
 
 public static class Kernel
 {
-	private static void Main()
+	private static async Task Main()
 	{
-		BootCortana().GetAwaiter().GetResult();
+		var cts = new CancellationTokenSource();
+		Console.CancelKeyPress += (sender, e) =>
+		{
+			e.Cancel = true;
+			cts.Cancel();
+		};
+
+		await BootCortana(cts.Token);
 	}
 
-	private static async Task<Task> BootCortana()
+	private static Task BootCortana(CancellationToken cancellationToken)
 	{
 		Console.Clear();
-
-		Console.WriteLine("Booting up...");
-
-		Console.WriteLine($"Compilation completed at {Hardware.GetCpuTemperature()}, loading data for {Hardware.GetLocation()}");
-		await Task.Delay(500);
 		
+		Console.WriteLine($"Compilation completed at {Hardware.GetCpuTemperature()}, loading data for {Hardware.GetLocation()}");
 		Console.WriteLine("Initiating Bootloader...");
 
 		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
 		Console.WriteLine($"Cortana API ready on Thread {threadId}");
-		await Task.Delay(500);
 
 		threadId = Bootloader.BootSubFunction(ESubFunctions.DiscordBot);
 		Console.WriteLine($"Discord Bot booting up on Thread {threadId}");
-		await Task.Delay(500);
 
 		threadId = Bootloader.BootSubFunction(ESubFunctions.TelegramBot);
 		Console.WriteLine($"Telegram Bot booting up on Thread {threadId}");
-		await Task.Delay(500);
 
 		Console.WriteLine("Boot Completed, I'm Online!");
-		Console.CancelKeyPress += (_, __) =>
+
+		try
 		{
-			Console.WriteLine("Signal catched, stopping subfunctions");
+			Task.WaitAll(Bootloader.GetSubFunctionsTasks(), cancellationToken);
+		}
+		catch (OperationCanceledException)
+		{
+			Console.WriteLine("Signal caught, stopping subfunctions");
 			Bootloader.StopSubFunctions();
-		};
-		Bootloader.WaitSubFunctions();
+		}
 
 		Console.WriteLine("Shutting down");
-		Bootloader.StopSubFunctions();
-
+		
 		return Task.CompletedTask;
 	}
 }

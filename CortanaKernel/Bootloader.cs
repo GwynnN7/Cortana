@@ -43,9 +43,9 @@ public static class Bootloader
 		}
 	}
 
-	public static void WaitSubFunctions()
+	public static Task[] GetSubFunctionsTasks()
 	{
-		foreach (SubFunctionsTasks subFunctionTask in SubFunctionTasks) subFunctionTask.SubFunctionTask.Wait();
+		return SubFunctionTasks.Select(subFunctionTask => subFunctionTask.SubFunctionTask).ToArray();
 	}
 
 	private readonly record struct SubFunctionsTasks(
