@@ -33,10 +33,14 @@ public static class Kernel
 		await Task.Delay(500);
 
 		Console.WriteLine("Boot Completed, I'm Online!");
-		Console.CancelKeyPress += (_, __) => Bootloader.StopSubFunctions();
+		Console.CancelKeyPress += (_, __) =>
+		{
+			Console.WriteLine("Signal catched, stopping subfunctions");
+			Bootloader.StopSubFunctions();
+		};
 		Bootloader.WaitSubFunctions();
 
-		Console.WriteLine("Shutting Down...");
+		Console.WriteLine("Shutting down");
 		Bootloader.StopSubFunctions();
 
 		return Task.CompletedTask;
