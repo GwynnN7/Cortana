@@ -252,7 +252,7 @@ public static class HardwareModule
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
 			string result = Hardware.SwitchFromString(payload.Arg.device, payload.Arg.action);
-			TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with: {result}");
+			TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
 		}
 		catch(Exception e)
 		{

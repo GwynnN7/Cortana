@@ -1,21 +1,150 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Cortana</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Cortana Home">
+    <meta name="author" content="Gwynn7">
     <link href="http://cortana-api.ddns.net:8080/resources/HTML/Style.css" rel="stylesheet" type="text/css">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@500&display=swap" rel="stylesheet">
+    <link rel="icon" href="http://cortana-api.ddns.net:8080/resources/cortana.jpg">
+    <title>Cortana Home</title>
 </head>
 <body>
-<div class="main">
-    <div class="mainDiv">
-        <label id="title">Cortana API</label>
-        <img alt="Hi, I'm Cortana" id="img" src="http://cortana-api.ddns.net:8080/resources/cortana.jpg">
+<header>
+    <div class="title">
+        <img src="http://cortana-api.ddns.net:8080/resources/cortana.jpg" alt="Cortana Logo" class="logo">
+        <h1>Hi, I'm Cortana</h1>
+        <p>Halo inspired Home Assistant and AI</p>
+        <button onclick="openGitHub()" class="github-button">View on GitHub</button>
     </div>
-    <div class="docDiv">
-        <label class="generate"
-               onclick="window.location.href='https://github.com/GwynbleiddN7/Cortana?tab=readme-ov-file#api-reference';">Documentation</label>
-    </div>
-</div>
+</header>
+
+<main>
+    <section id="features">
+        <h2>Features</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h3>Bootloader</h3>
+                <p>Boots up and controls standalone <b>Subfunctions</b></p>
+            </div>
+            <div class="feature-card">
+                <h3>Hardware Driver</h3>
+                <p>Handles <b>Raspberry</b> and <b>Hardware Devices</b></p>
+            </div>
+            <div class="feature-card">
+                <h3>Software Utility</h3>
+                <p>Offers <b>Utlity features</b> through every <i>Interface</i></p>
+            </div>
+            <div class="feature-card">
+                <h3>Bots Interface</h3>
+                <p>Interacts with users through <b>Telegram</b> and <b>Discord</b> bot</p>
+            </div>
+            <div class="feature-card">
+                <h3>API Interface</h3>
+                <p>Interacts with users through <b>HTTP Requests</b></p>
+            </div>
+        </div>
+    </section>
+    <hr class="solid">
+    <section id="devices">
+        <h2>Device Controller</h2>
+        <div class="device-grid">
+            <div class="device-card">
+                <h3>Power</h3>
+                <div>
+                    <button class="device-button" onclick="sendRequest('power', 'on')">On</button>
+                    <button class="device-button" onclick="sendRequest('power', 'off')">Off</button>
+                </div>
+                <button class="device-button" onclick="sendRequest('power', 'toggle')">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Computer</h3>
+                <div>
+                    <button class="device-button" onclick="sendRequest('computer', 'on')">On</button>
+                    <button class="device-button" onclick="sendRequest('computer', 'off')">Off</button>
+                </div>
+                <button class="device-button" onclick="sendRequest('computer', 'toggle')">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Lamp</h3>
+                <div>
+                    <button class="device-button" onclick="sendRequest('lamp', 'on')">On</button>
+                    <button class="device-button" onclick="sendRequest('lamp', 'off')">Off</button>
+                </div>
+                <button class="device-button" onclick="sendRequest('lamp', 'toggle')">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Generic</h3>
+                <div>
+                    <button class="device-button" onclick="sendRequest('generic', 'on')">On</button>
+                    <button class="device-button" onclick="sendRequest('generic', 'off')">Off</button>
+                </div>
+                <button class="device-button" onclick="sendRequest('generic', 'toggle')">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Room</h3>
+                <div>
+                    <button class="device-button" onclick="sendRequest('room', 'on')">On</button>
+                    <button class="device-button" onclick="sendRequest('room', 'off')">Off</button>
+                </div>
+                <button class="device-button" onclick="sendRequest('room', 'toggle')">Toggle</button>
+            </div>
+        </div>
+    </section>
+    <hr class="solid">
+    <section id="raspberry">
+        <h2>Raspberry Controller</h2>
+        <div class="raspberry-grid">
+            <button class="raspberry-button" onclick="getRaspberryData('ip')">Public IP</button>
+            <button class="raspberry-button" onclick="getRaspberryData('temperature')">Temperature</button>
+            <button class="raspberry-button" onclick="getRaspberryData('location')">Location</button>
+            <button class="raspberry-button" onclick="getRaspberryData('gateway')">Gateway</button>
+            <button class="raspberry-button" id="shutdown" onclick="actionRaspberry('shutdown')">Shutdown</button>
+            <button class="raspberry-button" id="reboot" onclick="actionRaspberry('reboot')">Reboot</button>
+        </div>
+    </section>
+    <hr class="solid">
+    <section id="about">
+        <h2>About Cortana</h2>
+        <p><b>Halo</b> inspired <b>Home Assistant</b> and <i>Artificial Intelligence</i><br>
+            My personal assistant in daily routines, such as <b>domotics</b>, <b>utility</b>, <b>video & music</b> downloader<br>
+            Currently living on <b>Raspberry Pi 4</b> running on <b>dotnet C#</b>
+        </p>
+    </section>
+</main>
+
+<footer>
+    <p>Designed and Developed by <a href="https://github.com/GwynbleiddN7">Gwynn7</a></p>
+</footer>
 </body>
+
+<script>
+    function sendRequest(device, action) {
+        const url = `http://cortana-api.ddns.net:8080/api/automation/${device}?t=${action}`;
+        fetch(url, { method: 'GET' })
+            .then(response => response.json())
+            .then(data => alert(`Response: ${JSON.stringify(data)}`))
+            .catch(error => alert(`Error: ${error}`));
+    }
+
+    function getRaspberryData(action) {
+        const url = `http://cortana-api.ddns.net:8080/api/raspberry/${action}`;
+        fetch(url, { method: 'GET' })
+            .then(response => response.json())
+            .then(data => alert(`Response: ${JSON.stringify(data)}`))
+            .catch(error => alert(`Error: ${error}`));
+    }
+
+    function actionRaspberry(action) {
+        const url = `http://cortana-api.ddns.net:8080/api/raspberry/${action}`;
+        fetch(url, { method: 'GET' })
+            .then(_ => alert("Command sent!"))
+            .catch(error => alert(`Error: ${error}`));
+    }
+
+    function openGitHub() {
+        window.open("https://github.com/GwynbleiddN7/Cortana", '_blank').focus();
+    }
+
+</script>
 </html>

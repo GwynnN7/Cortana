@@ -1,99 +1,212 @@
-body {
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #ffffff;
+    background: #121212;
+}
+
+header {
+    background: linear-gradient(to top, #1e1e1e, #1b7d8e);
+    color: #ffffff;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+hr.solid {
+    border-top: 1px solid #bbb;
+    width:80%;
+    margin:50px auto;
+}
+
+.logo {
+    max-width: 120px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+}
+
+.title h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: #A7D8F7;
+}
+
+.title p {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+main {
+    padding: 2rem;
+    background: #1e1e1e;
+}
+
+section {
+    margin-bottom: 3rem;
+
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
-    min-height: 100vh;
-    font-family: 'Jost', sans-serif;
-    background: linear-gradient(to bottom, #0f0c29, #302b63, #24243e);
+    justify-content: center;
 }
 
-.main {
-    width: 50%;
-    height: 800px;
-    background: red;
-    overflow: hidden;
-    background: url("https://doc-08-2c-docs.googleusercontent.com/docs/securesc/68c90smiglihng9534mvqmq1946dmis5/fo0picsp1nhiucmc0l25s29respgpr4j/1631524275000/03522360960922298374/03522360960922298374/1Sx0jhdpEpnNIydS4rnN4kHSJtU1EyWka?e=view&authuser=0&nonce=gcrocepgbb17m&user=03522360960922298374&hash=tfhgbs86ka6divo3llbvp93mg4csvb38") no-repeat center/ cover;
+h2 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #ffffff;
+    font-size: 2.1rem;
+}
+
+.feature-grid {
+    display: grid;
+    width: 80%;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.feature-card {
+    background: #333333;
+    padding: 1.5rem;
     border-radius: 10px;
-    box-shadow: 5px 20px 50px #000;
-    align-content: center;
-
-}
-
-.mainDiv {
-    position: relative;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     text-align: center;
-    width: 100%;
-    height: 100%;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-label {
-    color: #fff;
-    font-size: 2.3em;
-    justify-content: center;
-    display: flex;
-    margin: 60px;
+.feature-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.feature-card h3{
+    color: #B6E0F5;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    color: #bdbdbd;
+}
+
+.device-card h3{
+    color: #B6E0F5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    width: 80%;
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.raspberry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    width: 30%;
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.device-card {
+    background: #333333;
+    padding: 0.6rem 0.6rem 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.device-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.raspberry-grid button {
+    background: #333333;
+    padding: 1.2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.device-button{
+    text-decoration: transparent;
+    background: #54a7b6;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 30px;
+    margin: 6px 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(116, 200, 214, 0.3);
+}
+
+.github-button{
+    text-decoration: transparent;
+    background: #54a7b6;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 15px 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(116, 200, 214, 0.3);
+}
+
+.raspberry-button {
+    color: white;
+    font-size: 1.3rem;
     font-weight: bold;
     cursor: pointer;
-    transition: .5s ease-in-out;
+    transition: all 0.3s ease;
+    border-color: white;
+    border-width: 1px;
 }
 
-#title {
-    font-size: 3em;
+.raspberry-button:hover, .device-button:hover, .github-button:hover {
+    background: #8AC6E5;
+    transform: translateY(-2px);
+}
+
+.raspberry-button:active, .device-button:active, .github-button:active {
+    transform: scale(0.98);
+}
+
+#shutdown:hover{
+    background: #DB707B;
+    transform: translateY(-2px);
+}
+
+#reboot:hover{
+    background: #DB707B;
+    transform: translateY(-2px);
+}
+
+#about p {
+    max-width: 800px;
+    margin: 0 auto;
     text-align: center;
+    font-size: 1.1rem;
+    color: #e0e0e0;
 }
 
-#img {
-    width: 25%;
-}
-
-input {
-    width: 20%;
-    height: 20px;
-    background: #e0dede;
-    justify-content: center;
-    display: flex;
-    margin: 20px auto;
-    padding: 10px;
-    border: none;
-    outline: none;
-    border-radius: 5px;
+footer {
     text-align: center;
-    font-weight: bold;
-    font-size: 1.1em;
-}
-
-button {
-    width: 20%;
-    height: 40px;
-    margin: 10px auto;
-    justify-content: center;
-    display: block;
-    color: #fff;
-    background: #573b8a;
-    font-size: 1em;
-    font-weight: bold;
-    margin-top: 20px;
-    outline: none;
-    border: none;
-    border-radius: 5px;
-    transition: .2s ease-in;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #6d44b8;
-}
-
-.docDiv {
-    height: 50%;
-    background: #eee;
-    border-radius: 60% / 10%;
-    transform: translateY(-180px);
-}
-
-.docDiv label {
-    color: #573b8a;
-    transform: scale(.6);
+    padding: 1rem 0;
+    background: #121212;
+    color: #bdbdbd;
 }
