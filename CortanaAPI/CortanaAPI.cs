@@ -1,5 +1,8 @@
 ﻿using System.Reflection;
+using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Logging;
@@ -26,16 +29,13 @@ public static class CortanaApi
 		});
 
 		_cortanaWebApi = builder.Build();
-		_cortanaWebApi.UseHttpsRedirection();
 		_cortanaWebApi.UseStaticFiles(new StaticFileOptions
 		{
 			FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Storage/Assets")),
 			RequestPath = "/resources"
 		});
-
-		_cortanaWebApi.UseAuthorization();
+		_cortanaWebApi.Urls.Add("http://*:8080");
 		_cortanaWebApi.MapControllers();
-
-		_cortanaWebApi.Run("http://localhost::8080");
+		_cortanaWebApi.Run();
 	}
 }

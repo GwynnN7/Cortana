@@ -36,7 +36,7 @@ public static class Kernel
 
 		try
 		{
-			Task.WaitAll(Bootloader.GetSubFunctionsTasks(), cancellationToken);
+			while(true) Task.Delay(2000, cancellationToken);
 		}
 		catch (OperationCanceledException)
 		{
