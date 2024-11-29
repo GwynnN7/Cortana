@@ -95,8 +95,7 @@ public static class UtilityModule
 				{
 					string user = messageStats.FullMessage.Trim();
 					TelegramUtils.ChatArgs[messageStats.ChatId] = new TelegramChatArg(ETelegramChatArg.Chat, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery,
-						TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage,
-						TelegramUtils.NameToId(user));
+						TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage, user);
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					await cortana.EditMessageText(messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {user}",
 						replyMarkup: CreateLeaveButton());
