@@ -17,7 +17,7 @@ public static class Bootloader
 		};
 		Func<Task> cancellationFunction = subFunction switch
 		{
-			ESubFunctions.CortanaApi => CortanaApi.BootCortanaApi,
+			ESubFunctions.CortanaApi => CortanaApi.StopCortanaApi,
 			ESubFunctions.DiscordBot => DiscordBot.DiscordBot.StopDiscordBot,
 			ESubFunctions.TelegramBot => TelegramBot.TelegramBot.StopTelegramBot,
 			_ => throw new CortanaException("Unknown SubFunction type, quitting...")
