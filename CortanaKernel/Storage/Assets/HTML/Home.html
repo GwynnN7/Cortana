@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Cortana Home">
     <meta name="author" content="Gwynn7">
-    <link href="~/resources/HTML/style.css" rel="stylesheet" type="text/css">
-    <link rel="icon" href="~/resources/cortana.jpg">
+    <link href="~/resources/HTML/style.css" rel="stylesheet" type="text/css" runat=”server” >
+    <link rel="icon" href="~/resources/cortana.jpg" runat=”server” >
     <title>Cortana Home</title>
 </head>
 <body>
 <header>
     <div class="title">
-        <img src="~/resources/cortana.jpg" alt="Cortana Logo" class="logo">
+        <img src="~/resources/cortana.jpg" alt="Cortana Logo" class="logo" runat=”server” >
         <h1>Hi, I'm Cortana</h1>
         <p>Halo inspired Home Assistant and AI</p>
         <button onclick="openGitHub()" class="github-button">View on GitHub</button>
@@ -120,7 +120,8 @@
 
 <script>
     function sendRequest(device, action) {
-        const url = `~/api/automation/${device}?t=${action}`;
+        const absolutePath = '<%= ResolveClientUrl("~/") %>';
+        const url = `${absolutePath}/api/automation/${device}?t=${action}`;
         fetch(url, { method: 'GET' })
             .then(response => response.text())
             .then(data => alert(`Response: ${data}`))
@@ -128,7 +129,8 @@
     }
 
     function getRaspberryData(action) {
-        const url = `~/api/raspberry/${action}`;
+        const absolutePath = '<%= ResolveClientUrl("~/") %>';
+        const url = `${absolutePath}/api/raspberry/${action}`;
         fetch(url, { method: 'GET' })
             .then(response => response.text())
             .then(data => alert(`Response: ${data}`))
@@ -136,7 +138,8 @@
     }
 
     function actionRaspberry(action) {
-        const url = `~/api/raspberry/${action}`;
+        const absolutePath = '<%= ResolveClientUrl("~/") %>';
+        const url = `${absolutePath}/api/raspberry/${action}`;
         fetch(url, { method: 'GET' })
             .then(_ => alert("Command sent!"))
             .catch(error => alert(`Error: ${error}`));
