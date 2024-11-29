@@ -143,7 +143,7 @@ cd cortana-run
 (run 'cortana-run --help' for more commands)
 ```
 ---
-
+<b>Note</b>: this repo contains the source code of the project, and it's missing every <b>configuration file</b>, <b>api key</b> and <b>token</b> needed for the execution of <b>Cortana</b>.
 ## License
 
 [GNU AGPLv3 ](https://choosealicense.com/licenses/agpl-3.0/)
