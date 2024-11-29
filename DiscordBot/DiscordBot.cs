@@ -51,7 +51,14 @@ public static class DiscordBot
 		await client.StartAsync();
 
 		_token = new CancellationTokenSource();
-		await Task.Delay(Timeout.Infinite, _token.Token);
+		try
+		{
+			await Task.Delay(Timeout.Infinite, _token.Token);
+		}
+		catch (TaskCanceledException)
+		{
+			Console.WriteLine("Discord Bot shut down");
+		}
 	}
 	
 	public static async Task StopDiscordBot()

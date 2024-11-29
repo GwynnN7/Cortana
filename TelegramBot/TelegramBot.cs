@@ -21,7 +21,14 @@ public static class TelegramBot
 		TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), "I'm Online", false);
 		
 		_token = new CancellationTokenSource();
-		await Task.Delay(Timeout.Infinite, _token.Token);
+		try
+		{
+			await Task.Delay(Timeout.Infinite, _token.Token);
+		}
+		catch (TaskCanceledException)
+		{
+			Console.WriteLine("Telegram Bot shut down");
+		}
 	}
 
 	public static async Task StopTelegramBot()

@@ -34,6 +34,6 @@ public static class Kernel
 
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());
 
-		Console.WriteLine("Shutting down");
+		Console.WriteLine("Shutting down Kernel...");
 	}
 }

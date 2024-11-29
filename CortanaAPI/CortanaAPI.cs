@@ -47,5 +47,6 @@ public static class CortanaApi
 	public static async Task StopCortanaApi()
 	{
 		await CortanaWebApi.StopAsync();
+		Console.WriteLine("Cortana API shut down");
 	}
 }
