@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Processor;
 
 namespace CortanaAPI.Controllers;
@@ -8,15 +9,14 @@ namespace CortanaAPI.Controllers;
 public class UtilityController : ControllerBase
 {
 	[HttpGet]
-	public IActionResult Get()
+	public string Get()
 	{
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return "Utility route: specify the action to perform";
 	}
 
 	[HttpGet("notify")]
-	public IActionResult Notify([FromQuery] string? text)
+	public string Notify([FromQuery] string? text)
 	{
-		Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
 	}
 }

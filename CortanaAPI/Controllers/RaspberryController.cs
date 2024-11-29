@@ -8,9 +8,9 @@ namespace CortanaAPI.Controllers;
 public class RaspberryController : ControllerBase
 {
 	[HttpGet]
-	public IActionResult Get()
+	public string Get()
 	{
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return "Raspberry route: specify the action to perform on the device";
 	}
 
 	[HttpGet("temperature")]
@@ -38,16 +38,14 @@ public class RaspberryController : ControllerBase
 	}
 
 	[HttpGet("shutdown")]
-	public IActionResult Shutdown()
+	public string Shutdown()
 	{
-		Hardware.PowerRaspberry(EPowerOption.Shutdown);
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return Hardware.PowerRaspberry(EPowerOption.Shutdown);
 	}
 
 	[HttpGet("reboot")]
-	public IActionResult Reboot()
+	public string Reboot()
 	{
-		Hardware.PowerRaspberry(EPowerOption.Reboot);
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return Hardware.PowerRaspberry(EPowerOption.Reboot);
 	}
 }

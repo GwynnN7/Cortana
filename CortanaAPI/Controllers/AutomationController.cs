@@ -8,15 +8,14 @@ namespace CortanaAPI.Controllers;
 public class AutomationController : ControllerBase
 {
 	[HttpGet]
-	public IActionResult Get()
+	public string Get()
 	{
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return "Automation route: specify the device and the action to perform";
 	}
 
 	[HttpGet("{device}")]
-	public IActionResult PowerDevice([FromRoute] string device, [FromQuery] string? t)
+	public string PowerDevice([FromRoute] string device, [FromQuery] string? t)
 	{
-		Hardware.SwitchFromString(device, t ?? "toggle");
-		return Redirect("http://cortana-api.ddns.net:8080");
+		return Hardware.SwitchFromString(device, t ?? "toggle");
 	}
 }
