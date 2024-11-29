@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.Mvc;
 using Processor;
 
 namespace CortanaAPI.Controllers;
@@ -10,7 +11,9 @@ public class HomeController : ControllerBase
 	[HttpGet]
 	public ContentResult Get()
 	{
-		return base.Content(Software.LoadHtml("Home"), "text/html");
+		string html = Software.LoadHtml("Home");
+		html = html.Replace("<<PageUrl>>", Request.GetEncodedUrl());
+		return base.Content(html, "text/html");
 	}
 
 	[HttpGet("api")]
