@@ -47,18 +47,18 @@ These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and
 
 ## API Reference
 
-Note: "**cortana-api**" is a placeholder for the actual address, which is private.
+Note: "**cortana-home.net**" is a placeholder for the actual address, which is private.
 
 #### Home 
 
 ```http 
-  http://cortana-api/
+  http://cortana-home.net/
 ```
 
 #### Routing
 
 ```http
-  GET cortana-api/api/{route}
+  GET http://cortana-home.net/api/{route}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -68,7 +68,7 @@ Note: "**cortana-api**" is a placeholder for the actual address, which is privat
 #### Automation
 
 ```http
-  GET cortana-api/api/automation/{device}?t={trigger}
+  GET http://cortana-home.net/api/automation/{device}?t={trigger}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -79,7 +79,7 @@ Note: "**cortana-api**" is a placeholder for the actual address, which is privat
 #### Raspberry
 
 ```http
-  GET cortana-api/api/raspberry/{action}
+  GET http://cortana-home.net/api/raspberry/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -89,7 +89,7 @@ Note: "**cortana-api**" is a placeholder for the actual address, which is privat
 #### Utility
 
 ```http
-  GET cortana-api/api/utility/{action}
+  GET http://cortana-home.net/api/utility/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -137,8 +137,8 @@ dotnet run
 
 ```bash
 git clone https://github.com/GwynbleiddN7/Cortana.git
-cd cortana-run
-./cortana-run 
+cd Cortana
+chmod +x cortana-run && ./cortana-run 
 
 (run 'cortana-run --help' for more commands)
 ```
