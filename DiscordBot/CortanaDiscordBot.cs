@@ -9,7 +9,7 @@ using Timer = Processor.Timer;
 
 namespace DiscordBot;
 
-public static class DiscordBot
+public static class CortanaDiscordBot
 {
 	private static CancellationTokenSource? _token;
 	public static async Task BootDiscordBot()

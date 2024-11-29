@@ -9,7 +9,7 @@ using TelegramBot.Modules;
 
 namespace TelegramBot;
 
-public static class TelegramBot
+public static class CortanaTelegramBot
 {
 	private static CancellationTokenSource? _token;
 	public static async Task BootTelegramBot()

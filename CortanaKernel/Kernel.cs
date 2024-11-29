@@ -5,12 +5,14 @@ namespace CortanaKernel;
 
 public static class Kernel
 {
-	private static void Main()
-	{
-		BootCortana();
-	}
+	private static readonly UnixSignal[] Signals =
+	[
+		new(Mono.Unix.Native.Signum.SIGTERM), 
+		new(Mono.Unix.Native.Signum.SIGINT),
+		new(Mono.Unix.Native.Signum.SIGUSR1)
+	];
 
-	private static void BootCortana()
+	private static void Main()
 	{
 		Console.Clear();
 		
@@ -27,39 +29,15 @@ public static class Kernel
 		Console.WriteLine($"Telegram Bot booting up on Thread {threadId}");
 
 		Console.WriteLine("Boot Completed, I'm Online!");
-
-		var unixExitSignal = new UnixExitSignal();
+		
+		Task.Run(async () =>
+		{
+			UnixSignal.WaitAny(Signals, Timeout.Infinite);
+			await Bootloader.StopSubFunctions();
+		});
+		
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());
 
 		Console.WriteLine("Shutting down Kernel...");
 	}
-}
-
-public interface IExitSignal
-{
-	event EventHandler Exit;
-}
-
-public class UnixExitSignal : IExitSignal
-{
-	public event EventHandler? Exit;
-
-	private readonly UnixSignal[] _signals =
-	[
-		new(Mono.Unix.Native.Signum.SIGTERM), 
-		new(Mono.Unix.Native.Signum.SIGINT),
-		new(Mono.Unix.Native.Signum.SIGUSR1)
-	];
-
-	public UnixExitSignal()
-	{
-		Task.Factory.StartNew(() =>
-		{
-			// blocking call to wait for any kill signal
-			int index = UnixSignal.WaitAny(_signals, -1);
-			Bootloader.StopSubFunctions().Wait();
-			Exit?.Invoke(null, EventArgs.Empty);
-		});
-	}
-
 }

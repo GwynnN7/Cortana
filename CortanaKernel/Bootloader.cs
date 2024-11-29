@@ -1,4 +1,6 @@
 ﻿using CortanaAPI;
+using DiscordBot;
+using TelegramBot;
 using Processor;
 
 namespace CortanaKernel;
@@ -11,15 +13,15 @@ public static class Bootloader
 		Task subFunctionTask = subFunction switch
 		{
 			ESubFunctions.CortanaApi => Task.Run(CortanaApi.BootCortanaApi),
-			ESubFunctions.DiscordBot => Task.Run(DiscordBot.DiscordBot.BootDiscordBot),
-			ESubFunctions.TelegramBot => Task.Run(TelegramBot.TelegramBot.BootTelegramBot),
+			ESubFunctions.DiscordBot => Task.Run(CortanaDiscordBot.BootDiscordBot),
+			ESubFunctions.TelegramBot => Task.Run(CortanaTelegramBot.BootTelegramBot),
 			_ => throw new CortanaException("Unknown SubFunction type, quitting...")
 		};
 		Func<Task> cancellationFunction = subFunction switch
 		{
 			ESubFunctions.CortanaApi => CortanaApi.StopCortanaApi,
-			ESubFunctions.DiscordBot => DiscordBot.DiscordBot.StopDiscordBot,
-			ESubFunctions.TelegramBot => TelegramBot.TelegramBot.StopTelegramBot,
+			ESubFunctions.DiscordBot => CortanaDiscordBot.StopDiscordBot,
+			ESubFunctions.TelegramBot => CortanaTelegramBot.StopTelegramBot,
 			_ => throw new CortanaException("Unknown SubFunction type, quitting...")
 		};
 		var newTask = new SubFunctionsTasks(subFunction, subFunctionTask, cancellationFunction);
