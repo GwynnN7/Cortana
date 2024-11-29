@@ -11,12 +11,8 @@ namespace DiscordBot;
 
 public static class DiscordBot
 {
-	public static void BootDiscordBot()
-	{
-		MainAsync().GetAwaiter().GetResult();
-	}
-
-	private static async Task MainAsync()
+	private static CancellationTokenSource? _token;
+	public static async Task BootDiscordBot()
 	{
 		var client = new DiscordSocketClient(ConfigureSocket());
 		ServiceProvider services = ConfigureServices(client);
@@ -54,7 +50,22 @@ public static class DiscordBot
 		await client.LoginAsync(TokenType.Bot, Software.Secrets.DiscordToken);
 		await client.StartAsync();
 
-		await Task.Delay(Timeout.Infinite);
+		_token = new CancellationTokenSource();
+		await Task.Delay(Timeout.Infinite, _token.Token);
+	}
+	
+	public static async Task StopDiscordBot()
+	{
+		foreach ((ulong clientId, _) in AudioHandler.AudioClients)
+		{
+			DiscordUtils.GuildSettings[clientId].AutoJoin = false;
+			AudioHandler.Disconnect(clientId);
+		}
+
+		await Task.Delay(1000);
+		await DiscordUtils.Cortana.StopAsync();
+		
+		if(_token != null) await _token.CancelAsync();
 	}
 
 	private static async Task Client_MessageReceived(SocketMessage arg)
@@ -94,19 +105,6 @@ public static class DiscordBot
 		{
 			Software.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
 		}
-	}
-
-	public static async Task Disconnect()
-	{
-		foreach ((ulong clientId, _) in AudioHandler.AudioClients)
-		{
-			DiscordUtils.GuildSettings[clientId].AutoJoin = false;
-			AudioHandler.Disconnect(clientId);
-		}
-
-		await Task.Delay(1000);
-		await DiscordUtils.Cortana.StopAsync();
-		await DiscordUtils.Cortana.LogoutAsync();
 	}
 
 	private static async Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)

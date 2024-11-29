@@ -334,7 +334,7 @@ public static class Hardware
 		else CommandPc(EComputerCommand.Notify, "You should go to sleep");
 
 		if (DateTime.Now.Hour < 6)
-			_ = new Timer("safety-night-handler", null, (1, 0, 0), HandleNightCallback, ETimerType.Utility);
+			_ = new Timer("safety-night-handler", null, (0, 0, 1), HandleNightCallback, ETimerType.Utility);
 	}
 
 	private static ETrigger? TriggerStateFromString(string state)

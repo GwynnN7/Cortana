@@ -4,19 +4,17 @@ namespace CortanaKernel;
 
 public static class Kernel
 {
-	private static async Task Main()
+	private static void Main()
 	{
-		var cts = new CancellationTokenSource();
 		Console.CancelKeyPress += (sender, e) =>
 		{
-			e.Cancel = true;
-			cts.Cancel();
+			Bootloader.StopSubFunctions().Wait();
 		};
 
-		await BootCortana(cts.Token);
+		BootCortana();
 	}
 
-	private static Task BootCortana(CancellationToken cancellationToken)
+	private static void BootCortana()
 	{
 		Console.Clear();
 		
@@ -34,18 +32,8 @@ public static class Kernel
 
 		Console.WriteLine("Boot Completed, I'm Online!");
 
-		try
-		{
-			while(true) Task.Delay(2000, cancellationToken);
-		}
-		catch (OperationCanceledException)
-		{
-			Console.WriteLine("Signal caught, stopping subfunctions");
-			Bootloader.StopSubFunctions();
-		}
+		Task.WaitAll(Bootloader.GetSubFunctionsTasks());
 
 		Console.WriteLine("Shutting down");
-		
-		return Task.CompletedTask;
 	}
 }

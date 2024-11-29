@@ -11,18 +11,22 @@ namespace TelegramBot;
 
 public static class TelegramBot
 {
-	public static void BootTelegramBot()
-	{
-		Main();
-	}
-
-	private static void Main()
+	private static CancellationTokenSource? _token;
+	public static async Task BootTelegramBot()
 	{
 		var cortana = new TelegramBotClient(Software.Secrets.TelegramToken);
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		TelegramUtils.Init(cortana);
 		TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), "I'm Online", false);
+		
+		_token = new CancellationTokenSource();
+		await Task.Delay(Timeout.Infinite, _token.Token);
+	}
+
+	public static async Task StopTelegramBot()
+	{
+		if(_token != null) await _token.CancelAsync();
 	}
 
 	private static Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
