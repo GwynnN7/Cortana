@@ -12,7 +12,8 @@ public class HomeController : ControllerBase
 	public ContentResult Get()
 	{
 		string html = Software.LoadHtml("Home");
-		html = html.Replace("<<PageUrl>>", Request.GetEncodedUrl());
+		string url = Request.GetEncodedUrl();
+		html = html.Replace("<<PageUrl>>", url[..^1]);
 		return base.Content(html, "text/html");
 	}
 
