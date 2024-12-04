@@ -87,7 +87,7 @@ public static class UtilityModule
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 				if (TelegramUtils.ChatArgs[messageStats.ChatId].HasArg)
 				{
-					TelegramUtils.SendToUser(TelegramUtils.ChatArgs[messageStats.ChatId].ArgLong, messageStats.FullMessage);
+					TelegramUtils.SendToUser(TelegramUtils.NameToId(TelegramUtils.ChatArgs[messageStats.ChatId].ArgString), messageStats.FullMessage);
 					break;
 				}
 
