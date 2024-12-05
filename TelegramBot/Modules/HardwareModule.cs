@@ -63,9 +63,9 @@ public static class HardwareModule
 		await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Utility", replyMarkup: CreateUtilityButtons());
 	}
 
-	public static async void HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task<bool> HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
 	{
-		if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return;
+		if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
 		switch (messageStats.FullMessage)
 		{
 			case HardwareEmoji.Bulb:
@@ -87,10 +87,11 @@ public static class HardwareModule
 				Hardware.CommandPc(EComputerCommand.Reboot);
 				break;
 			default:
-				return;
+				return false;
 		}
 
 		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+		return true;
 	}
 
 	public static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
@@ -142,7 +143,7 @@ public static class HardwareModule
 						break;
 					case var _ when command.StartsWith("timer-"):
 						command = command["timer-".Length..];
-						if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.HardwareTimer, callbackQuery, callbackQuery.Message, command), callbackQuery))
+						if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<string>(ETelegramChatArg.HardwareTimer, callbackQuery, callbackQuery.Message, command), callbackQuery))
 							await cortana.EditMessageText(chatId, messageId, "Set the timer for the action", replyMarkup: CreateCancelButton("automation"));
 						break;
 					case "cancel":
@@ -233,7 +234,7 @@ public static class HardwareModule
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], TelegramUtils.ChatArgs[messageStats.ChatId].ArgString);
+				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<string>)!.Arg);
 				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), 
 					(times.s, times.m, times.h), HardwareTimerFinished, ETimerType.Telegram);
 				

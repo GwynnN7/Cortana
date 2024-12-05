@@ -46,15 +46,15 @@ public static class UtilityModule
 				await cortana.EditMessageText(chatId, messageId, "Choose Video Quality", replyMarkup: CreateVideoDownloadButtons());
 				break;
 			case "video-video_prio":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestVideo), callbackQuery))
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<EVideoQuality>(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestVideo), callbackQuery))
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "video-audio_prio":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestAudio), callbackQuery))
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<EVideoQuality>(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.BestAudio), callbackQuery))
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "video-balanced":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.Balanced), callbackQuery))
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<EVideoQuality>(ETelegramChatArg.VideoDownloader, callbackQuery, callbackQuery.Message, EVideoQuality.Balanced), callbackQuery))
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
@@ -62,8 +62,9 @@ public static class UtilityModule
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 			case "leave":
-				if (!TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg chatArg) || chatArg.Type != ETelegramChatArg.Chat) return;
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Chat with {chatArg.ArgString} ended");
+				TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? genericChatArg);
+				if (genericChatArg is not TelegramChatArg<long> { Type: ETelegramChatArg.Chat } chatArg) return;
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Chat with {TelegramUtils.IdToName(chatArg.Arg)} ended");
 				CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
@@ -85,17 +86,17 @@ public static class UtilityModule
 				break;
 			case ETelegramChatArg.Chat:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-				if (TelegramUtils.ChatArgs[messageStats.ChatId].HasArg)
+				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<long> chatArg)
 				{
-					TelegramUtils.SendToUser(TelegramUtils.ChatArgs[messageStats.ChatId].ArgLong, messageStats.FullMessage);
+					TelegramUtils.SendToUser(chatArg.Arg , messageStats.FullMessage);
 					break;
 				}
 
 				try
 				{
 					string user = messageStats.FullMessage.Trim();
-					TelegramUtils.ChatArgs[messageStats.ChatId] = new TelegramChatArg(ETelegramChatArg.Chat, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery,
-						TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage, user);
+					TelegramUtils.ChatArgs[messageStats.ChatId] = new TelegramChatArg<long>(ETelegramChatArg.Chat, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery,
+						TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage, TelegramUtils.NameToId(user));
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					await cortana.EditMessageText(messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {user}",
 						replyMarkup: CreateLeaveButton());
@@ -117,7 +118,7 @@ public static class UtilityModule
 					{
 						case ETelegramChatArg.VideoDownloader:
 						{
-							await Software.DownloadVideo(messageStats.FullMessage, TelegramUtils.ChatArgs[messageStats.ChatId].ArgVideoQuality, 50);
+							await Software.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50);
 							Stream? videoStream = Software.GetStreamFromFile("Storage/temp_video.mp4");
 							if (videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, videoInfos.Title), videoInfos.Title);
 							else throw new CortanaException("Video file downloaded not found in Storage/");

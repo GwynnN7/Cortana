@@ -98,15 +98,17 @@ public readonly struct DataStruct(
 	public List<long> RootPermissions { get; } = rootPermissions;
 }
 
-public readonly struct TelegramChatArg(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, object? arg = null)
+
+public class TelegramChatArg(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage)
 {
 	public readonly CallbackQuery CallbackQuery = callbackQuery;
 	public readonly Message InteractionMessage = interactionMessage;
 	public readonly ETelegramChatArg Type = type;
-	public string ArgString => (string)arg!;
-	public long ArgLong => (long)arg!;
-	public EVideoQuality ArgVideoQuality => (EVideoQuality)arg!;
-	public bool HasArg => arg != null;
+}
+public class TelegramChatArg<T>(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, T arg) 
+	: TelegramChatArg(type, callbackQuery, interactionMessage)
+{
+	public readonly T Arg = arg;
 }
 
 public struct MessageStats

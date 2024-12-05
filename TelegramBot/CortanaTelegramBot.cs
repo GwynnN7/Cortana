@@ -122,8 +122,8 @@ public static class CortanaTelegramBot
 		}
 		else
 		{
-			HardwareModule.HandleKeyboardCallback(cortana, messageStats);
-			if (messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private)
+			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
+			if (!isCallback && messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private)
 				await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
 		}
 	}
