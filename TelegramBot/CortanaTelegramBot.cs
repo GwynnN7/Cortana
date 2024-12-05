@@ -80,7 +80,7 @@ public static class CortanaTelegramBot
 			Command = ""
 		};
 
-		if (TelegramUtils.ChatArgs.TryGetValue(messageStats.ChatId, out TelegramChatArg chatArg))
+		if (TelegramUtils.ChatArgs.TryGetValue(messageStats.ChatId, out TelegramChatArg? chatArg))
 		{
 			switch (chatArg.Type)
 			{
@@ -123,8 +123,10 @@ public static class CortanaTelegramBot
 		else
 		{
 			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
-			if (!isCallback && messageStats.UserId != TelegramUtils.NameToId("@gwynn7") && messageStats.ChatType == ChatType.Private)
-				await cortana.ForwardMessage(TelegramUtils.NameToId("@gwynn7"), messageStats.ChatId, messageStats.MessageId);
+			long creatorId = TelegramUtils.NameToId("@gwynn7");
+			if (messageStats.UserId == creatorId) return;
+			if(isCallback) TelegramUtils.SendToUser(creatorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
+			else await cortana.ForwardMessage(creatorId, messageStats.ChatId, messageStats.MessageId);
 		}
 	}
 
