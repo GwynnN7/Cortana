@@ -2,13 +2,14 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using DiscordBot.Utility;
 using IGDB;
-using Processor;
+using Kernel.Software;
 using Game = IGDB.Models.Game;
 
 namespace DiscordBot.Modules;
 
-public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
+internal class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[Group("utility", "Comandi di utilità")]
 	public abstract class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
@@ -30,14 +31,14 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			await RespondAsync(embed: commandsEmbed);
 		}
 
-		// From Utility
+		// From Kernel
 
 		[SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
 		public async Task CreateQr([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No,
 			[Summary("colore-base", "Vuoi il colore bianco normale?")]
 			EAnswer normalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer quietZones = EAnswer.Si)
 		{
-			Stream imageStream = Software.CreateQrCode(content, normalColor == EAnswer.Si, quietZones == EAnswer.Si);
+			Stream imageStream = MediaHandler.CreateQrCode(content, normalColor == EAnswer.Si, quietZones == EAnswer.Si);
 
 			await RespondWithFileAsync(imageStream, "QRCode.png", ephemeral: ephemeral == EAnswer.Si);
 		}
@@ -175,7 +176,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 
 		private static async Task<Embed?> GetGameEmbedAsync(string game, int count)
 		{
-			var igdb = new IGDBClient(Software.Secrets.IgdbClient, Software.Secrets.IgdbSecret);
+			var igdb = new IGDBClient(FileHandler.Secrets.IgdbClient, FileHandler.Secrets.IgdbSecret);
 			const string fields =
 				"cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
 			var query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";
@@ -406,8 +407,8 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			}
 		}
 
-		[SlashCommand("imposta-timeout", "Timeouto un utente dal server")]
-		public async Task SetTimeoutMember([Summary("user", "Chi vuoi timeoutare?")] SocketGuildUser user,
+		[SlashCommand("imposta-timeout", "Timeout di un utente dal server")]
+		public async Task SetTimeoutMember([Summary("user", "Chi vuoi in timeout?")] SocketGuildUser user,
 			[Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")]
 			double timeout = 10)
 		{
@@ -422,7 +423,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			else
 			{
 				await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));
-				await RespondAsync($"Utente timeoutato per {timeout} minuti");
+				await RespondAsync($"Utente in timeout per {timeout} minuti");
 			}
 		}
 

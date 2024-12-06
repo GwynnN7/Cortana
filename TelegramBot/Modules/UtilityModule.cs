@@ -1,14 +1,16 @@
-using Processor;
+using Kernel.Software;
+using Kernel.Software.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Utility;
 using File = System.IO.File;
 using Video = YoutubeExplode.Videos.Video;
 
 namespace TelegramBot.Modules;
 
-public static class UtilityModule
+internal static class UtilityModule
 {
 	public static async void CreateSoftwareUtilityMenu(ITelegramBotClient cortana, Message message)
 	{
@@ -77,7 +79,7 @@ public static class UtilityModule
 		{
 			case ETelegramChatArg.Qrcode:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.UploadPhoto);
-				Stream imageStream = Software.CreateQrCode(messageStats.FullMessage, false, true);
+				Stream imageStream = MediaHandler.CreateQrCode(messageStats.FullMessage, false, true);
 				imageStream.Position = 0;
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				await cortana.SendPhoto(messageStats.ChatId, new InputFileStream(imageStream, "QRCODE.png"));
@@ -113,20 +115,20 @@ public static class UtilityModule
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.UploadVideo);
 				try
 				{
-					Video videoInfos = await Software.GetYoutubeVideoInfos(messageStats.FullMessage);
+					Video videoInfos = await MediaHandler.GetYoutubeVideoInfos(messageStats.FullMessage);
 					switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 					{
 						case ETelegramChatArg.VideoDownloader:
 						{
-							await Software.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50);
-							Stream? videoStream = Software.GetStreamFromFile("Storage/temp_video.mp4");
+							await MediaHandler.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50, TelegramUtils.StoragePath);
+							Stream? videoStream = MediaHandler.GetStreamFromFile($"{TelegramUtils.StoragePath}/temp_video.mp4");
 							if (videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, videoInfos.Title), videoInfos.Title);
-							else throw new CortanaException("Video file downloaded not found in Storage/");
+							else throw new CortanaException("Video file downloaded not found in Storage");
 							break;
 						}
 						case ETelegramChatArg.AudioDownloader:
 						{
-							Stream stream = await Software.GetAudioStream(messageStats.FullMessage);
+							Stream stream = await MediaHandler.GetAudioStream(messageStats.FullMessage);
 							await cortana.SendAudio(messageStats.ChatId, InputFile.FromStream(stream, videoInfos.Title));
 							break;
 						}
@@ -139,7 +141,8 @@ public static class UtilityModule
 				}
 				finally
 				{
-					if (File.Exists("Storage/temp_video.mp4")) File.Delete("Storage/temp_video.mp4");
+					string path = Path.Combine(TelegramUtils.StoragePath, "temp_video.mp4");
+					if (File.Exists(path)) File.Delete(path);
 
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);

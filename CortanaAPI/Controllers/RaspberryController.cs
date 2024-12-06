@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
-using Processor;
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
 
 namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class RaspberryController : ControllerBase
+internal class RaspberryController : ControllerBase
 {
 	[HttpGet]
 	public string Get()
@@ -16,36 +17,36 @@ public class RaspberryController : ControllerBase
 	[HttpGet("temperature")]
 	public string Temperature()
 	{
-		return Hardware.GetCpuTemperature();
+		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
 	}
 
 	[HttpGet("ip")]
 	public string Ip()
 	{
-		return Hardware.GetPublicIp().Result;
+		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Ip);
 	}
 
 	[HttpGet("gateway")]
 	public string Gateway()
 	{
-		return Hardware.GetDefaultGateway();
+		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Gateway);
 	}
 
 	[HttpGet("location")]
 	public string Location()
 	{
-		return Hardware.GetLocation();
+		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Location);
 	}
 
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return Hardware.PowerRaspberry(EPowerOption.Shutdown);
+		return HardwareProxy.SwitchRaspberry(EPowerOption.Shutdown);
 	}
 
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return Hardware.PowerRaspberry(EPowerOption.Reboot);
+		return HardwareProxy.SwitchRaspberry(EPowerOption.Reboot);
 	}
 }

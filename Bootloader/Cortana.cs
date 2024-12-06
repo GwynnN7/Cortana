@@ -1,9 +1,10 @@
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
 using Mono.Unix;
-using Processor;
 
-namespace CortanaKernel;
+namespace Bootloader;
 
-public static class Kernel
+public static class Cortana
 {
 	private static readonly UnixSignal[] Signals =
 	[
@@ -16,7 +17,7 @@ public static class Kernel
 	{
 		Console.Clear();
 		
-		Console.WriteLine($"Compilation completed at {Hardware.GetCpuTemperature()}, loading data for {Hardware.GetLocation()}");
+		Console.WriteLine($"Compilation completed at {HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareProxy.GetHardwareInfo(EHardwareInfo.Location)}");
 		Console.WriteLine("Initiating Bootloader...");
 
 		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
@@ -38,6 +39,6 @@ public static class Kernel
 		
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());
 
-		Console.WriteLine("Shutting down Kernel...");
+		Console.WriteLine("Shutting down...");
 	}
 }

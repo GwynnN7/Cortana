@@ -1,11 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Processor;
+﻿using Kernel.Hardware.Interfaces;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class AutomationController : ControllerBase
+internal class AutomationController : ControllerBase
 {
 	[HttpGet]
 	public string Get()
@@ -16,6 +16,6 @@ public class AutomationController : ControllerBase
 	[HttpGet("{device}")]
 	public string PowerDevice([FromRoute] string device, [FromQuery] string? t)
 	{
-		return Hardware.SwitchFromString(device, t ?? "toggle");
+		return HardwareProxy.SwitchDevice(device, t ?? "toggle");
 	}
 }

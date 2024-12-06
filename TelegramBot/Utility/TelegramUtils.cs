@@ -1,20 +1,23 @@
-﻿using System.Text.Json.Serialization;
-using Processor;
+﻿using System.Text.RegularExpressions;
+using Kernel.Software;
+using Kernel.Software.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 
-namespace TelegramBot;
+namespace TelegramBot.Utility;
 
-public static class TelegramUtils
+internal static class TelegramUtils
 {
-	private static readonly DataStruct Data;
+	public static readonly string StoragePath;
+	
 	private static TelegramBotClient _cortana = null!;
 	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
+	public static readonly DataStruct Data;
 
 	static TelegramUtils()
 	{
-		Data = Software.LoadFile<DataStruct>("Storage/Config/Telegram/TelegramData.json");
+		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Telegram/");
+		Data = FileHandler.LoadFile<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 	}
 
@@ -57,7 +60,7 @@ public static class TelegramUtils
 		throw new CortanaException("Group not found");
 	}
 
-	public static bool CheckPermission(long userId)
+	public static bool CheckHardwarePermission(long userId)
 	{
 		return Data.RootPermissions.Contains(userId);
 	}
@@ -67,6 +70,37 @@ public static class TelegramUtils
 		if (ChatArgs.TryAdd(chatId, arg)) return true;
 		_cortana.AnswerCallbackQuery(callbackQuery.Id, "You already have an interaction going on! Finish it before continuing", true);
 		return false;
+	}
+
+	public static (int, int, int, int) ParseTime(string text)
+	{
+		(int s, int m, int h, int d) times = (0, 0, 0, 0);
+		var timeRegex = new Regex("^([0-9]+)([s,m,h,d])$");
+		foreach (string time in text.Split())
+		{
+			Match match = timeRegex.Match(time);
+			if (match.Success)
+			{
+				int value = int.Parse(match.Groups[1].Value);
+				switch (match.Groups[2].Value)
+				{
+					case "s":
+						times.s = value;
+						break;
+					case "m":
+						times.m = value;
+						break;
+					case "h":
+						times.h = value;
+						break;
+					case "d":
+						times.h = value*24;
+						break;
+				}
+			}
+			else throw new CortanaException("Invalid time");
+		}
+		return times;
 	}
 
 	public static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery, bool showAlert = true)
@@ -80,46 +114,4 @@ public static class TelegramUtils
 			await cortana.SendMessage(chatId, text);
 		}
 	}
-}
-
-[method: Newtonsoft.Json.JsonConstructor]
-public readonly struct DataStruct(
-	Dictionary<long, string> usernames,
-	Dictionary<long, string> groups,
-	List<long> rootPermissions)
-{
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public Dictionary<long, string> Usernames { get; } = usernames;
-
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public Dictionary<long, string> Groups { get; } = groups;
-
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public List<long> RootPermissions { get; } = rootPermissions;
-}
-
-
-public class TelegramChatArg(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage)
-{
-	public readonly CallbackQuery CallbackQuery = callbackQuery;
-	public readonly Message InteractionMessage = interactionMessage;
-	public readonly ETelegramChatArg Type = type;
-}
-public class TelegramChatArg<T>(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, T arg) 
-	: TelegramChatArg(type, callbackQuery, interactionMessage)
-{
-	public readonly T Arg = arg;
-}
-
-public struct MessageStats
-{
-	public Message Message;
-	public string FullMessage;
-	public string Command;
-	public string Text;
-	public List<string> TextList;
-	public long ChatId;
-	public long UserId;
-	public int MessageId;
-	public ChatType ChatType;
 }

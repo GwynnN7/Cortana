@@ -2,14 +2,16 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Processor;
+using DiscordBot.Utility;
+using Kernel.Software;
+using Kernel.Software.Utility;
 using DateTime = System.DateTime;
-using Timer = Processor.Timer;
+using Timer = Kernel.Software.Timer;
 
 namespace DiscordBot.Modules;
 
 [Group("timer", "Timers")]
-public class TimerModule : InteractionModuleBase<SocketInteractionContext>
+internal class TimerModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("timer", "Imposta un timer a cronometro")]
 	public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi?")] [MaxValue(59)] int seconds = 0,
@@ -75,7 +77,7 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 		}
 		catch(Exception e)
 		{
-			DiscordUtils.SendToChannel($"C'è stato un problema con un timer:\n```{e.Message}```", ECortanaChannels.Log);
+			DiscordUtils.SendToChannel<string>($"C'è stato un problema con un timer:\n```{e.Message}```", ECortanaChannels.Log);
 		}
 	}
 }

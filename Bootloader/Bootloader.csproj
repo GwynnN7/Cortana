@@ -4,7 +4,7 @@
         <TargetFramework>net9.0</TargetFramework>
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
-        <StartupObject>CortanaKernel.Kernel</StartupObject>
+        <StartupObject>Bootloader.Cortana</StartupObject>
         <OutputType>Exe</OutputType>
         <AssemblyName>Cortana</AssemblyName>
         <LangVersion>default</LangVersion>
@@ -22,7 +22,7 @@
         <ProjectReference Include="..\DiscordBot\DiscordBot.csproj"/>
         <ProjectReference Include="..\CortanaAPI\CortanaAPI.csproj"/>
         <ProjectReference Include="..\TelegramBot\TelegramBot.csproj"/>
-        <ProjectReference Include="..\Processor\Processor.csproj"/>
+        <ProjectReference Include="..\Kernel\Kernel.csproj" />
     </ItemGroup>
 
     <ItemGroup>

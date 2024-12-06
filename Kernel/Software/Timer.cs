@@ -1,7 +1,8 @@
 ﻿global using Times = (int Seconds, int Minutes, int Hours);
 using System.Timers;
+using Kernel.Software.Utility;
 
-namespace Processor;
+namespace Kernel.Software;
 
 public record TimerArg<T>(T? Arg);
 public record TelegramTimerPayload<T>(long ChatId, long UserId, T? Arg) : TimerArg<T>(Arg);

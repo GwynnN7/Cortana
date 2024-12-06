@@ -1,6 +1,8 @@
 ﻿using Discord;
 using Discord.Interactions;
-using Processor;
+using DiscordBot.Utility;
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
 
 namespace DiscordBot.Modules;
 
@@ -11,17 +13,17 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Accendi o spegni la luce")]
 	public async Task LightToggle()
 	{
-		string result = Hardware.PowerLamp(ETrigger.Toggle);
+		string result = HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
 
 	[SlashCommand("hardware", "Interagisci con i dispositivi hardware", runMode: RunMode.Async)]
-	public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EDevice element, [Summary("azione", "Cosa vuoi fare?")] ETrigger trigger)
+	public async Task HardwareInteract([Summary("dispositivo", "Con cosa vuoi interagire?")] EDevice element, [Summary("azione", "Cosa vuoi fare?")] EPowerAction action)
 	{
 		await DeferAsync(true);
 
-		string result = Hardware.SwitchFromEnum(element, trigger);
+		string result = HardwareProxy.SwitchDevice(element, action);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -32,14 +34,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		string result = info switch
-		{
-			EHardwareInfo.Location => Hardware.GetLocation(),
-			EHardwareInfo.Ip => await Hardware.GetPublicIp(),
-			EHardwareInfo.Gateway => Hardware.GetDefaultGateway(),
-			EHardwareInfo.Temperature => Hardware.GetCpuTemperature(),
-			_ => "Informazione non disponibile"
-		};
+		string result = HardwareProxy.GetHardwareInfo(info);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);

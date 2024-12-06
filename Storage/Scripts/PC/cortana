@@ -6,7 +6,7 @@ if [ "$1" = "log" ]; then
 elif [ "$1" = "copy" ]; then
     rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=':- ~/Programming/Cortana/.gitignore' ~/Programming/Cortana cortana@192.168.178.117:~/
 else
-    api="http://cortana-api.ddns.net:8080/api";
+    api="http://cortana-home.ddns.net:8080/api";
     url=$(echo "$@" | sed 's! !\/!g')
     curl --silent -w '\n' "$api/${url}";
 fi

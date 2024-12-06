@@ -1,12 +1,12 @@
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Routing;
-using Processor;
 
 namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class UtilityController : ControllerBase
+internal class UtilityController : ControllerBase
 {
 	[HttpGet]
 	public string Get()
@@ -17,6 +17,6 @@ public class UtilityController : ControllerBase
 	[HttpGet("notify")]
 	public string Notify([FromQuery] string? text)
 	{
-		return Hardware.CommandPc(EComputerCommand.Notify, text ?? $"Still alive at {Hardware.GetCpuTemperature()}");
+		return HardwareProxy.CommandComputer(EComputerCommand.Notify, text);
 	}
 }

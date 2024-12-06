@@ -1,15 +1,20 @@
 using System.Timers;
-using Processor;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using System.Text.RegularExpressions;
-using Timer = Processor.Timer;
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
+using Kernel.Software;
+using Kernel.Software.Utility;
+using TelegramBot.Utility;
+using Enum = System.Enum;
+using Timer = Kernel.Software.Timer;
 
 namespace TelegramBot.Modules;
 
-public static class HardwareModule
+internal static class HardwareModule
 {
 	private static readonly Dictionary<long, string> HardwareAction = new();
 
@@ -18,14 +23,14 @@ public static class HardwareModule
 		switch (messageStats.Command)
 		{
 			case "domotica":
-				if (TelegramUtils.CheckPermission(messageStats.UserId))
+				if (TelegramUtils.CheckHardwarePermission(messageStats.UserId))
 					await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
 				else await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
 				break;
 			case "ssh":
-				if (TelegramUtils.CheckPermission(messageStats.UserId))
+				if (TelegramUtils.CheckHardwarePermission(messageStats.UserId))
 				{
-					Hardware.SendCommand(messageStats.Text, true, out string result);
+					string result = HardwareProxy.CommandComputer(EComputerCommand.Shell, messageStats.Text);
 					await cortana.SendMessage(messageStats.ChatId, result);
 				}
 				else
@@ -42,7 +47,7 @@ public static class HardwareModule
 		Message message = callbackQuery.Message!;
 		HardwareAction.Remove(message.Id);
 
-		if (TelegramUtils.CheckPermission(callbackQuery.From.Id))
+		if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
 			await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
 		else
 			await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't use this command");
@@ -52,7 +57,7 @@ public static class HardwareModule
 	{
 		Message message = callbackQuery.Message!;
 
-		if (TelegramUtils.CheckPermission(callbackQuery.From.Id))
+		if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
 			await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Handler", replyMarkup: CreateRaspberryButtons());
 		else
 			await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
@@ -65,26 +70,26 @@ public static class HardwareModule
 
 	public static async Task<bool> HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
 	{
-		if (!TelegramUtils.CheckPermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
+		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
 		switch (messageStats.FullMessage)
 		{
 			case HardwareEmoji.Bulb:
-				Hardware.PowerLamp(ETrigger.Toggle);
+				HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.Pc:
-				Hardware.PowerComputer(ETrigger.Toggle);
+				HardwareProxy.SwitchDevice(EDevice.Computer, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.Thunder:
-				Hardware.PowerGeneric(ETrigger.Toggle);
+				HardwareProxy.SwitchDevice(EDevice.Generic, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.On:
-				Hardware.HandleRoom(ETrigger.On);
+				HardwareProxy.SwitchRoom(EPowerAction.On);
 				break;
 			case HardwareEmoji.Off:
-				Hardware.HandleRoom(ETrigger.Off);
+				HardwareProxy.SwitchRoom(EPowerAction.Off);
 				break;
 			case HardwareEmoji.Reboot:
-				Hardware.CommandPc(EComputerCommand.Reboot);
+				HardwareProxy.CommandComputer(EComputerCommand.Reboot);
 				break;
 			default:
 				return false;
@@ -104,27 +109,27 @@ public static class HardwareModule
 			switch (command["raspberry-".Length..])
 			{
 				case "ip":
-					string ip = await Hardware.GetPublicIp();
+					string ip = HardwareProxy.GetHardwareInfo(EHardwareInfo.Ip);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"IP: {ip}");
 					break;
 				case "gateway":
-					string gateway = Hardware.GetDefaultGateway();
+					string gateway = HardwareProxy.GetHardwareInfo(EHardwareInfo.Gateway);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Gateway: {gateway}");
 					break;
 				case "location":
-					string location = Hardware.GetLocation();
+					string location = HardwareProxy.GetHardwareInfo(EHardwareInfo.Location);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Location: {location}");
 					break;
 				case "temperature":
-					string temp = Hardware.GetCpuTemperature();
+					string temp = HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Temperature: {temp}");
 					break;
 				case "reboot":
-					string rebootResult = Hardware.PowerRaspberry(EPowerOption.Reboot);
+					string rebootResult = HardwareProxy.SwitchRaspberry(EPowerOption.Reboot);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, rebootResult, true);
 					break;
 				case "shutdown":
-					string shutdownResult = Hardware.PowerRaspberry(EPowerOption.Shutdown);
+					string shutdownResult = HardwareProxy.SwitchRaspberry(EPowerOption.Shutdown);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, shutdownResult, true);
 					break;
 			}
@@ -151,7 +156,7 @@ public static class HardwareModule
 						TelegramUtils.ChatArgs.Remove(chatId);
 						break;
 					default:
-						string result = Hardware.SwitchFromString(HardwareAction[messageId], command);
+						string result = HardwareProxy.SwitchDevice(HardwareAction[messageId], command);
 						await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
 						CreateAutomationMenu(cortana, callbackQuery);
 						break;
@@ -187,7 +192,7 @@ public static class HardwareModule
 		{
 			case ETelegramChatArg.Notification:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-				string result = Hardware.CommandPc(EComputerCommand.Notify, messageStats.FullMessage);
+				string result = HardwareProxy.CommandComputer(EComputerCommand.Notify, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
@@ -195,43 +200,24 @@ public static class HardwareModule
 				break;
 			case ETelegramChatArg.Ping:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.FindLocation);
-				string output = Hardware.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
+				string output = HardwareProxy.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				TelegramUtils.AnswerOrMessage(cortana, output, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.HardwareTimer:
-				(int s, int m, int h, int d) times = (0, 0, 0, 0);
-				var timeRegex = new Regex("^([0-9]+)([s,m,h,d])$");
-				foreach (string time in messageStats.FullMessage.Split())
+				(int s, int m, int h, int d) times;
+				try
 				{
-					Match match = timeRegex.Match(time);
-					if (match.Success)
-					{
-						int value = int.Parse(match.Groups[1].Value);
-						switch (match.Groups[2].Value)
-						{
-							case "s":
-								times.s = value;
-								break;
-							case "m":
-								times.m = value;
-								break;
-							case "h":
-								times.h = value;
-								break;
-							case "d":
-								times.h = value*24;
-								break;
-						}
-					}
-					else
-					{
-						TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
-						return;
-					}
+					times = TelegramUtils.ParseTime(messageStats.FullMessage);
 				}
+				catch
+				{
+					TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+					return;
+				}
+		
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
 				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<string>)!.Arg);
@@ -252,7 +238,7 @@ public static class HardwareModule
 		try
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
-			string result = Hardware.SwitchFromString(payload.Arg.device, payload.Arg.action);
+			string result = HardwareProxy.SwitchDevice(payload.Arg.device, payload.Arg.action);
 			TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
 		}
 		catch(Exception e)
@@ -341,14 +327,4 @@ public static class HardwareModule
 			.AddNewRow()
 			.AddButton(HardwareEmoji.Off);
 	}
-}
-
-internal static class HardwareEmoji
-{
-	public const string Bulb = "💡";
-	public const string Pc = "🖥";
-	public const string Thunder = "⚡";
-	public const string Reboot = "🔄";
-	public const string On = "\ud83c\udf15\ud83c\udf15\ud83c\udf15";
-	public const string Off = "\ud83c\udf11\ud83c\udf11\ud83c\udf11";
 }

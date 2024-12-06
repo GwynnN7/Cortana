@@ -1,17 +1,17 @@
 ﻿using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
-using Processor;
+using Kernel.Software;
 
 namespace CortanaAPI.Controllers;
 
 [Route("")]
 [ApiController]
-public class HomeController : ControllerBase
+internal class HomeController : ControllerBase
 {
 	[HttpGet]
 	public ContentResult Get()
 	{
-		string html = Software.LoadHtml("Home");
+		string html = FileHandler.LoadHtml("Home");
 		string url = Request.GetEncodedUrl();
 		html = html.Replace("<<PageUrl>>", url[..^1]);
 		return base.Content(html, "text/html");

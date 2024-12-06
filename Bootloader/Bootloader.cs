@@ -1,10 +1,18 @@
 ﻿using CortanaAPI;
 using DiscordBot;
 using TelegramBot;
-using Processor;
+using Kernel.Software.Utility;
 
-namespace CortanaKernel;
-public static class Bootloader
+namespace Bootloader;
+
+internal enum ESubFunctions
+{
+	CortanaApi,
+	DiscordBot,
+	TelegramBot
+}
+
+internal static class Bootloader
 {
 	private static readonly List<SubFunctionsTasks> SubFunctionTasks = [];
 

@@ -1,11 +1,8 @@
 ﻿using System.Reflection;
-using Microsoft.AspNetCore;
+using Kernel.Software;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace CortanaAPI;
@@ -36,7 +33,7 @@ public static class CortanaApi
 	{
 		CortanaWebApi.UseStaticFiles(new StaticFileOptions
 		{
-			FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Storage/Assets")),
+			FileProvider = new PhysicalFileProvider(Path.Combine(FileHandler.ProjectStoragePath, "Assets/")),
 			RequestPath = "/resources"
 		});
 		CortanaWebApi.Urls.Add("http://*:8080");

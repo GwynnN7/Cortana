@@ -1,4 +1,4 @@
-﻿using Processor;
+﻿using Kernel.Software;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Polling;
@@ -6,6 +6,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Modules;
+using TelegramBot.Utility;
 
 namespace TelegramBot;
 
@@ -14,7 +15,7 @@ public static class CortanaTelegramBot
 	private static CancellationTokenSource? _token;
 	public static async Task BootTelegramBot()
 	{
-		var cortana = new TelegramBotClient(Software.Secrets.TelegramToken);
+		var cortana = new TelegramBotClient(FileHandler.Secrets.TelegramToken);
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		TelegramUtils.Init(cortana);
@@ -99,14 +100,14 @@ public static class CortanaTelegramBot
 					ShoppingModule.HandleTextMessage(cortana, messageStats);
 					break;
 			}
-
+			
 			return;
 		}
 
 		if (message.Text.StartsWith('/'))
 		{
 			messageStats.FullMessage = messageStats.FullMessage[1..];
-			messageStats.Command = messageStats.FullMessage.Split(" ").First().Replace("@CortanaAIBot", "");
+			messageStats.Command = messageStats.FullMessage.Split(" ").First().Split("@").First();
 			messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
 			messageStats.Text = string.Join(" ", messageStats.TextList);
 
@@ -124,7 +125,7 @@ public static class CortanaTelegramBot
 		{
 			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
 			long creatorId = TelegramUtils.NameToId("@gwynn7");
-			if (messageStats.UserId == creatorId) return;
+			if (messageStats.UserId == creatorId || messageStats.ChatType != ChatType.Private) return;
 			if(isCallback) TelegramUtils.SendToUser(creatorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
 			else await cortana.ForwardMessage(creatorId, messageStats.ChatId, messageStats.MessageId);
 		}
@@ -187,7 +188,7 @@ public static class CortanaTelegramBot
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
-		Software.Log("Telegram", errorMessage);
+		FileHandler.Log("Telegram", errorMessage);
 		return Task.CompletedTask;
 	}
 }

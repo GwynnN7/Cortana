@@ -1,11 +1,11 @@
 ﻿using Discord.Interactions;
 using Discord.WebSocket;
-using Processor;
+using DiscordBot.Utility;
 
 namespace DiscordBot.Modules;
 
 [Group("settings", "Impostazioni")]
-public class SettingsModule : InteractionModuleBase<SocketInteractionContext>
+internal class SettingsModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("canale-saluti", "In che canale volete che vi saluti?")]
 	public async Task SetGreetingsChannel([Summary("canale", "Dite il canale")] SocketTextChannel channel)

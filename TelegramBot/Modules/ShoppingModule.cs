@@ -1,33 +1,30 @@
-﻿using Newtonsoft.Json;
-using Processor;
+﻿using Kernel.Software;
+using Kernel.Software.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using TelegramBot.Utility;
 
 namespace TelegramBot.Modules;
 
-public static class ShoppingModule
+internal static class ShoppingModule
 {
-	private static readonly List<string> AllowedChannels = ["ProcioneSpazialeMistico"];
-
-	private static readonly List<long> Users =
-	[
-		TelegramUtils.NameToId("@gwynn7"),
-		TelegramUtils.NameToId("@Vasile76"),
-		TelegramUtils.NameToId("@moostacho")
-	];
-
 	private static CurrentPurchase? _currentPurchase;
 	private static readonly Dictionary<long, List<Debts>> Debts;
+	
+	private static readonly List<long> DebtUsers;
+	private static readonly List<long> DebtChats;
 
 	static ShoppingModule()
 	{
-		Debts = Software.LoadFile<Dictionary<long, List<Debts>>>("Storage/Config/Telegram/Debts.json") ?? new Dictionary<long, List<Debts>>();
+		DebtUsers = TelegramUtils.Data.DebtUsers;
+		DebtChats = TelegramUtils.Data.DebtChats;
+		Debts = FileHandler.LoadFile<Dictionary<long, List<Debts>>>(Path.Combine(TelegramUtils.StoragePath, "Debts.json")) ?? new Dictionary<long, List<Debts>>();
 	}
 
 	private static void UpdateDebts()
 	{
-		Software.WriteFile("Storage/Config/Telegram/Debts.json", Debts);
+		FileHandler.WriteFile(Path.Combine(TelegramUtils.StoragePath, "Debts.json"), Debts);
 	}
 
 	public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
@@ -69,7 +66,7 @@ public static class ShoppingModule
 				}
 
 				_currentPurchase = new CurrentPurchase { Buyer = callbackQuery.From.Id };
-				foreach (long userId in Users) _currentPurchase.Purchases.Add(userId, 0.0);
+				foreach (long userId in DebtUsers) _currentPurchase.Purchases.Add(userId, 0.0);
 				await cortana.SendMessage(message.Chat.Id, UpdateCurrentPurchaseMessage(), replyMarkup: CreateOrderButtons());
 				break;
 			case "show-debts":
@@ -144,7 +141,7 @@ public static class ShoppingModule
 			case "add":
 				var subPurchase = new SubPurchase
 				{
-					Customers = Users.ToList(),
+					Customers = DebtUsers.ToList(),
 					TotalAmount = 0
 				};
 				_currentPurchase.History.Push(subPurchase);
@@ -204,7 +201,7 @@ public static class ShoppingModule
 				long userId = TelegramUtils.NameToId(user);
 				SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
 				if (!lastSubPurchase.Customers.Remove(userId)) lastSubPurchase.Customers.Add(userId);
-				if (lastSubPurchase.Customers.Count == 0) lastSubPurchase.Customers = Users.ToList();
+				if (lastSubPurchase.Customers.Count == 0) lastSubPurchase.Customers = DebtUsers.ToList();
 				await cortana.EditMessageText(message.Chat.Id, messageId, UpdateBuyersMessage(), replyMarkup: CreateAddCustomerButtons());
 				break;
 			}
@@ -274,7 +271,7 @@ public static class ShoppingModule
 
 	private static bool IsChannelAllowed(long channelId)
 	{
-		return AllowedChannels.Contains(TelegramUtils.IdToGroupName(channelId));
+		return DebtChats.Contains(channelId);
 	}
 
 	private static InlineKeyboardMarkup CreatePurchaseButtons()
@@ -301,7 +298,7 @@ public static class ShoppingModule
 		if (_currentPurchase == null || _currentPurchase.History.Count == 0) throw new CortanaException("No purchase active");
 
 		var inlineKeyboard = new InlineKeyboardMarkup();
-		foreach (long user in Users)
+		foreach (long user in DebtUsers)
 		{
 			SubPurchase subPurchase = _currentPurchase.History.Peek();
 			string sign = subPurchase.Customers.Contains(user) ? "\u2705" : "\u274c";
@@ -322,27 +319,4 @@ public static class ShoppingModule
 			.AddNewRow()
 			.AddButton("Cancel", "shopping-back");
 	}
-}
-
-[method: JsonConstructor]
-public class Debts(
-	double amount,
-	long towards)
-{
-	public double Amount { get; set; } = amount;
-	public long Towards { get; } = towards;
-}
-
-public class CurrentPurchase
-{
-	public readonly Stack<SubPurchase> History = new();
-	public readonly List<int> MessagesToDelete = [];
-	public readonly Dictionary<long, double> Purchases = new();
-	public long Buyer;
-}
-
-public class SubPurchase
-{
-	public List<long> Customers = [];
-	public double TotalAmount;
 }

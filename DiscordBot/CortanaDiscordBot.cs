@@ -2,10 +2,14 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using DiscordBot.Modules;
+using DiscordBot.Handlers;
+using DiscordBot.Utility;
+using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Utility;
 using Microsoft.Extensions.DependencyInjection;
-using Processor;
-using Timer = Processor.Timer;
+using Kernel.Software;
+using Kernel.Software.Utility;
+using Timer = Kernel.Software.Timer;
 
 namespace DiscordBot;
 
@@ -44,10 +48,10 @@ public static class CortanaDiscordBot
 				if (channel != null) AudioHandler.Connect(channel);
 			}
 
-			DiscordUtils.SendToChannel("I'm Online", ECortanaChannels.Cortana);
+			DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
 		};
 
-		await client.LoginAsync(TokenType.Bot, Software.Secrets.DiscordToken);
+		await client.LoginAsync(TokenType.Bot, FileHandler.Secrets.DiscordToken);
 		await client.StartAsync();
 
 		_token = new CancellationTokenSource();
@@ -104,13 +108,13 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			string temp = Hardware.GetCpuTemperature();
+			string temp = HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
 			var activity = new Game($"on Raspberry at {temp}");
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
 		}
 		catch
 		{
-			Software.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
+			FileHandler.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
 		}
 	}
 
@@ -177,7 +181,7 @@ public static class CortanaDiscordBot
 
 	private static Task LogAsync(LogMessage message)
 	{
-		Software.Log("Discord", message.Message);
+		FileHandler.Log("Discord", message.Message);
 		return Task.CompletedTask;
 	}
 

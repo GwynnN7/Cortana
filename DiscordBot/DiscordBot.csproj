@@ -22,7 +22,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Processor\Processor.csproj"/>
+        <ProjectReference Include="..\Kernel\Kernel.csproj" />
     </ItemGroup>
 
 </Project>
