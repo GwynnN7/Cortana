@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Kernel.Hardware.Utility;
 using Kernel.Software;
+using Kernel.Software.Utility;
 
 namespace Kernel.Hardware;
 
@@ -11,6 +12,7 @@ internal static class NetworkAdapter
 	static NetworkAdapter()
 	{
 		string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network/");
+		if (!Path.Exists(Path.Combine(networkPath, "NetworkDataOrvieto.json"))) throw new CortanaException();
 		var orvietoNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataOrvieto.json"));
 		var pisaNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataPisa.json"));
 		
