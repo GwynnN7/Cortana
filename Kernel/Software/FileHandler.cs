@@ -13,7 +13,7 @@ public static class FileHandler
 		ProjectStoragePath = Path.Combine(Environment.CurrentDirectory, "Storage/");
 		if(!Path.Exists(ProjectStoragePath)) throw new CortanaException("Could not find storage path");
 		
-		Secrets = LoadFile<Secrets>(Path.Combine(Environment.CurrentDirectory, "Config/Secrets.json"));
+		Secrets = LoadFile<Secrets>(Path.Combine(ProjectStoragePath, "Config/Secrets.json"));
 	}
 
 	public static void WriteFile<T>(string fileName, T data, JsonSerializerSettings? options = null)
