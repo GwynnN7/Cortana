@@ -1,4 +1,4 @@
-![Logo](https://github.com/GwynbleiddN7/Cortana/blob/main/CortanaKernel/Storage/Assets/cortana.jpg)
+![Logo](https://github.com/GwynbleiddN7/Cortana/blob/main/Storage/Assets/cortana.jpg)
 
 # Cortana
 
@@ -11,19 +11,21 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 ***
 ## Structure
 
-### Modules
+### Core
 
-- **CortanaKernel**
-- **Processor**
+- **Bootloader**
+- **Kernel**
+
+## Modules
+
 - **Cortana API**
 - **Discord Bot**
 - **Telegram Bot**
 
-Each module is started from the **Kernel** and run in a thread handled by the **Kernel**
+Each module is booted by the **Bootloader** and runs in a thread. Then the **Kernel** waits for any call from the modules.
 
 
-
-The *user* will start an interaction with **Processor**'s functions through the **Input Interfaces**
+The *user* will start an interaction with the **Kernel** through the **Input Interfaces**
 
 ### Input Interfaces
 
@@ -31,17 +33,17 @@ The *user* will start an interaction with **Processor**'s functions through the 
 - **Discord Bot** 
 - **Telegram Bot**
 
-Each **Interface** will be only able to communicate with the **Processor** to execute *user*'s requests, or handle them on its own if tasks are *interface-specific*
+Each **Interface** will be only able to communicate with the **Kernel** to execute *user*'s requests, or handle them on its own if tasks are *interface-specific*
 
 
 **Cortana** can start an interaction with the *user* through the **Output Interfaces**
 
 ### Output Interfaces
 
-- **SSH to PC**
+- **Client-Server**
 - **GPIO**
 
-These **Output interfaces** allow **Cortana** to *execute scripts* on **PC** and interact with *electronic hardware* in the room [lamp, plugs and more to come]
+These **Output interfaces** allow **Cortana** to *communicate* with **PC**, *read sensor data* from **ESP32*" and interact with *electronic hardware* in the room [lamp, plugs and more to come]
 
 ***
 
@@ -128,9 +130,7 @@ git clone https://github.com/GwynbleiddN7/Cortana.git
 
 cd Cortana
 dotnet build
-
-cd CortanaKernel
-dotnet run
+dotnet run --project Bootloader/Bootloader.csproj
 ```
 
 ### Use Script [runs in background]
