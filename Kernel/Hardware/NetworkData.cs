@@ -12,7 +12,6 @@ internal static class NetworkAdapter
 	static NetworkAdapter()
 	{
 		string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network/");
-		if (!Path.Exists(Path.Combine(networkPath, "NetworkDataOrvieto.json"))) throw new CortanaException();
 		var orvietoNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataOrvieto.json"));
 		var pisaNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataPisa.json"));
 		
@@ -43,17 +42,17 @@ internal readonly struct NetworkData(
 	string desktopRoot)
 {
 	[JsonConverter(typeof(JsonStringEnumConverter))]
-	internal ELocation Location { get; } = location;
+	public ELocation Location { get; } = location;
 
-	internal string CortanaIp { get; } = cortanaIp;
-	internal string CortanaLanMac { get; } = cortanaLanMac;
-	internal string CortanaWlanMac { get; } = cortanaWlanMac;
-	internal string DesktopIp { get; } = desktopIp;
-	internal string DesktopLanMac { get; } = desktopLanMac;
-	internal string DesktopWlanMac { get; } = desktopWlanMac;
-	internal string SubnetMask { get; } = subnetMask;
-	internal string Gateway { get; } = gateway;
-	internal string CortanaUsername { get; } = cortanaUsername;
-	internal string DesktopUsername { get; } = desktopUsername;
-	internal string DesktopRoot { get; } = desktopRoot;
+	public string CortanaIp { get; } = cortanaIp;
+	public string CortanaLanMac { get; } = cortanaLanMac;
+	public string CortanaWlanMac { get; } = cortanaWlanMac;
+	public string DesktopIp { get; } = desktopIp;
+	public string DesktopLanMac { get; } = desktopLanMac;
+	public string DesktopWlanMac { get; } = desktopWlanMac;
+	public string SubnetMask { get; } = subnetMask;
+	public string Gateway { get; } = gateway;
+	public string CortanaUsername { get; } = cortanaUsername;
+	public string DesktopUsername { get; } = desktopUsername;
+	public string DesktopRoot { get; } = desktopRoot;
 }
