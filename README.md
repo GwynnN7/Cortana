@@ -16,7 +16,7 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 - **Bootloader**
 - **Kernel**
 
-## Modules
+### Modules
 
 - **Cortana API**
 - **Discord Bot**
@@ -43,7 +43,7 @@ Each **Interface** will be only able to communicate with the **Kernel** to execu
 - **Client-Server**
 - **GPIO**
 
-These **Output interfaces** allow **Cortana** to *communicate* with **PC**, *read sensor data* from **ESP32*" and interact with *electronic hardware* in the room [lamp, plugs and more to come]
+These **Output interfaces** allow **Cortana** to *communicate* with **PC**, *read sensor data* from **ESP32** and interact with *electronic hardware* in the room [lamp, plugs and more to come]
 
 ***
 
