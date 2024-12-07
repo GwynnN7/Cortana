@@ -35,7 +35,7 @@ internal readonly struct DataStruct(
 }
 
 [method: Newtonsoft.Json.JsonConstructor]
-internal readonly struct MemeJsonStructure(
+public readonly struct MemeJsonStructure(
 	List<string> alias,
 	string link,
 	EMemeCategory category)

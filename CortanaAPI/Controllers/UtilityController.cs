@@ -6,7 +6,7 @@ namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-internal class UtilityController : ControllerBase
+public class UtilityController : ControllerBase
 {
 	[HttpGet]
 	public string Get()

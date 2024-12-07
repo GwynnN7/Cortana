@@ -6,7 +6,7 @@ namespace CortanaAPI.Controllers;
 
 [Route("")]
 [ApiController]
-internal class HomeController : ControllerBase
+public class HomeController : ControllerBase
 {
 	[HttpGet]
 	public ContentResult Get()

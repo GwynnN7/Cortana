@@ -11,7 +11,7 @@ using Timer = Kernel.Software.Timer;
 namespace DiscordBot.Modules;
 
 [Group("timer", "Timers")]
-internal class TimerModule : InteractionModuleBase<SocketInteractionContext>
+public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("timer", "Imposta un timer a cronometro")]
 	public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi?")] [MaxValue(59)] int seconds = 0,

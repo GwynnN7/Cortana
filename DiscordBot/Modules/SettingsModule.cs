@@ -5,7 +5,7 @@ using DiscordBot.Utility;
 namespace DiscordBot.Modules;
 
 [Group("settings", "Impostazioni")]
-internal class SettingsModule : InteractionModuleBase<SocketInteractionContext>
+public class SettingsModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("canale-saluti", "In che canale volete che vi saluti?")]
 	public async Task SetGreetingsChannel([Summary("canale", "Dite il canale")] SocketTextChannel channel)

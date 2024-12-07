@@ -1,12 +1,12 @@
 namespace DiscordBot.Utility;
 
-internal enum EAnswer
+public enum EAnswer
 {
 	Si,
 	No
 }
 
-internal enum EListAction
+public enum EListAction
 {
 	Crea,
 	Elimina
@@ -18,7 +18,7 @@ internal enum ECortanaChannels
 	Log
 }
 
-internal enum EMemeCategory
+public enum EMemeCategory
 {
 	Games,
 	MoreGames,

@@ -6,7 +6,7 @@ namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-internal class RaspberryController : ControllerBase
+public class RaspberryController : ControllerBase
 {
 	[HttpGet]
 	public string Get()

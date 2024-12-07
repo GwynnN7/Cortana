@@ -9,7 +9,7 @@ using Game = IGDB.Models.Game;
 
 namespace DiscordBot.Modules;
 
-internal class UtilityModule : InteractionModuleBase<SocketInteractionContext>
+public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[Group("utility", "Comandi di utilità")]
 	public abstract class UtilityGroup : InteractionModuleBase<SocketInteractionContext>

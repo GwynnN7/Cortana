@@ -10,7 +10,7 @@ internal static class NetworkAdapter
 
 	static NetworkAdapter()
 	{
-		string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network");
+		string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network/");
 		var orvietoNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataOrvieto.json"));
 		var pisaNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataPisa.json"));
 		

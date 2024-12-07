@@ -9,7 +9,7 @@ using YoutubeExplode.Videos;
 namespace DiscordBot.Modules;
 
 [Group("media", "Gestione audio")]
-internal class AudioModule : InteractionModuleBase<SocketInteractionContext>
+public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("play", "Metti qualcosa da youtube", runMode: RunMode.Async)]
 	public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
