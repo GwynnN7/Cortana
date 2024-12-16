@@ -4,6 +4,7 @@ internal enum ETelegramChatArg
 {
 	Qrcode,
 	Chat,
+	Timer,
 	Notification,
 	Ping,
 	HardwareTimer,

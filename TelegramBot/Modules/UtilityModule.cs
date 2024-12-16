@@ -1,3 +1,4 @@
+using System.Timers;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using Telegram.Bot;
@@ -7,6 +8,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 using TelegramBot.Utility;
 using File = System.IO.File;
 using Video = YoutubeExplode.Videos.Video;
+using Timer = Kernel.Software.Timer;
 
 namespace TelegramBot.Modules;
 
@@ -39,6 +41,13 @@ internal static class UtilityModule
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "You can only use this command in private chat", true);
 				}
 
+				break;
+			case "timer":
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Timer, callbackQuery, callbackQuery.Message), callbackQuery))
+				{
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Timer pattern: {sec}s {min}m {hours}h {days}d");
+					await cortana.EditMessageText(chatId, messageId, "Set the timer countdown", replyMarkup: CreateCancelButton());
+				}
 				break;
 			case "music":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.AudioDownloader, callbackQuery, callbackQuery.Message), callbackQuery))
@@ -86,11 +95,33 @@ internal static class UtilityModule
 				CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
+			case ETelegramChatArg.Timer:
+				(int s, int m, int h, int d) times;
+				try
+				{
+					times = TelegramUtils.ParseTime(messageStats.FullMessage);
+				}
+				catch
+				{
+					TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+					return;
+				}
+		
+				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+				
+				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<string>(messageStats.ChatId, messageStats.UserId, null), 
+					(times.s, times.m, times.h), TelegramTimerFinished, ETimerType.Telegram);
+				
+				TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				break;
 			case ETelegramChatArg.Chat:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<long> chatArg)
 				{
 					TelegramUtils.SendToUser(chatArg.Arg , messageStats.FullMessage);
+					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					break;
 				}
 
@@ -152,6 +183,21 @@ internal static class UtilityModule
 				break;
 		}
 	}
+	
+	private static void TelegramTimerFinished(object? sender, ElapsedEventArgs args)
+	{
+		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+		try
+		{
+			if (timer.Payload is not TelegramTimerPayload<string> payload) return;
+			TelegramUtils.SendToUser(payload.UserId, "Timer elapsed!");
+		}
+		catch(Exception e)
+		{
+			TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), $"There was an error with a timer:\n```{e.Message}```");
+		}
+	}
 
 	private static InlineKeyboardMarkup CreateUtilityButtons()
 	{
@@ -159,6 +205,8 @@ internal static class UtilityModule
 			.AddButton("QRCode", "utility-qrcode")
 			.AddNewRow()
 			.AddButton("Start Chat", "utility-join")
+			.AddNewRow()
+			.AddButton("Set Timer", "utility-timer")
 			.AddNewRow()
 			.AddButton("Download Music", "utility-music")
 			.AddNewRow()

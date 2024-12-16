@@ -87,6 +87,7 @@ public static class CortanaTelegramBot
 			{
 				case ETelegramChatArg.Qrcode:
 				case ETelegramChatArg.Chat:
+				case ETelegramChatArg.Timer:
 				case ETelegramChatArg.AudioDownloader:
 				case ETelegramChatArg.VideoDownloader:
 					UtilityModule.HandleTextMessage(cortana, messageStats);

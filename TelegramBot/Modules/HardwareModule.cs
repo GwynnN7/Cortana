@@ -3,7 +3,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using System.Text.RegularExpressions;
 using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Kernel.Software;
