@@ -13,7 +13,7 @@ internal static class ComputerService
 
 	static ComputerService()
 	{
-		_ = new Timer("", null, (0, 1, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
+		_ = new Timer("", null, (30, 0, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
 	}
 	
 	public static void BindClient(Socket handler)
@@ -62,8 +62,9 @@ internal static class ComputerService
 			_computerClient!.Send(Encoding.UTF8.GetBytes(message));
 			return true;
 		}
-		catch
+		catch(Exception ex)
 		{
+			Software.FileHandler.Log("Client", $"Write of message \"{message}\" failed with error: {ex.Message}");
 			DisconnectSocket();
 			return false;
 		}
@@ -100,44 +101,8 @@ internal static class ComputerService
 		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(20000);
 		else await Task.Delay(5000);
 	}
-	
-	private static void SendCommand(string command, bool asRoot, out string result)
-	{
-		var scriptPath = $"/home/{NetworkAdapter.DesktopUsername}/.config/cortana/cortana-script.sh";
 
-		string usr = asRoot ? NetworkAdapter.DesktopRoot : NetworkAdapter.DesktopUsername;
-		string pass = Software.FileHandler.Secrets.DesktopPassword;
-		string addr = NetworkAdapter.ComputerIp;
-
-		try
-		{
-			using var client = new SshClient(addr, usr, pass);
-			client.ConnectionInfo.Timeout = TimeSpan.FromSeconds(3);
-			client.Connect();
-
-			string cmd = $"{scriptPath} {command}".Trim();
-			SshCommand r = client.RunCommand(cmd);
-
-			if (r.ExitStatus == 0) result = r.Result.Trim().Length > 0 && !r.Result.Trim().Equals("0") ? r.Result : "Command executed successfully\n";
-			else result = r.Error.Trim().Length > 0 ? r.Error : "There was an error executing the command\n";
-			result = result.Trim();
-
-			var log = $"Exit Status: {r.ExitStatus}\nResult: {r.Result}Error: {r.Error}\n----\n";
-			Software.FileHandler.Log("SSH", log);
-
-			client.Disconnect();
-		}
-		catch
-		{
-			result = "Sorry, I couldn't send the command";
-		}
-	}
-
-	private static void CheckConnection(object? sender, EventArgs e)
-	{
-		bool result = TestSocket();
-		Software.FileHandler.Log("Client", $"Socket tested with result: {result}");
-	}
+	private static void CheckConnection(object? sender, EventArgs e) => TestSocket();
 	
 	private static void DisconnectSocket()
 	{
