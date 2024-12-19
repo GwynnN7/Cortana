@@ -26,8 +26,6 @@ internal static class ComputerService
 
 	private static void Read()
 	{
-		if(ClientUnavailable()) return;
-		
 		try
 		{
 			while (true)
@@ -36,30 +34,29 @@ internal static class ComputerService
 				int received = _computerClient!.Receive(buffer);
 				string message = Encoding.UTF8.GetString(buffer, 0, received);
 				if (received == 0) continue;
-				
+
 				switch (message)
 				{
 					case "poweroff" or "reboot":
 						Task.Delay(500);
-						Software.FileHandler.Log("Client", $"Asked to shutdown with result: {ClientUnavailable()}");
-						CheckConnection();
+						bool result = TestSocket();
+						Software.FileHandler.Log("Client", $"Asked to shutdown: {result}");
+						break;
+					default:
+						Software.FileHandler.Log("Client", message);
 						break;
 				}
-			
-				Software.FileHandler.Log("Client", message);
 			}
 		}
-		catch
+		catch(Exception ex)
 		{
-			Software.FileHandler.Log("Client", $"Read Interrupted, client unavailable: {ClientUnavailable()}");
-			CheckConnection();
+			Software.FileHandler.Log("Client", $"Read Interrupted with error: {ex.Message}");
+			DisconnectSocket();
 		}
 	}
 
 	private static bool Write(string message)
 	{
-		if(ClientUnavailable()) return false;
-
 		try
 		{
 			_computerClient!.Send(Encoding.UTF8.GetBytes(message));
@@ -67,7 +64,7 @@ internal static class ComputerService
 		}
 		catch
 		{
-			CheckConnection();
+			DisconnectSocket();
 			return false;
 		}
 	}
@@ -136,19 +133,23 @@ internal static class ComputerService
 		}
 	}
 
-	private static void CheckConnection(object? sender, EventArgs e) => CheckConnection();
-	private static void CheckConnection()
+	private static void CheckConnection(object? sender, EventArgs e)
 	{
-		if (ClientUnavailable())
-		{
-			_computerClient?.Close();
-			_computerClient = null;
-			UpdateComputerStatus(EPower.Off);
-		}
-		else UpdateComputerStatus(EPower.On);
+		bool result = TestSocket();
+		Software.FileHandler.Log("Client", $"Socket tested with result: {result}");
 	}
 	
-	private static bool ClientUnavailable() => _computerClient is not { Connected: true };
+	private static void DisconnectSocket()
+	{
+		_computerClient?.Close();
+		_computerClient = null;
+		UpdateComputerStatus(EPower.Off);
+	}
+	
+	private static bool TestSocket()
+	{
+		return _computerClient != null && Write("SYN");
+	}
 	
 	private static void UpdateComputerStatus(EPower power)
 	{
