@@ -29,6 +29,11 @@ public abstract class HardwareProxy: IHardwareAdapter
 	public static string GetHardwareInfo(EHardwareInfo hardwareInfo) => HardwareAdapter.GetHardwareInfo(hardwareInfo);
 	public static string SwitchRaspberry(EPowerOption option) => HardwareAdapter.SwitchRaspberry(option);
 	public static EPower GetDevicePower(EDevice device) => HardwareAdapter.GetDevicePower(device);
+	public static string GetDevicePower(string device)
+	{
+		EDevice? dev = Helper.HardwareDeviceFromString(device);
+		return dev == null ? "Unknown device" : $"{device} is {HardwareAdapter.GetDevicePower(dev.Value)}";
+	}
 
 	public static string CommandComputer(EComputerCommand command, string? args = null)
 	{

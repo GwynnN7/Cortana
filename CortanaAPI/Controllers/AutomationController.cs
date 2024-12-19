@@ -18,4 +18,10 @@ public class AutomationController : ControllerBase
 	{
 		return HardwareProxy.SwitchDevice(device, t ?? "toggle");
 	}
+	
+	[HttpGet("status/{device}")]
+	public string DeviceStatus([FromRoute] string device)
+	{
+		return HardwareProxy.GetDevicePower(device);
+	}
 }
