@@ -6,41 +6,41 @@ namespace Kernel.Hardware;
 
 public static class ServerHandler
 {
-	private static readonly TcpListener Server;
-	private static readonly List<TcpClient> Clients = [];
+	private static readonly Socket Server;
+	private static readonly List<Socket> Clients = [];
 	
 	static ServerHandler()
 	{
 		var ipEndPoint = new IPEndPoint(IPAddress.Any, 5000);
-		Server = new TcpListener(ipEndPoint);
+		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+		Server.Bind(ipEndPoint);
 	}
 	
 	public static async void StartListening()
 	{
-		Server.Start();
+		Server.Listen();
 		
 		var bListening = true;
 		while (bListening)
 		{
 			try
 			{
-				TcpClient handler = await Server.AcceptTcpClientAsync();
-				_ = Task.Run(async () => await HandleConnection(handler));
+				Socket socket = await Server.AcceptAsync();
+				_ = Task.Run(() => HandleConnection(socket));
 			}
 			catch
 			{
-				Server.Stop();
+				Server.Close();
+				Server.Dispose();
 				bListening = false;
 			}
 		}
 	}
 
-	private static async Task HandleConnection(TcpClient handler)
+	private static void HandleConnection(Socket socket)
 	{
-		await using NetworkStream stream = handler.GetStream();
-		
 		var buffer = new byte[1_024];
-		int received = await handler.Client.ReceiveAsync(buffer);
+		int received = socket.Receive(buffer);
 		string message = Encoding.UTF8.GetString(buffer, 0, received);
 
 		string answer;
@@ -48,8 +48,8 @@ public static class ServerHandler
 		{
 			case "computer":
 				answer = "ACK";
-				ComputerService.BindClient(handler);
-				Clients.Add(handler);
+				ComputerService.BindClient(socket);
+				Clients.Add(socket);
 				break;
 			case "esp32":
 				answer = "Not yet implemented";
@@ -59,7 +59,9 @@ public static class ServerHandler
 				break;
 		}
 		
-		await handler.Client.SendAsync(Encoding.UTF8.GetBytes(answer));
-		if(answer != "ACK") handler.Close();
+		socket.Send(Encoding.UTF8.GetBytes(answer));
+		if (answer == "ACK") return;
+		socket.Close();
+		socket.Dispose();
 	}
 }

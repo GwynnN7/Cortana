@@ -9,17 +9,22 @@ namespace Kernel.Hardware;
 
 internal static class ComputerService
 {
-	private static TcpClient? _computerClient;
-	public static void BindClient(TcpClient handler)
+	private static Socket? _computerClient;
+
+	static ComputerService()
 	{
 		_ = new Timer("", null, (0, 1, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
+	}
+	
+	public static void BindClient(Socket handler)
+	{
 		_computerClient?.Close();
 		_computerClient = handler;
 		UpdateComputerStatus(EPower.On);
 		Task.Run(Read);
 	}
 
-	private static async void Read()
+	private static void Read()
 	{
 		if(ClientUnavailable()) return;
 		
@@ -28,13 +33,14 @@ internal static class ComputerService
 			while (true)
 			{
 				var buffer = new byte[1_024];
-				int received = await _computerClient!.Client.ReceiveAsync(buffer);
+				int received = _computerClient!.Receive(buffer);
 				string message = Encoding.UTF8.GetString(buffer, 0, received);
-
+				if (received == 0) continue;
+				
 				switch (message)
 				{
 					case "poweroff" or "reboot":
-						await Task.Delay(500);
+						Task.Delay(500);
 						Software.FileHandler.Log("Client", $"Asked to shutdown with result: {ClientUnavailable()}");
 						CheckConnection();
 						break;
@@ -50,13 +56,13 @@ internal static class ComputerService
 		}
 	}
 
-	private static async Task<bool> Write(string message)
+	private static bool Write(string message)
 	{
 		if(ClientUnavailable()) return false;
 
 		try
 		{
-			await _computerClient!.Client.SendAsync(Encoding.UTF8.GetBytes(message));
+			_computerClient!.Send(Encoding.UTF8.GetBytes(message));
 			return true;
 		}
 		catch
@@ -73,18 +79,18 @@ internal static class ComputerService
 
 	public static bool Shutdown()
 	{
-		return Write("shutdown").Result;
+		return Write("shutdown");
 	}
 	
 	public static bool Reboot()
 	{
-		return Write("reboot").Result;
+		return Write("reboot");
 	}
 	
 	public static bool Notify(string text)
 	{
-		bool ready = Write("notify").Result;
-		return ready && Write(text).Result;
+		bool ready = Write("notify");
+		return ready && Write(text);
 	}
 	
 	public static async Task CheckForConnection()
