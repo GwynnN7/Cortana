@@ -1,32 +1,91 @@
+using System.Net.Sockets;
+using System.Text;
 using Kernel.Hardware.Utility;
+using Kernel.Software.Utility;
 using Renci.SshNet;
+using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware;
 
 internal static class ComputerService
 {
+	private static TcpClient? _computerClient;
+	public static void BindClient(TcpClient handler)
+	{
+		_ = new Timer("", null, (0, 1, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
+		_computerClient?.Close();
+		_computerClient = handler;
+		Task.Run(Read);
+	}
+
+	private static async void Read()
+	{
+		if(ClientUnavailable()) return;
+		
+		await using NetworkStream stream = _computerClient!.GetStream();
+		try
+		{
+			while (true)
+			{
+				var buffer = new byte[1_024];
+				int received = await stream.ReadAsync(buffer);
+				string message = Encoding.UTF8.GetString(buffer, 0, received);
+
+				switch (message)
+				{
+					case "poweroff" or "reboot":
+						await Task.Delay(500);
+						Software.FileHandler.Log("Client", $"Asked to shutdown with result: {ClientUnavailable()}");
+						CheckConnection();
+						break;
+				}
+			
+				Software.FileHandler.Log("Client", message);
+			}
+		}
+		catch
+		{
+			Software.FileHandler.Log("Client", $"Read Interrupted, client unavailable: {ClientUnavailable()}");
+			CheckConnection();
+		}
+	}
+
+	private static async Task<bool> Write(string message)
+	{
+		if(ClientUnavailable()) return false;
+
+		try
+		{
+			await using NetworkStream stream = _computerClient!.GetStream();
+			await stream.WriteAsync(Encoding.UTF8.GetBytes(message));
+			return true;
+		}
+		catch
+		{
+			CheckConnection();
+			return false;
+		}
+	}
+	
 	public static void Boot()
 	{
 		Helper.RunScript("wake-on-lan", NetworkAdapter.ComputerMac);
-		UpdateComputerStatus(EPower.On);
 	}
 
-	public static void Shutdown()
+	public static bool Shutdown()
 	{
-		SendCommand("shutdown", true, out _);
-		UpdateComputerStatus(EPower.Off);
+		return Write("shutdown").Result;
 	}
 	
-	public static string Reboot()
+	public static bool Reboot()
 	{
-		SendCommand("reboot", true, out string result);
-		return result;
+		return Write("reboot").Result;
 	}
 	
-	public static string Notify(string text)
+	public static bool Notify(string text)
 	{
-		SendCommand($"notify {text}", false, out string result);
-		return result;
+		bool ready = Write("notify").Result;
+		return ready && Write(text).Result;
 	}
 	
 	public static async Task CheckForConnection()
@@ -34,7 +93,7 @@ internal static class ComputerService
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while (Helper.Ping(NetworkAdapter.ComputerIp) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(NetworkAdapter.ComputerIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
 
 		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(20000);
 		else await Task.Delay(5000);
@@ -72,6 +131,20 @@ internal static class ComputerService
 		}
 	}
 
+	private static void CheckConnection(object? sender, EventArgs e) => CheckConnection();
+	private static void CheckConnection()
+	{
+		if (ClientUnavailable())
+		{
+			_computerClient?.Close();
+			_computerClient = null;
+			UpdateComputerStatus(EPower.Off);
+		}
+		else UpdateComputerStatus(EPower.On);
+	}
+	
+	private static bool ClientUnavailable() => _computerClient is not { Connected: true };
+	
 	private static void UpdateComputerStatus(EPower power)
 	{
 		DeviceHandler.HardwareStates[EDevice.Computer] = power;

@@ -8,6 +8,8 @@ public abstract class HardwareProxy: IHardwareAdapter
 {
 	static HardwareProxy()
 	{
+		ServerHandler.StartListening();
+		
 		_ = new Timer("night-handler", null, new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
 			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
 	}
@@ -32,8 +34,8 @@ public abstract class HardwareProxy: IHardwareAdapter
 	{
 		string result = command switch
 		{
-			EComputerCommand.Notify => ComputerService.Notify(args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
-			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On => ComputerService.Reboot(),
+			EComputerCommand.Notify => HardwareAdapter.CommandComputer(EComputerCommand.Notify, args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
+			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On => HardwareAdapter.CommandComputer(EComputerCommand.Reboot),
 			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off => SwitchDevice(EDevice.Computer, EPowerAction.On),
 			_ => "Command not found"
 		};

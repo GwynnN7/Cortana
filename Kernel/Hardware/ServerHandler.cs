@@ -4,31 +4,66 @@ using System.Text;
 
 namespace Kernel.Hardware;
 
-public class ServerHandler
+public static class ServerHandler
 {
-	public static async void Listener()
+	private static readonly TcpListener Server;
+	private static readonly List<TcpClient> Clients = [];
+	
+	static ServerHandler()
 	{
 		string hostName = Dns.GetHostName();
-		IPHostEntry localhost = await Dns.GetHostEntryAsync(hostName);
+		IPHostEntry localhost = Dns.GetHostEntry(hostName);
 		IPAddress localIpAddress = localhost.AddressList[0];
 		
 		var ipEndPoint = new IPEndPoint(localIpAddress, 5000); //IPAddress.Any
-		TcpListener listener = new(ipEndPoint);
-
-		try
-		{    
-			listener.Start();
-
-			using TcpClient handler = await listener.AcceptTcpClientAsync();
-			await using NetworkStream stream = handler.GetStream();
-
-			const string message = "Message";
-			byte[] dateTimeBytes = Encoding.UTF8.GetBytes(message);
-			await stream.WriteAsync(dateTimeBytes);
-		}
-		finally
+		Server = new TcpListener(ipEndPoint);
+	}
+	
+	public static async void StartListening()
+	{
+		var bListening = true;
+		while (bListening)
 		{
-			listener.Stop();
+			try
+			{    
+				Server.Start();
+
+				TcpClient handler = await Server.AcceptTcpClientAsync();
+				_ = Task.Run(async () => await HandleConnection(handler));
+			}
+			finally
+			{
+				Server.Stop();
+				bListening = false;
+			}
 		}
+	}
+
+	private static async Task HandleConnection(TcpClient handler)
+	{
+		await using NetworkStream stream = handler.GetStream();
+		
+		var buffer = new byte[1_024];
+		int received = await stream.ReadAsync(buffer);
+		string message = Encoding.UTF8.GetString(buffer, 0, received);
+
+		string answer;
+		switch (message)
+		{
+			case "computer":
+				answer = "ACK";
+				ComputerService.BindClient(handler);
+				Clients.Add(handler);
+				break;
+			case "esp32":
+				answer = "Not yet implemented";
+				break;
+			default:
+				answer = "Unknown Client";
+				break;
+		}
+		
+		await stream.WriteAsync(Encoding.UTF8.GetBytes(answer));
+		if(answer != "ACK") handler.Close();
 	}
 }

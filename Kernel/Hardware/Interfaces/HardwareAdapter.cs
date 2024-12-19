@@ -35,13 +35,13 @@ public abstract class HardwareAdapter: IHardwareAdapter
 	
 	public static string CommandComputer(EComputerCommand command, string? args = null)
 	{
-		string result = command switch
+		bool result = command switch
 		{
 			EComputerCommand.Notify => ComputerService.Notify(args ?? string.Empty),
 			EComputerCommand.Reboot => ComputerService.Reboot(),
-			_ => "Command not found"
+			_ => false
 		};
-		return result;
+		return result ? "Command executed" : "Command not found";
 	}
 	
 	public static string SwitchDevice(EDevice device, EPowerAction trigger)
