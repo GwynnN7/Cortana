@@ -23,6 +23,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 		if (DateTime.Now.Hour < 6) _ = new Timer("safety-night-handler", null, (0, 0, 1), HandleNightCallback, ETimerType.Utility);
 	}
 	
+	public static void ShutdownServices() => HardwareAdapter.ShutdownServices();
 	public static double ReadCpuTemperature() => HardwareAdapter.ReadCpuTemperature();
 	public static bool Ping(string address) => HardwareAdapter.Ping(address);
 
@@ -106,7 +107,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 					await ComputerService.CheckForConnection();
 					HardwareAdapter.SwitchDevice(EDevice.Power, EPowerAction.Off);
 				});
-				return "Waiting for Computer to shut down";
+				return "Waiting for Computer to shutdown";
 			case EPowerAction.Off:
 				return HardwareAdapter.SwitchDevice(EDevice.Power, EPowerAction.Off);
 			case EPowerAction.Toggle:

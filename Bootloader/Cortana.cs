@@ -35,6 +35,7 @@ public static class Cortana
 		{
 			UnixSignal.WaitAny(Signals, Timeout.Infinite);
 			await Bootloader.StopSubFunctions();
+			HardwareProxy.ShutdownServices();
 		});
 		
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());

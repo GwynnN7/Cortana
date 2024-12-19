@@ -30,8 +30,7 @@ public enum EPowerOption
 public enum EComputerCommand
 {
 	Reboot,
-	Notify,
-	Shell
+	Notify
 }
 
 public enum ELocation

@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Kernel.Software;
+using Kernel.Hardware;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -36,7 +37,7 @@ public static class CortanaApi
 			FileProvider = new PhysicalFileProvider(Path.Combine(FileHandler.ProjectStoragePath, "Assets/")),
 			RequestPath = "/resources"
 		});
-		CortanaWebApi.Urls.Add("http://*:8080");
+		CortanaWebApi.Urls.Add($"http://*:{NetworkAdapter.ApiPort}");
 		CortanaWebApi.MapControllers();
 		await CortanaWebApi.RunAsync();
 	}

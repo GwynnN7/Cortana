@@ -12,4 +12,5 @@ public interface IHardwareAdapter
 	public static abstract string SwitchDevice(EDevice device, EPowerAction trigger);
 	public static abstract string SwitchDevice(string device, string trigger);
 	public static abstract EPower GetDevicePower(EDevice device);
+	public static abstract void ShutdownServices();
 }

@@ -26,18 +26,6 @@ internal static class HardwareModule
 					await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
 				else await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
 				break;
-			case "ssh":
-				if (TelegramUtils.CheckHardwarePermission(messageStats.UserId))
-				{
-					string result = HardwareProxy.CommandComputer(EComputerCommand.Shell, messageStats.Text);
-					await cortana.SendMessage(messageStats.ChatId, result);
-				}
-				else
-				{
-					await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
-				}
-
-				break;
 		}
 	}
 

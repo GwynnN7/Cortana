@@ -79,15 +79,14 @@ internal static class DeviceHandler
 		{
 			case EPowerAction.On:
 				ComputerService.Boot();
-				break;
+				return EPower.Off;
 			case EPowerAction.Off:
 				ComputerService.Shutdown();
-				break;
+				return EPower.On;
 			case EPowerAction.Toggle:
 			default:
 				return PowerComputer(Helper.ConvertToggle(EDevice.Computer));
 		}
-		return HardwareStates[EDevice.Computer];
 	}
 	
 	internal static EPower PowerComputerSupply(EPowerAction state)

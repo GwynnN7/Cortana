@@ -2,26 +2,28 @@ using System.Net.Sockets;
 using System.Text;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
-using Renci.SshNet;
 using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware;
 
 internal static class ComputerService
 {
-	private static Socket? _computerClient;
+	private static Socket? _computerSocket;
 
 	static ComputerService()
 	{
-		_ = new Timer("", null, (30, 0, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
+		_ = new Timer("", null, (10, 0, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
 	}
 	
-	public static void BindClient(Socket handler)
+	internal static void BindSocket(Socket socket)
 	{
-		_computerClient?.Close();
-		_computerClient = handler;
-		UpdateComputerStatus(EPower.On);
+		_computerSocket?.Close();
+		
+		_computerSocket = socket;
+		_computerSocket.SendTimeout = 2500;
 		Task.Run(Read);
+		
+		UpdateComputerStatus(EPower.On);
 	}
 
 	private static void Read()
@@ -30,27 +32,22 @@ internal static class ComputerService
 		{
 			while (true)
 			{
-				var buffer = new byte[1_024];
-				int received = _computerClient!.Receive(buffer);
+				var buffer = new byte[1024];
+				int received = _computerSocket!.Receive(buffer);
 				string message = Encoding.UTF8.GetString(buffer, 0, received);
 				if (received == 0) continue;
 
 				switch (message)
 				{
-					case "poweroff" or "reboot":
-						Task.Delay(500);
-						bool result = TestSocket();
-						Software.FileHandler.Log("Client", $"Asked to shutdown: {result}");
-						break;
 					default:
-						Software.FileHandler.Log("Client", message);
+						Software.FileHandler.Log("ComputerService", message);
 						break;
 				}
 			}
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
-			Software.FileHandler.Log("Client", $"Read Interrupted with error: {ex.Message}");
+			Software.FileHandler.Log("ComputerService", $"Read Interrupted with error: {ex.Message}");
 			DisconnectSocket();
 		}
 	}
@@ -59,39 +56,39 @@ internal static class ComputerService
 	{
 		try
 		{
-			_computerClient!.Send(Encoding.UTF8.GetBytes(message));
+			_computerSocket!.Send(Encoding.UTF8.GetBytes(message));
 			return true;
 		}
-		catch(Exception ex)
+		catch (Exception ex)
 		{
-			Software.FileHandler.Log("Client", $"Write of message \"{message}\" failed with error: {ex.Message}");
+			Software.FileHandler.Log("ComputerService", $"Write of message \"{message}\" failed with error: {ex.Message}");
 			DisconnectSocket();
 			return false;
 		}
 	}
 	
-	public static void Boot()
+	internal static void Boot()
 	{
 		Helper.RunScript("wake-on-lan", NetworkAdapter.ComputerMac);
 	}
 
-	public static bool Shutdown()
+	internal static void Shutdown()
 	{
-		return Write("shutdown");
+		Write("shutdown");
 	}
 	
-	public static bool Reboot()
+	internal static bool Reboot()
 	{
 		return Write("reboot");
 	}
 	
-	public static bool Notify(string text)
+	internal static bool Notify(string text)
 	{
 		bool ready = Write("notify");
 		return ready && Write(text);
 	}
 	
-	public static async Task CheckForConnection()
+	internal static async Task CheckForConnection()
 	{
 		await Task.Delay(1000);
 
@@ -101,20 +98,15 @@ internal static class ComputerService
 		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(20000);
 		else await Task.Delay(5000);
 	}
-
-	private static void CheckConnection(object? sender, EventArgs e) => TestSocket();
 	
-	private static void DisconnectSocket()
+	internal static void DisconnectSocket()
 	{
-		_computerClient?.Close();
-		_computerClient = null;
+		_computerSocket?.Close();
+		_computerSocket = null;
 		UpdateComputerStatus(EPower.Off);
 	}
 	
-	private static bool TestSocket()
-	{
-		return _computerClient != null && Write("SYN");
-	}
+	private static void CheckConnection(object? sender, EventArgs e) => Write("SYN");
 	
 	private static void UpdateComputerStatus(EPower power)
 	{

@@ -4,19 +4,18 @@ using System.Text;
 
 namespace Kernel.Hardware;
 
-public static class ServerHandler
+internal static class ServerHandler
 {
 	private static readonly Socket Server;
-	private static readonly List<Socket> Clients = [];
 	
 	static ServerHandler()
 	{
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, 5000);
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, NetworkAdapter.ServerPort);
 		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 		Server.Bind(ipEndPoint);
 	}
 	
-	public static async void StartListening()
+	internal static async void StartListening()
 	{
 		Server.Listen();
 		
@@ -31,7 +30,6 @@ public static class ServerHandler
 			catch
 			{
 				Server.Close();
-				Server.Dispose();
 				bListening = false;
 			}
 		}
@@ -39,7 +37,7 @@ public static class ServerHandler
 
 	private static void HandleConnection(Socket socket)
 	{
-		var buffer = new byte[1_024];
+		var buffer = new byte[1024];
 		int received = socket.Receive(buffer);
 		string message = Encoding.UTF8.GetString(buffer, 0, received);
 
@@ -48,20 +46,19 @@ public static class ServerHandler
 		{
 			case "computer":
 				answer = "ACK";
-				ComputerService.BindClient(socket);
-				Clients.Add(socket);
-				break;
-			case "esp32":
-				answer = "Not yet implemented";
+				ComputerService.BindSocket(socket);
 				break;
 			default:
-				answer = "Unknown Client";
+				answer = "ERR";
 				break;
 		}
 		
 		socket.Send(Encoding.UTF8.GetBytes(answer));
-		if (answer == "ACK") return;
-		socket.Close();
-		socket.Dispose();
+		if(answer == "ERR") socket.Close();
+	}
+
+	internal static void ShutdownServer()
+	{
+		Server.Close();
 	}
 }

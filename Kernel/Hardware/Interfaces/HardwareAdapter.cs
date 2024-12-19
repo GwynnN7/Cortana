@@ -65,6 +65,12 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		if (elementResult == null) return "Hardware device not registered";
 		return SwitchDevice(elementResult.Value, triggerResult.Value);
 	}
+
+	public static void ShutdownServices()
+	{
+		ComputerService.DisconnectSocket();
+		ServerHandler.ShutdownServer();
+	}
 	
 	public static EPower GetDevicePower(EDevice device)
 	{
