@@ -23,11 +23,11 @@ public static class ServerHandler
 		while (bListening)
 		{
 			try
-			{    
+			{
 				TcpClient handler = await Server.AcceptTcpClientAsync();
 				_ = Task.Run(async () => await HandleConnection(handler));
 			}
-			finally
+			catch
 			{
 				Server.Stop();
 				bListening = false;
