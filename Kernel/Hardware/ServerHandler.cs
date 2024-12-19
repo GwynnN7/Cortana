@@ -15,7 +15,7 @@ public static class ServerHandler
 		IPHostEntry localhost = Dns.GetHostEntry(hostName);
 		IPAddress localIpAddress = localhost.AddressList[0];
 		
-		var ipEndPoint = new IPEndPoint(localIpAddress, 5000); //IPAddress.Any
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, 5000); //IPAddress.Any
 		Server = new TcpListener(ipEndPoint);
 	}
 	
