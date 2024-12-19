@@ -15,6 +15,7 @@ internal static class ComputerService
 		_ = new Timer("", null, (0, 1, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
 		_computerClient?.Close();
 		_computerClient = handler;
+		UpdateComputerStatus(EPower.On);
 		Task.Run(Read);
 	}
 
