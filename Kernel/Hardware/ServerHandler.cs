@@ -11,23 +11,19 @@ public static class ServerHandler
 	
 	static ServerHandler()
 	{
-		string hostName = Dns.GetHostName();
-		IPHostEntry localhost = Dns.GetHostEntry(hostName);
-		IPAddress localIpAddress = localhost.AddressList[0];
-		
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, 5000); //IPAddress.Any
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, 5000);
 		Server = new TcpListener(ipEndPoint);
 	}
 	
 	public static async void StartListening()
 	{
+		Server.Start();
+		
 		var bListening = true;
 		while (bListening)
 		{
 			try
 			{    
-				Server.Start();
-
 				TcpClient handler = await Server.AcceptTcpClientAsync();
 				_ = Task.Run(async () => await HandleConnection(handler));
 			}
