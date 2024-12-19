@@ -23,13 +23,12 @@ internal static class ComputerService
 	{
 		if(ClientUnavailable()) return;
 		
-		await using NetworkStream stream = _computerClient!.GetStream();
 		try
 		{
 			while (true)
 			{
 				var buffer = new byte[1_024];
-				int received = await stream.ReadAsync(buffer);
+				int received = await _computerClient!.Client.ReceiveAsync(buffer);
 				string message = Encoding.UTF8.GetString(buffer, 0, received);
 
 				switch (message)
@@ -57,8 +56,7 @@ internal static class ComputerService
 
 		try
 		{
-			await using NetworkStream stream = _computerClient!.GetStream();
-			await stream.WriteAsync(Encoding.UTF8.GetBytes(message));
+			await _computerClient!.Client.SendAsync(Encoding.UTF8.GetBytes(message));
 			return true;
 		}
 		catch

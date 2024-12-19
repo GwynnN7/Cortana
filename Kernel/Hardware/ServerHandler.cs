@@ -40,7 +40,7 @@ public static class ServerHandler
 		await using NetworkStream stream = handler.GetStream();
 		
 		var buffer = new byte[1_024];
-		int received = await stream.ReadAsync(buffer);
+		int received = await handler.Client.ReceiveAsync(buffer);
 		string message = Encoding.UTF8.GetString(buffer, 0, received);
 
 		string answer;
@@ -59,7 +59,7 @@ public static class ServerHandler
 				break;
 		}
 		
-		await stream.WriteAsync(Encoding.UTF8.GetBytes(answer));
+		await handler.Client.SendAsync(Encoding.UTF8.GetBytes(answer));
 		if(answer != "ACK") handler.Close();
 	}
 }
