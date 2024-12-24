@@ -1,52 +1,53 @@
-﻿using System.Diagnostics;
+﻿using Newtonsoft.Json;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.InteropServices;
 using System.Text;
+using Timer = System.Timers.Timer;
 
 namespace CortanaClient;
 
-internal enum Os
-{
-    Linux,
-    Windows
-}
-
 public static class ComputerClient
 {
-    private const string BashPath = "/bin/bash";
-    private const string CmdPath = "cmd.exe";
-
-    private static Os _operatingSystem;
+    private const string ClientInfoPath = "CortanaClient/Config/Client.json";
     private static Socket? _computerSocket;
 
     private static void Main()
     {
-        GetOperatingSystem();
+        ClientInfo info = GetClientInfo();
+        string gateway = GetCortanaGateway(info).Result;
+        string address = gateway[..^1] + info.CortanaIp;
+
+        StartAliveTimer();
 
         while(true)
         {
-            CreateSocketConnection();
+            CreateSocketConnection(address, info.ClientPort);
             Write("computer");
 
             Read();
         }
     }
 
-    private static void GetOperatingSystem()
+    private static async Task<string> GetCortanaGateway(ClientInfo info)
     {
-        if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux))  _operatingSystem = Os.Linux;
-        else if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) _operatingSystem = Os.Windows;
-        else throw new Exception("Unsupported Operating System");
+        using var httpClient = new HttpClient();
+        try
+        {
+            string result = await httpClient.GetStringAsync($"http://{info.CortanaApi}/api/raspberry/gateway");
+            return result;
+        }
+        catch{
+            throw new Exception("Cortana not reachable, can't find correct address");
+        } 
     }
 
-    private static void CreateSocketConnection()
+    private static void CreateSocketConnection(string address, int port)
     {
         try
         {
             _computerSocket?.Close();
 
-            var ipEndPoint = new IPEndPoint(IPAddress.Parse("192.168.1.117"), 5000);
+            var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
             _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _computerSocket.Connect(ipEndPoint);
         }
@@ -56,6 +57,15 @@ public static class ComputerClient
         }
     }
 
+
+    private static void StartAliveTimer()
+    {
+        var timer = new Timer();
+        timer.Elapsed += (sender, e) => Write("SYN");;
+        timer.Interval = 4000;
+        timer.Start();
+    }
+    
     private static void Read()
     {
         if(_computerSocket == null) return;
@@ -75,11 +85,9 @@ public static class ComputerClient
                     case "SYN":
                         Write("ACK");
                         break;
-                    case "shutdown":
-                        ExecuteCommand(_operatingSystem == Os.Linux ? "poweroff" : "shutdown /s");
-                        break;
-                    case "reboot":
-                        ExecuteCommand(_operatingSystem == Os.Linux ? "reboot" : "shutdown /r");
+                    case "shutdown" or "reboot":
+                        string powerCommand = OsHandler.DecodeCommand(message);
+                        OsHandler.ExecuteCommand(powerCommand);
                         break;
                     case "notify":
                         bNotifyText = true;
@@ -87,7 +95,8 @@ public static class ComputerClient
                     default:
                         if(bNotifyText)
                         {
-                            ExecuteCommand(_operatingSystem == Os.Linux ? $"notify-send -u low -a Cortana \'{message}\'" : $"echo {message}");
+                            string notifyCommand = OsHandler.DecodeCommand("notify", message);
+                            OsHandler.ExecuteCommand(notifyCommand);
                             bNotifyText = false;
                         }
                         break;
@@ -96,11 +105,12 @@ public static class ComputerClient
         }
         catch
         {
-            ExecuteCommand(_operatingSystem == Os.Linux ? $"notify-send -u low -a Cortana \'Computer Disconnected\'" : $"echo Computer Disconnected");
+            string failCommand = OsHandler.DecodeCommand("notify", "Cortana Disconnected");
+            OsHandler.ExecuteCommand(failCommand);
         }
     }
 
-    private static void Write(string message)
+    internal static void Write(string message)
     {
         if(_computerSocket == null) return;
 
@@ -114,21 +124,20 @@ public static class ComputerClient
         }
     }
 
-    private static void ExecuteCommand(string arg)
-    {
-        string path = _operatingSystem == Os.Linux ? BashPath : CmdPath;
-        string param = _operatingSystem == Os.Linux ? "-c" : "/C";
-        var process = new Process()
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = path,
-                Arguments = $"{param} \"{arg}\"",
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-            }
-        };
-        process.Start();
-    }
+    private static ClientInfo GetClientInfo()
+	{
+        string cortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? throw new Exception("Cortana path not set in env");
+		string confPath = Path.Combine(cortanaPath, ClientInfoPath);
+        if (!File.Exists(confPath)) throw new Exception("Unknown Client Connection Info");
+
+		try
+		{
+			string file = File.ReadAllText(Path.Combine(confPath, ClientInfoPath));
+			return JsonConvert.DeserializeObject<ClientInfo>(file);
+		}
+		catch (Exception ex)
+		{
+			throw new Exception(ex.Message, ex);
+		}
+	}
 }

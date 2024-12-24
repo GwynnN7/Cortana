@@ -85,7 +85,7 @@ public class Timer : System.Timers.Timer
 	private void Destroy()
 	{
 		Stop();
-		Dispose();
+		Close();
 	}
 
 	private void SaveTimer()

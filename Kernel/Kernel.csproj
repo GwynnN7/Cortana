@@ -22,8 +22,8 @@
         <PackageReference Include="QRCoder" Version="1.6.0"/>
         <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6"/>
         <PackageReference Include="SSH.NET" Version="2024.2.0"/>
-        <PackageReference Include="YoutubeExplode" Version="6.4.4"/>
-        <PackageReference Include="YoutubeExplode.Converter" Version="6.4.4"/>
+        <PackageReference Include="YoutubeExplode" Version="6.5.0" />
+        <PackageReference Include="YoutubeExplode.Converter" Version="6.5.0" />
     </ItemGroup>
 
 </Project>

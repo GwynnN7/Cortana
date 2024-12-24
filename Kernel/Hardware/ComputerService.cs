@@ -9,10 +9,11 @@ namespace Kernel.Hardware;
 internal static class ComputerService
 {
 	private static Socket? _computerSocket;
+	private static Timer? _connectionTimer;
 
 	static ComputerService()
 	{
-		_ = new Timer("", null, (10, 0, 0), CheckConnection, ETimerType.Utility, ETimerLoop.Interval);
+		RestartConnectionTimer();
 	}
 	
 	internal static void BindSocket(Socket socket)
@@ -20,7 +21,7 @@ internal static class ComputerService
 		_computerSocket?.Close();
 		
 		_computerSocket = socket;
-		_computerSocket.SendTimeout = 2500;
+		_computerSocket.SendTimeout = 2000;
 		Task.Run(Read);
 		
 		UpdateComputerStatus(EPower.On);
@@ -39,6 +40,10 @@ internal static class ComputerService
 
 				switch (message)
 				{
+					case "SYN":
+						UpdateComputerStatus(EPower.On);
+						RestartConnectionTimer();
+						break;
 					default:
 						Software.FileHandler.Log("ComputerService", message);
 						break;
@@ -106,7 +111,18 @@ internal static class ComputerService
 		UpdateComputerStatus(EPower.Off);
 	}
 	
-	private static void CheckConnection(object? sender, EventArgs e) => Write("SYN");
+	private static void ResetConnection(object? sender, EventArgs e) 
+	{
+		DisconnectSocket();
+		RestartConnectionTimer();
+	}
+
+	private static void RestartConnectionTimer()
+	{
+		_connectionTimer?.Stop();
+		_connectionTimer?.Close();
+		_connectionTimer = new Timer("connection-timer", null, (10, 0, 0), ResetConnection, ETimerType.Utility, ETimerLoop.No);
+	}
 	
 	private static void UpdateComputerStatus(EPower power)
 	{
