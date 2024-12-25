@@ -16,7 +16,6 @@ internal static class ComputerService
 	static ComputerService()
 	{
 		Messages = [];
-		RestartConnectionTimer();
 	}
 	
 	internal static void BindSocket(Socket socket)
@@ -28,6 +27,7 @@ internal static class ComputerService
 		Task.Run(Read);
 		
 		UpdateComputerStatus(EPower.On);
+		RestartConnectionTimer();
 	}
 
 	private static void Read()
@@ -132,7 +132,7 @@ internal static class ComputerService
 		DateTime start = DateTime.Now;
 		while ((Helper.Ping(NetworkAdapter.ComputerIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
 
-		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(20000);
+		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(15000);
 		else await Task.Delay(5000);
 	}
 	

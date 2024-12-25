@@ -184,7 +184,7 @@ internal static class HardwareModule
 				string result = HardwareProxy.CommandComputer(EComputerCommand.Notify, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+				TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.Ping:
@@ -197,8 +197,7 @@ internal static class HardwareModule
 			case ETelegramChatArg.ComputerCommand:
 				string commandResult = HardwareProxy.CommandComputer(EComputerCommand.Command, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-				
-				TelegramUtils.AnswerOrMessage(cortana, commandResult, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+				await cortana.SendMessage(messageStats.ChatId, commandResult);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.HardwareTimer:

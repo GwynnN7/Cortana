@@ -47,7 +47,7 @@ internal static class OsHandler
 			"reboot" => onLinux ? "reboot" : "shutdown /r",
 			"swap_os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
-			"cmd" => onLinux? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S {arg}" : arg,
+			"cmd" => arg,
 			_ => ""
 		};
 	}

@@ -58,7 +58,6 @@ public static class ComputerClient
         catch
         {
             DisconnectClient();
-            OsHandler.ExecuteCommand("notify", "Cortana failed to connect");
         }
     }
     

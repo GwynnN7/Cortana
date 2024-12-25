@@ -33,7 +33,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 	public static string GetDevicePower(string device)
 	{
 		EDevice? dev = Helper.HardwareDeviceFromString(device);
-		return dev == null ? "Unknown device" : $"{Helper.CapitalizeLetter(device)} is {HardwareAdapter.GetDevicePower(dev.Value)}";
+		return dev == null ? "Status not detectable" : $"{Helper.CapitalizeLetter(device)} is {HardwareAdapter.GetDevicePower(dev.Value)}";
 	}
 
 	public static string CommandComputer(EComputerCommand command, string? args = null)
