@@ -6,41 +6,37 @@ using Timer = System.Timers.Timer;
 
 namespace CortanaClient;
 
-internal enum EClientTextCommands
-{
-    None,
-    Notify,
-    Cmd
-}
-
 public static class ComputerClient
 {
+    internal static ClientInfo ClientInfo { get; private set; }
     private const string ClientInfoPath = "CortanaClient/Config/Client.json";
     private static Socket? _computerSocket;
 
     private static void Main()
     {
-        ClientInfo info = GetClientInfo();
-        string gateway = GetCortanaGateway(info).Result;
-        string address = gateway[..^1] + info.CortanaIp;
+        ClientInfo = GetClientInfo();
+        string gateway = GetCortanaGateway().Result;
+        string address = gateway[..^1] + ClientInfo.CortanaIp;
 
         StartAliveTimer();
 
         while(true)
         {
-            CreateSocketConnection(address, info.ClientPort);
+            CreateSocketConnection(address, ClientInfo.ClientPort);
+            
             Write("computer");
-
             Read();
+            
+            Thread.Sleep(1000);
         }
     }
 
-    private static async Task<string> GetCortanaGateway(ClientInfo info)
+    private static async Task<string> GetCortanaGateway()
     {
         using var httpClient = new HttpClient();
         try
         {
-            string result = await httpClient.GetStringAsync($"http://{info.CortanaApi}/api/raspberry/gateway");
+            string result = await httpClient.GetStringAsync($"http://{ClientInfo.CortanaApi}/api/raspberry/gateway");
             return result;
         }
         catch{
@@ -56,20 +52,20 @@ public static class ComputerClient
 
             var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
             _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+            _computerSocket.SendTimeout = 2000;
             _computerSocket.Connect(ipEndPoint);
         }
         catch
         {
-            _computerSocket?.Close();
+            DisconnectClient();
+            OsHandler.ExecuteCommand("notify", "Cortana failed to connect");
         }
     }
-
-
+    
     private static void StartAliveTimer()
     {
-        var timer = new Timer();
-        timer.Elapsed += (sender, e) => Write("SYN");;
-        timer.Interval = 4000;
+        var timer = new Timer(4000);
+        timer.Elapsed += (_, _) => Write("SYN");
         timer.Start();
     }
     
@@ -77,7 +73,7 @@ public static class ComputerClient
     {
         if(_computerSocket == null) return;
 
-        var textCommand = EClientTextCommands.None;
+        string? textCommand = null;
         try
         {
             while (true)
@@ -89,40 +85,23 @@ public static class ComputerClient
 
                 switch (message)
                 {
-                    case "SYN":
-                        Write("ACK");
-                        break;
                     case "shutdown" or "reboot":
-                        string powerCommand = OsHandler.DecodeCommand(message);
-                        OsHandler.ExecuteCommand(powerCommand);
+                        OsHandler.ExecuteCommand(message);
                         break;
-                    case "notify":
-                        textCommand = EClientTextCommands.Notify;
-                        break;
-                    case "cmd":
-                        textCommand = EClientTextCommands.Cmd;
+                    case "notify" or "cmd":
+                        textCommand = message;
                         break;
                     default:
-                        switch (textCommand)
-                        {
-                            case EClientTextCommands.Notify:
-                                string notifyCommand = OsHandler.DecodeCommand("notify", message);
-                                OsHandler.ExecuteCommand(notifyCommand);
-                                break;
-                            case EClientTextCommands.Cmd:
-                                string cmdCommand = OsHandler.DecodeCommand("cmd", message);
-                                OsHandler.ExecuteCommand(cmdCommand);
-                                break;
-                        }
-                        textCommand = EClientTextCommands.None;
+                        if(textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
+                        textCommand = null;
                         break;
                 }
+                Thread.Sleep(250);
             }
         }
         catch
         {
-            string failCommand = OsHandler.DecodeCommand("notify", "Cortana Disconnected");
-            OsHandler.ExecuteCommand(failCommand);
+            DisconnectClient();
         }
     }
 
@@ -136,15 +115,22 @@ public static class ComputerClient
         }
         catch
         {
-            _computerSocket.Close();
+            DisconnectClient();
+            OsHandler.ExecuteCommand("notify", "Cortana disconnected");
         }
+    }
+
+    private static void DisconnectClient()
+    {
+        _computerSocket?.Close();
+        _computerSocket = null;
     }
 
     private static ClientInfo GetClientInfo()
 	{
         string cortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? throw new Exception("Cortana path not set in env");
 		string confPath = Path.Combine(cortanaPath, ClientInfoPath);
-        if (!File.Exists(confPath)) throw new Exception("Unknown Client Connection Info");
+        if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
 
 		try
 		{

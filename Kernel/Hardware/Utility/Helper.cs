@@ -49,17 +49,20 @@ internal static class Helper
 	
 	public static EDevice? HardwareDeviceFromString(string device)
 	{
-		device = device.ToLower();
-		device = string.Concat(device[0].ToString().ToUpper(), device.AsSpan(1));
+		device = CapitalizeLetter(device.ToLower());
 		bool res = Enum.TryParse(device, out EDevice status);
 		return res ? status : null;
 	}
 	public static EPowerAction? PowerActionFromString(string action)
 	{
-		action = action.ToLower();
-		action = string.Concat(action[0].ToString().ToUpper(), action.AsSpan(1));
+		action = CapitalizeLetter( action.ToLower());
 		bool res = Enum.TryParse(action, out EPowerAction status);
 		return res ? status : null;
+	}
+
+	public static string CapitalizeLetter(string word)
+	{
+		return string.Concat(word[..1].ToUpper(), word.AsSpan(1));
 	}
 }
 

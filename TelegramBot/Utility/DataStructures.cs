@@ -56,12 +56,13 @@ internal readonly struct DataStruct(
 
 internal static class HardwareEmoji
 {
-	public const string Bulb = "💡";
-	public const string Pc = "🖥";
-	public const string Thunder = "⚡";
-	public const string Reboot = "🔄";
-	public const string On = "\ud83c\udf15\ud83c\udf15\ud83c\udf15";
-	public const string Off = "\ud83c\udf11\ud83c\udf11\ud83c\udf11";
+	public const string Lamp = "\ud83d\udca1";
+	public const string Generic = "\ud83d\udd0c";
+	public const string Pc = "\u26a1\ufe0f";
+	public const string Reboot = "\u2699\ufe0f";
+	public const string SwapOs = "\ud83c\udfae";
+	public const string On = "\ud83d\udd0b";
+	public const string Off = "\ud83e\udeab";
 }
 
 // Debts data structures

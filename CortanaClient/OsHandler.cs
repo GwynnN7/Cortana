@@ -38,36 +38,41 @@ internal static class OsHandler
 		else throw new Exception("Unsupported Operating System");
 	}
 
-	internal static string DecodeCommand(string command, string arg = "")
+	private static string DecodeCommand(string command, string arg = "")
 	{
 		bool onLinux = OperatingSystem == Os.Linux;
 		return command switch
 		{
 			"shutdown" => onLinux ? "poweroff" : "shutdown /s",
 			"reboot" => onLinux ? "reboot" : "shutdown /r",
+			"swap_os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
-			"cmd" => arg,
+			"cmd" => onLinux? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S {arg}" : arg,
 			_ => ""
 		};
 	}
 
-	internal static void ExecuteCommand(string arg)
+	internal static void ExecuteCommand(string command, string arg = "")
 	{
 		string path = OsMacro.GetPath(OperatingSystem);
 		string param = OsMacro.GetArg(OperatingSystem);
-
+		string commandArg = DecodeCommand(command, arg);
+		
 		var process = new Process()
 		{
 			StartInfo = new ProcessStartInfo
 			{
 				FileName = path,
-				Arguments = $"{param} \"{arg}\"",
+				Arguments = $"{param} \"{commandArg}\"",
 				RedirectStandardOutput = true,
 				UseShellExecute = false,
 				CreateNoWindow = true,
 			}
 		};
-		process.OutputDataReceived += (sender, args) => ComputerClient.Write(args.Data ?? "Empty Response");
+		process.OutputDataReceived += OutputFunction;
+		process.ErrorDataReceived += OutputFunction;
 		process.Start();
 	}
+	
+	private static void OutputFunction(object sender, DataReceivedEventArgs args) => ComputerClient.Write(args.Data ?? "Command executed without response");
 }

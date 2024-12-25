@@ -8,6 +8,7 @@ internal enum ETelegramChatArg
 	Notification,
 	Ping,
 	HardwareTimer,
+	ComputerCommand,
 	Shopping,
 	AudioDownloader,
 	VideoDownloader

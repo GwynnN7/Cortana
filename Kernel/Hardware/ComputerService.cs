@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Net.Sockets;
 using System.Text;
 using Kernel.Hardware.Utility;
@@ -10,9 +11,11 @@ internal static class ComputerService
 {
 	private static Socket? _computerSocket;
 	private static Timer? _connectionTimer;
+	private static readonly Stack<string> Messages;
 
 	static ComputerService()
 	{
+		Messages = [];
 		RestartConnectionTimer();
 	}
 	
@@ -45,7 +48,10 @@ internal static class ComputerService
 						RestartConnectionTimer();
 						break;
 					default:
-						Software.FileHandler.Log("ComputerService", message);
+						Monitor.Enter(Messages);
+						Messages.Push(message);
+						Monitor.Pulse(Messages);
+						Monitor.Exit(Messages);
 						break;
 				}
 			}
@@ -86,11 +92,37 @@ internal static class ComputerService
 	{
 		return Write("reboot");
 	}
+
+	internal static bool SwapOs()
+	{
+		return Write("swap_os");
+	}
 	
 	internal static bool Notify(string text)
 	{
 		bool ready = Write("notify");
 		return ready && Write(text);
+	}
+	
+	internal static bool Command(string cmd)
+	{
+		bool ready = Write("cmd");
+		return ready && Write(cmd);
+	}
+
+	internal static bool GatherMessage(out string? message)
+	{
+		message = null;
+		Monitor.Enter(Messages);
+		try
+		{
+			if(Monitor.Wait(Messages, 4000)) message = Messages.Pop();
+		}
+		finally
+		{
+			Monitor.Exit(Messages);
+		}
+		return message != null;
 	}
 	
 	internal static async Task CheckForConnection()
@@ -106,6 +138,7 @@ internal static class ComputerService
 	
 	internal static void DisconnectSocket()
 	{
+		Messages.Clear();
 		_computerSocket?.Close();
 		_computerSocket = null;
 		UpdateComputerStatus(EPower.Off);
@@ -114,14 +147,14 @@ internal static class ComputerService
 	private static void ResetConnection(object? sender, EventArgs e) 
 	{
 		DisconnectSocket();
-		RestartConnectionTimer();
+		_connectionTimer?.Close();
 	}
 
 	private static void RestartConnectionTimer()
 	{
 		_connectionTimer?.Stop();
 		_connectionTimer?.Close();
-		_connectionTimer = new Timer("connection-timer", null, (10, 0, 0), ResetConnection, ETimerType.Utility, ETimerLoop.No);
+		_connectionTimer = new Timer("connection-timer", null, (10, 0, 0), ResetConnection, ETimerType.Utility);
 	}
 	
 	private static void UpdateComputerStatus(EPower power)

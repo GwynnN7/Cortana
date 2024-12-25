@@ -33,7 +33,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 	public static string GetDevicePower(string device)
 	{
 		EDevice? dev = Helper.HardwareDeviceFromString(device);
-		return dev == null ? "Unknown device" : $"{device} is {HardwareAdapter.GetDevicePower(dev.Value)}";
+		return dev == null ? "Unknown device" : $"{Helper.CapitalizeLetter(device)} is {HardwareAdapter.GetDevicePower(dev.Value)}";
 	}
 
 	public static string CommandComputer(EComputerCommand command, string? args = null)
@@ -43,9 +43,17 @@ public abstract class HardwareProxy: IHardwareAdapter
 			EComputerCommand.Notify => HardwareAdapter.CommandComputer(EComputerCommand.Notify, args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
 			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On => HardwareAdapter.CommandComputer(EComputerCommand.Reboot),
 			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off => SwitchDevice(EDevice.Computer, EPowerAction.On),
+			EComputerCommand.Command => GatherClientMessage(EComputerCommand.Command, "dir"),
+			EComputerCommand.SwapOs => HardwareAdapter.CommandComputer(EComputerCommand.SwapOs),
 			_ => "Command not found"
 		};
 		return result;
+	}
+
+	private static string GatherClientMessage(EComputerCommand command, string args)
+	{ 
+		string result = HardwareAdapter.CommandComputer(command, args);
+		return (ComputerService.GatherMessage(out string? message) ? message : result)!;
 	}
 	
 	public static string SwitchDevice(EDevice device, EPowerAction trigger)

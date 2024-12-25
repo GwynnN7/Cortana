@@ -95,6 +95,7 @@ public static class CortanaTelegramBot
 				case ETelegramChatArg.Notification:
 				case ETelegramChatArg.Ping:
 				case ETelegramChatArg.HardwareTimer:
+				case ETelegramChatArg.ComputerCommand:
 					HardwareModule.HandleTextMessage(cortana, messageStats);
 					break;
 				case ETelegramChatArg.Shopping:
@@ -132,7 +133,7 @@ public static class CortanaTelegramBot
 		}
 	}
 
-	private static void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
+	private static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
 	{
 		string command = callbackQuery.Data!;
 		Message message = callbackQuery.Message!;
@@ -143,13 +144,22 @@ public static class CortanaTelegramBot
 				CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
 				break;
 			case "automation":
-				HardwareModule.CreateAutomationMenu(cortana, callbackQuery);
+				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
+					HardwareModule.CreateAutomationMenu(cortana, message);
+				else 
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access automation controls");
 				break;
 			case "raspberry":
-				HardwareModule.CreateRaspberryMenu(cortana, callbackQuery);
+				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
+					HardwareModule.CreateRaspberryMenu(cortana, message);
+				else 
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
 				break;
 			case "hardware_utility":
-				HardwareModule.CreateHardwareUtilityMenu(cortana, message);
+				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
+					HardwareModule.CreateHardwareUtilityMenu(cortana, message);
+				else 
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access hardware controls");
 				break;
 			case "software_utility":
 				UtilityModule.CreateSoftwareUtilityMenu(cortana, message);

@@ -39,6 +39,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		{
 			EComputerCommand.Notify => ComputerService.Notify(args ?? string.Empty),
 			EComputerCommand.Reboot => ComputerService.Reboot(),
+			EComputerCommand.Command => ComputerService.Command(args ?? string.Empty),
+			EComputerCommand.SwapOs => ComputerService.SwapOs(),
 			_ => false
 		};
 		return result ? "Command executed" : "Command not found";

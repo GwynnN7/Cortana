@@ -29,25 +29,15 @@ internal static class HardwareModule
 		}
 	}
 
-	public static async void CreateAutomationMenu(ITelegramBotClient cortana, CallbackQuery callbackQuery)
+	public static async void CreateAutomationMenu(ITelegramBotClient cortana, Message message)
 	{
-		Message message = callbackQuery.Message!;
 		HardwareAction.Remove(message.Id);
-
-		if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-			await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
-		else
-			await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't use this command");
+		await cortana.EditMessageText(message.Chat.Id, message.Id, "Hardware Keyboard", replyMarkup: CreateAutomationButtons());
 	}
 
-	public static async void CreateRaspberryMenu(ITelegramBotClient cortana, CallbackQuery callbackQuery)
+	public static async void CreateRaspberryMenu(ITelegramBotClient cortana, Message message)
 	{
-		Message message = callbackQuery.Message!;
-
-		if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-			await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Handler", replyMarkup: CreateRaspberryButtons());
-		else
-			await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
+		await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Handler", replyMarkup: CreateRaspberryButtons());
 	}
 
 	public static async void CreateHardwareUtilityMenu(ITelegramBotClient cortana, Message message)
@@ -60,13 +50,13 @@ internal static class HardwareModule
 		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
 		switch (messageStats.FullMessage)
 		{
-			case HardwareEmoji.Bulb:
+			case HardwareEmoji.Lamp:
 				HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.Pc:
 				HardwareProxy.SwitchDevice(EDevice.Computer, EPowerAction.Toggle);
 				break;
-			case HardwareEmoji.Thunder:
+			case HardwareEmoji.Generic:
 				HardwareProxy.SwitchDevice(EDevice.Generic, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.On:
@@ -77,6 +67,9 @@ internal static class HardwareModule
 				break;
 			case HardwareEmoji.Reboot:
 				HardwareProxy.CommandComputer(EComputerCommand.Reboot);
+				break;
+			case HardwareEmoji.SwapOs:
+				HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
 				break;
 			default:
 				return false;
@@ -139,19 +132,19 @@ internal static class HardwareModule
 							await cortana.EditMessageText(chatId, messageId, "Set the timer for the action", replyMarkup: CreateCancelButton("automation"));
 						break;
 					case "cancel":
-						CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[chatId].CallbackQuery);
+						CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[chatId].InteractionMessage);
 						TelegramUtils.ChatArgs.Remove(chatId);
 						break;
 					default:
 						string result = HardwareProxy.SwitchDevice(HardwareAction[messageId], command);
 						await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
-						CreateAutomationMenu(cortana, callbackQuery);
+						CreateAutomationMenu(cortana, callbackQuery.Message);
 						break;
 				}
 				return;
 			}
-
-			await cortana.EditMessageReplyMarkup(callbackQuery.Message.Chat.Id, messageId, CreateOnOffToggleButtons());
+			string devicePower = HardwareProxy.GetDevicePower(command);
+			await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower, replyMarkup: CreateOnOffToggleButtons());
 		}
 		else if (command.StartsWith("utility-"))
 		{
@@ -165,6 +158,14 @@ internal static class HardwareModule
 					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Ping, callbackQuery, callbackQuery.Message), callbackQuery))
 						await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton("utility"));
 					break;
+				case "swap_os":
+					string result = HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
+					break;
+				case "command":
+					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.ComputerCommand, callbackQuery, callbackQuery.Message), callbackQuery))
+						await cortana.EditMessageText(chatId, messageId, "Write the command you want to execute", replyMarkup: CreateCancelButton("utility"));
+					break;
 				case "cancel":
 					CreateHardwareUtilityMenu(cortana, callbackQuery.Message);
 					TelegramUtils.ChatArgs.Remove(chatId);
@@ -175,23 +176,30 @@ internal static class HardwareModule
 
 	public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
+		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
+		
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.Notification:
-				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 				string result = HardwareProxy.CommandComputer(EComputerCommand.Notify, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+				
 				TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
-				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.Ping:
-				await cortana.SendChatAction(messageStats.ChatId, ChatAction.FindLocation);
-				string output = HardwareProxy.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
+				string pingResult = HardwareProxy.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-				TelegramUtils.AnswerOrMessage(cortana, output, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+				
+				TelegramUtils.AnswerOrMessage(cortana, pingResult, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
-				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				break;
+			case ETelegramChatArg.ComputerCommand:
+				string commandResult = HardwareProxy.CommandComputer(EComputerCommand.Command, messageStats.FullMessage);
+				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+				
+				TelegramUtils.AnswerOrMessage(cortana, commandResult, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.HardwareTimer:
 				(int s, int m, int h, int d) times;
@@ -212,10 +220,10 @@ internal static class HardwareModule
 					(times.s, times.m, times.h), HardwareTimerFinished, ETimerType.Telegram);
 				
 				TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
-				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+				CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 		}
+		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 	}
 	
 	private static void HardwareTimerFinished(object? sender, ElapsedEventArgs args)
@@ -272,6 +280,10 @@ internal static class HardwareModule
 			.AddNewRow()
 			.AddButton("Desktop Notification", "hardware-utility-notify")
 			.AddNewRow()
+			.AddButton("Swap OS", "hardware-utility-swap_os")
+			.AddNewRow()
+			.AddButton("Command PC", "hardware-utility-command")
+			.AddNewRow()
 			.AddButton("<<", "home");
 	}
 
@@ -306,12 +318,10 @@ internal static class HardwareModule
 	private static ReplyKeyboardMarkup CreateHardwareToggles()
 	{
 		return new ReplyKeyboardMarkup(true)
-			.AddButtons(HardwareEmoji.Bulb, HardwareEmoji.Thunder)
+			.AddButtons(HardwareEmoji.Lamp, HardwareEmoji.Generic)
 			.AddNewRow()
-			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot)
+			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot, HardwareEmoji.SwapOs)
 			.AddNewRow()
-			.AddButton(HardwareEmoji.On)
-			.AddNewRow()
-			.AddButton(HardwareEmoji.Off);
+			.AddButtons(HardwareEmoji.On, HardwareEmoji.Off);
 	}
 }
