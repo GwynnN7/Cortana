@@ -43,8 +43,8 @@ public abstract class HardwareProxy: IHardwareAdapter
 			EComputerCommand.Notify => HardwareAdapter.CommandComputer(EComputerCommand.Notify, args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
 			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On => HardwareAdapter.CommandComputer(EComputerCommand.Reboot),
 			EComputerCommand.Reboot when HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off => SwitchDevice(EDevice.Computer, EPowerAction.On),
-			EComputerCommand.Command => GatherClientMessage(EComputerCommand.Command, "dir"),
 			EComputerCommand.SwapOs => HardwareAdapter.CommandComputer(EComputerCommand.SwapOs),
+			EComputerCommand.Command => GatherClientMessage(EComputerCommand.Command, args ?? "dir"),
 			_ => "Command not found"
 		};
 		return result;

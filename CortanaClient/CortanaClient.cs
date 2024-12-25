@@ -84,7 +84,7 @@ public static class ComputerClient
 
                 switch (message)
                 {
-                    case "shutdown" or "reboot":
+                    case "shutdown" or "reboot" or "swap_os":
                         OsHandler.ExecuteCommand(message);
                         break;
                     case "notify" or "cmd":
