@@ -46,6 +46,7 @@ internal static class OsHandler
 			"shutdown" => onLinux ? "poweroff" : "shutdown /s",
 			"reboot" => onLinux ? "reboot" : "shutdown /r",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
+			"cmd" => arg,
 			_ => ""
 		};
 	}

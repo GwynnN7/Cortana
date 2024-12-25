@@ -6,6 +6,13 @@ using Timer = System.Timers.Timer;
 
 namespace CortanaClient;
 
+internal enum EClientTextCommands
+{
+    None,
+    Notify,
+    Cmd
+}
+
 public static class ComputerClient
 {
     private const string ClientInfoPath = "CortanaClient/Config/Client.json";
@@ -70,13 +77,13 @@ public static class ComputerClient
     {
         if(_computerSocket == null) return;
 
-        var bNotifyText = false;
+        var textCommand = EClientTextCommands.None;
         try
         {
             while (true)
             {
                 var buffer = new byte[1024];
-                int received = _computerSocket!.Receive(buffer);
+                int received = _computerSocket.Receive(buffer);
                 string message = Encoding.UTF8.GetString(buffer, 0, received);
                 if (received == 0) continue;
 
@@ -90,15 +97,24 @@ public static class ComputerClient
                         OsHandler.ExecuteCommand(powerCommand);
                         break;
                     case "notify":
-                        bNotifyText = true;
+                        textCommand = EClientTextCommands.Notify;
+                        break;
+                    case "cmd":
+                        textCommand = EClientTextCommands.Cmd;
                         break;
                     default:
-                        if(bNotifyText)
+                        switch (textCommand)
                         {
-                            string notifyCommand = OsHandler.DecodeCommand("notify", message);
-                            OsHandler.ExecuteCommand(notifyCommand);
-                            bNotifyText = false;
+                            case EClientTextCommands.Notify:
+                                string notifyCommand = OsHandler.DecodeCommand("notify", message);
+                                OsHandler.ExecuteCommand(notifyCommand);
+                                break;
+                            case EClientTextCommands.Cmd:
+                                string cmdCommand = OsHandler.DecodeCommand("cmd", message);
+                                OsHandler.ExecuteCommand(cmdCommand);
+                                break;
                         }
+                        textCommand = EClientTextCommands.None;
                         break;
                 }
             }
@@ -132,7 +148,7 @@ public static class ComputerClient
 
 		try
 		{
-			string file = File.ReadAllText(Path.Combine(confPath, ClientInfoPath));
+			string file = File.ReadAllText(confPath);
 			return JsonConvert.DeserializeObject<ClientInfo>(file);
 		}
 		catch (Exception ex)
