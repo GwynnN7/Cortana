@@ -198,7 +198,15 @@ internal static class ShoppingModule
 			{
 				if (!command.StartsWith("user:")) return;
 				string user = command["user:".Length..];
-				long userId = TelegramUtils.NameToId(user);
+				long userId;
+				try
+				{
+					userId = TelegramUtils.NameToId(user);
+				}
+				catch(CortanaException)
+				{
+					return;
+				}
 				SubPurchase lastSubPurchase = _currentPurchase.History.Peek();
 				if (!lastSubPurchase.Customers.Remove(userId)) lastSubPurchase.Customers.Add(userId);
 				if (lastSubPurchase.Customers.Count == 0) lastSubPurchase.Customers = DebtUsers.ToList();

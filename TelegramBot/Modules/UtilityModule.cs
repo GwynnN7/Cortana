@@ -134,7 +134,7 @@ internal static class UtilityModule
 					await cortana.EditMessageText(messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId, $"Currently chatting with {user}",
 						replyMarkup: CreateLeaveButton());
 				}
-				catch
+				catch(CortanaException)
 				{
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
@@ -195,7 +195,7 @@ internal static class UtilityModule
 		}
 		catch(Exception e)
 		{
-			TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), $"There was an error with a timer:\n```{e.Message}```");
+			TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"There was an error with a timer:\n```{e.Message}```");
 		}
 	}
 

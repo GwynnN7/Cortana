@@ -19,7 +19,7 @@ public static class CortanaTelegramBot
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		TelegramUtils.Init(cortana);
-		TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), "I'm Online", false);
+		TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
 		
 		_token = new CancellationTokenSource();
 		try
@@ -126,10 +126,9 @@ public static class CortanaTelegramBot
 		else
 		{
 			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
-			long creatorId = TelegramUtils.NameToId("@gwynn7");
-			if (messageStats.UserId == creatorId || messageStats.ChatType != ChatType.Private) return;
-			if(isCallback) TelegramUtils.SendToUser(creatorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
-			else await cortana.ForwardMessage(creatorId, messageStats.ChatId, messageStats.MessageId);
+			if (messageStats.UserId == TelegramUtils.AuthorId || messageStats.ChatType != ChatType.Private) return;
+			if(isCallback) TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
+			else await cortana.ForwardMessage(TelegramUtils.AuthorId, messageStats.ChatId, messageStats.MessageId);
 		}
 	}
 

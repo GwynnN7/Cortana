@@ -47,7 +47,7 @@ internal static class OsHandler
 			"reboot" => onLinux ? "reboot" : "shutdown /r",
 			"swap_os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
-			"cmd" => arg,
+			"cmd" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S {arg}" : arg,
 			_ => ""
 		};
 	}
@@ -58,21 +58,21 @@ internal static class OsHandler
 		string param = OsMacro.GetArg(OperatingSystem);
 		string commandArg = DecodeCommand(command, arg);
 		
-		var process = new Process()
+		var process = new Process
 		{
 			StartInfo = new ProcessStartInfo
 			{
 				FileName = path,
 				Arguments = $"{param} \"{commandArg}\"",
 				RedirectStandardOutput = true,
+				RedirectStandardError = true,
 				UseShellExecute = false,
 				CreateNoWindow = true,
 			}
 		};
-		process.OutputDataReceived += OutputFunction;
-		process.ErrorDataReceived += OutputFunction;
 		process.Start();
+		if(process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) ComputerClient.Write("Command executed");
+		if(!process.StandardOutput.EndOfStream) ComputerClient.Write(process.StandardOutput.ReadToEnd());
+		if(!process.StandardError.EndOfStream) ComputerClient.Write(process.StandardError.ReadToEnd());
 	}
-	
-	private static void OutputFunction(object sender, DataReceivedEventArgs args) => ComputerClient.Write(args.Data ?? "Command executed without response");
 }

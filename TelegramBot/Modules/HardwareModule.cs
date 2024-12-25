@@ -163,10 +163,12 @@ internal static class HardwareModule
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
 					break;
 				case "command":
-					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.ComputerCommand, callbackQuery, callbackQuery.Message), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Write the command you want to execute", replyMarkup: CreateCancelButton("utility"));
+					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<List<int>>(ETelegramChatArg.ComputerCommand, callbackQuery, callbackQuery.Message, []), callbackQuery))
+						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton("utility"));
 					break;
 				case "cancel":
+					if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
+						await cortana.DeleteMessages(chatId, chatArg.Arg);
 					CreateHardwareUtilityMenu(cortana, callbackQuery.Message);
 					TelegramUtils.ChatArgs.Remove(chatId);
 					break;
@@ -195,9 +197,14 @@ internal static class HardwareModule
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.ComputerCommand:
-				string commandResult = HardwareProxy.CommandComputer(EComputerCommand.Command, messageStats.FullMessage);
-				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-				await cortana.SendMessage(messageStats.ChatId, commandResult);
+				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
+				{
+					string commandResult = HardwareProxy.CommandComputer(EComputerCommand.Command, string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1)));
+					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
+					chatArg.Arg.Add(messageStats.MessageId);
+					chatArg.Arg.Add(msg.MessageId);
+					return;
+				}
 				CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.HardwareTimer:
@@ -235,9 +242,9 @@ internal static class HardwareModule
 			string result = HardwareProxy.SwitchDevice(payload.Arg.device, payload.Arg.action);
 			TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
-			TelegramUtils.SendToUser(TelegramUtils.NameToId("@gwynn7"), $"There was an error with a timer:\n```{e.Message}```");
+			TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"There was an error with a timer:\n```{e.Message}```");
 		}
 	}
 

@@ -13,12 +13,14 @@ internal static class TelegramUtils
 	private static TelegramBotClient _cortana = null!;
 	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
 	public static readonly DataStruct Data;
+	public static readonly long AuthorId;
 
 	static TelegramUtils()
 	{
 		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Telegram/");
 		Data = FileHandler.LoadFile<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
+		AuthorId = NameToId("@gwynn7");
 	}
 
 	public static void Init(TelegramBotClient newClient)
@@ -34,16 +36,12 @@ internal static class TelegramUtils
 
 	public static string IdToName(long id)
 	{
-		if (Data.Usernames.TryGetValue(id, out string? name))
-			return name;
-		throw new CortanaException("User not found");
+		return Data.Usernames.GetValueOrDefault(id, "Unknown user");
 	}
 
 	public static string IdToGroupName(long id)
 	{
-		if (Data.Groups.TryGetValue(id, out string? name))
-			return name;
-		throw new CortanaException("Group not found");
+		return Data.Groups.GetValueOrDefault(id, "Unknown group");
 	}
 
 	public static long NameToId(string name)
