@@ -15,6 +15,7 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 
 - **Bootloader**
 - **Kernel**
+- **CortanaClient**
 
 ### Modules
 
@@ -23,6 +24,8 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 - **Telegram Bot**
 
 Each module is booted by the **Bootloader** and runs in a thread. Then the **Kernel** waits for any call from the modules.
+
+**CortanaClient** is a standalone program that handles the communication with a Desktop Computer.
 
 
 The *user* will start an interaction with the **Kernel** through the **Input Interfaces**
@@ -75,8 +78,16 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `device`      | `string` | **Device** to interact with | **computer**, **lamp**, **outlets**, **general**, **room** |
+| `device`      | `string` | **Device** to interact with | **computer**, **lamp**, **power**, **generic**, **room** |
 | `trigger`      | `string` | **Action** for the device | **on**, **off**, **toggle** <=> ***empty***  |
+
+```http
+  GET http://cortana-home.net/api/automation/status/{device}
+```
+
+| Parameter | Type     | Description                       |  Values                       |
+| :-------- | :------- | :-------------------------------- | :-------------------------------- |
+| `device`      | `string` | **Device** to interact with | **computer**, **lamp**, **power**, **generic**, **room** |
 
 #### Raspberry
 
@@ -96,7 +107,7 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** to execute | **notify** (?text=message) |
+| `action`      | `string` | **Function** to execute | **notify** (?text=message), **command-pc** (?text=cmd), **swap-os** |
 
 ---
 
@@ -118,6 +129,10 @@ dotnet --version
 echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.bashrc
 
 sudo apt-get install zsh ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
+
+# For CortanaClient (on Windows, add the environment variable through GUI)
+echo 'export CORTANA_PATH=path_to_cortana >> ~/.zshrc 
+# Move scripts in CortanaClient/Scripts to autostart folder
 ```
 ---
 
