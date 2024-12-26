@@ -19,4 +19,16 @@ public class UtilityController : ControllerBase
 	{
 		return HardwareProxy.CommandComputer(EComputerCommand.Notify, text);
 	}
+	
+	[HttpGet("swap-os")]
+	public string SwapOs()
+	{
+		return HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
+	}
+	
+	[HttpGet("command-pc")]
+	public string CommandPc([FromQuery] string? cmd)
+	{
+		return HardwareProxy.CommandComputer(EComputerCommand.Command, cmd);
+	}
 }
