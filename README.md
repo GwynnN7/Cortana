@@ -126,13 +126,22 @@ dotnet --version
 
 ### Dependencies
 ```bash
-echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.bashrc
+echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.zshrc
 
 sudo apt-get install zsh ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
+```
 
-# For CortanaClient (on Windows, add the environment variable through GUI)
-echo 'export CORTANA_PATH=path_to_cortana >> ~/.zshrc 
-# Move scripts in CortanaClient/Scripts to autostart folder
+### Cortana Client Configuration
+```bash
+# Linux
+echo 'CORTANA_PATH=path_to_cortana' >> /etc/environment
+cp cortana /usr/local/bin 
+cp cortana-client ~/.config/autostart
+
+# Windows
+# Add CORTANA_PATH environment variable through GUI
+# Create a shortcut of cortana-client.vbs in autostart folder
+# Download notify-send (https://vaskovsky.net/notify-send/) and add it to PATH
 ```
 ---
 
