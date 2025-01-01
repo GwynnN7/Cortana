@@ -42,12 +42,25 @@ internal static class RaspberryHandler
 			switch (option)
 			{
 				case EPowerOption.Shutdown:
-					Helper.RunScript("power", "shutdown");
+					Helper.RunCommand(DecodeCommand("shutdown"));
 					break;
 				case EPowerOption.Reboot:
-					Helper.RunScript("power", "reboot");
+					Helper.RunCommand(DecodeCommand("reboot"));
 					break;
 			}
 		});
+	}
+	
+	internal static string DecodeCommand(string command, string arg = "")
+	{
+		var sudo = $"echo {NetworkAdapter.CortanaPassword} | sudo -S";
+		return command switch
+		{
+			"shutdown" => $"{sudo} shutdown now",
+			"reboot" => $"{sudo} reboot",
+			"wakeonlan" => $"{sudo} wakeonlan {arg}",
+			"etherwake" => $"{sudo} etherwake {arg}",
+			_ => ""
+		};
 	}
 }

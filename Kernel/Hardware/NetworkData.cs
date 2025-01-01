@@ -18,6 +18,7 @@ public static class NetworkAdapter
 	}
 
 	public static ELocation Location => NetworkData.Location;
+	public static string CortanaPassword => NetworkData.CortanaPassword;
 	public static string ComputerMac => NetworkData.DesktopMac;
 	public static string ComputerIp => NetworkData.DesktopIp;
 	public static int ApiPort => NetworkData.ApiPort;
@@ -28,6 +29,7 @@ public static class NetworkAdapter
 [method: JsonConstructor]
 internal readonly struct NetworkData(
 	ELocation location,
+	string cortanaPassword,
 	string desktopIp,
 	string desktopMac,
 	string gateway,
@@ -36,6 +38,7 @@ internal readonly struct NetworkData(
 {
 	[JsonConverter(typeof(JsonStringEnumConverter))]
 	public ELocation Location { get; } = location;
+	public string  CortanaPassword { get; } = cortanaPassword;
 	public string DesktopIp { get; } = desktopIp;
 	public string DesktopMac { get; } = desktopMac;
 	public string Gateway { get; } = gateway;

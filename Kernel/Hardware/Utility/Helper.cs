@@ -8,14 +8,12 @@ namespace Kernel.Hardware.Utility;
 
 internal static class Helper
 {
-	public static void RunScript(string fileName, string args = "", bool stdRedirect = false)
+	public static void RunCommand(string command, bool stdRedirect = false)
 	{
-		string filePath = Path.Combine(FileHandler.ProjectStoragePath, $"Scripts/{fileName}.sh");
-		
 		Process.Start(new ProcessStartInfo
 		{
 			FileName = "zsh",
-			Arguments = $"-c \"{filePath} {args}\"",
+			Arguments = $"-c \"{command}\"",
 			RedirectStandardOutput = stdRedirect,
 			UseShellExecute = false,
 			CreateNoWindow = true

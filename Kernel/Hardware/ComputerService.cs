@@ -80,7 +80,8 @@ internal static class ComputerService
 	
 	internal static void Boot()
 	{
-		Helper.RunScript("wake-on-lan", NetworkAdapter.ComputerMac);
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", NetworkAdapter.ComputerMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", NetworkAdapter.ComputerMac));
 	}
 
 	internal static void Shutdown()

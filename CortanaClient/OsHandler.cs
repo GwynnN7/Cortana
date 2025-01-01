@@ -43,8 +43,8 @@ internal static class OsHandler
 		bool onLinux = OperatingSystem == Os.Linux;
 		return command switch
 		{
-			"shutdown" => onLinux ? "poweroff" : "shutdown /s",
-			"reboot" => onLinux ? "reboot" : "shutdown /r",
+			"shutdown" => onLinux ? "poweroff" : "shutdown /s /hybrid /f",
+			"reboot" => onLinux ? "reboot" : "shutdown /r /f",
 			"swap_os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
 			"cmd" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S {arg}" : arg,

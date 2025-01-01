@@ -54,6 +54,8 @@ public static class ComputerClient
             _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _computerSocket.SendTimeout = 2000;
             _computerSocket.Connect(ipEndPoint);
+            
+            OsHandler.ExecuteCommand("notify", "Cortana connected");
         }
         catch
         {
