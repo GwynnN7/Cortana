@@ -8,11 +8,13 @@ public readonly struct Secrets(
 	string telegramToken,
 	string desktopPassword,
 	string igdbClient,
-	string igdbSecret)
+	string igdbSecret,
+	string cortanaPassword)
 {
 	public string DiscordToken { get; } = discordToken;
 	public string TelegramToken { get; } = telegramToken;
 	public string DesktopPassword { get; } = desktopPassword;
 	public string IgdbClient { get; } = igdbClient;
 	public string IgdbSecret { get; } = igdbSecret;
+	public string CortanaPassword { get; } = cortanaPassword;
 }

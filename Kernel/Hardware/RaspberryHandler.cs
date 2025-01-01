@@ -53,7 +53,7 @@ internal static class RaspberryHandler
 	
 	internal static string DecodeCommand(string command, string arg = "")
 	{
-		var sudo = $"echo {NetworkAdapter.CortanaPassword} | sudo -S";
+		var sudo = $"echo {Software.FileHandler.Secrets.CortanaPassword} | sudo -S";
 		return command switch
 		{
 			"shutdown" => $"{sudo} shutdown now",
