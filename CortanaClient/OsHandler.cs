@@ -52,7 +52,7 @@ internal static class OsHandler
 		};
 	}
 
-	internal static void ExecuteCommand(string command, string arg = "")
+	internal static void ExecuteCommand(string command, string arg = "", bool sendResult = true)
 	{
 		string path = OsMacro.GetPath(OperatingSystem);
 		string param = OsMacro.GetArg(OperatingSystem);
@@ -71,6 +71,8 @@ internal static class OsHandler
 			}
 		};
 		process.Start();
+		if(!sendResult) return;
+		
 		if(process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) ComputerClient.Write("Command executed");
 		if(!process.StandardOutput.EndOfStream) ComputerClient.Write(process.StandardOutput.ReadToEnd());
 		if(!process.StandardError.EndOfStream) ComputerClient.Write(process.StandardError.ReadToEnd());
