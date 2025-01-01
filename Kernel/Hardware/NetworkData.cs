@@ -28,7 +28,6 @@ public static class NetworkAdapter
 [method: JsonConstructor]
 internal readonly struct NetworkData(
 	ELocation location,
-	string cortanaPassword,
 	string desktopIp,
 	string desktopMac,
 	string gateway,
