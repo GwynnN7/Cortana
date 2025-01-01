@@ -4,7 +4,9 @@ if [ "$1" = "log" ]; then
     blue='\033[0;34m';
     echo -e "${blue}$(cortana) ➤ $(cortana raspberry temperature)";
 elif [ "$1" = "copy" ]; then
-    rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=':- ~/Programming/Cortana/.gitignore' ~/Programming/Cortana cortana@192.168.178.117:~/
+    rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=":- ""$CORTANA_PATH""/.gitignore" "$CORTANA_PATH" cortana@192.168.1.117:~/
+elif [ "$1" = "run" ]; then
+    nohup dotnet run --project "$CORTANA_PATH"/CortanaClient/CortanaClient.csproj > /dev/null 2> /dev/null & disown;
 else
     api="http://cortana-home.ddns.net:8080/api";
     url=$(echo "$@" | sed 's! !\/!g')

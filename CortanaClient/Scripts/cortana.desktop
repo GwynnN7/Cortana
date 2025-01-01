@@ -1,9 +1,0 @@
-[Desktop Entry]
-Icon=/home/gwynn7/Programming/Cortana/Storage/Assets/cortana.jpg
-Exec=/home/gwynn7/Programming/Cortana/CortanaClient/Scripts/cortana-linux.sh
-Type=Application
-Name=Cortana
-Terminal=false
-NoDisplay=true
-StartupNotify=false
-
