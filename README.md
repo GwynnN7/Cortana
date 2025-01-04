@@ -99,15 +99,15 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
 | `action`      | `string` | **Function** to execute | **temperature**, **location**, **ip**, **gateway**, **shutdown**, **reboot**  |
 
-#### Utility
+#### Computer
 
 ```http
-  GET http://cortana-home.net/api/utility/{action}
+  GET http://cortana-home.net/api/computer/{action}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** to execute | **notify** (?text=message), **command-pc** (?text=cmd), **swap-os** |
+| `action`      | `string` | **Function** | **notify** (?text=msg), **command** (?text=cmd), **shutdown**, **suspend**, **reboot**, **swap-os** |
 
 ---
 
