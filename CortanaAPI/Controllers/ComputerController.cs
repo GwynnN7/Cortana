@@ -6,7 +6,7 @@ namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class UtilityController : ControllerBase
+public class ComputerController : ControllerBase
 {
 	[HttpGet]
 	public string Get()
@@ -20,13 +20,31 @@ public class UtilityController : ControllerBase
 		return HardwareProxy.CommandComputer(EComputerCommand.Notify, text);
 	}
 	
+	[HttpGet("shutdown")]
+	public string Shutdown()
+	{
+		return HardwareProxy.CommandComputer(EComputerCommand.Shutdown);
+	}
+	
+	[HttpGet("suspend")]
+	public string Suspend()
+	{
+		return HardwareProxy.CommandComputer(EComputerCommand.Suspend);
+	}
+	
+	[HttpGet("reboot")]
+	public string Reboot()
+	{
+		return HardwareProxy.CommandComputer(EComputerCommand.Reboot);
+	}
+	
 	[HttpGet("swap-os")]
 	public string SwapOs()
 	{
 		return HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
 	}
 	
-	[HttpGet("command-pc")]
+	[HttpGet("command")]
 	public string CommandPc([FromQuery] string? cmd)
 	{
 		return HardwareProxy.CommandComputer(EComputerCommand.Command, cmd);

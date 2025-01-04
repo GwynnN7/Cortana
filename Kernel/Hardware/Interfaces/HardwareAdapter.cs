@@ -37,6 +37,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 	{
 		bool result = command switch
 		{
+			EComputerCommand.Shutdown => ComputerService.Shutdown(),
+			EComputerCommand.Suspend => ComputerService.Suspend(),
 			EComputerCommand.Notify => ComputerService.Notify(args ?? string.Empty),
 			EComputerCommand.Reboot => ComputerService.Reboot(),
 			EComputerCommand.Command => ComputerService.Command(args ?? string.Empty),

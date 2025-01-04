@@ -84,9 +84,14 @@ internal static class ComputerService
 		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", NetworkAdapter.ComputerMac));
 	}
 
-	internal static void Shutdown()
+	internal static bool Shutdown()
 	{
-		Write("shutdown");
+		return Write("shutdown");
+	}
+	
+	internal static bool Suspend()
+	{
+		return Write("suspend");
 	}
 	
 	internal static bool Reboot()
@@ -96,7 +101,7 @@ internal static class ComputerService
 
 	internal static bool SwapOs()
 	{
-		return Write("swap_os");
+		return Write("swap-os");
 	}
 	
 	internal static bool Notify(string text)

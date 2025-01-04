@@ -44,8 +44,9 @@ internal static class OsHandler
 		return command switch
 		{
 			"shutdown" => onLinux ? "poweroff" : "shutdown /s /f /t 0",
+			"suspend" => onLinux ? "suspend" : "shutdown /s /f /t 0",
 			"reboot" => onLinux ? "reboot" : "shutdown /r /f /t 0",
-			"swap_os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
+			"swap-os" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
 			"cmd" => onLinux ? $"echo {ComputerClient.ClientInfo.ClientPassword} | sudo -S {arg}" : arg,
 			_ => ""

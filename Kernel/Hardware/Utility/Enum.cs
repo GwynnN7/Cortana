@@ -29,6 +29,8 @@ public enum EPowerOption
 
 public enum EComputerCommand
 {
+	Shutdown,
+	Suspend,
 	Reboot,
 	Notify,
 	SwapOs,
