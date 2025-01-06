@@ -27,10 +27,21 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		};
 	}
 
-	public static string SwitchRaspberry(EPowerOption option)
+	public static string CommandRaspberry(ERaspberryOption option)
 	{
-		RaspberryHandler.PowerRaspberry(option);
-		return "Raspberry shutting down";
+		switch(option)
+		{
+			case ERaspberryOption.Shutdown:
+				RaspberryHandler.Shutdown();
+				break;
+			case ERaspberryOption.Reboot:
+				RaspberryHandler.Reboot();
+				break;
+			case ERaspberryOption.Update:
+				RaspberryHandler.Update();
+				break;
+		}
+		return "Command executed";
 	}
 	
 	public static string CommandComputer(EComputerCommand command, string? args = null)

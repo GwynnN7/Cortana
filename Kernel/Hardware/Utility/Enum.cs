@@ -21,10 +21,11 @@ public enum EPowerAction
 	Toggle
 }
 
-public enum EPowerOption
+public enum ERaspberryOption
 {
 	Shutdown,
-	Reboot
+	Reboot,
+	Update
 }
 
 public enum EComputerCommand

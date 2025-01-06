@@ -41,12 +41,18 @@ public class RaspberryController : ControllerBase
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return HardwareProxy.SwitchRaspberry(EPowerOption.Shutdown);
+		return HardwareProxy.CommandRaspberry(ERaspberryOption.Shutdown);
 	}
 
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return HardwareProxy.SwitchRaspberry(EPowerOption.Reboot);
+		return HardwareProxy.CommandRaspberry(ERaspberryOption.Reboot);
+	}
+
+	[HttpGet("update")]
+	public string Update()
+	{
+		return HardwareProxy.CommandRaspberry(ERaspberryOption.Update);
 	}
 }

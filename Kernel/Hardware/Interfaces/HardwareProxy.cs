@@ -28,7 +28,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 	public static bool Ping(string address) => HardwareAdapter.Ping(address);
 
 	public static string GetHardwareInfo(EHardwareInfo hardwareInfo) => HardwareAdapter.GetHardwareInfo(hardwareInfo);
-	public static string SwitchRaspberry(EPowerOption option) => HardwareAdapter.SwitchRaspberry(option);
+	public static string CommandRaspberry(ERaspberryOption option) => HardwareAdapter.CommandRaspberry(option);
 	public static EPower GetDevicePower(EDevice device) => HardwareAdapter.GetDevicePower(device);
 	public static string GetDevicePower(string device)
 	{

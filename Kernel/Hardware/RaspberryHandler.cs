@@ -33,21 +33,17 @@ internal static class RaspberryHandler
 	}
 
 	internal static ELocation GetNetworkLocation() => NetworkAdapter.Location;
-		
-	internal static void PowerRaspberry(EPowerOption option)
+
+	internal static void Shutdown() => RunCommandWithDelay("shutdown");
+	internal static void Reboot() => RunCommandWithDelay("reboot");
+	internal static void Update() => RunCommandWithDelay("update");
+	
+	private static void RunCommandWithDelay(string command)
 	{
 		Task.Run(async () =>
 		{
 			await Task.Delay(1000);
-			switch (option)
-			{
-				case EPowerOption.Shutdown:
-					Helper.RunCommand(DecodeCommand("shutdown"));
-					break;
-				case EPowerOption.Reboot:
-					Helper.RunCommand(DecodeCommand("reboot"));
-					break;
-			}
+			Helper.RunCommand(DecodeCommand(command));
 		});
 	}
 	
@@ -58,6 +54,7 @@ internal static class RaspberryHandler
 		{
 			"shutdown" => $"{sudo} shutdown now",
 			"reboot" => $"{sudo} reboot",
+			"update" => "cortana --restart",
 			"wakeonlan" => $"{sudo} wakeonlan {arg}",
 			"etherwake" => $"{sudo} etherwake {arg}",
 			_ => ""

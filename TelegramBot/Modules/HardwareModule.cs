@@ -105,11 +105,11 @@ internal static class HardwareModule
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Temperature: {temp}");
 					break;
 				case "reboot":
-					string rebootResult = HardwareProxy.SwitchRaspberry(EPowerOption.Reboot);
+					string rebootResult = HardwareProxy.CommandRaspberry(ERaspberryOption.Reboot);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, rebootResult, true);
 					break;
 				case "shutdown":
-					string shutdownResult = HardwareProxy.SwitchRaspberry(EPowerOption.Shutdown);
+					string shutdownResult = HardwareProxy.CommandRaspberry(ERaspberryOption.Shutdown);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, shutdownResult, true);
 					break;
 			}

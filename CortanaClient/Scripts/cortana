@@ -1,14 +1,35 @@
-#!/usr/bin/zsh
+#!/usr/bin/python
+import os, sys
 
-if [ "$1" = "log" ]; then
-    blue='\033[0;34m';
-    echo -e "${blue}$(cortana) ➤ $(cortana raspberry temperature)";
-elif [ "$1" = "copy" ]; then
-    rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=":- ""$CORTANA_PATH""/.gitignore" "$CORTANA_PATH" cortana@192.168.1.117:~/
-elif [ "$1" = "run" ]; then
-    nohup dotnet run --project "$CORTANA_PATH"/CortanaClient/CortanaClient.csproj > /dev/null 2> /dev/null & disown;
-else
-    api="http://cortana-home.ddns.net:8080/api";
-    url=$(echo "$@" | sed 's! !\/!g')
-    curl --silent -w '\n' "$api/${url}";
-fi
+api="http://cortana-home.ddns.net:8080/api/"
+def printInBlue(sh):
+    os.system(f"echo -e \"\\e[1;34m$({sh})\\e[0m\"")
+
+command = " ".join(sys.argv[1:])
+if len(sys.argv) > 1:
+    if sys.argv[1] == "log":
+        printInBlue("echo $(cortana) \"~\" $(cortana raspberry temperature)")
+    elif sys.argv[1] == "copy":
+        os.system("rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=\":- \"\"$CORTANA_PATH\"\"/.gitignore\" \"$CORTANA_PATH\" cortana@192.168.1.117:~/")
+    elif sys.argv[1] == "run":
+        os.system("nohup dotnet run --project \"$CORTANA_PATH\"/CortanaClient/CortanaClient.csproj > /dev/null 2> /dev/null & disown;")
+        printInBlue("echo Cortana Client started")
+    elif sys.argv[1] == "kill":
+        os.system("killall CortanaClient")
+        printInBlue("echo Cortana Client killed")
+    else:
+        if "=" in command:
+            data = command.split("=")
+            path = data[0].split(" ")
+            api += "/".join(path[:-1]) + "?" + path[-1] + "=" + "+".join(data[1].split(" "))
+        else:
+            api += "/".join(command.split(" "))
+        cmd=f"curl --silent -w '\n' \"{api}\""
+        printInBlue(cmd)
+else:
+    cmd=f"curl --silent -w '\n' \"{api}\""
+    printInBlue(cmd)
+    
+    
+
+    
