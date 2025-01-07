@@ -162,7 +162,7 @@ dotnet run --project Bootloader/Bootloader.csproj
 ```bash
 git clone https://github.com/GwynbleiddN7/Cortana.git
 cd Cortana
-chmod +x cortana-run && ./cortana-run 
+chmod +x cortana && ./cortana --start
 
 (run 'cortana-run --help' for more commands)
 ```
