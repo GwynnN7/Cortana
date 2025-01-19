@@ -1,4 +1,4 @@
-![Logo](https://github.com/zGwynn7/Cortana/blob/main/Storage/Assets/cortana.jpg)
+![Logo](Storage/Assets/cortana.jpg)
 
 # Cortana
 
@@ -150,7 +150,7 @@ cp cortana-client ~/.config/autostart
 ### Manually Run
 
 ```bash
-git clone https://github.com/zGwynn7/Cortana.git
+git clone https://github.com/Gwynn7z/Cortana.git
 
 cd Cortana
 dotnet build
@@ -160,7 +160,7 @@ dotnet run --project Bootloader/Bootloader.csproj
 ### Use Script [runs in background]
 
 ```bash
-git clone https://github.com/zGwynn7/Cortana.git
+git clone https://github.com/Gwynn7z/Cortana.git
 cd Cortana
 chmod +x cortana && ./cortana --start
 
