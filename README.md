@@ -164,10 +164,10 @@ git clone https://github.com/Gwynn7z/Cortana.git
 cd Cortana
 chmod +x cortana && ./cortana --start
 
-(run 'cortana-run --help' for more commands)
+(run 'cortana --help' for more commands)
 ```
 ---
 <b>Note</b>: this repo contains the source code of the project, and it's missing every <b>configuration file</b>, <b>api key</b> and <b>token</b> needed for the execution of <b>Cortana</b>.
 ## License
 
-[GNU GPLv3 ](https://choosealicense.com/licenses/gpl-3.0/)
+[GNU GPLv3](https://choosealicense.com/licenses/gpl-3.0/)
