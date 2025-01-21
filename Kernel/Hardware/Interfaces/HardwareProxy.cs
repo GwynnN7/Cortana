@@ -6,16 +6,17 @@ namespace Kernel.Hardware.Interfaces;
 
 public abstract class HardwareProxy: IHardwareAdapter
 {
+	private static readonly Lock RaspberryLock = new();
+	private static readonly Lock ComputerLock = new();
+	private static readonly Lock DeviceLock = new();
 	static HardwareProxy()
 	{
-		ServerHandler.StartListening();
-		
 		_ = new Timer("night-handler", null, new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
 			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
 	}
 	private static void HandleNightCallback(object? sender, EventArgs e)
 	{
-		if (HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off) 
+		if (GetDevicePower(EDevice.Computer) == EPower.Off) 
 			SwitchDevice(EDevice.Lamp, EPowerAction.Off);
 		else 
 			CommandComputer(EComputerCommand.Notify, "You should go to sleep");
@@ -24,51 +25,78 @@ public abstract class HardwareProxy: IHardwareAdapter
 	}
 	
 	public static void ShutdownServices() => HardwareAdapter.ShutdownServices();
-	public static double ReadCpuTemperature() => HardwareAdapter.ReadCpuTemperature();
 	public static bool Ping(string address) => HardwareAdapter.Ping(address);
 
-	public static string GetHardwareInfo(EHardwareInfo hardwareInfo) => HardwareAdapter.GetHardwareInfo(hardwareInfo);
-	public static string CommandRaspberry(ERaspberryOption option) => HardwareAdapter.CommandRaspberry(option);
-	public static EPower GetDevicePower(EDevice device) => HardwareAdapter.GetDevicePower(device);
+	public static double ReadCpuTemperature()
+	{
+		lock (RaspberryLock)
+		{
+			return HardwareAdapter.ReadCpuTemperature();
+		}
+	}
+
+	public static string GetHardwareInfo(EHardwareInfo hardwareInfo)
+	{
+		lock (RaspberryLock)
+		{
+			return HardwareAdapter.GetHardwareInfo(hardwareInfo);
+		}
+	}
+	
+	public static string CommandRaspberry(ERaspberryOption option)
+	{
+		lock (RaspberryLock)
+		{
+			return HardwareAdapter.CommandRaspberry(option);
+		}
+	} 
+
+	public static EPower GetDevicePower(EDevice device)
+	{
+		lock (DeviceLock)
+		{
+			return HardwareAdapter.GetDevicePower(device);
+		}
+	}
+	
 	public static string GetDevicePower(string device)
 	{
 		EDevice? dev = Helper.HardwareDeviceFromString(device);
-		return dev == null ? "Status not detectable" : $"{Helper.CapitalizeLetter(device)} is {HardwareAdapter.GetDevicePower(dev.Value)}";
+		return dev == null ? "Status not detectable" : $"{Helper.CapitalizeLetter(device)} is {GetDevicePower(dev.Value)}";
 	}
 
 	public static string CommandComputer(EComputerCommand command, string? args = null)
 	{
-		if (HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off) return "Computer is off";
-		string result = command switch
+		lock (ComputerLock)
 		{
-			EComputerCommand.Shutdown => HardwareAdapter.CommandComputer(EComputerCommand.Shutdown),
-			EComputerCommand.Suspend => HardwareAdapter.CommandComputer(EComputerCommand.Suspend),
-			EComputerCommand.Notify => HardwareAdapter.CommandComputer(EComputerCommand.Notify, args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
-			EComputerCommand.Reboot => HardwareAdapter.CommandComputer(EComputerCommand.Reboot),
-			EComputerCommand.SwapOs => HardwareAdapter.CommandComputer(EComputerCommand.SwapOs),
-			EComputerCommand.Command => GatherClientMessage(EComputerCommand.Command, args ?? "dir"),
-			_ => "Command not found"
-		};
-		return result;
+			if (HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off) return "Computer is off";
+			string result = command switch
+			{
+				EComputerCommand.Notify => HardwareAdapter.CommandComputer(EComputerCommand.Notify, args ?? $"Still alive at {GetHardwareInfo(EHardwareInfo.Temperature)}"),
+				EComputerCommand.Command => GatherClientMessage(EComputerCommand.Command, args ?? "dir"),
+				_ => HardwareAdapter.CommandComputer(command),
+			};
+			return result;
+		}
 	}
 
 	private static string GatherClientMessage(EComputerCommand command, string args)
 	{ 
 		string result = HardwareAdapter.CommandComputer(command, args);
-		return (ComputerService.GatherMessage(out string? message) ? message : result)!;
+		return (ComputerHandler.GatherMessage(out string? message) ? message : result)!;
 	}
 	
 	public static string SwitchDevice(EDevice device, EPowerAction trigger)
 	{
-		return device switch
+		lock (DeviceLock)
 		{
-			//Check if power supply is off before turning on
-			EDevice.Computer => HandleComputer(trigger),
-			//Check if computer is off before removing power
-			EDevice.Power => HandleComputerSupply(trigger),
-			//Nothing to check for the other devices
-			_ => HardwareAdapter.SwitchDevice(device, trigger)
-		};
+			return device switch
+			{
+				EDevice.Computer => HandleComputer(trigger), //Check if power supply is off before turning on
+				EDevice.Power => HandleComputerSupply(trigger), //Check if computer is off before removing power
+				_ => HardwareAdapter.SwitchDevice(device, trigger)
+			};
+		}
 	}
 
 	public static string SwitchDevice(string device, string trigger)
@@ -82,10 +110,13 @@ public abstract class HardwareProxy: IHardwareAdapter
 	
 	public static string SwitchRoom(EPowerAction action)
 	{
-		SwitchDevice(EDevice.Lamp, action);
-		SwitchDevice(EDevice.Power, action);
-
-		return $"Devices switched {action}";
+		lock (DeviceLock)
+		{
+			SwitchDevice(EDevice.Lamp, action);
+			SwitchDevice(EDevice.Power, action);
+			
+			return $"Devices switched {action}";
+		}
 	}
 
 	private static string HandleComputer(EPowerAction action)
@@ -114,7 +145,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 				Task.Run(async () =>
 				{
 					HardwareAdapter.SwitchDevice(EDevice.Computer, EPowerAction.Off);
-					await ComputerService.CheckForConnection();
+					await ComputerHandler.CheckForConnection();
 					HardwareAdapter.SwitchDevice(EDevice.Power, EPowerAction.Off);
 				});
 				return "Waiting for Computer to shutdown";

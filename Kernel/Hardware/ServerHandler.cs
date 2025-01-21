@@ -15,7 +15,7 @@ internal static class ServerHandler
 		Server.Bind(ipEndPoint);
 	}
 	
-	internal static async void StartListening()
+	internal static async Task StartListening()
 	{
 		Server.Listen();
 		
@@ -41,12 +41,15 @@ internal static class ServerHandler
 		int received = socket.Receive(buffer);
 		string message = Encoding.UTF8.GetString(buffer, 0, received);
 
-		string answer;
+		string answer = "ACK";
 		switch (message)
 		{
 			case "computer":
-				answer = "ACK";
-				ComputerService.BindSocket(socket);
+				ComputerHandler.BindSocket(socket);
+				break;
+			
+			case "esp32-station":
+				SensorsHandler.BindSocket(socket);
 				break;
 			default:
 				answer = "ERR";

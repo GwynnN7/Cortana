@@ -5,6 +5,11 @@ namespace Kernel.Hardware.Interfaces;
 
 public abstract class HardwareAdapter: IHardwareAdapter
 {
+	static HardwareAdapter()
+	{
+		Task.Run(ServerHandler.StartListening);
+	}
+	
 	public static double ReadCpuTemperature()
 	{
 		return RaspberryHandler.ReadCpuTemperature();
@@ -48,12 +53,12 @@ public abstract class HardwareAdapter: IHardwareAdapter
 	{
 		bool result = command switch
 		{
-			EComputerCommand.Shutdown => ComputerService.Shutdown(),
-			EComputerCommand.Suspend => ComputerService.Suspend(),
-			EComputerCommand.Notify => ComputerService.Notify(args ?? string.Empty),
-			EComputerCommand.Reboot => ComputerService.Reboot(),
-			EComputerCommand.Command => ComputerService.Command(args ?? string.Empty),
-			EComputerCommand.SwapOs => ComputerService.SwapOs(),
+			EComputerCommand.Shutdown => ComputerHandler.Shutdown(),
+			EComputerCommand.Suspend => ComputerHandler.Suspend(),
+			EComputerCommand.Notify => ComputerHandler.Notify(args ?? string.Empty),
+			EComputerCommand.Reboot => ComputerHandler.Reboot(),
+			EComputerCommand.Command => ComputerHandler.Command(args ?? string.Empty),
+			EComputerCommand.SwapOs => ComputerHandler.SwapOs(),
 			_ => false
 		};
 		return result ? "Command executed" : "Command not found";
@@ -83,7 +88,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 
 	public static void ShutdownServices()
 	{
-		ComputerService.DisconnectSocket();
+		ComputerHandler.DisconnectSocket();
+		SensorsHandler.DisconnectSocket();
 		ServerHandler.ShutdownServer();
 	}
 	

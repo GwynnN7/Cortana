@@ -78,10 +78,10 @@ internal static class DeviceHandler
 		switch (state)
 		{
 			case EPowerAction.On:
-				ComputerService.Boot();
+				ComputerHandler.Boot();
 				return EPower.Off;
 			case EPowerAction.Off:
-				ComputerService.Shutdown();
+				ComputerHandler.Shutdown();
 				return EPower.On;
 			case EPowerAction.Toggle:
 			default:

@@ -6,13 +6,13 @@ using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware;
 
-internal static class ComputerService
+internal static class ComputerHandler
 {
 	private static Socket? _computerSocket;
 	private static Timer? _connectionTimer;
 	private static readonly Stack<string> Messages;
 
-	static ComputerService()
+	static ComputerHandler()
 	{
 		Messages = [];
 	}
