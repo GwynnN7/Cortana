@@ -20,10 +20,10 @@ internal class SensorsHandler(Socket socket) : ClientHandler(socket)
 		
 		_motionTimer?.Stop();
 		_motionTimer?.Close();
-			
+		
+		if(HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off) HardwareNotifier.Publish("Motion detected, switching lamp on!");
 		HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
-		HardwareNotifier.Publish("Motion detected, switching lamp on!");
-			
+		
 		_motionTimer = new Timer("motion-timer", null, (10, 0, 0), MotionTimeout, ETimerType.Utility);
 	}
 	
