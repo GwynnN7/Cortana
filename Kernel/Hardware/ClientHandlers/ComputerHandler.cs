@@ -21,7 +21,6 @@ internal class ComputerHandler : ClientHandler
 		{
 			case "SYN":
 				UpdateComputerStatus(EPower.On);
-				RestartConnectionTimer();
 				break;
 			default:
 				Monitor.Enter(_messages);

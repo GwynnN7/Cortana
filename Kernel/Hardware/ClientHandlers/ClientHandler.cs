@@ -33,6 +33,7 @@ internal abstract class ClientHandler
     			string message = Encoding.UTF8.GetString(buffer, 0, received);
     			if (received == 0) continue;
 
+			    RestartConnectionTimer();
 			    HandleRead(message);
 		    }
     	}
@@ -73,7 +74,7 @@ internal abstract class ClientHandler
 	    return Task.CompletedTask;
     }
 
-    protected void RestartConnectionTimer()
+    private void RestartConnectionTimer()
     {
 	    _connectionTimer?.Stop();
 	    _connectionTimer?.Close();

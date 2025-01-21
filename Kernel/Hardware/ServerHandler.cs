@@ -57,7 +57,7 @@ internal static class ServerHandler
 				answer = "ERR";
 				break;
 		}
-		
+		HardwareNotifier.Publish($"New {answer} connection: {message}");
 		socket.Send(Encoding.UTF8.GetBytes(answer));
 		if(answer == "ERR") socket.Close();
 	}
