@@ -1,4 +1,5 @@
 ﻿using System.Device.Gpio;
+using Kernel.Hardware.ClientHandlers;
 using Kernel.Hardware.Utility;
 
 namespace Kernel.Hardware;

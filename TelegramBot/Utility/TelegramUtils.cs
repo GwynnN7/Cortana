@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Kernel.Hardware.Utility;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using Telegram.Bot;
@@ -26,12 +27,13 @@ internal static class TelegramUtils
 	public static void Init(TelegramBotClient newClient)
 	{
 		_cortana = newClient;
+		HardwareNotifier.Subscribe(HardwareSubscription);
 	}
 
-	public static void SendToUser(long userId, string message, bool notify = true)
+	public static async Task SendToUser(long userId, string message, bool notify = true)
 	{
 		var chat = new ChatId(userId);
-		_cortana.SendMessage(chat, message, disableNotification: !notify);
+		await _cortana.SendMessage(chat, message, disableNotification: !notify);
 	}
 
 	public static string IdToName(long id)
@@ -101,7 +103,7 @@ internal static class TelegramUtils
 		return times;
 	}
 
-	public static async void AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery, bool showAlert = true)
+	public static async Task AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery, bool showAlert = true)
 	{
 		try
 		{
@@ -111,5 +113,10 @@ internal static class TelegramUtils
 		{
 			await cortana.SendMessage(chatId, text);
 		}
+	}
+	
+	private static void HardwareSubscription(string message)
+	{
+		Task.Run(async () => await SendToUser(AuthorId, message));
 	}
 }

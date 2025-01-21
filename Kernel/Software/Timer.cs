@@ -17,9 +17,9 @@ public class Timer : System.Timers.Timer
 	private string Tag { get; }
 	private ETimerLoop LoopType { get; }
 	
-	private Action<object?, ElapsedEventArgs> Callback { get; }
+	private Func<object?, Task> Callback { get; }
 	
-	public Timer(string tag, object? payload, Times times, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	public Timer(string tag, object? payload, Times times, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
 	{
 		Tag = tag;
 		Payload = payload;
@@ -32,14 +32,14 @@ public class Timer : System.Timers.Timer
 		LoopType = loop;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
-		Elapsed += TimerElapsed;
+		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
 		AutoReset = false;
 		if (autoStart) Start();
 
 		SaveTimer();
 	}
 
-	public Timer(string tag, object? payload, DateTime targetTime, Action<object?, ElapsedEventArgs> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	public Timer(string tag, object? payload, DateTime targetTime, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
 	{
 		Tag = tag;
 		Payload = payload;
@@ -52,14 +52,14 @@ public class Timer : System.Timers.Timer
 		LoopType = loop;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
-		Elapsed += TimerElapsed;
+		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
 		AutoReset = false;
 		if (autoStart) Start();
 
 		SaveTimer();
 	}
 
-	private void TimerElapsed(object? sender, ElapsedEventArgs args)
+	private async Task TimerElapsed(object? sender)
 	{
 		if (LoopType != ETimerLoop.No)
 		{
@@ -77,7 +77,7 @@ public class Timer : System.Timers.Timer
 			Start();
 		}
 
-		Callback.Invoke(sender, args);
+		await Callback.Invoke(sender);
 
 		if (LoopType == ETimerLoop.No) RemoveTimer(this);
 	}

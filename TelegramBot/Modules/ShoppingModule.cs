@@ -27,7 +27,7 @@ internal static class ShoppingModule
 		FileHandler.WriteFile(Path.Combine(TelegramUtils.StoragePath, "Debts.json"), Debts);
 	}
 
-	public static async void ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
+	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{
 		switch (messageStats.Command)
 		{
@@ -51,7 +51,7 @@ internal static class ShoppingModule
 		}
 	}
 
-	public static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
 	{
 		await cortana.AnswerCallbackQuery(callbackQuery.Id);
 
@@ -73,12 +73,12 @@ internal static class ShoppingModule
 				await cortana.SendMessage(message.Chat.Id, GetDebts());
 				break;
 			default:
-				HandlePurchase(cortana, callbackQuery, command);
+				await HandlePurchase(cortana, callbackQuery, command);
 				break;
 		}
 	}
 
-	public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		if (_currentPurchase == null) return;
 
@@ -125,7 +125,7 @@ internal static class ShoppingModule
 		return debts;
 	}
 
-	private static async void HandlePurchase(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+	private static async Task HandlePurchase(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
 	{
 		Message message = callbackQuery.Message!;
 		int messageId = message.MessageId;

@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Kernel.Hardware.ClientHandlers;
+using Kernel.Hardware.Utility;
 
 namespace Kernel.Hardware;
 
@@ -45,11 +47,11 @@ internal static class ServerHandler
 		switch (message)
 		{
 			case "computer":
-				ComputerHandler.BindSocket(socket);
+				ComputerHandler.BindNew(new ComputerHandler(socket));
 				break;
 			
 			case "esp32-station":
-				SensorsHandler.BindSocket(socket);
+				SensorsHandler.BindNew(new SensorsHandler(socket));
 				break;
 			default:
 				answer = "ERR";

@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using Kernel.Software;
 using Kernel.Hardware;
+using Kernel.Hardware.Utility;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;

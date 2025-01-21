@@ -57,7 +57,7 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 		await RespondAsync(embed: embed);
 	}
 
-	private static async void DiscordTimerFinished(object? sender, ElapsedEventArgs args)
+	private static async Task DiscordTimerFinished(object? sender)
 	{
 		if (sender is not Timer { TimerType: ETimerType.Discord } timer) return;
 
@@ -77,7 +77,7 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 		}
 		catch(Exception e)
 		{
-			DiscordUtils.SendToChannel<string>($"C'è stato un problema con un timer:\n```{e.Message}```", ECortanaChannels.Log);
+			await DiscordUtils.SendToChannel<string>($"C'è stato un problema con un timer:\n```{e.Message}```", ECortanaChannels.Log);
 		}
 	}
 }

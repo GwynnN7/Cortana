@@ -1,3 +1,4 @@
+using Kernel.Hardware.ClientHandlers;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 using Timer = Kernel.Software.Timer;
@@ -9,19 +10,25 @@ public abstract class HardwareProxy: IHardwareAdapter
 	private static readonly Lock RaspberryLock = new();
 	private static readonly Lock ComputerLock = new();
 	private static readonly Lock DeviceLock = new();
+	
 	static HardwareProxy()
 	{
 		_ = new Timer("night-handler", null, new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
 			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
 	}
-	private static void HandleNightCallback(object? sender, EventArgs e)
+	private static Task HandleNightCallback(object? sender)
 	{
-		if (GetDevicePower(EDevice.Computer) == EPower.Off) 
+		if (GetDevicePower(EDevice.Computer) == EPower.Off)
+		{
 			SwitchDevice(EDevice.Lamp, EPowerAction.Off);
+			HardwareNotifier.Publish("Night Handler activated");
+		}
 		else 
 			CommandComputer(EComputerCommand.Notify, "You should go to sleep");
 
 		if (DateTime.Now.Hour < 6) _ = new Timer("safety-night-handler", null, (0, 0, 1), HandleNightCallback, ETimerType.Utility);
+		
+		return Task.CompletedTask;
 	}
 	
 	public static void ShutdownServices() => HardwareAdapter.ShutdownServices();

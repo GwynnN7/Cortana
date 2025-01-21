@@ -26,7 +26,7 @@ public static class CortanaDiscordBot
 		await services.GetRequiredService<CommandHandler>().InitializeAsync();
 
 		client.Log += LogAsync;
-		client.MessageReceived += Client_MessageReceived;
+		client.MessageReceived += ClientMessageReceived;
 		client.UserVoiceStateUpdated += OnUserVoiceStateUpdate;
 		client.JoinedGuild += OnServerJoin;
 		client.LeftGuild += OnServerLeave;
@@ -48,7 +48,7 @@ public static class CortanaDiscordBot
 				if (channel != null) AudioHandler.Connect(channel);
 			}
 
-			DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
+			await DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
 		};
 
 		await client.LoginAsync(TokenType.Bot, FileHandler.Secrets.DiscordToken);
@@ -79,7 +79,7 @@ public static class CortanaDiscordBot
 		if(_token != null) await _token.CancelAsync();
 	}
 
-	private static async Task Client_MessageReceived(SocketMessage arg)
+	private static async Task ClientMessageReceived(SocketMessage arg)
 	{
 		if (arg.Author.Id == DiscordUtils.Data.CortanaId) return;
 		string message = arg.Content.ToLower();
@@ -104,7 +104,7 @@ public static class CortanaDiscordBot
 		}
 	}
 
-	private static async void ActivityTimerElapsed(object? sender, ElapsedEventArgs e)
+	private static async Task ActivityTimerElapsed(object? sender)
 	{
 		try
 		{

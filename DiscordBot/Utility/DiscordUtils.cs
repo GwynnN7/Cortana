@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Kernel.Hardware.Utility;
 using Kernel.Software;
 
 namespace DiscordBot.Utility;
@@ -12,6 +13,8 @@ internal static class DiscordUtils
 	public static readonly Dictionary<string, MemeJsonStructure> Memes;
 	public static readonly Dictionary<ulong, GuildSettings> GuildSettings;
 	public static readonly Dictionary<ulong, DateTime> TimeConnected;
+	
+	public static DiscordSocketClient Cortana { get; private set; } = null!;
 
 	static DiscordUtils()
 	{
@@ -21,9 +24,9 @@ internal static class DiscordUtils
 		Memes = FileHandler.LoadFile<Dictionary<string, MemeJsonStructure>>(Path.Combine(StoragePath, "Memes.json")) ?? new Dictionary<string, MemeJsonStructure>();
 		GuildSettings = FileHandler.LoadFile<Dictionary<ulong, GuildSettings>>(Path.Combine(StoragePath, "DiscordGuilds.json")) ?? new Dictionary<ulong, GuildSettings>();
 		TimeConnected = new Dictionary<ulong, DateTime>();
+		
+		HardwareNotifier.Subscribe(HardwareSubscription);
 	}
-
-	public static DiscordSocketClient Cortana { get; private set; } = null!;
 
 	public static void InitSettings(DiscordSocketClient client)
 	{
@@ -71,7 +74,7 @@ internal static class DiscordUtils
 		return embedBuilder.Build();
 	}
 
-	public static async void SendToUser<T>(T data, ulong userId)
+	public static async Task SendToUser<T>(T data, ulong userId)
 	{
 		IUser? user = await Cortana.GetUserAsync(userId);
 		switch (data)
@@ -85,7 +88,7 @@ internal static class DiscordUtils
 		}
 	}
 
-	public static async void SendToChannel<T>(T data, ECortanaChannels channel)
+	public static async Task SendToChannel<T>(T data, ECortanaChannels channel)
 	{
 		ulong channelId = channel switch
 		{
@@ -102,6 +105,11 @@ internal static class DiscordUtils
 				await Cortana.GetGuild(Data.HomeId).GetTextChannel(channelId).SendMessageAsync(embed: embed);
 				break;
 		}
+	}
+
+	private static void HardwareSubscription(string message)
+	{
+		Task.Run(async () => await SendToChannel(message, ECortanaChannels.Log));
 	}
 }
 

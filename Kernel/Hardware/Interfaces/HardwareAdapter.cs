@@ -1,3 +1,4 @@
+using Kernel.Hardware.ClientHandlers;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 
@@ -88,8 +89,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 
 	public static void ShutdownServices()
 	{
-		ComputerHandler.DisconnectSocket();
-		SensorsHandler.DisconnectSocket();
+		ComputerHandler.Interrupt();
+		SensorsHandler.Interrupt();
 		ServerHandler.ShutdownServer();
 	}
 	

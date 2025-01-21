@@ -1,8 +1,7 @@
 using System.Text.Json.Serialization;
-using Kernel.Hardware.Utility;
 using Kernel.Software;
 
-namespace Kernel.Hardware;
+namespace Kernel.Hardware.Utility;
 
 public static class NetworkAdapter
 {

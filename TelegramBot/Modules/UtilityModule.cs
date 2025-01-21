@@ -1,4 +1,3 @@
-using System.Timers;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using Telegram.Bot;
@@ -14,12 +13,12 @@ namespace TelegramBot.Modules;
 
 internal static class UtilityModule
 {
-	public static async void CreateSoftwareUtilityMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateSoftwareUtilityMenu(ITelegramBotClient cortana, Message message)
 	{
 		await cortana.EditMessageText(message.Chat.Id, message.Id, "Software Utility", replyMarkup: CreateUtilityButtons());
 	}
 
-	public static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
 	{
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
@@ -69,20 +68,20 @@ internal static class UtilityModule
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
-				CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				await CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 			case "leave":
 				TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? genericChatArg);
 				if (genericChatArg is not TelegramChatArg<long> { Type: ETelegramChatArg.Chat } chatArg) return;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Chat with {TelegramUtils.IdToName(chatArg.Arg)} ended");
-				CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				await CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 		}
 	}
 
-	public static async void HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
@@ -92,7 +91,7 @@ internal static class UtilityModule
 				imageStream.Position = 0;
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				await cortana.SendPhoto(messageStats.ChatId, new InputFileStream(imageStream, "QRCODE.png"));
-				CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.Timer:
@@ -103,7 +102,7 @@ internal static class UtilityModule
 				}
 				catch
 				{
-					TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+					await TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 					return;
 				}
 		
@@ -112,15 +111,15 @@ internal static class UtilityModule
 				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<string>(messageStats.ChatId, messageStats.UserId, null), 
 					(times.s, times.m, times.h), TelegramTimerFinished, ETimerType.Telegram);
 				
-				TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.Chat:
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<long> chatArg)
 				{
-					TelegramUtils.SendToUser(chatArg.Arg , messageStats.FullMessage);
+					await TelegramUtils.SendToUser(chatArg.Arg , messageStats.FullMessage);
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 					break;
 				}
@@ -137,7 +136,7 @@ internal static class UtilityModule
 				catch(CortanaException)
 				{
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-					TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+					await TelegramUtils.AnswerOrMessage(cortana, "Sorry, I can't find that username. Please try again", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				}
 
 				break;
@@ -167,7 +166,7 @@ internal static class UtilityModule
 				}
 				catch
 				{
-					TelegramUtils.AnswerOrMessage(cortana, "Sorry, either I can't find that video on YouTube or its size is greater than 50MB", messageStats.ChatId,
+					await TelegramUtils.AnswerOrMessage(cortana, "Sorry, either I can't find that video on YouTube or its size is greater than 50MB", messageStats.ChatId,
 						TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 				}
 				finally
@@ -176,7 +175,7 @@ internal static class UtilityModule
 					if (File.Exists(path)) File.Delete(path);
 
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-					CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+					await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 					TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				}
 
@@ -184,18 +183,18 @@ internal static class UtilityModule
 		}
 	}
 	
-	private static void TelegramTimerFinished(object? sender, ElapsedEventArgs args)
+	private static async Task TelegramTimerFinished(object? sender)
 	{
 		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
 
 		try
 		{
 			if (timer.Payload is not TelegramTimerPayload<string> payload) return;
-			TelegramUtils.SendToUser(payload.UserId, "Timer elapsed!");
+			await TelegramUtils.SendToUser(payload.UserId, "Timer elapsed!");
 		}
 		catch(Exception e)
 		{
-			TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"There was an error with a timer:\n```{e.Message}```");
+			await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"There was an error with a timer:\n```{e.Message}```");
 		}
 	}
 

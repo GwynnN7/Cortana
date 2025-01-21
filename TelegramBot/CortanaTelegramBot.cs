@@ -19,7 +19,7 @@ public static class CortanaTelegramBot
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		TelegramUtils.Init(cortana);
-		TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
+		await TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
 		
 		_token = new CancellationTokenSource();
 		try
@@ -37,34 +37,32 @@ public static class CortanaTelegramBot
 		if(_token != null) await _token.CancelAsync();
 	}
 
-	private static Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
+	private static async Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
 	{
 		switch (update.Type)
 		{
 			case UpdateType.CallbackQuery:
-				HandleCallbackQuery(cortana, update.CallbackQuery!);
+				await HandleCallbackQuery(cortana, update.CallbackQuery!);
 				break;
 			case UpdateType.Message:
-				HandleMessage(cortana, update.Message!);
+				await HandleMessage(cortana, update.Message!);
 				break;
 			default:
-				return Task.CompletedTask;
+				return;
 		}
-
-		return Task.CompletedTask;
 	}
 
-	private static void HandleMessage(ITelegramBotClient cortana, Message message)
+	private static async Task HandleMessage(ITelegramBotClient cortana, Message message)
 	{
 		switch (message.Type)
 		{
 			case MessageType.Text:
-				HandleTextMessage(cortana, message);
+				await HandleTextMessage(cortana, message);
 				break;
 		}
 	}
 
-	private static async void HandleTextMessage(ITelegramBotClient cortana, Message message)
+	private static async Task HandleTextMessage(ITelegramBotClient cortana, Message message)
 	{
 		if (message.From == null || message.From.IsBot || message.Text == null) return;
 
@@ -90,16 +88,16 @@ public static class CortanaTelegramBot
 				case ETelegramChatArg.Timer:
 				case ETelegramChatArg.AudioDownloader:
 				case ETelegramChatArg.VideoDownloader:
-					UtilityModule.HandleTextMessage(cortana, messageStats);
+					await UtilityModule.HandleTextMessage(cortana, messageStats);
 					break;
 				case ETelegramChatArg.Notification:
 				case ETelegramChatArg.Ping:
 				case ETelegramChatArg.HardwareTimer:
 				case ETelegramChatArg.ComputerCommand:
-					HardwareModule.HandleTextMessage(cortana, messageStats);
+					await HardwareModule.HandleTextMessage(cortana, messageStats);
 					break;
 				case ETelegramChatArg.Shopping:
-					ShoppingModule.HandleTextMessage(cortana, messageStats);
+					await ShoppingModule.HandleTextMessage(cortana, messageStats);
 					break;
 			}
 			
@@ -115,24 +113,24 @@ public static class CortanaTelegramBot
 
 			if (messageStats.Command != "menu")
 			{
-				HardwareModule.ExecCommand(messageStats, cortana);
-				ShoppingModule.ExecCommand(messageStats, cortana);
+				await HardwareModule.ExecCommand(messageStats, cortana);
+				await ShoppingModule.ExecCommand(messageStats, cortana);
 			}
 			else
 			{
-				CreateHomeMenu(cortana, messageStats.ChatId);
+				await CreateHomeMenu(cortana, messageStats.ChatId);
 			}
 		}
 		else
 		{
 			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
 			if (messageStats.UserId == TelegramUtils.AuthorId || messageStats.ChatType != ChatType.Private) return;
-			if(isCallback) TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
+			if(isCallback) await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
 			else await cortana.ForwardMessage(TelegramUtils.AuthorId, messageStats.ChatId, messageStats.MessageId);
 		}
 	}
 
-	private static async void HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
+	private static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
 	{
 		string command = callbackQuery.Data!;
 		Message message = callbackQuery.Message!;
@@ -140,38 +138,38 @@ public static class CortanaTelegramBot
 		switch (command)
 		{
 			case "home":
-				CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
+				await CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
 				break;
 			case "automation":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					HardwareModule.CreateAutomationMenu(cortana, message);
+					await HardwareModule.CreateAutomationMenu(cortana, message);
 				else 
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access automation controls");
 				break;
 			case "raspberry":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					HardwareModule.CreateRaspberryMenu(cortana, message);
+					await HardwareModule.CreateRaspberryMenu(cortana, message);
 				else 
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
 				break;
 			case "hardware_utility":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					HardwareModule.CreateHardwareUtilityMenu(cortana, message);
+					await HardwareModule.CreateHardwareUtilityMenu(cortana, message);
 				else 
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access hardware controls");
 				break;
 			case "software_utility":
-				UtilityModule.CreateSoftwareUtilityMenu(cortana, message);
+				await UtilityModule.CreateSoftwareUtilityMenu(cortana, message);
 				break;
 			default:
-				if (command.StartsWith("hardware-")) HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
-				else if (command.StartsWith("shopping-")) ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
-				else if (command.StartsWith("utility-")) UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
+				if (command.StartsWith("hardware-")) await HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
+				else if (command.StartsWith("shopping-")) await ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
+				else if (command.StartsWith("utility-")) await UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
 				break;
 		}
 	}
 
-	private static async void CreateHomeMenu(ITelegramBotClient cortana, long chatId, int? messageId = null)
+	private static async Task CreateHomeMenu(ITelegramBotClient cortana, long chatId, int? messageId = null)
 	{
 		if (messageId.HasValue) await cortana.EditMessageText(chatId, messageId.Value, "Cortana Home", replyMarkup: CreateMenuButtons());
 		else await cortana.SendMessage(chatId, "Cortana Home", replyMarkup: CreateMenuButtons());

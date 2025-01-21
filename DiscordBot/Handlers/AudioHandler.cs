@@ -177,10 +177,10 @@ internal static class AudioHandler
 			JoinQueue.Add(guildId, queue);
 		}
 
-		if (JoinQueue[guildId].Count == 1) NextJoinQueue(guildId);
+		if (JoinQueue[guildId].Count == 1) Task.Run(async() => await NextJoinQueue(guildId));
 	}
 
-	private static async void NextJoinQueue(ulong guildId)
+	private static async Task NextJoinQueue(ulong guildId)
 	{
 		JoinStructure joinItem = JoinQueue[guildId].Dequeue();
 		await joinItem.Task();
@@ -188,7 +188,7 @@ internal static class AudioHandler
 		if (JoinQueue[guildId].Count <= 0) return;
 		while (JoinQueue[guildId].Count != 1) JoinQueue[guildId].Dequeue();
 
-		NextJoinQueue(guildId);
+		await NextJoinQueue(guildId);
 	}
 
 	private static async Task Join(SocketVoiceChannel voiceChannel)
@@ -216,7 +216,7 @@ internal static class AudioHandler
 		}
 		catch
 		{
-			DiscordUtils.SendToChannel<string>("Non sono riuscita ad entrate nel canale correttamente", ECortanaChannels.Log);
+			await DiscordUtils.SendToChannel<string>("Non sono riuscita ad entrate nel canale correttamente", ECortanaChannels.Log);
 		}
 	}
 
@@ -232,7 +232,7 @@ internal static class AudioHandler
 		}
 		catch
 		{
-			DiscordUtils.SendToChannel<string>("Non sono riuscita ad uscire dal canale correttamente", ECortanaChannels.Log);
+			await DiscordUtils.SendToChannel<string>("Non sono riuscita ad uscire dal canale correttamente", ECortanaChannels.Log);
 		}
 	}
 
