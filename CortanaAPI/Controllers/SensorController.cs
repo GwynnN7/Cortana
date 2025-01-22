@@ -1,4 +1,4 @@
-using Kernel.Hardware.DataStructures;
+using Kernel.Hardware;
 using Kernel.Hardware.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,9 +15,14 @@ public class SensorController : ControllerBase
     }
 
     [HttpGet("{sensor}")]
-    public string PowerDevice([FromRoute] string sensor)
+    public string SensorData([FromRoute] string sensor)
     {
-        Enum.TryParse(sensor, out ESensorData x);
-        return HardwareProxy.GetSensorInfo(x);
+        return HardwareProxy.GetSensorInfo(sensor);
+    }
+    
+    [HttpGet("mode")]
+    public string Mode()
+    {
+        return HardwareSettings.HardwareControlMode.ToString();
     }
 }

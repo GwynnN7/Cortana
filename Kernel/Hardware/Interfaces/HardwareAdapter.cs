@@ -34,15 +34,24 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		};
 	}
 
-	public static string GetSensorInfo(ESensorData sensorData)
+	public static string GetSensorInfo(ESensor sensor)
 	{
-		return sensorData switch
+		int? val = sensor switch
 		{
-			ESensorData.Light => SensorsHandler.GetLastLightData().ToString(),
-			ESensorData.Temperature => SensorsHandler.GetLastTempData().ToString(),
-			ESensorData.Humidity => SensorsHandler.GetLastHumData().ToString(),
-			_ => "Sensor not supported"
+			ESensor.Light => SensorsHandler.GetLastLightData(),
+			ESensor.Temperature => SensorsHandler.GetLastTempData(),
+			ESensor.Humidity => SensorsHandler.GetLastHumData(),
+			ESensor.Motion => SensorsHandler.GetLastMotionData(),
+			_ => null
 		};
+		
+		return val.HasValue ? val.Value.ToString() : "Sensor offline";
+	}
+
+	public static string GetSensorInfo(string sensor)
+	{
+		ESensor? sensorValue = Helper.EnumFromString<ESensor>(sensor);
+		return sensorValue.HasValue ? GetSensorInfo(sensorValue.Value) : "Sensor offline";
 	}
 
 	public static string CommandRaspberry(ERaspberryOption option)
@@ -92,8 +101,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 	
 	public static string SwitchDevice(string device, string trigger)
 	{
-		EDevice? elementResult = Helper.HardwareDeviceFromString(device);
-		EPowerAction? triggerResult = Helper.PowerActionFromString(trigger);
+		EDevice? elementResult = Helper.EnumFromString<EDevice>(device);
+		EPowerAction? triggerResult = Helper.EnumFromString<EPowerAction>(trigger);
 		if (triggerResult == null) return "Invalid action";
 		if (elementResult == null) return "Hardware device not registered";
 		return SwitchDevice(elementResult.Value, triggerResult.Value);

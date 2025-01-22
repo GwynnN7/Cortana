@@ -28,7 +28,7 @@ public enum ERaspberryOption
 	Update
 }
 
-public enum ESensorData
+public enum ESensor
 {
 	Temperature,
 	Humidity,

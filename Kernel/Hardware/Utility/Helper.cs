@@ -46,16 +46,10 @@ internal static class Helper
 		return HardwareAdapter.GetDevicePower(device) == EPower.On ? EPowerAction.Off : EPowerAction.On;
 	}
 	
-	public static EDevice? HardwareDeviceFromString(string device)
+	public static T? EnumFromString<T>(string value) where T: struct
 	{
-		device = CapitalizeLetter(device.ToLower());
-		bool res = Enum.TryParse(device, out EDevice status);
-		return res ? status : null;
-	}
-	public static EPowerAction? PowerActionFromString(string action)
-	{
-		action = CapitalizeLetter( action.ToLower());
-		bool res = Enum.TryParse(action, out EPowerAction status);
+		value = CapitalizeLetter(value.ToLower());
+		bool res = Enum.TryParse(value, out T status);
 		return res ? status : null;
 	}
 

@@ -16,7 +16,7 @@ internal class ComputerHandler : ClientHandler
 	{
 		UpdateComputerStatus(EPower.On);
 		HardwareProxy.ResetNightHandler();
-		HardwareNotifier.Publish("Computer connected", ENotificationPriority.Low);
+		HardwareNotifier.Publish($"Computer connected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 
 	protected override void HandleRead(string message)
@@ -41,7 +41,7 @@ internal class ComputerHandler : ClientHandler
 		_messages.Clear();
 		UpdateComputerStatus(EPower.Off);
 		HardwareProxy.ResetNightHandler();
-		HardwareNotifier.Publish("Computer disconnected", ENotificationPriority.Low);
+		HardwareNotifier.Publish($"Computer disconnected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 	
 	// Static methods

@@ -15,6 +15,8 @@ internal static class DeviceHandler
 	private static int LampPin => HardwareSettings.NetworkData.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
 	private static int ComputerPlugsPin => RelayPin2;
 	private static int GenericPin => RelayPin1;
+	
+	private static readonly Lock LampLock = new();
 
 	static DeviceHandler()
 	{
@@ -28,22 +30,28 @@ internal static class DeviceHandler
 		{
 			case EPowerAction.On when HardwareStates[EDevice.Lamp] == EPower.Off:
 				if (HardwareSettings.NetworkData.Location == ELocation.Orvieto)
-					Task.Run(async () =>
+					Task.Run(() =>
 					{
-						UseGpio(LampPin, PinValue.High);
-						await Task.Delay(200);
-						UseGpio(LampPin, PinValue.Low);
+						lock (LampLock)
+						{
+							UseGpio(LampPin, PinValue.High);
+							Thread.Sleep(100);
+							UseGpio(LampPin, PinValue.Low);
+						}
 					});
 				else UseGpio(LampPin, PinValue.High);
 				HardwareStates[EDevice.Lamp] = EPower.On;
 				break;
 			case EPowerAction.Off when HardwareStates[EDevice.Lamp] == EPower.On:
 				if (HardwareSettings.NetworkData.Location == ELocation.Orvieto)
-					Task.Run(async () =>
+					Task.Run(() =>
 					{
-						UseGpio(LampPin, PinValue.High);
-						await Task.Delay(200);
-						UseGpio(LampPin, PinValue.Low);
+						lock (LampLock)
+						{
+							UseGpio(LampPin, PinValue.High);
+							Thread.Sleep(100);
+							UseGpio(LampPin, PinValue.Low);
+						}
 					});
 				else UseGpio(LampPin, PinValue.Low);
 				HardwareStates[EDevice.Lamp] = EPower.Off;
@@ -81,10 +89,10 @@ internal static class DeviceHandler
 		{
 			case EPowerAction.On:
 				ComputerHandler.Boot();
-				return EPower.Off;
+				return EPower.On;
 			case EPowerAction.Off:
 				ComputerHandler.Shutdown();
-				return EPower.On;
+				return EPower.Off;
 			case EPowerAction.Toggle:
 			default:
 				return PowerComputer(Helper.ConvertToggle(EDevice.Computer));

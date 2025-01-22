@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
+using Kernel.Software;
 using Kernel.Software.Utility;
 using Newtonsoft.Json;
 using Timer = Kernel.Software.Timer;
@@ -18,55 +19,56 @@ internal class SensorsHandler : ClientHandler
 
 	internal SensorsHandler(Socket socket) : base(socket)
 	{
-		HardwareNotifier.Publish("ESP32 connected", ENotificationPriority.Low);
+		HardwareNotifier.Publish($"ESP32 connected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 	
 	protected override void HandleRead(string message)
 	{
 		var newData = JsonConvert.DeserializeObject<SensorData>(message);
-		if (HardwareSettings.HardwareControlMode != EControlMode.MotionSensor)
+		
+		if (newData is { BigMotion: EPower.On } or { SmallMotion: EPower.On }) FileHandler.Log("SensorsLog", message);
+		
+		if (HardwareSettings.HardwareControlMode == EControlMode.MotionSensor)
+		{
+			if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
+			{
+				switch (newData)
+				{
+					case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
+					{
+						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 10 : 5;
+						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
+						_motionTimer.Set((seconds, 0, 0));
+						break;
+					}
+					case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
+						_motionTimer?.Destroy();
+						_motionTimer = null;
+						break;
+				}
+			}
+			else
+			{
+				switch (newData)
+				{
+					case { SmallMotion: EPower.On } /*or { BigMotion: EPower.On }*/:
+					{
+						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off)
+						{
+							HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
+							HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.High);
+						}
+						
+						break;
+					}
+				}
+			}
+		}
+
+		lock (InstanceLock)
 		{
 			_lastSensorData = newData;
-			return;
 		}
-
-		if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
-		{
-			switch (newData)
-			{
-				case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
-				{
-					int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 20 : 10;
-					_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
-					_motionTimer.Set((seconds, 0, 0));
-					break;
-				}
-				case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
-					_motionTimer?.Destroy();
-					_motionTimer = null;
-					break;
-			}
-		}
-		else
-		{
-			switch (newData)
-			{
-				case { SmallMotion: EPower.On }:
-				case { BigMotion: EPower.On } when _lastSensorData is { BigMotion: EPower.On }:
-				{
-					if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off)
-					{
-						HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
-						HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.Low);
-						HardwareNotifier.Publish($"Light level: {newData.Light}", ENotificationPriority.High);
-					}
-					
-					break;
-				}
-			}
-		}
-
-		_lastSensorData = newData;
 	}
 
 	private Task MotionTimeout(object? sender) 
@@ -82,30 +84,39 @@ internal class SensorsHandler : ClientHandler
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		HardwareNotifier.Publish("ESP32 disconnected", ENotificationPriority.Low);
+		HardwareNotifier.Publish($"ESP32 disconnected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 	
-	internal static int GetLastLightData()
+	// Static methods
+	
+	internal static int? GetLastLightData()
 	{
 		lock (InstanceLock)
 		{
-			return _instance?._lastSensorData?.Light ?? int.MinValue;
+			return _instance?._lastSensorData?.Light;
 		}
 	}
 	
-	internal static int GetLastTempData()
+	internal static int? GetLastTempData()
 	{
 		lock (InstanceLock)
 		{
-			return _instance?._lastSensorData?.Temperature ?? int.MinValue;
+			return _instance?._lastSensorData?.Temperature;
 		}
 	}
 	
-	internal static int GetLastHumData()
+	internal static int? GetLastHumData()
 	{
 		lock (InstanceLock)
 		{
-			return _instance?._lastSensorData?.Humidity ?? int.MinValue;
+			return _instance?._lastSensorData?.Humidity;
+		}
+	}
+	internal static int GetLastMotionData()
+	{
+		lock (InstanceLock)
+		{
+			return (int)(_instance?._lastSensorData?.SmallMotion ?? 0) + (int)(_instance?._lastSensorData?.BigMotion ?? 0);
 		}
 	}
 	
