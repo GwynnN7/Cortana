@@ -25,8 +25,17 @@ internal class SensorsHandler : ClientHandler
 	protected override void HandleRead(string message)
 	{
 		var newData = JsonConvert.DeserializeObject<SensorData>(message);
-		
-		if (newData is { BigMotion: EPower.On } or { SmallMotion: EPower.On }) FileHandler.Log("SensorsLog", message);
+
+		if (_lastSensorData != null)
+		{
+			switch (newData)
+			{
+				case { BigMotion: EPower.On } when _lastSensorData is {BigMotion: EPower.Off}:
+				case { SmallMotion: EPower.On } when _lastSensorData is {SmallMotion: EPower.Off}:
+					FileHandler.Log("SensorsLog", message);
+					break;
+			}
+		}
 		
 		if (HardwareSettings.HardwareControlMode == EControlMode.MotionSensor)
 		{
