@@ -29,6 +29,9 @@ internal class SensorsHandler : ClientHandler
 			_lastSensorData = newData;
 			return;
 		}
+		
+		HardwareNotifier.Publish(message, ENotificationPriority.High);
+		HardwareNotifier.Publish(newData.BigMotion.ToString(), ENotificationPriority.High);
 
 		if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
 		{

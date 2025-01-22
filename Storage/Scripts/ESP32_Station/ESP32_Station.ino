@@ -2,16 +2,16 @@
 #include <DHT.h>
 
 const char WIFI_SSID[] = "Home&Life SuperWiFi-3451";
-const char WIFI_PASSWORD[] = "";
+const char WIFI_PASSWORD[] = "3YRC8T4GB3X4A4XA";
 const char CORTANA_IP[] = "192.168.1.117";
 const int CORTANA_PORT = 5000;
 
-const int led_blue = 13;
-const int led_white = 14;
+const int led_blue = 14;
+const int led_white = 13;
 const int motion_big = 26;
-const int motion_small = 14;
-const int light_sensor = 19;
-const int dht_sensor = 21;
+const int motion_small = 25;
+const int light_sensor = 33;
+const int dht_sensor = 32;
 
 DHT dht11(dht_sensor, DHT11);
 WiFiClient client;
@@ -54,7 +54,7 @@ void setup() {
     Serial.print(".");
   }
   Serial.println("Connected to Cortana");
-  client.println("esp32");
+  client.print("esp32");
 
   tcpTime = millis();
 }
@@ -73,8 +73,8 @@ void loop() {
     int light = analogRead(light_sensor);
 
     char buff[100];
-    snprintf(buff, 100, "{ \"bigMotion\": %s, \"smallMotion\": %s, \"light\": %d, \"temp\": %d, \"hum\": %d }", avgMotionBig, avgMotionSmall, light, temp, hum);
-    client.println(buff);
+    snprintf(buff, 100, "{ \"bigMotion\": \"%s\", \"smallMotion\": \"%s\", \"light\": %d, \"temp\": %d, \"hum\": %d }", avgMotionBig == 1 ? "On" : "Off", avgMotionSmall == 1 ? "On" : "Off", light, temp, hum);
+    client.print(buff);
 
     lastMotionBig = avgMotionBig;
     lastMotionSmall = avgMotionSmall;
