@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Kernel.Hardware.DataStructures;
 
-[method: JsonConstructor]
+[method: Newtonsoft.Json.JsonConstructor]
 public readonly struct NetworkData(
 	ELocation location,
 	string desktopIp,

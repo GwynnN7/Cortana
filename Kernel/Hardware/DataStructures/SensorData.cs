@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Kernel.Hardware.DataStructures;
 
-[method: JsonConstructor]
+[method: Newtonsoft.Json.JsonConstructor]
 internal readonly struct SensorData(
     EPower bigMotion,
     EPower smallMotion,
@@ -16,6 +16,6 @@ internal readonly struct SensorData(
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EPower SmallMotion { get; } = smallMotion;
     public int Light { get; } = light;
-    public int Temperature { get; } = temp;
-    public int Humidity { get; } = hum;
+    public int Temp { get; } = temp;
+    public int Hum { get; } = hum;
 }
