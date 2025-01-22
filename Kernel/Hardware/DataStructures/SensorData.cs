@@ -7,8 +7,8 @@ internal readonly struct SensorData(
     EPower bigMotion,
     EPower smallMotion,
     int light,
-    double temperature,
-    double humidity
+    int temp,
+    int hum
     )
 {
     [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -16,6 +16,6 @@ internal readonly struct SensorData(
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public EPower SmallMotion { get; } = smallMotion;
     public int Light { get; } = light;
-    public double Temperature { get; } = temperature;
-    public double Humidity { get; } = humidity;
+    public int Temperature { get; } = temp;
+    public int Humidity { get; } = hum;
 }
