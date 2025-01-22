@@ -24,7 +24,7 @@ int lastMotionBig = LOW;
 int lastMotionSmall = LOW;
 
 unsigned long tcpTime;
-const int transmissionTime = 1750;
+const int transmissionTime = 2000;
 
 void setup() {
   Serial.begin(9600);
@@ -68,10 +68,10 @@ void loop() {
 
   if((millis() - tcpTime >= transmissionTime) || (avgMotionBig == HIGH && lastMotionBig == LOW) || (avgMotionSmall == HIGH && lastMotionSmall == LOW))
   {
-    float hum  = dht11.readHumidity();
-    float temp = dht11.readTemperature();
+    int hum  = (int) dht11.readHumidity();
+    int temp = (int) dht11.readTemperature();
     int light = analogRead(light_sensor);
-
+    
     char buff[100];
     snprintf(buff, 100, "{ \"bigMotion\": \"%s\", \"smallMotion\": \"%s\", \"light\": %d, \"temp\": %d, \"hum\": %d }", avgMotionBig == 1 ? "On" : "Off", avgMotionSmall == 1 ? "On" : "Off", light, temp, hum);
     client.print(buff);
@@ -82,6 +82,7 @@ void loop() {
     avgMotionSmall = LOW;
 
     tcpTime = millis();
+    delay(50);
   }
 
   digitalWrite(led_blue, currentMotionBig);
