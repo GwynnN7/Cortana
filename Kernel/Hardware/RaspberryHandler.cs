@@ -1,5 +1,6 @@
 using System.Net.NetworkInformation;
 using Iot.Device.CpuTemperature;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using UnitsNet;
 
@@ -32,7 +33,7 @@ internal static class RaspberryHandler
 		return defaultGateway.First();
 	}
 
-	internal static ELocation GetNetworkLocation() => NetworkAdapter.Location;
+	internal static ELocation GetNetworkLocation() => HardwareSettings.NetworkData.Location;
 
 	internal static void Shutdown() => RunCommandWithDelay("shutdown");
 	internal static void Reboot() => RunCommandWithDelay("reboot");

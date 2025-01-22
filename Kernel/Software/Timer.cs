@@ -1,5 +1,4 @@
 ﻿global using Times = (int Seconds, int Minutes, int Hours);
-using System.Timers;
 using Kernel.Software.Utility;
 
 namespace Kernel.Software;
@@ -16,47 +15,38 @@ public class Timer : System.Timers.Timer
 	public object? Payload { get; }
 	private string Tag { get; }
 	private ETimerLoop LoopType { get; }
-	
 	private Func<object?, Task> Callback { get; }
 	
-	public Timer(string tag, object? payload, Times times, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	
+	public Timer(string tag, object? payload, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No)
 	{
 		Tag = tag;
 		Payload = payload;
 		Callback = callback;
 		TimerType = timerType;
-		
-		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
-		Interval = interval > 0 ? interval : 1000;
-
 		LoopType = loop;
-		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-
-		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
 		AutoReset = false;
-		if (autoStart) Start();
-
+		
+		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
 		SaveTimer();
 	}
-
-	public Timer(string tag, object? payload, DateTime targetTime, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No, bool autoStart = true)
+	
+	public void Set(Times times)
 	{
-		Tag = tag;
-		Payload = payload;
-		Callback = callback;
-		TimerType = timerType;
+		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
+		Interval = interval > 0 ? interval : 1000;
+		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 		
+		Start();
+	}
+	
+	public void Set(DateTime targetTime)
+	{
 		double interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
 		Interval = interval > 0 ? interval : targetTime.AddDays(1).Subtract(DateTime.Now).TotalMilliseconds;
-
-		LoopType = loop;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-
-		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
-		AutoReset = false;
-		if (autoStart) Start();
-
-		SaveTimer();
+		
+		Start();
 	}
 
 	private async Task TimerElapsed(object? sender)
@@ -82,7 +72,7 @@ public class Timer : System.Timers.Timer
 		if (LoopType == ETimerLoop.No) RemoveTimer(this);
 	}
 
-	private void Destroy()
+	public void Destroy()
 	{
 		Stop();
 		Close();

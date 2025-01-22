@@ -1,5 +1,6 @@
 ﻿using System.Device.Gpio;
 using Kernel.Hardware.ClientHandlers;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 
 namespace Kernel.Hardware;
@@ -11,7 +12,7 @@ internal static class DeviceHandler
 	private const int RelayPin2 = 24; //Computer Power
 	
 	internal static readonly Dictionary<EDevice, EPower> HardwareStates;
-	private static int LampPin => NetworkAdapter.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
+	private static int LampPin => HardwareSettings.NetworkData.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
 	private static int ComputerPlugsPin => RelayPin2;
 	private static int GenericPin => RelayPin1;
 
@@ -26,7 +27,7 @@ internal static class DeviceHandler
 		switch (state)
 		{
 			case EPowerAction.On when HardwareStates[EDevice.Lamp] == EPower.Off:
-				if (NetworkAdapter.Location == ELocation.Orvieto)
+				if (HardwareSettings.NetworkData.Location == ELocation.Orvieto)
 					Task.Run(async () =>
 					{
 						UseGpio(LampPin, PinValue.High);
@@ -37,7 +38,7 @@ internal static class DeviceHandler
 				HardwareStates[EDevice.Lamp] = EPower.On;
 				break;
 			case EPowerAction.Off when HardwareStates[EDevice.Lamp] == EPower.On:
-				if (NetworkAdapter.Location == ELocation.Orvieto)
+				if (HardwareSettings.NetworkData.Location == ELocation.Orvieto)
 					Task.Run(async () =>
 					{
 						UseGpio(LampPin, PinValue.High);
@@ -55,7 +56,7 @@ internal static class DeviceHandler
 
 	internal static EPower PowerGeneric(EPowerAction state)
 	{
-		if (NetworkAdapter.Location == ELocation.Pisa) return PowerLamp(state);
+		if (HardwareSettings.NetworkData.Location == ELocation.Pisa) return PowerLamp(state);
 
 		switch (state)
 		{

@@ -1,4 +1,4 @@
-namespace Kernel.Hardware.Utility;
+namespace Kernel.Hardware.DataStructures;
 
 public enum EDevice
 {
@@ -10,8 +10,8 @@ public enum EDevice
 
 public enum EPower
 {
-	On,
-	Off
+	Off,
+	On
 }
 
 public enum EPowerAction
@@ -26,6 +26,14 @@ public enum ERaspberryOption
 	Shutdown,
 	Reboot,
 	Update
+}
+
+public enum ESensorData
+{
+	Temperature,
+	Humidity,
+	Light,
+	Motion
 }
 
 public enum EComputerCommand
@@ -50,4 +58,17 @@ public enum EHardwareInfo
 	Ip,
 	Gateway,
 	Temperature
+}
+
+public enum EControlMode
+{
+	Manual,
+	NightHandler,
+	MotionSensor
+}
+
+public enum ENotificationPriority
+{
+	Low,
+	High
 }

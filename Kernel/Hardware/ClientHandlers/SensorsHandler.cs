@@ -1,44 +1,88 @@
 using System.Net.Sockets;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
+using Newtonsoft.Json;
 using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware.ClientHandlers;
 
-internal class SensorsHandler(Socket socket) : ClientHandler(socket)
+internal class SensorsHandler : ClientHandler
 {
     private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
-	
+
+	private SensorData? _lastSensorData;
 	private Timer? _motionTimer;
 
-	protected override void HandleRead(string message)
+	internal SensorsHandler(Socket socket) : base(socket)
 	{
-		bool motionDetected = int.Parse(message) == 1;
-		if (!motionDetected) return;
-		
-		_motionTimer?.Stop();
-		_motionTimer?.Close();
-		
-		if(HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off) HardwareNotifier.Publish("Motion detected, switching lamp on!");
-		HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
-		
-		_motionTimer = new Timer("motion-timer", null, (10, 0, 0), MotionTimeout, ETimerType.Utility);
+		HardwareNotifier.Publish("ESP32 connected", ENotificationPriority.Low);
 	}
 	
+	protected override void HandleRead(string message)
+	{
+		var newData = JsonConvert.DeserializeObject<SensorData>(message);
+		if (HardwareSettings.HardwareControlMode != EControlMode.MotionSensor)
+		{
+			_lastSensorData = newData;
+			return;
+		}
+
+		if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
+		{
+			switch (newData)
+			{
+				case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
+				{
+					int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 20 : 10;
+					_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
+					_motionTimer.Set((seconds, 0, 0));
+					break;
+				}
+				case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
+					_motionTimer?.Destroy();
+					_motionTimer = null;
+					break;
+			}
+		}
+		else
+		{
+			switch (newData)
+			{
+				case { SmallMotion: EPower.On }:
+				case { BigMotion: EPower.On } when _lastSensorData is { BigMotion: EPower.On }:
+				{
+					if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off)
+					{
+						HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
+						HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.Low);
+						HardwareNotifier.Publish($"Light level: {newData.Light}", ENotificationPriority.High);
+					}
+					
+					break;
+				}
+			}
+		}
+
+		_lastSensorData = newData;
+	}
+
 	private Task MotionTimeout(object? sender) 
 	{
-		_motionTimer?.Close();
-		if (HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On)
-		{
-			_motionTimer = new Timer("motion-timer", null, (10, 0, 0), MotionTimeout, ETimerType.Utility);
-			return Task.CompletedTask;
-		}
+		_motionTimer?.Destroy();
+		_motionTimer = null;
 		HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Off);
-		HardwareNotifier.Publish("No motion detected, switching lamp off");
+		HardwareNotifier.Publish("No motion detected, switching lamp off...", ENotificationPriority.Low);
 
 		return Task.CompletedTask;
+	}
+	
+	protected override void DisconnectSocket()
+	{
+		base.DisconnectSocket();
+		HardwareNotifier.Publish("ESP32 disconnected", ENotificationPriority.Low);
 	}
 	
 	internal static void BindNew(SensorsHandler sensorHandler)
@@ -46,7 +90,7 @@ internal class SensorsHandler(Socket socket) : ClientHandler(socket)
 		lock (InstanceLock)
 		{
 			_instance?.DisconnectSocket();
-			_instance = sensorHandler;	
+			_instance = sensorHandler;
 		}
 	}
     

@@ -1,4 +1,5 @@
 using Kernel.Hardware.ClientHandlers;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 using Timer = Kernel.Software.Timer;
@@ -10,23 +11,42 @@ public abstract class HardwareProxy: IHardwareAdapter
 	private static readonly Lock RaspberryLock = new();
 	private static readonly Lock ComputerLock = new();
 	private static readonly Lock DeviceLock = new();
+
+	private static Timer? _nightHandler;
 	
 	static HardwareProxy()
 	{
-		_ = new Timer("night-handler", null, new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0), 
-			HandleNightCallback, ETimerType.Utility, ETimerLoop.Daily);
+		ResetNightHandler();
 	}
+
+	internal static void ResetNightHandler()
+	{
+		_nightHandler?.Destroy();
+		_nightHandler = new Timer("night-handler", null, HandleNightCallback, ETimerType.Utility);
+
+		if (DateTime.Now.Hour >= 7)
+		{
+			_nightHandler.Set(new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0));
+			if(HardwareSettings.HardwareControlMode > EControlMode.Manual) HardwareSettings.HardwareControlMode = EControlMode.MotionSensor;
+		}
+		else
+			_nightHandler.Set((0, 45, 0));
+	}
+	
 	private static Task HandleNightCallback(object? sender)
 	{
+		ResetNightHandler();
+		if (HardwareSettings.HardwareControlMode == EControlMode.Manual) return Task.CompletedTask;
+		
 		if (GetDevicePower(EDevice.Computer) == EPower.Off)
 		{
+			HardwareSettings.HardwareControlMode = EControlMode.NightHandler;
+			if (GetDevicePower(EDevice.Lamp) == EPower.Off) return Task.CompletedTask;
+			
 			SwitchDevice(EDevice.Lamp, EPowerAction.Off);
-			HardwareNotifier.Publish("Night Handler activated");
+			HardwareNotifier.Publish("Night Handler activated, lamp switched off", ENotificationPriority.Low);
 		}
-		else 
-			CommandComputer(EComputerCommand.Notify, "You should go to sleep");
-
-		if (DateTime.Now.Hour < 6) _ = new Timer("safety-night-handler", null, (0, 0, 1), HandleNightCallback, ETimerType.Utility);
+		else if(DateTime.Now.Hour % 2 != 0) HardwareNotifier.Publish("You should go to sleep", ENotificationPriority.High);
 		
 		return Task.CompletedTask;
 	}
@@ -49,7 +69,12 @@ public abstract class HardwareProxy: IHardwareAdapter
 			return HardwareAdapter.GetHardwareInfo(hardwareInfo);
 		}
 	}
-	
+
+	public static string GetSensorInfo(ESensorData sensorData)
+	{
+		return HardwareAdapter.GetSensorInfo(sensorData);
+	}
+
 	public static string CommandRaspberry(ERaspberryOption option)
 	{
 		lock (RaspberryLock)

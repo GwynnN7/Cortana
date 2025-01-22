@@ -1,19 +1,21 @@
+using Kernel.Hardware.DataStructures;
+
 namespace Kernel.Hardware.Utility;
 
 public static class HardwareNotifier
 {
-    private static readonly List<Action<string>> Subscribers = [];
+    private static readonly List<Tuple<Action<string>, ENotificationPriority>> Subscribers = [];
 
-    public static void Subscribe(Action<string> action)
+    public static void Subscribe(Action<string> action, ENotificationPriority priority)
     {
-        Subscribers.Add(action);
+        Subscribers.Add(new Tuple<Action<string>, ENotificationPriority>(action, priority));
     }
 
-    public static void Publish(string message)
+    public static void Publish(string message, ENotificationPriority priority)
     {
-        foreach (Action<string> subscriber in Subscribers)
+        foreach (Tuple<Action<string>, ENotificationPriority> subscriber in Subscribers.Where(subscriber => priority >= subscriber.Item2))
         {
-            subscriber.Invoke(message);
+            subscriber.Item1.Invoke(message);
         }
     }
 }

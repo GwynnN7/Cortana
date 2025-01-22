@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Kernel.Software;
 

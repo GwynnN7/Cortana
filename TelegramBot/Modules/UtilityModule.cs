@@ -108,8 +108,8 @@ internal static class UtilityModule
 		
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<string>(messageStats.ChatId, messageStats.UserId, null), 
-					(times.s, times.m, times.h), TelegramTimerFinished, ETimerType.Telegram);
+				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<string>(messageStats.ChatId, messageStats.UserId, null), TelegramTimerFinished, ETimerType.Telegram);
+				timer.Set((times.s, times.m, times.h));
 				
 				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);

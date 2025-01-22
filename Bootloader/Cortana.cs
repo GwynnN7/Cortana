@@ -1,3 +1,4 @@
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Mono.Unix;

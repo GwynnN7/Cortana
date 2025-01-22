@@ -1,10 +1,9 @@
-using System.Timers;
+using Kernel.Hardware.DataStructures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Kernel.Hardware.Interfaces;
-using Kernel.Hardware.Utility;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using TelegramBot.Utility;
@@ -222,8 +221,8 @@ internal static class HardwareModule
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
 				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<string>)!.Arg);
-				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), 
-					(times.s, times.m, times.h), HardwareTimerFinished, ETimerType.Telegram);
+				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
+				timer.Set((times.s, times.m, times.h));
 				
 				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateAutomationMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);

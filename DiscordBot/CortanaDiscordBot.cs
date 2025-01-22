@@ -1,11 +1,10 @@
-﻿using System.Timers;
-using Discord;
+﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Handlers;
 using DiscordBot.Utility;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
-using Kernel.Hardware.Utility;
 using Microsoft.Extensions.DependencyInjection;
 using Kernel.Software;
 using Kernel.Software.Utility;
@@ -40,7 +39,7 @@ public static class CortanaDiscordBot
 			DiscordUtils.InitSettings(client);
 			await commands.RegisterCommandsGloballyAsync();
 
-			_ = new Timer("discord-activity-timer", null, (0, 0, 10), ActivityTimerElapsed, ETimerType.Utility, ETimerLoop.Interval);
+			new Timer("discord-activity-timer", null, ActivityTimerElapsed, ETimerType.Utility, ETimerLoop.Interval).Set((0, 0, 10));
 
 			foreach (SocketGuild? guild in DiscordUtils.Cortana.Guilds)
 			{

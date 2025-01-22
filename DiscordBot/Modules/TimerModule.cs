@@ -1,5 +1,4 @@
-﻿using System.Timers;
-using Discord;
+﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Utility;
@@ -19,7 +18,9 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 		int minutes = 0, [Summary("ore", "Quante ore?")] [MaxValue(100)] int hours = 0, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
 	{
 		var timerArgs = new DiscordTimerPayload<string>(Context.User, inPrivate == EAnswer.No ? Context.Channel : null, text);
-		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, (seconds, minutes, hours), DiscordTimerFinished, ETimerType.Discord);
+		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
+		timer.Set((seconds, minutes, hours));
+		
 		Embed embed = DiscordUtils.CreateEmbed("Timer impostato!", description: $"Per {timer.NextTargetTime:dddd dd MMMM alle HH:mm:ss}");
 		await RespondAsync(embed: embed);
 	}
@@ -40,7 +41,9 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 
 		var date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, dayNumber, hours, minutes, 1);
 		var timerArgs = new DiscordTimerPayload<string>(Context.User, inPrivate == EAnswer.No ? Context.Channel : null, text);
-		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, date, DiscordTimerFinished, ETimerType.Discord);
+		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
+		timer.Set(date);
+		
 		Embed? embed = DiscordUtils.CreateEmbed("Timer impostato!");
 		embed = embed.ToEmbedBuilder()
 			.AddField("Notifica", text)

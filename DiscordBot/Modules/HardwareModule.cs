@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Interactions;
 using DiscordBot.Utility;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 

@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Kernel.Hardware.ClientHandlers;
-using Kernel.Hardware.Utility;
 
 namespace Kernel.Hardware;
 
@@ -12,7 +11,7 @@ internal static class ServerHandler
 	
 	static ServerHandler()
 	{
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, NetworkAdapter.ServerPort);
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, HardwareSettings.NetworkData.ServerPort);
 		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 		Server.Bind(ipEndPoint);
 	}
@@ -50,16 +49,15 @@ internal static class ServerHandler
 				ComputerHandler.BindNew(new ComputerHandler(socket));
 				break;
 			
-			case "esp32-station":
+			case "esp32":
 				SensorsHandler.BindNew(new SensorsHandler(socket));
 				break;
 			default:
-				answer = "ERR";
+				answer = "FIN";
 				break;
 		}
-		HardwareNotifier.Publish($"New {answer} connection: {message}");
 		socket.Send(Encoding.UTF8.GetBytes(answer));
-		if(answer == "ERR") socket.Close();
+		if(answer == "FIN") socket.Close();
 	}
 
 	internal static void ShutdownServer()

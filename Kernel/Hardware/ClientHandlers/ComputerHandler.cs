@@ -1,4 +1,6 @@
 using System.Net.Sockets;
+using Kernel.Hardware.DataStructures;
+using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 
 namespace Kernel.Hardware.ClientHandlers;
@@ -13,6 +15,8 @@ internal class ComputerHandler : ClientHandler
 	internal ComputerHandler (Socket socket) : base(socket)
 	{
 		UpdateComputerStatus(EPower.On);
+		HardwareProxy.ResetNightHandler();
+		HardwareNotifier.Publish("Computer connected", ENotificationPriority.Low);
 	}
 
 	protected override void HandleRead(string message)
@@ -36,14 +40,16 @@ internal class ComputerHandler : ClientHandler
 		base.DisconnectSocket();
 		_messages.Clear();
 		UpdateComputerStatus(EPower.Off);
+		HardwareProxy.ResetNightHandler();
+		HardwareNotifier.Publish("Computer disconnected", ENotificationPriority.Low);
 	}
 	
 	// Static methods
 
 	internal static void Boot()
 	{
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", NetworkAdapter.ComputerMac));
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", NetworkAdapter.ComputerMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", HardwareSettings.NetworkData.DesktopMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", HardwareSettings.NetworkData.DesktopMac));
 	}
 
 	internal static bool Shutdown()
@@ -99,7 +105,7 @@ internal class ComputerHandler : ClientHandler
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while ((Helper.Ping(NetworkAdapter.ComputerIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(HardwareSettings.NetworkData.DesktopIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
 
 		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(15000);
 		else await Task.Delay(5000);
@@ -120,7 +126,7 @@ internal class ComputerHandler : ClientHandler
 		lock (InstanceLock)
 		{
 			_instance?.DisconnectSocket();
-			_instance = computerHandler;	
+			_instance = computerHandler;
 		}
 	}
     

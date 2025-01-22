@@ -1,4 +1,5 @@
 using Kernel.Hardware.ClientHandlers;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 
@@ -30,6 +31,14 @@ public abstract class HardwareAdapter: IHardwareAdapter
 			EHardwareInfo.Gateway => RaspberryHandler.GetNetworkGateway(),
 			EHardwareInfo.Temperature => Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()),
 			_ => throw new CortanaException("Hardware info not supported")
+		};
+	}
+
+	public static string GetSensorInfo(ESensorData sensorData)
+	{
+		return sensorData switch
+		{
+			_ => "TODO"
 		};
 	}
 

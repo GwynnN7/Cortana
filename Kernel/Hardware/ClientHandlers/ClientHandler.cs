@@ -78,6 +78,7 @@ internal abstract class ClientHandler
     {
 	    _connectionTimer?.Stop();
 	    _connectionTimer?.Close();
-	    _connectionTimer = new Timer("connection-timer", null, (DisconnectTime, 0, 0), ResetConnection, ETimerType.Utility);
+	    _connectionTimer = new Timer("connection-timer", null, ResetConnection, ETimerType.Utility);
+	    _connectionTimer.Set((DisconnectTime, 0, 0));
     }
 }
