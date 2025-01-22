@@ -73,7 +73,7 @@ void loop() {
     int light = analogRead(light_sensor);
     
     char buff[100];
-    snprintf(buff, 100, "{ \"bigMotion\": \"%s\", \"smallMotion\": \"%s\", \"light\": %d, \"temp\": %d, \"hum\": %d }", avgMotionBig == 1 ? "On" : "Off", avgMotionSmall == 1 ? "On" : "Off", light, temp, hum);
+    snprintf(buff, 100, "{ \"bigMotion\": \"%s\", \"smallMotion\": \"%s\", \"light\": %d, \"temperature\": %d, \"humidity\": %d }", avgMotionBig == 1 ? "On" : "Off", avgMotionSmall == 1 ? "On" : "Off", light, temp, hum);
     client.print(buff);
 
     lastMotionBig = avgMotionBig;
@@ -81,8 +81,8 @@ void loop() {
     avgMotionBig = LOW;
     avgMotionSmall = LOW;
 
-    tcpTime = millis();
     delay(50);
+    tcpTime = millis();
   }
 
   digitalWrite(led_blue, currentMotionBig);

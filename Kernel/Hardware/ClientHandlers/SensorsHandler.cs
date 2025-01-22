@@ -12,9 +12,9 @@ internal class SensorsHandler : ClientHandler
 {
     private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
-
-	private SensorData? _lastSensorData;
+	
 	private Timer? _motionTimer;
+	private SensorData? _lastSensorData;
 
 	internal SensorsHandler(Socket socket) : base(socket)
 	{
@@ -29,9 +29,6 @@ internal class SensorsHandler : ClientHandler
 			_lastSensorData = newData;
 			return;
 		}
-		
-		HardwareNotifier.Publish(message, ENotificationPriority.High);
-		HardwareNotifier.Publish(newData.BigMotion + " " + newData.SmallMotion + " " + newData.Light, ENotificationPriority.High);
 
 		if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
 		{
@@ -86,6 +83,30 @@ internal class SensorsHandler : ClientHandler
 	{
 		base.DisconnectSocket();
 		HardwareNotifier.Publish("ESP32 disconnected", ENotificationPriority.Low);
+	}
+	
+	internal static int GetLastLightData()
+	{
+		lock (InstanceLock)
+		{
+			return _instance?._lastSensorData?.Light ?? int.MinValue;
+		}
+	}
+	
+	internal static int GetLastTempData()
+	{
+		lock (InstanceLock)
+		{
+			return _instance?._lastSensorData?.Temperature ?? int.MinValue;
+		}
+	}
+	
+	internal static int GetLastHumData()
+	{
+		lock (InstanceLock)
+		{
+			return _instance?._lastSensorData?.Humidity ?? int.MinValue;
+		}
 	}
 	
 	internal static void BindNew(SensorsHandler sensorHandler)

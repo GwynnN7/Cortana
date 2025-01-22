@@ -70,9 +70,17 @@ public abstract class HardwareProxy: IHardwareAdapter
 		}
 	}
 
-	public static string GetSensorInfo(ESensorData sensorData)
+	public static string GetSensorInfo(ESensorData sensor)
 	{
-		return HardwareAdapter.GetSensorInfo(sensorData);
+		int val = sensor switch
+		{
+			ESensorData.Light => SensorsHandler.GetLastLightData(),
+			ESensorData.Temperature => SensorsHandler.GetLastTempData(),
+			ESensorData.Humidity => SensorsHandler.GetLastHumData(),
+			_ => int.MinValue
+		};
+		
+		return val == int.MinValue ? "Sensor not supported or offline" : val.ToString();
 	}
 
 	public static string CommandRaspberry(ERaspberryOption option)

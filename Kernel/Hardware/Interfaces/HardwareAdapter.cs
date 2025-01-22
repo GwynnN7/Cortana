@@ -38,7 +38,10 @@ public abstract class HardwareAdapter: IHardwareAdapter
 	{
 		return sensorData switch
 		{
-			_ => "TODO"
+			ESensorData.Light => SensorsHandler.GetLastLightData().ToString(),
+			ESensorData.Temperature => SensorsHandler.GetLastTempData().ToString(),
+			ESensorData.Humidity => SensorsHandler.GetLastHumData().ToString(),
+			_ => "Sensor not supported"
 		};
 	}
 
