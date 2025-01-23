@@ -1,4 +1,5 @@
 using Kernel.Hardware;
+using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +24,13 @@ public class SensorController : ControllerBase
     [HttpGet("mode")]
     public string Mode()
     {
-        return HardwareSettings.HardwareControlMode.ToString();
+        return HardwareSettings.CurrentControlMode.ToString();
+    }
+    
+    [HttpGet("mode/{set}")]
+    public ActionResult SetMode([FromRoute] int mode)
+    {
+        if(mode is >= 0 and <= 2) HardwareSettings.UserControlMode = (EControlMode) mode;
+        return RedirectToRoute("mode");
     }
 }

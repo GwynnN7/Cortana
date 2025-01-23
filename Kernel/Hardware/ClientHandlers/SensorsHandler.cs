@@ -13,15 +13,12 @@ internal class SensorsHandler : ClientHandler
 {
     private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
-	
+
 	private Timer? _motionTimer;
 	private SensorData? _lastSensorData;
 
-	internal SensorsHandler(Socket socket) : base(socket)
-	{
-		HardwareNotifier.Publish($"ESP32 connected at {DateTime.Now}", ENotificationPriority.Low);
-	}
-	
+	internal SensorsHandler(Socket socket) : base(socket, "ESP32") { }
+
 	protected override void HandleRead(string message)
 	{
 		var newData = JsonConvert.DeserializeObject<SensorData>(message);
@@ -37,7 +34,7 @@ internal class SensorsHandler : ClientHandler
 			}
 		}
 		
-		if (HardwareSettings.HardwareControlMode == EControlMode.MotionSensor)
+		if (HardwareSettings.CurrentControlMode == EControlMode.MotionSensor)
 		{
 			if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
 			{
@@ -45,7 +42,7 @@ internal class SensorsHandler : ClientHandler
 				{
 					case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
 					{
-						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 10 : 5;
+						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 60 : 10;
 						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 						_motionTimer.Set((seconds, 0, 0));
 						break;
@@ -93,12 +90,12 @@ internal class SensorsHandler : ClientHandler
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		HardwareNotifier.Publish($"ESP32 disconnected at {DateTime.Now}", ENotificationPriority.Low);
+		_instance = null;
 	}
 	
 	// Static methods
 	
-	internal static int? GetLastLightData()
+	internal static int? GetRoomLightLevel()
 	{
 		lock (InstanceLock)
 		{
@@ -106,7 +103,7 @@ internal class SensorsHandler : ClientHandler
 		}
 	}
 	
-	internal static int? GetLastTempData()
+	internal static float? GetRoomTemperature()
 	{
 		lock (InstanceLock)
 		{
@@ -114,18 +111,12 @@ internal class SensorsHandler : ClientHandler
 		}
 	}
 	
-	internal static int? GetLastHumData()
+	internal static EPower? GetMotionDetected()
 	{
 		lock (InstanceLock)
 		{
-			return _instance?._lastSensorData?.Humidity;
-		}
-	}
-	internal static int GetLastMotionData()
-	{
-		lock (InstanceLock)
-		{
-			return (int)(_instance?._lastSensorData?.SmallMotion ?? 0) + (int)(_instance?._lastSensorData?.BigMotion ?? 0);
+			if(_instance?._lastSensorData == null) return null;
+			return _instance._lastSensorData.Value.BigMotion == EPower.On || _instance._lastSensorData.Value.SmallMotion == EPower.On ? EPower.On : EPower.Off;
 		}
 	}
 	

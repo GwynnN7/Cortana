@@ -36,16 +36,22 @@ public abstract class HardwareAdapter: IHardwareAdapter
 
 	public static string GetSensorInfo(ESensor sensor)
 	{
-		int? val = sensor switch
+		switch (sensor)
 		{
-			ESensor.Light => SensorsHandler.GetLastLightData(),
-			ESensor.Temperature => SensorsHandler.GetLastTempData(),
-			ESensor.Humidity => SensorsHandler.GetLastHumData(),
-			ESensor.Motion => SensorsHandler.GetLastMotionData(),
-			_ => null
-		};
-		
-		return val.HasValue ? val.Value.ToString() : "Sensor offline";
+			case ESensor.Temperature:
+				float? temp = SensorsHandler.GetRoomTemperature();
+				if (temp is not null) return $"Room Temperature: {temp}";
+				break;
+			case ESensor.Light:
+				int? light = SensorsHandler.GetRoomLightLevel();
+				if (light is not null) return $"Light Level: {light}";
+				break;
+			case ESensor.Motion:
+				EPower? motion = SensorsHandler.GetMotionDetected();
+				if (motion is not null) return motion.Value == EPower.On ? "Motion Detected!" : "Motion not detected.";
+				break;
+		}
+		return "Sensor offline";
 	}
 
 	public static string GetSensorInfo(string sensor)

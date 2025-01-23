@@ -1,5 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
+using Kernel.Hardware.DataStructures;
+using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 using Timer = Kernel.Software.Timer;
 
@@ -9,16 +11,19 @@ internal abstract class ClientHandler
 {
 	private Socket? _socket;
 	private Timer? _connectionTimer;
+	private readonly string _deviceName;
 	
 	private const int Timeout = 2000;
 	private const int DisconnectTime = 10;
 
-	protected ClientHandler(Socket socket)
+	protected ClientHandler(Socket socket, string deviceName)
 	{
+		_deviceName = deviceName;
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
+		HardwareNotifier.Publish($"{_deviceName} connected at {DateTime.Now}", ENotificationPriority.Low);
+		
 		Task.Run(Read);
-	    
 		RestartConnectionTimer();
 	}
 
@@ -62,7 +67,11 @@ internal abstract class ClientHandler
     
     protected virtual void DisconnectSocket()
     {
-	    _socket?.Close();
+	    if (_socket != null)
+	    {
+		    HardwareNotifier.Publish($"{_deviceName} disconnected at {DateTime.Now}", ENotificationPriority.Low);
+		    _socket?.Close();
+	    }
 	    _socket = null;
     }
 	

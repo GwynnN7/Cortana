@@ -12,11 +12,10 @@ internal class ComputerHandler : ClientHandler
 	
 	private readonly Stack<string> _messages = [];
 
-	internal ComputerHandler (Socket socket) : base(socket)
+	internal ComputerHandler (Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPower.On);
 		HardwareProxy.ResetNightHandler();
-		HardwareNotifier.Publish($"Computer connected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 
 	protected override void HandleRead(string message)
@@ -39,9 +38,9 @@ internal class ComputerHandler : ClientHandler
 	{
 		base.DisconnectSocket();
 		_messages.Clear();
+		_instance = null;
 		UpdateComputerStatus(EPower.Off);
 		HardwareProxy.ResetNightHandler();
-		HardwareNotifier.Publish($"Computer disconnected at {DateTime.Now}", ENotificationPriority.Low);
 	}
 	
 	// Static methods

@@ -31,7 +31,6 @@ public enum ERaspberryOption
 public enum ESensor
 {
 	Temperature,
-	Humidity,
 	Light,
 	Motion
 }

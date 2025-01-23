@@ -1,7 +1,6 @@
 using Kernel.Hardware.DataStructures;
 using Microsoft.AspNetCore.Mvc;
 using Kernel.Hardware.Interfaces;
-using Kernel.Hardware.Utility;
 
 namespace CortanaAPI.Controllers;
 

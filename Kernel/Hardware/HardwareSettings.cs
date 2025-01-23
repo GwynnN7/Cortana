@@ -6,7 +6,8 @@ namespace Kernel.Hardware;
 public static class HardwareSettings
 {
     public static readonly NetworkData NetworkData;
-    public static EControlMode HardwareControlMode { get; internal set; } = EControlMode.NightHandler;
+    public static EControlMode CurrentControlMode { get; internal set; } = EControlMode.NightHandler;
+    public static EControlMode UserControlMode { get; set; } = EControlMode.MotionSensor;
 
     static HardwareSettings()
     {
