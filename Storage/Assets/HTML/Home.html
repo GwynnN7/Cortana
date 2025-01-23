@@ -9,12 +9,13 @@
     <link rel="icon" href="<<PageUrl>>/resources/cortana.jpg">
     <title>Cortana Home</title>
 </head>
-<body>
+<body onload="getTemp()">
 <header>
     <div class="title">
         <img src="<<PageUrl>>/resources/cortana.jpg" alt="Cortana Logo" class="logo">
         <h1>Hi, I'm Cortana</h1>
         <p>Halo inspired Home Assistant and AI</p>
+        <p id="temp"></p>
         <button onclick="openGitHub()" class="github-button">View on GitHub</button>
     </div>
 </header>
@@ -114,7 +115,7 @@
 </main>
 
 <footer>
-    <p>Designed and Developed by <a href="https://github.com/GwynbleiddN7">Gwynn7</a></p>
+    <p>Designed and Developed by <a href="https://github.com/GwynnN7">Gwynn7</a></p>
 </footer>
 </body>
 
@@ -145,8 +146,18 @@
             .catch(error => alert(`Error: ${error}`));
     }
 
+    function getTemp() {
+        const absolutePath = "<<PageUrl>>";
+        const url = `${absolutePath}/api/sensor/temperature`;
+        var p = document.getElementById("temp");
+        fetch(url, { method: 'GET' })
+            .then(response => response.text())
+            .then(data =>  p.innerHTML = `Room Temperature: ${data}`)
+            .catch( p.innerHTML = `Room Temperature Sensor Offline`);
+    }
+
     function openGitHub() {
-        window.open("https://github.com/GwynbleiddN7/Cortana", '_blank').focus();
+        window.open("https://github.com/GwynnN7/Cortana", '_blank').focus();
     }
 
 </script>

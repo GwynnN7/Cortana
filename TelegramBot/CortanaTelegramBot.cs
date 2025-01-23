@@ -99,6 +99,10 @@ public static class CortanaTelegramBot
 				case ETelegramChatArg.Shopping:
 					await ShoppingModule.HandleTextMessage(cortana, messageStats);
 					break;
+				case ETelegramChatArg.SetControlMode:
+				case ETelegramChatArg.SetLightThreshold:
+					await SensorModule.HandleTextMessage(cortana, messageStats);
+					break;
 			}
 			
 			return;
@@ -161,10 +165,14 @@ public static class CortanaTelegramBot
 			case "software_utility":
 				await UtilityModule.CreateSoftwareUtilityMenu(cortana, message);
 				break;
+			case "sensor":
+				await SensorModule.CreateSensorMenu(cortana, message);
+				break;
 			default:
 				if (command.StartsWith("hardware-")) await HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
 				else if (command.StartsWith("shopping-")) await ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
 				else if (command.StartsWith("utility-")) await UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
+				else if (command.StartsWith("sensor-")) await SensorModule.HandleCallbackQuery(cortana, callbackQuery, command["sensor-".Length..]);
 				break;
 		}
 	}
@@ -179,6 +187,8 @@ public static class CortanaTelegramBot
 	{
 		return new InlineKeyboardMarkup()
 			.AddButton("Domotica", "automation")
+			.AddNewRow()
+			.AddButton("Sensors", "sensor")
 			.AddNewRow()
 			.AddButton("Raspberry", "raspberry")
 			.AddNewRow()

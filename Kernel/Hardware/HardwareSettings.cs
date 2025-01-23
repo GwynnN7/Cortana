@@ -6,11 +6,16 @@ namespace Kernel.Hardware;
 public static class HardwareSettings
 {
     public static readonly NetworkData NetworkData;
+    public static int LightThreshold { get; set; } = 1000;
     
     private static EControlMode _currentControlMode = EControlMode.NightHandler;
     public static EControlMode CurrentControlMode
     {
-        get => (EControlMode) Math.Min((int) _currentControlMode, (int) LimitControlMode);
+        get => Math.Min((int)_currentControlMode, (int)LimitControlMode) switch
+        {
+            0 => EControlMode.Manual, 1 => EControlMode.NightHandler, 2 => EControlMode.MotionSensor,
+            _ => _currentControlMode
+        };
         internal set => _currentControlMode = value;
     }
     public static EControlMode LimitControlMode { get; set; } = EControlMode.MotionSensor;

@@ -16,7 +16,6 @@ internal class SensorsHandler : ClientHandler
 
 	private Timer? _motionTimer;
 	private SensorData? _lastSensorData;
-	private const int lightThreshold = 1000;
 
 	internal SensorsHandler(Socket socket) : base(socket, "ESP32") { }
 
@@ -43,7 +42,7 @@ internal class SensorsHandler : ClientHandler
 				{
 					case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
 					{
-						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 60 : 10;
+						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 45 : 10;
 						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 						_motionTimer.Set((seconds, 0, 0));
 						break;
@@ -58,9 +57,9 @@ internal class SensorsHandler : ClientHandler
 			{
 				switch (newData)
 				{
-					case { SmallMotion: EPower.On } /*or { BigMotion: EPower.On }*/:
+					case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
 					{
-						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light < lightThreshold)
+						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light <= HardwareSettings.LightThreshold)
 						{
 							HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
 							HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.High);

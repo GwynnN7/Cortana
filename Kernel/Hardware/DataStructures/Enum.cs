@@ -61,9 +61,9 @@ public enum EHardwareInfo
 
 public enum EControlMode
 {
-	Manual,
-	NightHandler,
-	MotionSensor
+	Manual = 0,
+	NightHandler = 1,
+	MotionSensor = 2
 }
 
 public enum ENotificationPriority

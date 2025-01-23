@@ -11,5 +11,7 @@ internal enum ETelegramChatArg
 	ComputerCommand,
 	Shopping,
 	AudioDownloader,
-	VideoDownloader
+	VideoDownloader,
+	SetLightThreshold,
+	SetControlMode
 }
