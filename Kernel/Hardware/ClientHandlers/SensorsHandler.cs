@@ -90,7 +90,7 @@ internal class SensorsHandler : ClientHandler
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		_instance = null;
+		//_instance = null;
 	}
 	
 	// Static methods

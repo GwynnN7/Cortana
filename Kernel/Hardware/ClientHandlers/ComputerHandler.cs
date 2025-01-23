@@ -38,7 +38,7 @@ internal class ComputerHandler : ClientHandler
 	{
 		base.DisconnectSocket();
 		_messages.Clear();
-		_instance = null;
+		//_instance = null;
 		UpdateComputerStatus(EPower.Off);
 		HardwareProxy.ResetNightHandler();
 	}
