@@ -11,7 +11,7 @@ const int led_blue = 32;
 const int led_white = 33;
 const int motion_big = 13;
 const int motion_small = 26;
-const int light_sensor = 25;
+const int light_sensor = 35;
 const int temp_sensor = 27;
 
 OneWire oneWire(temp_sensor);
@@ -75,6 +75,7 @@ void loop() {
 
   digitalWrite(led_blue, currentMotionBig);
   digitalWrite(led_white, currentMotionSmall);
+   
   delay(50);
 }
 

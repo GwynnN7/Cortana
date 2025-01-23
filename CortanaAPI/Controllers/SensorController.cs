@@ -28,9 +28,9 @@ public class SensorController : ControllerBase
     }
     
     [HttpGet("mode/{set}")]
-    public ActionResult SetMode([FromRoute] int mode)
+    public string SetMode([FromRoute] int mode)
     {
-        if(mode is >= 0 and <= 2) HardwareSettings.UserControlMode = (EControlMode) mode;
-        return RedirectToRoute("mode");
+        if(mode is >= 0 and <= 2) HardwareSettings.LimitControlMode = (EControlMode) mode;
+        return $"Limit mode: {HardwareSettings.LimitControlMode}, current mode: {HardwareSettings.CurrentControlMode}";
     }
 }

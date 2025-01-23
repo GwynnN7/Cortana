@@ -39,8 +39,8 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		switch (sensor)
 		{
 			case ESensor.Temperature:
-				float? temp = SensorsHandler.GetRoomTemperature();
-				if (temp is not null) return $"Room Temperature: {temp}";
+				double? temp = SensorsHandler.GetRoomTemperature();
+				if (temp is not null) return $"Room temperature: {Helper.FormatTemperature(temp.Value)}";
 				break;
 			case ESensor.Light:
 				int? light = SensorsHandler.GetRoomLightLevel();

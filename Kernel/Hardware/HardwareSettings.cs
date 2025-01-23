@@ -6,9 +6,15 @@ namespace Kernel.Hardware;
 public static class HardwareSettings
 {
     public static readonly NetworkData NetworkData;
-    public static EControlMode CurrentControlMode { get; internal set; } = EControlMode.NightHandler;
-    public static EControlMode UserControlMode { get; set; } = EControlMode.MotionSensor;
-
+    
+    private static EControlMode _currentControlMode = EControlMode.NightHandler;
+    public static EControlMode CurrentControlMode
+    {
+        get => (EControlMode) Math.Min((int) _currentControlMode, (int) LimitControlMode);
+        internal set => _currentControlMode = value;
+    }
+    public static EControlMode LimitControlMode { get; set; } = EControlMode.MotionSensor;
+    
     static HardwareSettings()
     {
         string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network/");

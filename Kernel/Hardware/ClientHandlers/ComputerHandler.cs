@@ -7,9 +7,8 @@ namespace Kernel.Hardware.ClientHandlers;
 
 internal class ComputerHandler : ClientHandler
 {
-	private static ComputerHandler? _instance;
 	private static readonly Lock InstanceLock = new();
-	
+	private static ComputerHandler? _instance;
 	private readonly Stack<string> _messages = [];
 
 	internal ComputerHandler (Socket socket) : base(socket, "Computer")
@@ -38,7 +37,7 @@ internal class ComputerHandler : ClientHandler
 	{
 		base.DisconnectSocket();
 		_messages.Clear();
-		//_instance = null;
+		_instance = null;
 		UpdateComputerStatus(EPower.Off);
 		HardwareProxy.ResetNightHandler();
 	}
@@ -124,7 +123,7 @@ internal class ComputerHandler : ClientHandler
 	{
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectSocket();
+			_instance?.DisconnectIfAvailable();
 			_instance = computerHandler;
 		}
 	}
@@ -133,7 +132,7 @@ internal class ComputerHandler : ClientHandler
 	{
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectSocket();
+			_instance?.DisconnectIfAvailable();
 			_instance = null;
 		}
 	}

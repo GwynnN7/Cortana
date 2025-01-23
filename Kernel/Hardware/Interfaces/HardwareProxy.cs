@@ -27,10 +27,10 @@ public abstract class HardwareProxy: IHardwareAdapter
 		if (DateTime.Now.Hour >= 7)
 		{
 			_nightHandler.Set(new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0));
-			HardwareSettings.CurrentControlMode = HardwareSettings.UserControlMode;
+			HardwareSettings.CurrentControlMode = EControlMode.MotionSensor;
 		}
 		else
-			_nightHandler.Set((0, 45, 0));
+			_nightHandler.Set((0, 30, 0));
 	}
 	
 	private static Task HandleNightCallback(object? sender)
@@ -40,7 +40,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 		
 		if (GetDevicePower(EDevice.Computer) == EPower.Off)
 		{
-			HardwareSettings.CurrentControlMode = HardwareSettings.UserControlMode >= EControlMode.NightHandler ? EControlMode.NightHandler : HardwareSettings.UserControlMode;
+			HardwareSettings.CurrentControlMode = EControlMode.NightHandler;
 			if (GetDevicePower(EDevice.Lamp) == EPower.Off) return Task.CompletedTask;
 			
 			SwitchDevice(EDevice.Lamp, EPowerAction.Off);

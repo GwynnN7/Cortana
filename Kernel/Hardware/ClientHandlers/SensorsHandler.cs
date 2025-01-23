@@ -16,6 +16,7 @@ internal class SensorsHandler : ClientHandler
 
 	private Timer? _motionTimer;
 	private SensorData? _lastSensorData;
+	private const int lightThreshold = 1000;
 
 	internal SensorsHandler(Socket socket) : base(socket, "ESP32") { }
 
@@ -59,7 +60,7 @@ internal class SensorsHandler : ClientHandler
 				{
 					case { SmallMotion: EPower.On } /*or { BigMotion: EPower.On }*/:
 					{
-						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off)
+						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light < lightThreshold)
 						{
 							HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
 							HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.High);
@@ -71,10 +72,7 @@ internal class SensorsHandler : ClientHandler
 			}
 		}
 
-		lock (InstanceLock)
-		{
-			_lastSensorData = newData;
-		}
+		lock (InstanceLock) _lastSensorData = newData;
 	}
 
 	private Task MotionTimeout(object? sender) 
@@ -90,25 +88,21 @@ internal class SensorsHandler : ClientHandler
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		//_instance = null;
+		lock (InstanceLock) _instance = null;
 	}
 	
 	// Static methods
 	
 	internal static int? GetRoomLightLevel()
 	{
-		lock (InstanceLock)
-		{
+		lock (InstanceLock) 
 			return _instance?._lastSensorData?.Light;
-		}
 	}
 	
-	internal static float? GetRoomTemperature()
+	internal static double? GetRoomTemperature()
 	{
 		lock (InstanceLock)
-		{
 			return _instance?._lastSensorData?.Temperature;
-		}
 	}
 	
 	internal static EPower? GetMotionDetected()
@@ -124,7 +118,7 @@ internal class SensorsHandler : ClientHandler
 	{
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectSocket();
+			_instance?.DisconnectIfAvailable();
 			_instance = sensorHandler;
 		}
 	}
@@ -133,7 +127,7 @@ internal class SensorsHandler : ClientHandler
 	{
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectSocket();
+			_instance?.DisconnectIfAvailable();
 			_instance = null;
 		}
 	}

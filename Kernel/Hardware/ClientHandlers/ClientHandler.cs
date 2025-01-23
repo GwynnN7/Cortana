@@ -9,6 +9,7 @@ namespace Kernel.Hardware.ClientHandlers;
 
 internal abstract class ClientHandler
 {
+	private readonly Lock _socketLock = new();
 	private Socket? _socket;
 	private Timer? _connectionTimer;
 	private readonly string _deviceName;
@@ -21,7 +22,7 @@ internal abstract class ClientHandler
 		_deviceName = deviceName;
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
-		HardwareNotifier.Publish($"{_deviceName} connected at {DateTime.Now}", ENotificationPriority.Low);
+		HardwareNotifier.Publish($"{_deviceName} connected ~ {DateTime.Now}", ENotificationPriority.Low);
 		
 		Task.Run(Read);
 		RestartConnectionTimer();
@@ -42,10 +43,9 @@ internal abstract class ClientHandler
 			    HandleRead(message);
 		    }
     	}
-    	catch (Exception ex)
+    	catch
     	{
-    		Software.FileHandler.Log(GetType().Name, $"Read Interrupted with error: {ex.Message}");
-    		DisconnectSocket();
+		    DisconnectIfAvailable();
     	}
     }
     protected abstract void HandleRead(string message);
@@ -57,36 +57,39 @@ internal abstract class ClientHandler
     		_socket!.Send(Encoding.UTF8.GetBytes(message));
     		return true;
     	}
-    	catch (Exception ex)
+    	catch
     	{
-    		Software.FileHandler.Log(GetType().Name, $"Write of message \"{message}\" failed with error: {ex.Message}");
-    		DisconnectSocket();
+		    DisconnectIfAvailable();
     		return false;
     	}
+    }
+
+    protected void DisconnectIfAvailable()
+    {
+	    lock (_socketLock)
+	    {
+		    if (_socket != null) DisconnectSocket();
+	    }
     }
     
     protected virtual void DisconnectSocket()
     {
-	    if (_socket != null)
-	    {
-		    HardwareNotifier.Publish($"{_deviceName} disconnected at {DateTime.Now}", ENotificationPriority.Low);
-		    _socket?.Close();
-	    }
+	    HardwareNotifier.Publish($"{_deviceName} disconnected at {DateTime.Now}", ENotificationPriority.Low);
+	    _socket?.Close();
 	    _socket = null;
     }
 	
     private Task ResetConnection(object? sender) 
     {
-	    DisconnectSocket();
-	    _connectionTimer?.Close();
+	    DisconnectIfAvailable();
+	    _connectionTimer?.Destroy();
 
 	    return Task.CompletedTask;
     }
 
     private void RestartConnectionTimer()
     {
-	    _connectionTimer?.Stop();
-	    _connectionTimer?.Close();
+	    _connectionTimer?.Destroy();
 	    _connectionTimer = new Timer("connection-timer", null, ResetConnection, ETimerType.Utility);
 	    _connectionTimer.Set((DisconnectTime, 0, 0));
     }
