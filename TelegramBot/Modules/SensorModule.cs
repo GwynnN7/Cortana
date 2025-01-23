@@ -21,42 +21,41 @@ internal static class SensorModule
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
 		
-		if (command.StartsWith("sensor-"))
+
+		switch (command)
 		{
-			switch (command["sensor-".Length..])
-			{
-				case "light":
-					string light = HardwareProxy.GetSensorInfo(ESensor.Light);
-					int threshold = HardwareSettings.LightThreshold;
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light Level: {light} ~ Threshold: {threshold}");
-					break;
-				case "temperature":
-					string temp = HardwareProxy.GetSensorInfo(ESensor.Temperature);
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp}");
-					break;
-				case "motion":
-					string motion = HardwareProxy.GetSensorInfo(ESensor.Motion);
-					EControlMode currentMode = HardwareSettings.CurrentControlMode;
-					EControlMode limitMode = HardwareSettings.LimitControlMode;
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit Mode: {currentMode}/{limitMode}");
-					break;
-				case "settings":
-					await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
-					break;
-				case "set_light_th":
-					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetLightThreshold, callbackQuery, callbackQuery.Message), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Write the threshold level", replyMarkup: CreateCancelButton());
-					break;
-				case "set_control_mode":
-					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetControlMode, callbackQuery, callbackQuery.Message), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Write the control mode code (0/1/2)", replyMarkup: CreateCancelButton());
-					break;
-				case "cancel":
-					await CreateSensorMenu(cortana, callbackQuery.Message);
-					TelegramUtils.ChatArgs.Remove(chatId);
-					break;
-			}
+			case "light":
+				string light = HardwareProxy.GetSensorInfo(ESensor.Light);
+				int threshold = HardwareSettings.LightThreshold;
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light Level: {light} ~ Threshold: {threshold}");
+				break;
+			case "temperature":
+				string temp = HardwareProxy.GetSensorInfo(ESensor.Temperature);
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp}");
+				break;
+			case "motion":
+				string motion = HardwareProxy.GetSensorInfo(ESensor.Motion);
+				EControlMode currentMode = HardwareSettings.CurrentControlMode;
+				EControlMode limitMode = HardwareSettings.LimitControlMode;
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit Mode: {currentMode}/{limitMode}");
+				break;
+			case "settings":
+				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
+				break;
+			case "set_light_th":
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetLightThreshold, callbackQuery, callbackQuery.Message), callbackQuery))
+					await cortana.EditMessageText(chatId, messageId, "Write the threshold level", replyMarkup: CreateCancelButton());
+				break;
+			case "set_control_mode":
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetControlMode, callbackQuery, callbackQuery.Message), callbackQuery))
+					await cortana.EditMessageText(chatId, messageId, "Write the control mode code (0/1/2)", replyMarkup: CreateCancelButton());
+				break;
+			case "cancel":
+				await CreateSensorMenu(cortana, callbackQuery.Message);
+				TelegramUtils.ChatArgs.Remove(chatId);
+				break;
 		}
+		
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
@@ -107,7 +106,9 @@ internal static class SensorModule
 			.AddNewRow()
 			.AddButton("Motion", "sensor-motion")
 			.AddNewRow()
-			.AddButton("Settings", "sensor-settings");
+			.AddButton("Settings", "sensor-settings")
+			.AddNewRow()
+			.AddButton("<<", "home");
 	}
 
 	private static InlineKeyboardMarkup CreateSettingsButtons()

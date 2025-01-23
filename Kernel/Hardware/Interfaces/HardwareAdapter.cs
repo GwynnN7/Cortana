@@ -40,11 +40,11 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		{
 			case ESensor.Temperature:
 				double? temp = SensorsHandler.GetRoomTemperature();
-				if (temp is not null) return $"Room temperature: {Helper.FormatTemperature(temp.Value)}";
+				if (temp is not null) return $"{Helper.FormatTemperature(temp.Value)}";
 				break;
 			case ESensor.Light:
 				int? light = SensorsHandler.GetRoomLightLevel();
-				if (light is not null) return $"Light Level: {light}";
+				if (light is not null) return $"{light}";
 				break;
 			case ESensor.Motion:
 				EPower? motion = SensorsHandler.GetMotionDetected();
