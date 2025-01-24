@@ -12,43 +12,73 @@ public abstract class HardwareProxy: IHardwareAdapter
 	private static readonly Lock ComputerLock = new();
 	private static readonly Lock DeviceLock = new();
 
-	private static Timer? _nightHandler;
+	private static Timer? _nightModeTimer;
+	private static Timer? _wakeUpTimer;
 	
 	static HardwareProxy()
 	{
-		ResetNightHandler();
+		StartNightModeTimer();
 	}
 
-	internal static void ResetNightHandler()
+	internal static void StartNightModeTimer()
 	{
-		_nightHandler?.Destroy();
-		_nightHandler = new Timer("night-handler", null, HandleNightCallback, ETimerType.Utility);
+		_nightModeTimer?.Destroy();
+		_nightModeTimer = new Timer("night-mode-timer", null, NightModeCallback, ETimerType.Utility);
 
-		if (DateTime.Now.Hour >= 7)
+		if (DateTime.Now.Hour >= 6)
 		{
-			_nightHandler.Set(new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0));
-			HardwareSettings.CurrentControlMode = EControlMode.MotionSensor;
+			_nightModeTimer = new Timer("night-mode-timer", null, NightModeCallback, ETimerType.Utility);
 		}
 		else
-			_nightHandler.Set((0, 30, 0));
+		{
+			_nightModeTimer.Set((0, 30, 0));
+		}
 	}
 	
-	private static Task HandleNightCallback(object? sender)
+	private static void StartWakeUpTimer(DateTime wakeUpTime)
 	{
-		ResetNightHandler();
-		if (HardwareSettings.CurrentControlMode == EControlMode.Manual) return Task.CompletedTask;
-		
-		if (GetDevicePower(EDevice.Computer) == EPower.Off)
+		_wakeUpTimer?.Destroy();
+		_wakeUpTimer = new Timer("wake-up-timer", null, WakeUpCallback, ETimerType.Utility);
+		_wakeUpTimer.Set(wakeUpTime);
+	}
+	
+	private static Task NightModeCallback(object? sender)
+	{
+		if (HardwareSettings.CurrentControlMode != EControlMode.Manual)
 		{
-			HardwareSettings.CurrentControlMode = EControlMode.NightHandler;
-			if (GetDevicePower(EDevice.Lamp) == EPower.Off) return Task.CompletedTask;
-			
-			SwitchDevice(EDevice.Lamp, EPowerAction.Off);
-			HardwareNotifier.Publish("Night Handler activated, lamp switched off", ENotificationPriority.Low);
+			if (GetDevicePower(EDevice.Computer) == EPower.Off)
+			{
+				EnterSleepMode();
+			}
+			else if (DateTime.Now.Hour % 2 != 0)
+			{
+				HardwareNotifier.Publish("You should go to sleep", ENotificationPriority.High);
+			}
 		}
-		else if(DateTime.Now.Hour % 2 != 0) HardwareNotifier.Publish("You should go to sleep", ENotificationPriority.High);
+		StartNightModeTimer();
 		
 		return Task.CompletedTask;
+	}
+	
+	private static Task WakeUpCallback(object? sender)
+	{
+		HardwareNotifier.Publish("Good morning", ENotificationPriority.High);
+		if (HardwareSettings.CurrentControlMode == EControlMode.Manual) return Task.CompletedTask;
+		
+		HardwareSettings.CurrentControlMode = EControlMode.Automatic;
+		StartNightModeTimer();
+
+		return Task.CompletedTask;
+	}
+
+	private static void EnterSleepMode()
+	{
+		if (GetDevicePower(EDevice.Lamp) == EPower.Off) return;
+		
+		SwitchDevice(EDevice.Lamp, EPowerAction.Off);
+		HardwareSettings.CurrentControlMode = EControlMode.Night;
+		HardwareNotifier.Publish("Entering night mode, lamp switched off", ENotificationPriority.Low);
+		StartWakeUpTimer(DateTime.Now.AddHours(8));
 	}
 	
 	public static void ShutdownServices() => HardwareAdapter.ShutdownServices();

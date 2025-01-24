@@ -37,7 +37,7 @@ internal static class SensorModule
 				string motion = HardwareProxy.GetSensorInfo(ESensor.Motion);
 				EControlMode currentMode = HardwareSettings.CurrentControlMode;
 				EControlMode limitMode = HardwareSettings.LimitControlMode;
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit Mode: {currentMode}/{limitMode}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit: {currentMode}/{limitMode}");
 				break;
 			case "settings":
 				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
@@ -70,15 +70,15 @@ internal static class SensorModule
 					EControlMode mode = code switch
 					{
 						0 => EControlMode.Manual,
-						1 => EControlMode.NightHandler,
-						2 => EControlMode.MotionSensor,
+						1 => EControlMode.Night,
+						2 => EControlMode.Automatic,
 						_ => HardwareSettings.LimitControlMode
 					};
 					HardwareSettings.LimitControlMode = mode;
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 
-				string modeResponse = $"Limit mode: {HardwareSettings.LimitControlMode} ~ Current mode: {HardwareSettings.CurrentControlMode}";
+				string modeResponse = $"Current: {HardwareSettings.CurrentControlMode} ~ Limit: {HardwareSettings.LimitControlMode}";
 				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
@@ -89,7 +89,7 @@ internal static class SensorModule
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				string lightResponse = $"Current Light: {HardwareProxy.GetSensorInfo(ESensor.Light)} ~ Light Threshold: {HardwareSettings.LightThreshold}";
+				string lightResponse = $"Current: {HardwareProxy.GetSensorInfo(ESensor.Light)} ~ Threshold: {HardwareSettings.LightThreshold}";
 				await TelegramUtils.AnswerOrMessage(cortana, lightResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;

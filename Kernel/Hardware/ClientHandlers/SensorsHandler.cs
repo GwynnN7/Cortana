@@ -34,7 +34,7 @@ internal class SensorsHandler : ClientHandler
 			}
 		}
 		
-		if (HardwareSettings.CurrentControlMode == EControlMode.MotionSensor)
+		if (HardwareSettings.CurrentControlMode == EControlMode.Automatic)
 		{
 			if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
 			{

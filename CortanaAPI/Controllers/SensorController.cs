@@ -33,8 +33,8 @@ public class SensorController : ControllerBase
         HardwareSettings.LimitControlMode = mode switch
         {
             0 => EControlMode.Manual,
-            1 => EControlMode.NightHandler,
-            2 => EControlMode.MotionSensor,
+            1 => EControlMode.Night,
+            2 => EControlMode.Automatic,
             _ => HardwareSettings.LimitControlMode
         };
         return $"Limit mode: {HardwareSettings.LimitControlMode} ~ Current mode: {HardwareSettings.CurrentControlMode}";

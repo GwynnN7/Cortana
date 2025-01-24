@@ -14,7 +14,7 @@ internal class ComputerHandler : ClientHandler
 	internal ComputerHandler (Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPower.On);
-		HardwareProxy.ResetNightHandler();
+		HardwareProxy.StartNightModeTimer();
 	}
 
 	protected override void HandleRead(string message)
@@ -39,7 +39,7 @@ internal class ComputerHandler : ClientHandler
 		_messages.Clear();
 		_instance = null;
 		UpdateComputerStatus(EPower.Off);
-		HardwareProxy.ResetNightHandler();
+		HardwareProxy.StartNightModeTimer();
 	}
 	
 	// Static methods

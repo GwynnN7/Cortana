@@ -8,17 +8,17 @@ public static class HardwareSettings
     public static readonly NetworkData NetworkData;
     public static int LightThreshold { get; set; } = 1000;
     
-    private static EControlMode _currentControlMode = EControlMode.NightHandler;
+    private static EControlMode _currentControlMode = EControlMode.Night;
     public static EControlMode CurrentControlMode
     {
         get => Math.Min((int)_currentControlMode, (int)LimitControlMode) switch
         {
-            0 => EControlMode.Manual, 1 => EControlMode.NightHandler, 2 => EControlMode.MotionSensor,
+            0 => EControlMode.Manual, 1 => EControlMode.Night, 2 => EControlMode.Automatic,
             _ => _currentControlMode
         };
         internal set => _currentControlMode = value;
     }
-    public static EControlMode LimitControlMode { get; set; } = EControlMode.MotionSensor;
+    public static EControlMode LimitControlMode { get; set; } = EControlMode.Automatic;
     
     static HardwareSettings()
     {
