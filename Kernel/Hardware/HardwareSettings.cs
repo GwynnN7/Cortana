@@ -8,7 +8,7 @@ public static class HardwareSettings
     public static readonly NetworkData NetworkData;
     public static int LightThreshold { get; set; } = 1000;
     
-    private static EControlMode _currentControlMode = EControlMode.Night;
+    private static EControlMode _currentControlMode = EControlMode.Automatic;
     public static EControlMode CurrentControlMode
     {
         get => Math.Min((int)_currentControlMode, (int)LimitControlMode) switch

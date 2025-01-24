@@ -27,7 +27,7 @@ public abstract class HardwareProxy: IHardwareAdapter
 
 		if (DateTime.Now.Hour >= 6)
 		{
-			_nightModeTimer = new Timer("night-mode-timer", null, NightModeCallback, ETimerType.Utility);
+			_nightModeTimer.Set(new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day, 1, 0, 0));
 		}
 		else
 		{
