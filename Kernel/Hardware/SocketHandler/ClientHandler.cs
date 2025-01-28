@@ -5,7 +5,7 @@ using Kernel.Hardware.Utility;
 using Kernel.Software.Utility;
 using Timer = Kernel.Software.Timer;
 
-namespace Kernel.Hardware.ClientHandlers;
+namespace Kernel.Hardware.SocketHandler;
 
 internal abstract class ClientHandler
 {

@@ -3,8 +3,8 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Handlers;
 using DiscordBot.Utility;
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Kernel.Software;
 using Kernel.Software.Utility;
@@ -107,7 +107,7 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			string temp = HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
+			string temp = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature);
 			var activity = new Game($"on Raspberry at {temp}");
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
 		}

@@ -1,8 +1,8 @@
 ﻿using Discord;
 using Discord.Interactions;
 using DiscordBot.Utility;
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 
 namespace DiscordBot.Modules;
@@ -14,7 +14,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Accendi o spegni la luce")]
 	public async Task LightToggle()
 	{
-		string result = HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
+		string result = HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
@@ -24,7 +24,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		string result = HardwareProxy.SwitchDevice(element, action);
+		string result = HardwareAdapter.SwitchDevice(element, action);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -35,7 +35,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		string result = HardwareProxy.GetHardwareInfo(info);
+		string result = HardwareAdapter.GetHardwareInfo(info);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);

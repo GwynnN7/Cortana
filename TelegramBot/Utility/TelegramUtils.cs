@@ -1,4 +1,5 @@
 ﻿using System.Text.RegularExpressions;
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using Kernel.Software;
@@ -28,7 +29,7 @@ internal static class TelegramUtils
 	public static void Init(TelegramBotClient newClient)
 	{
 		_cortana = newClient;
-		HardwareNotifier.Subscribe(HardwareSubscription, ENotificationPriority.High);
+		HardwareAdapter.SubscribeNotification(HardwareSubscription, ENotificationPriority.High);
 	}
 
 	public static async Task SendToUser(long userId, string message, bool notify = true)

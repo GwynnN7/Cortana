@@ -1,5 +1,5 @@
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Mono.Unix;
 
@@ -18,7 +18,7 @@ public static class Cortana
 	{
 		Console.Clear();
 		
-		Console.WriteLine($"Compilation completed at {HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareProxy.GetHardwareInfo(EHardwareInfo.Location)}");
+		Console.WriteLine($"Compilation completed at {HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareAdapter.GetHardwareInfo(EHardwareInfo.Location)}");
 		Console.WriteLine("Initiating Bootloader...");
 
 		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
@@ -36,7 +36,7 @@ public static class Cortana
 		{
 			UnixSignal.WaitAny(Signals, Timeout.Infinite);
 			await Bootloader.StopSubFunctions();
-			HardwareProxy.ShutdownServices();
+			HardwareAdapter.ShutdownServices();
 		});
 		
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());

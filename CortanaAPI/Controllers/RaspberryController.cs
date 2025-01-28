@@ -1,6 +1,6 @@
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
 using Microsoft.AspNetCore.Mvc;
-using Kernel.Hardware.Interfaces;
 
 namespace CortanaAPI.Controllers;
 
@@ -17,42 +17,42 @@ public class RaspberryController : ControllerBase
 	[HttpGet("temperature")]
 	public string Temperature()
 	{
-		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
+		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature);
 	}
 
 	[HttpGet("ip")]
 	public string Ip()
 	{
-		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Ip);
+		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Ip);
 	}
 
 	[HttpGet("gateway")]
 	public string Gateway()
 	{
-		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Gateway);
+		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Gateway);
 	}
 
 	[HttpGet("location")]
 	public string Location()
 	{
-		return HardwareProxy.GetHardwareInfo(EHardwareInfo.Location);
+		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Location);
 	}
 
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return HardwareProxy.CommandRaspberry(ERaspberryOption.Shutdown);
+		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Shutdown);
 	}
 
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return HardwareProxy.CommandRaspberry(ERaspberryOption.Reboot);
+		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Reboot);
 	}
 
 	[HttpGet("update")]
 	public string Update()
 	{
-		return HardwareProxy.CommandRaspberry(ERaspberryOption.Update);
+		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Update);
 	}
 }

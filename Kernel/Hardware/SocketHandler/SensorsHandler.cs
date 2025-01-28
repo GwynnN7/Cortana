@@ -1,13 +1,12 @@
 using System.Net.Sockets;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using Newtonsoft.Json;
 using Timer = Kernel.Software.Timer;
 
-namespace Kernel.Hardware.ClientHandlers;
+namespace Kernel.Hardware.SocketHandler;
 
 internal class SensorsHandler : ClientHandler
 {
@@ -34,15 +33,15 @@ internal class SensorsHandler : ClientHandler
 			}
 		}
 		
-		if (HardwareSettings.CurrentControlMode == EControlMode.Automatic)
+		if (Service.CurrentControlMode == EControlMode.Automatic)
 		{
-			if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.On)
+			if (HardwareAdapter.GetDevicePower(EDevice.Lamp) == EPower.On)
 			{
 				switch (newData)
 				{
 					case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
 					{
-						int seconds = HardwareProxy.GetDevicePower(EDevice.Computer) == EPower.On ? 45 : 10;
+						int seconds = HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On ? 45 : 10;
 						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 						_motionTimer.Set((seconds, 0, 0));
 						break;
@@ -59,9 +58,9 @@ internal class SensorsHandler : ClientHandler
 				{
 					case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
 					{
-						if (HardwareProxy.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light <= HardwareSettings.LightThreshold)
+						if (HardwareAdapter.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light <= Service.Settings.LightThreshold)
 						{
-							HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.On);
+							HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.On);
 							HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.High);
 						}
 						
@@ -78,7 +77,7 @@ internal class SensorsHandler : ClientHandler
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
-		HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Off);
+		HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Off);
 		HardwareNotifier.Publish("No motion detected, switching lamp off...", ENotificationPriority.Low);
 
 		return Task.CompletedTask;

@@ -1,9 +1,9 @@
 using System.Net.Sockets;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
+using Kernel.Hardware.Devices;
 using Kernel.Hardware.Utility;
 
-namespace Kernel.Hardware.ClientHandlers;
+namespace Kernel.Hardware.SocketHandler;
 
 internal class ComputerHandler : ClientHandler
 {
@@ -14,7 +14,6 @@ internal class ComputerHandler : ClientHandler
 	internal ComputerHandler (Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPower.On);
-		HardwareProxy.StartNightModeTimer();
 	}
 
 	protected override void HandleRead(string message)
@@ -39,15 +38,14 @@ internal class ComputerHandler : ClientHandler
 		_messages.Clear();
 		_instance = null;
 		UpdateComputerStatus(EPower.Off);
-		HardwareProxy.StartNightModeTimer();
 	}
 	
 	// Static methods
 
 	internal static void Boot()
 	{
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", HardwareSettings.NetworkData.DesktopMac));
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", HardwareSettings.NetworkData.DesktopMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", Service.NetworkData.DesktopMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", Service.NetworkData.DesktopMac));
 	}
 
 	internal static bool Shutdown()
@@ -103,7 +101,7 @@ internal class ComputerHandler : ClientHandler
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while ((Helper.Ping(HardwareSettings.NetworkData.DesktopIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EPower.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
 
 		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(15000);
 		else await Task.Delay(5000);
@@ -112,6 +110,7 @@ internal class ComputerHandler : ClientHandler
 	private static void UpdateComputerStatus(EPower power)
 	{
 		DeviceHandler.HardwareStates[EDevice.Computer] = power;
+		Service.ResetControllerTimer();
 	}
 	
 	private static EPower GetComputerStatus()

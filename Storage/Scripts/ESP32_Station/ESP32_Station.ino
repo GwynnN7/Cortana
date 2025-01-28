@@ -2,9 +2,9 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-const char WIFI_SSID[] = "Home&Life SuperWiFi-3451";
-const char WIFI_PASSWORD[] = "3YRC8T4GB3X4A4XA";
-const char CORTANA_IP[] = "192.168.1.117";
+const char WIFI_SSID[] = "Jonny Jr";
+const char WIFI_PASSWORD[] = "ProcioneSpazialeMistico";
+const char CORTANA_IP[] = "192.168.178.117";
 const int CORTANA_PORT = 5000;
 
 const int led_blue = 32;

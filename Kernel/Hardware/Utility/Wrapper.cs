@@ -1,26 +1,22 @@
-using Kernel.Hardware.ClientHandlers;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Utility;
+using Kernel.Hardware.Devices;
+using Kernel.Hardware.SocketHandler;
 using Kernel.Software.Utility;
+namespace Kernel.Hardware.Utility;
 
-namespace Kernel.Hardware.Interfaces;
-
-public abstract class HardwareAdapter: IHardwareAdapter
+internal abstract class Wrapper: IHardwareAdapter
 {
-	static HardwareAdapter()
+	static Wrapper()
 	{
 		Task.Run(ServerHandler.StartListening);
 	}
 	
-	public static double ReadCpuTemperature()
-	{
-		return RaspberryHandler.ReadCpuTemperature();
-	}
-
-	public static bool Ping(string address)
-	{
-		return Helper.Ping(address);
-	}
+	public static void SubscribeNotification(Action<string> action, ENotificationPriority priority) => HardwareNotifier.Subscribe(action, priority);
+	public static NetworkData GetNetworkData() => Service.NetworkData;
+	public static Settings GetSettings() => Service.Settings;
+	public static EPower GetDevicePower(EDevice device) => DeviceHandler.HardwareStates[device];
+	public static bool Ping(string address) => Helper.Ping(address);
+	public static double ReadCpuTemperature() => RaspberryHandler.ReadCpuTemperature();
 
 	public static string GetHardwareInfo(EHardwareInfo hardwareInfo)
 	{
@@ -52,12 +48,6 @@ public abstract class HardwareAdapter: IHardwareAdapter
 				break;
 		}
 		return "Sensor offline";
-	}
-
-	public static string GetSensorInfo(string sensor)
-	{
-		ESensor? sensorValue = Helper.EnumFromString<ESensor>(sensor);
-		return sensorValue.HasValue ? GetSensorInfo(sensorValue.Value) : "Sensor offline";
 	}
 
 	public static string CommandRaspberry(ERaspberryOption option)
@@ -105,24 +95,10 @@ public abstract class HardwareAdapter: IHardwareAdapter
 		return $"{device} switched {result}";
 	}
 	
-	public static string SwitchDevice(string device, string trigger)
-	{
-		EDevice? elementResult = Helper.EnumFromString<EDevice>(device);
-		EPowerAction? triggerResult = Helper.EnumFromString<EPowerAction>(trigger);
-		if (triggerResult == null) return "Invalid action";
-		if (elementResult == null) return "Hardware device not registered";
-		return SwitchDevice(elementResult.Value, triggerResult.Value);
-	}
-
 	public static void ShutdownServices()
 	{
 		ComputerHandler.Interrupt();
 		SensorsHandler.Interrupt();
 		ServerHandler.ShutdownServer();
-	}
-	
-	public static EPower GetDevicePower(EDevice device)
-	{
-		return DeviceHandler.HardwareStates[device];
 	}
 }

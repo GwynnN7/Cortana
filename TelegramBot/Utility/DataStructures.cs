@@ -63,6 +63,7 @@ internal static class HardwareEmoji
 	public const string SwapOs = "\ud83c\udfae";
 	public const string On = "\ud83d\udd0b";
 	public const string Off = "\ud83e\udeab";
+	public const string Night = "\ud83c\udf19";
 }
 
 // Debts data structures

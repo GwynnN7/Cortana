@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using Kernel.Hardware.ClientHandlers;
+using Kernel.Hardware.Utility;
 
-namespace Kernel.Hardware;
+namespace Kernel.Hardware.SocketHandler;
 
 internal static class ServerHandler
 {
@@ -11,7 +11,7 @@ internal static class ServerHandler
 	
 	static ServerHandler()
 	{
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, HardwareSettings.NetworkData.ServerPort);
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, Service.NetworkData.ServerPort);
 		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 		Server.Bind(ipEndPoint);
 	}

@@ -1,5 +1,5 @@
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Kernel.Hardware.Utility;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,36 +18,36 @@ public class ComputerController : ControllerBase
 	[HttpGet("notify")]
 	public string Notify([FromQuery] string? text)
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.Notify, text);
+		return HardwareAdapter.CommandComputer(EComputerCommand.Notify, text);
 	}
 	
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.Shutdown);
+		return HardwareAdapter.CommandComputer(EComputerCommand.Shutdown);
 	}
 	
 	[HttpGet("suspend")]
 	public string Suspend()
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.Suspend);
+		return HardwareAdapter.CommandComputer(EComputerCommand.Suspend);
 	}
 	
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.Reboot);
+		return HardwareAdapter.CommandComputer(EComputerCommand.Reboot);
 	}
 	
 	[HttpGet("swap-os")]
 	public string SwapOs()
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
+		return HardwareAdapter.CommandComputer(EComputerCommand.SwapOs);
 	}
 	
 	[HttpGet("command")]
 	public string CommandPc([FromQuery] string? cmd)
 	{
-		return HardwareProxy.CommandComputer(EComputerCommand.Command, cmd);
+		return HardwareAdapter.CommandComputer(EComputerCommand.Command, cmd);
 	}
 }

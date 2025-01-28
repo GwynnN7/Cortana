@@ -4,7 +4,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Kernel.Hardware.Interfaces;
 using TelegramBot.Utility;
 
 namespace TelegramBot.Modules;
@@ -25,18 +24,18 @@ internal static class SensorModule
 		switch (command)
 		{
 			case "light":
-				string light = HardwareProxy.GetSensorInfo(ESensor.Light);
-				int threshold = HardwareSettings.LightThreshold;
+				string light = HardwareAdapter.GetSensorInfo(ESensor.Light);
+				int threshold = HardwareAdapter.GetSettings().LightThreshold;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light Level: {light} ~ Threshold: {threshold}");
 				break;
 			case "temperature":
-				string temp = HardwareProxy.GetSensorInfo(ESensor.Temperature);
+				string temp = HardwareAdapter.GetSensorInfo(ESensor.Temperature);
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp}");
 				break;
 			case "motion":
-				string motion = HardwareProxy.GetSensorInfo(ESensor.Motion);
-				EControlMode currentMode = HardwareSettings.CurrentControlMode;
-				EControlMode limitMode = HardwareSettings.LimitControlMode;
+				string motion = HardwareAdapter.GetSensorInfo(ESensor.Motion);
+				EControlMode currentMode = HardwareAdapter.ControlMode;
+				EControlMode limitMode = HardwareAdapter.GetSettings().LimitControlMode;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit: {currentMode}/{limitMode}");
 				break;
 			case "settings":
@@ -65,6 +64,8 @@ internal static class SensorModule
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.SetControlMode:
+			{
+				Settings settings = HardwareAdapter.GetSettings();
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
 					EControlMode mode = code switch
@@ -72,27 +73,33 @@ internal static class SensorModule
 						0 => EControlMode.Manual,
 						1 => EControlMode.Night,
 						2 => EControlMode.Automatic,
-						_ => HardwareSettings.LimitControlMode
+						_ => settings.LimitControlMode
 					};
-					HardwareSettings.LimitControlMode = mode;
+					settings.LimitControlMode = mode;
 				}
+
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 
-				string modeResponse = $"Current: {HardwareSettings.CurrentControlMode} ~ Limit: {HardwareSettings.LimitControlMode}";
-				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				string modeResponse = $"Current: {HardwareAdapter.ControlMode} ~ Limit: {settings.LimitControlMode}";
+				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId,
+					TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
+			}
 			case ETelegramChatArg.SetLightThreshold:
+			{
+				Settings settings = HardwareAdapter.GetSettings();
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					HardwareSettings.LightThreshold = threshold;
+					settings.LightThreshold = threshold;
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				string lightResponse = $"Current: {HardwareProxy.GetSensorInfo(ESensor.Light)} ~ Threshold: {HardwareSettings.LightThreshold}";
+				string lightResponse = $"Current: {HardwareAdapter.GetSensorInfo(ESensor.Light)} ~ Threshold: {settings.LightThreshold}";
 				await TelegramUtils.AnswerOrMessage(cortana, lightResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
+			}
 		}
 		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 	}

@@ -1,9 +1,9 @@
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Kernel.Hardware.Interfaces;
 using Kernel.Software;
 using Kernel.Software.Utility;
 using TelegramBot.Utility;
@@ -50,25 +50,28 @@ internal static class HardwareModule
 		switch (messageStats.FullMessage)
 		{
 			case HardwareEmoji.Lamp:
-				HardwareProxy.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
+				HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.Pc:
-				HardwareProxy.SwitchDevice(EDevice.Computer, EPowerAction.Toggle);
+				HardwareAdapter.SwitchDevice(EDevice.Computer, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.Generic:
-				HardwareProxy.SwitchDevice(EDevice.Generic, EPowerAction.Toggle);
+				HardwareAdapter.SwitchDevice(EDevice.Generic, EPowerAction.Toggle);
 				break;
 			case HardwareEmoji.On:
-				HardwareProxy.SwitchRoom(EPowerAction.On);
+				HardwareAdapter.SwitchRoom(EPowerAction.On);
 				break;
 			case HardwareEmoji.Off:
-				HardwareProxy.SwitchRoom(EPowerAction.Off);
+				HardwareAdapter.SwitchRoom(EPowerAction.Off);
+				break;
+			case HardwareEmoji.Night:
+				HardwareAdapter.EnterSleepMode();
 				break;
 			case HardwareEmoji.Reboot:
-				HardwareProxy.CommandComputer(EComputerCommand.Reboot);
+				HardwareAdapter.CommandComputer(EComputerCommand.Reboot);
 				break;
 			case HardwareEmoji.SwapOs:
-				HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
+				HardwareAdapter.CommandComputer(EComputerCommand.SwapOs);
 				break;
 			default:
 				return false;
@@ -88,27 +91,27 @@ internal static class HardwareModule
 			switch (command["raspberry-".Length..])
 			{
 				case "ip":
-					string ip = HardwareProxy.GetHardwareInfo(EHardwareInfo.Ip);
+					string ip = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Ip);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"IP: {ip}");
 					break;
 				case "gateway":
-					string gateway = HardwareProxy.GetHardwareInfo(EHardwareInfo.Gateway);
+					string gateway = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Gateway);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Gateway: {gateway}");
 					break;
 				case "location":
-					string location = HardwareProxy.GetHardwareInfo(EHardwareInfo.Location);
+					string location = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Location);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Location: {location}");
 					break;
 				case "temperature":
-					string temp = HardwareProxy.GetHardwareInfo(EHardwareInfo.Temperature);
+					string temp = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Temperature: {temp}");
 					break;
 				case "reboot":
-					string rebootResult = HardwareProxy.CommandRaspberry(ERaspberryOption.Reboot);
+					string rebootResult = HardwareAdapter.CommandRaspberry(ERaspberryOption.Reboot);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, rebootResult, true);
 					break;
 				case "shutdown":
-					string shutdownResult = HardwareProxy.CommandRaspberry(ERaspberryOption.Shutdown);
+					string shutdownResult = HardwareAdapter.CommandRaspberry(ERaspberryOption.Shutdown);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, shutdownResult, true);
 					break;
 			}
@@ -135,14 +138,14 @@ internal static class HardwareModule
 						TelegramUtils.ChatArgs.Remove(chatId);
 						break;
 					default:
-						string result = HardwareProxy.SwitchDevice(HardwareAction[messageId], command);
+						string result = HardwareAdapter.SwitchDevice(HardwareAction[messageId], command);
 						await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
 						await CreateAutomationMenu(cortana, callbackQuery.Message);
 						break;
 				}
 				return;
 			}
-			string devicePower = HardwareProxy.GetDevicePower(command);
+			string devicePower = HardwareAdapter.GetDevicePower(command);
 			await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower, replyMarkup: CreateOnOffToggleButtons());
 		}
 		else if (command.StartsWith("utility-"))
@@ -158,7 +161,7 @@ internal static class HardwareModule
 						await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton("utility"));
 					break;
 				case "swap_os":
-					string result = HardwareProxy.CommandComputer(EComputerCommand.SwapOs);
+					string result = HardwareAdapter.CommandComputer(EComputerCommand.SwapOs);
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
 					break;
 				case "command":
@@ -182,14 +185,14 @@ internal static class HardwareModule
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.Notification:
-				string result = HardwareProxy.CommandComputer(EComputerCommand.Notify, messageStats.FullMessage);
+				string result = HardwareAdapter.CommandComputer(EComputerCommand.Notify, messageStats.FullMessage);
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
 				await TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateHardwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.Ping:
-				string pingResult = HardwareProxy.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
+				string pingResult = HardwareAdapter.Ping(messageStats.FullMessage) ? "Host reached successfully!" : "Host could not be reached!";
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
 				await TelegramUtils.AnswerOrMessage(cortana, pingResult, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
@@ -198,7 +201,7 @@ internal static class HardwareModule
 			case ETelegramChatArg.ComputerCommand:
 				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
 				{
-					string commandResult = HardwareProxy.CommandComputer(EComputerCommand.Command, string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1)));
+					string commandResult = HardwareAdapter.CommandComputer(EComputerCommand.Command, string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1)));
 					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
 					chatArg.Arg.Add(messageStats.MessageId);
 					chatArg.Arg.Add(msg.MessageId);
@@ -238,7 +241,7 @@ internal static class HardwareModule
 		try
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
-			string result = HardwareProxy.SwitchDevice(payload.Arg.device, payload.Arg.action);
+			string result = HardwareAdapter.SwitchDevice(payload.Arg.device, payload.Arg.action);
 			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
 		}
 		catch (Exception e)
@@ -327,6 +330,6 @@ internal static class HardwareModule
 			.AddNewRow()
 			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot, HardwareEmoji.SwapOs)
 			.AddNewRow()
-			.AddButtons(HardwareEmoji.On, HardwareEmoji.Off);
+			.AddButtons(HardwareEmoji.On, HardwareEmoji.Night, HardwareEmoji.Off);
 	}
 }

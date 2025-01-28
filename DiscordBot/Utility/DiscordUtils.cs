@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Utility;
 using Kernel.Software;
 
 namespace DiscordBot.Utility;
@@ -26,7 +26,7 @@ internal static class DiscordUtils
 		GuildSettings = FileHandler.LoadFile<Dictionary<ulong, GuildSettings>>(Path.Combine(StoragePath, "DiscordGuilds.json")) ?? new Dictionary<ulong, GuildSettings>();
 		TimeConnected = new Dictionary<ulong, DateTime>();
 		
-		HardwareNotifier.Subscribe(HardwareSubscription, ENotificationPriority.Low);
+		HardwareAdapter.SubscribeNotification(HardwareSubscription, ENotificationPriority.Low);
 	}
 
 	public static void InitSettings(DiscordSocketClient client)

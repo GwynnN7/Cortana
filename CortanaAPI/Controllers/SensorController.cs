@@ -1,6 +1,5 @@
 using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaAPI.Controllers;
@@ -18,38 +17,40 @@ public class SensorController : ControllerBase
     [HttpGet("{sensor}")]
     public string SensorData([FromRoute] string sensor)
     {
-        return HardwareProxy.GetSensorInfo(sensor);
+        return HardwareAdapter.GetSensorInfo(sensor);
     }
     
     [HttpGet("mode")]
     public string Mode()
     {
-        return HardwareSettings.CurrentControlMode.ToString();
+        return HardwareAdapter.ControlMode.ToString();
     }
     
     [HttpGet("mode/{mode}")]
     public string SetMode([FromRoute] int mode)
     {
-        HardwareSettings.LimitControlMode = mode switch
+        Settings settings = HardwareAdapter.GetSettings();
+        settings.LimitControlMode = mode switch
         {
             0 => EControlMode.Manual,
             1 => EControlMode.Night,
             2 => EControlMode.Automatic,
-            _ => HardwareSettings.LimitControlMode
+            _ => settings.LimitControlMode
         };
-        return $"Limit mode: {HardwareSettings.LimitControlMode} ~ Current mode: {HardwareSettings.CurrentControlMode}";
+        return $"Limit mode: {settings.LimitControlMode} ~ Current mode: {HardwareAdapter.ControlMode}";
     }
     
     [HttpGet("threshold")]
     public string Light()
     {
-        return HardwareSettings.LightThreshold.ToString();
+        return HardwareAdapter.GetSettings().LightThreshold.ToString();
     }
     
     [HttpGet("threshold/{light}")]
     public string SetLight([FromRoute] int light)
     {
-        HardwareSettings.LightThreshold = light;
-        return $"Current Light: {HardwareProxy.GetSensorInfo(ESensor.Light)} ~ Light Threshold: {HardwareSettings.LightThreshold}";
+        Settings settings = HardwareAdapter.GetSettings();
+        settings.LightThreshold = light;
+        return $"Current Light: {HardwareAdapter.GetSensorInfo(ESensor.Light)} ~ Light Threshold: {settings.LightThreshold}";
     }
 }

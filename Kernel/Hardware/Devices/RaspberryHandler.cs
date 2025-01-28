@@ -4,7 +4,7 @@ using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using UnitsNet;
 
-namespace Kernel.Hardware;
+namespace Kernel.Hardware.Devices;
 
 internal static class RaspberryHandler
 {
@@ -33,7 +33,7 @@ internal static class RaspberryHandler
 		return defaultGateway.First();
 	}
 
-	internal static ELocation GetNetworkLocation() => HardwareSettings.NetworkData.Location;
+	internal static ELocation GetNetworkLocation() => Service.NetworkData.Location;
 
 	internal static void Shutdown() => RunCommandWithDelay("shutdown");
 	internal static void Reboot() => RunCommandWithDelay("reboot");
