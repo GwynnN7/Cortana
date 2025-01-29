@@ -92,9 +92,11 @@ public static class CortanaTelegramBot
 					break;
 				case ETelegramChatArg.Notification:
 				case ETelegramChatArg.Ping:
-				case ETelegramChatArg.HardwareTimer:
 				case ETelegramChatArg.ComputerCommand:
-					await HardwareModule.HandleTextMessage(cortana, messageStats);
+					await CommandModule.HandleTextMessage(cortana, messageStats);
+					break;
+				case ETelegramChatArg.HardwareTimer:
+					await DeviceModule.HandleTextMessage(cortana, messageStats);
 					break;
 				case ETelegramChatArg.Shopping:
 					await ShoppingModule.HandleTextMessage(cortana, messageStats);
@@ -117,7 +119,7 @@ public static class CortanaTelegramBot
 
 			if (messageStats.Command != "menu")
 			{
-				await HardwareModule.ExecCommand(messageStats, cortana);
+				await DeviceModule.ExecCommand(messageStats, cortana);
 				await ShoppingModule.ExecCommand(messageStats, cortana);
 			}
 			else
@@ -127,7 +129,7 @@ public static class CortanaTelegramBot
 		}
 		else
 		{
-			bool isCallback = await HardwareModule.HandleKeyboardCallback(cortana, messageStats);
+			bool isCallback = await DeviceModule.HandleKeyboardCallback(cortana, messageStats);
 			if (messageStats.UserId == TelegramUtils.AuthorId || messageStats.ChatType != ChatType.Private) return;
 			if(isCallback) await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
 			else await cortana.ForwardMessage(TelegramUtils.AuthorId, messageStats.ChatId, messageStats.MessageId);
@@ -144,32 +146,34 @@ public static class CortanaTelegramBot
 			case "home":
 				await CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
 				break;
-			case "automation":
+			case "device":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await HardwareModule.CreateAutomationMenu(cortana, message);
+					await DeviceModule.CreateMenu(cortana, message);
 				else 
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access automation controls");
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access device controls");
 				break;
 			case "raspberry":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await HardwareModule.CreateRaspberryMenu(cortana, message);
+					await RaspberryModule.CreateMenu(cortana, message);
 				else 
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry's controls");
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry controls");
 				break;
-			case "hardware_utility":
+			case "command":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await HardwareModule.CreateHardwareUtilityMenu(cortana, message);
+					await CommandModule.CreateMenu(cortana, message);
 				else 
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access hardware controls");
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access commands");
 				break;
-			case "software_utility":
-				await UtilityModule.CreateSoftwareUtilityMenu(cortana, message);
+			case "utility":
+				await UtilityModule.CreateMenu(cortana, message);
 				break;
 			case "sensor":
-				await SensorModule.CreateSensorMenu(cortana, message);
+				await SensorModule.CreateMenu(cortana, message);
 				break;
 			default:
-				if (command.StartsWith("hardware-")) await HardwareModule.HandleCallbackQuery(cortana, callbackQuery, command["hardware-".Length..]);
+				if (command.StartsWith("device-")) await DeviceModule.HandleCallbackQuery(cortana, callbackQuery, command["device-".Length..]);
+				else if (command.StartsWith("raspberry-")) await RaspberryModule.HandleCallbackQuery(cortana, callbackQuery, command["raspberry-".Length..]);
+				else if (command.StartsWith("command-")) await CommandModule.HandleCallbackQuery(cortana, callbackQuery, command["command-".Length..]);
 				else if (command.StartsWith("shopping-")) await ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
 				else if (command.StartsWith("utility-")) await UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
 				else if (command.StartsWith("sensor-")) await SensorModule.HandleCallbackQuery(cortana, callbackQuery, command["sensor-".Length..]);
@@ -186,15 +190,15 @@ public static class CortanaTelegramBot
 	private static InlineKeyboardMarkup CreateMenuButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Domotica", "automation")
+			.AddButton("Devices", "device")
 			.AddNewRow()
 			.AddButton("Sensors", "sensor")
 			.AddNewRow()
 			.AddButton("Raspberry", "raspberry")
 			.AddNewRow()
-			.AddButton("Hardware", "hardware_utility")
+			.AddButton("Commands", "command")
 			.AddNewRow()
-			.AddButton("Utility", "software_utility")
+			.AddButton("Utility", "utility")
 			.AddNewRow()
 			.AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynbleiddN7/Cortana"));
 	}

@@ -1,5 +1,4 @@
-﻿using Kernel.Software;
-using Kernel.Software.DataStructures;
+﻿using Kernel.Software.DataStructures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -7,7 +6,7 @@ using TelegramBot.Utility;
 
 namespace TelegramBot.Modules;
 
-internal static class ShoppingModule
+internal abstract class ShoppingModule : IModuleInterface
 {
 	private static readonly string SerializePath = Path.Combine(TelegramUtils.StoragePath, "Debts.json");
 	
@@ -39,7 +38,7 @@ internal static class ShoppingModule
 						return;
 					}
 
-					await cortana.SendMessage(messageStats.ChatId, "Start a new purchase or check your current debts", replyMarkup: CreatePurchaseButtons());
+					await CreateMenu(cortana, messageStats.Message);
 				}
 				else
 				{
@@ -48,6 +47,11 @@ internal static class ShoppingModule
 
 				break;
 		}
+	}
+
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
+	{
+		await cortana.SendMessage(message.Chat.Id, "Start a new purchase or check your current debts", replyMarkup: CreateButtons());
 	}
 
 	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
@@ -281,7 +285,7 @@ internal static class ShoppingModule
 		return DebtChats.Contains(channelId);
 	}
 
-	private static InlineKeyboardMarkup CreatePurchaseButtons()
+	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
 			.AddButton("New Purchase", "shopping-new-purchase")

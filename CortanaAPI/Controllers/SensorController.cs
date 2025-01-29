@@ -23,26 +23,26 @@ public class SensorController : ControllerBase
     [HttpGet("mode")]
     public string Mode()
     {
-        return HardwareApi.Sensors.ControlMode.ToString();
+        return $"Current/Limit: {HardwareApi.Sensors.ControlMode}/{HardwareApi.Sensors.Settings.LimitControlMode}";
     }
     
     [HttpGet("mode/{mode}")]
     public string SetMode([FromRoute] int mode)
     {
         HardwareApi.Sensors.Settings.LimitControlMode = (EControlMode) Math.Clamp(mode, (int) EControlMode.Manual, (int) EControlMode.Automatic);
-        return $"Limit mode: {HardwareApi.Sensors.Settings.LimitControlMode} ~ Current mode: {HardwareApi.Sensors.ControlMode}";
+        return Mode();
     }
     
     [HttpGet("threshold")]
     public string Light()
     {
-        return HardwareApi.Sensors.Settings.LightThreshold.ToString();
+        return $"Light/Threshold: {HardwareApi.Sensors.GetData(ESensor.Light)}/{HardwareApi.Sensors.Settings.LightThreshold}";
     }
     
     [HttpGet("threshold/{light}")]
     public string SetLight([FromRoute] int light)
     {
         HardwareApi.Sensors.Settings.LightThreshold = light;
-        return $"Current Light: {HardwareApi.Sensors.GetData(ESensor.Light)} ~ Light Threshold: {HardwareApi.Sensors.Settings.LightThreshold}";
+        return Light();
     }
 }

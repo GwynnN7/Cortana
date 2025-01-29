@@ -8,11 +8,11 @@ using TelegramBot.Utility;
 
 namespace TelegramBot.Modules;
 
-internal static class SensorModule
+internal abstract class SensorModule : IModuleInterface
 {
-	public static async Task CreateSensorMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Sensor Handler", replyMarkup: CreateSensorButtons());
+		await cortana.EditMessageText(message.Chat.Id, message.Id, "Sensor Menu", replyMarkup: CreateButtons());
 	}
 
 	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
@@ -26,7 +26,7 @@ internal static class SensorModule
 			case "light":
 				string light = HardwareApi.Sensors.GetData(ESensor.Light);
 				int threshold = HardwareApi.Sensors.Settings.LightThreshold;
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light Level: {light} ~ Threshold: {threshold}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light}/{threshold}");
 				break;
 			case "temperature":
 				string temp = HardwareApi.Sensors.GetData(ESensor.Temperature);
@@ -50,7 +50,7 @@ internal static class SensorModule
 					await cortana.EditMessageText(chatId, messageId, "Write the control mode code (1/2/3)", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
-				await CreateSensorMenu(cortana, callbackQuery.Message);
+				await CreateMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				break;
 		}
@@ -75,7 +75,7 @@ internal static class SensorModule
 				string modeResponse = $"Current: {HardwareApi.Sensors.ControlMode} ~ Limit: {HardwareApi.Sensors.Settings.LimitControlMode}";
 				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId,
 					TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			}
 			case ETelegramChatArg.SetLightThreshold:
@@ -88,14 +88,14 @@ internal static class SensorModule
 				
 				string lightResponse = $"Current: {HardwareApi.Sensors.GetData(ESensor.Light)} ~ Threshold: {HardwareApi.Sensors.Settings.LightThreshold}";
 				await TelegramUtils.AnswerOrMessage(cortana, lightResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			}
 		}
 		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 	}
 
-	private static InlineKeyboardMarkup CreateSensorButtons()
+	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
 			.AddButton("Light", "sensor-light")

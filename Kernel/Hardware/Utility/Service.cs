@@ -26,7 +26,7 @@ internal static class Service
         var pisaNet = FileHandler.Deserialize<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
-        Settings = Settings.Load(Path.Combine(Helper.StoragePath, "Settings.json"));
+        Settings = Settings.Load();
         
         Task.Run(ServerHandler.StartListening);
         ResetControllerTimer();
@@ -42,8 +42,12 @@ internal static class Service
 
     private static Task ControllerCallback(object? sender)
     {
+	    ResetControllerTimer();
+	    
 	    if (DateTime.Now.Hour <= 6)
 	    {
+		    _morningMessage = true;
+		    
 		    if (HardwareApi.Devices.GetPower(EDevice.Computer) == EPower.Off)
 		    {
 			    EnterSleepMode();
@@ -54,7 +58,6 @@ internal static class Service
 		    {
 			    HardwareNotifier.Publish("You should go to sleep", ENotificationPriority.High);
 		    }
-		    _morningMessage = true;
 	    }
 	    else
 	    {
@@ -62,8 +65,6 @@ internal static class Service
 		    CurrentControlMode = EControlMode.Automatic;
 		    _morningMessage = false;
 	    }
-    
-	    ResetControllerTimer();
     	
     	return Task.CompletedTask;
     }
@@ -72,14 +73,20 @@ internal static class Service
     {
 	    CurrentControlMode = EControlMode.Night;
 	    
-	    if (!userAction && HardwareApi.Devices.GetPower(EDevice.Lamp) == EPower.Off) return;
+	    switch (userAction)
+	    {
+		    case true:
+			    ResetControllerTimer();
+			    break;
+		    case false when HardwareApi.Devices.GetPower(EDevice.Lamp) == EPower.Off:
+			    return;
+	    }
+
 	    HardwareNotifier.Publish("Good night, switching to Night Mode", ENotificationPriority.Low);
 	    
 	    if (userAction || (!userAction && CurrentControlMode != EControlMode.Manual))
 	    {
 		    HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 	    }
-	    
-	    ResetControllerTimer();
     }
 }

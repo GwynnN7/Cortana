@@ -21,7 +21,6 @@ public static class HardwareApi
 		ServerHandler.ShutdownServer();
 	}
 	public static void SubscribeNotification(Action<string> action, ENotificationPriority priority) => HardwareNotifier.Subscribe(action, priority);
-	public static void EnterSleepMode() => Service.EnterSleepMode(true);
 	public static bool Ping(string address) => Helper.Ping(address);
 
 
@@ -105,6 +104,7 @@ public static class HardwareApi
 	
 	public static class Devices
 	{
+		public static void EnterSleepMode() => Service.EnterSleepMode(true);
 		public static string CommandComputer(EComputerCommand command, string? args = null)
 		{
 			lock (ComputerLock)

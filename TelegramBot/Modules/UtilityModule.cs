@@ -11,11 +11,11 @@ using Timer = Kernel.Software.Timer;
 
 namespace TelegramBot.Modules;
 
-internal static class UtilityModule
+internal abstract class UtilityModule : IModuleInterface
 {
-	public static async Task CreateSoftwareUtilityMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Software Utility", replyMarkup: CreateUtilityButtons());
+		await cortana.EditMessageText(message.Chat.Id, message.Id, "Software Utility", replyMarkup: CreateButtons());
 	}
 
 	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
@@ -68,14 +68,14 @@ internal static class UtilityModule
 					await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
-				await CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				await CreateMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 			case "leave":
 				TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? genericChatArg);
 				if (genericChatArg is not TelegramChatArg<long> { Type: ETelegramChatArg.Chat } chatArg) return;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Chat with {TelegramUtils.IdToName(chatArg.Arg)} ended");
-				await CreateSoftwareUtilityMenu(cortana, callbackQuery.Message);
+				await CreateMenu(cortana, callbackQuery.Message);
 				TelegramUtils.ChatArgs.Remove(chatId);
 				return;
 		}
@@ -91,7 +91,7 @@ internal static class UtilityModule
 				imageStream.Position = 0;
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				await cortana.SendPhoto(messageStats.ChatId, new InputFileStream(imageStream, "QRCODE.png"));
-				await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.Timer:
@@ -112,7 +112,7 @@ internal static class UtilityModule
 				timer.Set((times.s, times.m, times.h));
 				
 				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				break;
 			case ETelegramChatArg.Chat:
@@ -175,7 +175,7 @@ internal static class UtilityModule
 					if (File.Exists(path)) File.Delete(path);
 
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-					await CreateSoftwareUtilityMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+					await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 					TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
 				}
 
@@ -198,7 +198,7 @@ internal static class UtilityModule
 		}
 	}
 
-	private static InlineKeyboardMarkup CreateUtilityButtons()
+	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
 			.AddButton("QRCode", "utility-qrcode")

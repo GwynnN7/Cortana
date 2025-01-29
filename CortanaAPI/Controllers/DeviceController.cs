@@ -5,7 +5,7 @@ namespace CortanaAPI.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-public class AutomationController : ControllerBase
+public class DeviceController : ControllerBase
 {
 	[HttpGet]
 	public string Get()
@@ -23,5 +23,12 @@ public class AutomationController : ControllerBase
 	public string DeviceStatus([FromRoute] string device)
 	{
 		return HardwareApi.Devices.GetPower(device);
+	}
+
+	[HttpGet("sleep")]
+	public string Sleep()
+	{
+		HardwareApi.Devices.EnterSleepMode();
+		return "Entering sleep mode";
 	}
 }
