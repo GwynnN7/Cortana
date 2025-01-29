@@ -20,7 +20,7 @@ internal static class TelegramUtils
 	static TelegramUtils()
 	{
 		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Telegram/");
-		Data = FileHandler.Deserialize<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
+		Data = FileHandler.DeserializeJson<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}

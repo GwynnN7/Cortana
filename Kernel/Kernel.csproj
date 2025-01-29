@@ -25,4 +25,8 @@
         <PackageReference Include="YoutubeExplode.Converter" Version="6.5.2" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Software\DataStructures\Serializable.cs" />
+    </ItemGroup>
+
 </Project>

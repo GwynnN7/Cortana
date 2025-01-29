@@ -3,16 +3,11 @@ using Kernel.Software.DataStructures;
 
 namespace DiscordBot.Utility;
 
-internal class Guilds : Dictionary<ulong, GuildSettings>, ISerializable //: SerializedObject
+internal class Guilds : Dictionary<ulong, GuildSettings> //: SerializedObject
 {
-	public void Serialize(string path)
-	{
-		FileHandler.SerializeObject(this, path);
-	}
-
 	public static Guilds Load(string path)
 	{
-		return FileHandler.Deserialize<Guilds>(path) ?? new Guilds();
+		return FileHandler.DeserializeJson<Guilds>(path) ?? new Guilds();
 	}
 }
 
@@ -39,7 +34,7 @@ internal class Memes : Dictionary<string, MemeJsonStructure> //: DeserializedObj
 {
 	public static Memes Load(string path)
 	{
-		return FileHandler.Deserialize<Memes>(path) ?? new Memes();
+		return FileHandler.DeserializeJson<Memes>(path) ?? new Memes();
 	}
 }
 

@@ -1,4 +1,5 @@
 ﻿using Kernel.Software.DataStructures;
+using Kernel.Software.Extensions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -23,7 +24,7 @@ internal abstract class ShoppingModule : IModuleInterface
 		Debts = Debts.Load(SerializePath);
 	}
 
-	private static void UpdateDebts() => Debts.Serialize(SerializePath);
+	private static void UpdateDebts() => Debts.Serialize().Dump(SerializePath);
 
 	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{

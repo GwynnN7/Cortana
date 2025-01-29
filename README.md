@@ -32,7 +32,7 @@ The *user* will start an interaction with the **Kernel** through the **Input Int
 
 ### Input Interfaces
 
-- **API HTTP Requests**
+- **REST API**
 - **Discord Bot** 
 - **Telegram Bot**
 
@@ -46,7 +46,7 @@ Each **Interface** will be only able to communicate with the **Kernel** to execu
 - **Client-Server**
 - **GPIO**
 
-These **Output interfaces** allow **Cortana** to *communicate* with **PC**, *read sensor data* from **ESP32** and interact with *electronic hardware* in the room [lamp, plugs and more to come]
+These **Output interfaces** allow **Cortana** to *communicate* with **PC**, *read sensor data* from **ESP32** and interact with *electronic hardware* in the room
 
 ***
 
@@ -70,10 +70,10 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
 | `route`      | `string` | Route for ***specific functions*** | **automation**, **raspberry**, **utility**, ***empty***  |
 
-#### Automation
+#### Device
 
 ```http
-  GET http://cortana-home.net/api/automation/{device}?t={trigger}
+  GET http://cortana-home.net/api/device/{device}?t={trigger}
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
@@ -82,12 +82,20 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 | `trigger`      | `string` | **Action** for the device | **on**, **off**, **toggle** <=> ***empty***  |
 
 ```http
-  GET http://cortana-home.net/api/automation/status/{device}
+  GET http://cortana-home.net/api/device/{device}/status
 ```
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
 | `device`      | `string` | **Device** to interact with | **computer**, **lamp**, **power**, **generic**, **room** |
+
+```http
+  GET http://cortana-home.net/api/device/{command}
+```
+
+| Parameter | Type     | Description                       |  Values                       |
+| :-------- | :------- | :-------------------------------- | :-------------------------------- |
+| `command`      | `string` | **Command** related to devices  | **sleep** |
 
 #### Raspberry
 
@@ -97,7 +105,7 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** to execute | **temperature**, **location**, **ip**, **gateway**, **shutdown**, **reboot**  |
+| `action`      | `string` | **Function** to execute | **temperature**, **location**, **ip**, **gateway**, **shutdown**, **reboot** **update** |
 
 #### Computer
 
@@ -107,7 +115,26 @@ Note: "**cortana-home.net**" is a placeholder for the actual address, which is p
 
 | Parameter | Type     | Description                       |  Values                       |
 | :-------- | :------- | :-------------------------------- | :-------------------------------- |
-| `action`      | `string` | **Function** | **notify** (?text=msg), **command** (?text=cmd), **shutdown**, **suspend**, **reboot**, **swap-os** |
+| `action`      | `string` | **Function** | **notify** (?txt=msg), **command** (?txt=cmd), **shutdown**, **suspend**, **reboot**, **swap-os** |
+
+#### Sensor
+
+```http
+  GET http://cortana-home.net/api/sensor/{sensor}
+```
+
+| Parameter | Type     | Description                       |  Values                       |
+| :-------- | :------- | :-------------------------------- | :-------------------------------- |
+| `sensor`      | `string` | **Sensor** to interact with | **motion** **temperature** **light** |
+
+```http
+  GET http://cortana-home.net/api/sensor/{option}?val={value}
+```
+
+| Parameter | Type     | Description                       |  Values                       |
+| :-------- | :------- | :-------------------------------- | :-------------------------------- |
+| `option`      | `string` | **Option** to interact with | **mode** **threshold** |
+| `value`      | `number` | **Value** to update (*optional*) | **mode: 1/2/3** **threshold: 0 ~ 4096** |
 
 ---
 
@@ -126,19 +153,31 @@ dotnet --version
 
 ### Dependencies
 ```bash
-echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.zshrc
+# Dependencies
+sudo apt install zsh ffmpeg opus-tools libopus0 libopus-dev libsodium-dev git
 
-sudo apt-get install zsh ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
+# Environment
+echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.zshrc
+echo 'export PATH=$PATH:/home/cortana/.local/bin' >> ~/.zshrc
+
+# Arduino ~ ESP32
+sudo curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
+arduino-cli config init --additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+arduino-cli core update-index
+arduino-cli core install esp32:esp32
+arduino-cli lib install OneWire DallasTemperature WiFi
 ```
 
 ### Cortana Client Configuration
 ```bash
 # Linux
+sudo pacman -S dotnet-sdk
 echo 'CORTANA_PATH=path_to_cortana' >> /etc/environment
 cp cortana /usr/local/bin 
 cp cortana-client ~/.config/autostart
 
 # Windows
+# Install dotnet-sdk
 # Add CORTANA_PATH environment variable through GUI
 # Create a shortcut of cortana-client.vbs in autostart folder
 # Download notify-send (https://vaskovsky.net/notify-send/) and add it to PATH
@@ -150,7 +189,7 @@ cp cortana-client ~/.config/autostart
 ### Manually Run
 
 ```bash
-git clone https://github.com/Gwynn7z/Cortana.git
+git clone https://github.com/GwynnN7/Cortana.git
 
 cd Cortana
 dotnet build
@@ -160,7 +199,7 @@ dotnet run --project Bootloader/Bootloader.csproj
 ### Use Script [runs in background]
 
 ```bash
-git clone https://github.com/Gwynn7z/Cortana.git
+git clone https://github.com/GwynnN7/Cortana.git
 cd Cortana
 chmod +x cortana && ./cortana --start
 

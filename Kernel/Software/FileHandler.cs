@@ -22,17 +22,10 @@ public static class FileHandler
 			Converters = { new JsonStringEnumConverter() }
 		};
 		
-		Secrets = Deserialize<Secrets>(Path.Combine(ProjectStoragePath, "Config/Secrets.json"));
+		Secrets = DeserializeJson<Secrets>(Path.Combine(ProjectStoragePath, "Config/Secrets.json"));
 	}
 
-	public static void SerializeObject<T>(T obj, string path)
-	{
-		string newJson = JsonSerializer.Serialize(obj, SerializerOptions);
-		string filePath = Path.Combine(Directory.GetCurrentDirectory(), path);
-		File.WriteAllText(filePath, newJson);
-	}
-
-	public static T? Deserialize<T>(string path)
+	public static T? DeserializeJson<T>(string path)
 	{
 		T? dataToLoad = default;
 		if (!File.Exists(path)) return dataToLoad;

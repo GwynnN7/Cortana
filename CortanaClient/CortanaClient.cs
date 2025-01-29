@@ -2,6 +2,7 @@
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Timer = System.Timers.Timer;
 
 namespace CortanaClient;
@@ -136,7 +137,14 @@ public static class ComputerClient
 		try
 		{
 			string file = File.ReadAllText(confPath);
-			return JsonSerializer.Deserialize<ClientInfo>(file);
+                
+            var options = new JsonSerializerOptions()
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Converters = { new JsonStringEnumConverter() }
+            };
+            
+			return JsonSerializer.Deserialize<ClientInfo>(file, options);
 		}
 		catch (Exception ex)
 		{

@@ -1,5 +1,6 @@
 using Kernel.Software;
 using Kernel.Software.DataStructures;
+using Kernel.Software.Extensions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
@@ -58,16 +59,11 @@ internal readonly struct HardwareEmoji
 
 // Debts data structures
 
-internal class Debts : Dictionary<long, List<Debt>>, ISerializable //: SerializedObject
+internal class Debts : Dictionary<long, List<Debt>> //: SerializedObject
 {
-	public void Serialize(string path)
-	{
-		FileHandler.SerializeObject(this, path);
-	}
-
 	public static Debts Load(string path)
 	{
-		return FileHandler.Deserialize<Debts>(path) ?? new Debts();
+		return FileHandler.DeserializeJson<Debts>(path) ?? new Debts();
 	}
 }
 

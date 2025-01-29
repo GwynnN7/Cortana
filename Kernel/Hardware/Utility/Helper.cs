@@ -45,17 +45,5 @@ internal static class Helper
 	{
 		return HardwareApi.Devices.GetPower(device) == EPower.On ? EPowerAction.Off : EPowerAction.On;
 	}
-	
-	internal static T? EnumFromString<T>(string value) where T: struct
-	{
-		value = CapitalizeLetter(value.ToLower());
-		bool res = Enum.TryParse(value, out T status);
-		return res ? status : null;
-	}
-
-	internal static string CapitalizeLetter(string word)
-	{
-		return string.Concat(word[..1].ToUpper(), word.AsSpan(1));
-	}
 }
 

@@ -22,8 +22,8 @@ internal static class Service
     
     static Service()
     {
-        var orvietoNet = FileHandler.Deserialize<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataOrvieto.json"));
-        var pisaNet = FileHandler.Deserialize<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataPisa.json"));
+        var orvietoNet = FileHandler.DeserializeJson<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataOrvieto.json"));
+        var pisaNet = FileHandler.DeserializeJson<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         Settings = Settings.Load();

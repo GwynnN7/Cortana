@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
 using Kernel.Software;
+using Kernel.Software.Extensions;
 
 namespace DiscordBot.Utility;
 
@@ -21,7 +22,7 @@ internal static class DiscordUtils
 	{
 		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Discord/");
 		
-		Data = FileHandler.Deserialize<DataStruct>(Path.Combine(StoragePath, "DiscordData.json"));
+		Data = FileHandler.DeserializeJson<DataStruct>(Path.Combine(StoragePath, "DiscordData.json"));
 		Memes = Memes.Load(Path.Combine(StoragePath, "Memes.json"));
 		GuildSettings = Guilds.Load(Path.Combine(StoragePath, "DiscordGuilds.json"));
 		TimeConnected = new Dictionary<ulong, DateTime>();
@@ -54,7 +55,7 @@ internal static class DiscordUtils
 		UpdateSettings();
 	}
 
-	public static void UpdateSettings() => GuildSettings.Serialize(Path.Combine(StoragePath, "DiscordGuilds.json"));
+	public static void UpdateSettings() => GuildSettings.Serialize().Dump("DiscordGuilds.json", StoragePath);
 	
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,
 		bool withoutAuthor = false)

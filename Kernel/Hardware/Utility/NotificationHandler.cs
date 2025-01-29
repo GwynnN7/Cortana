@@ -13,9 +13,9 @@ internal static class HardwareNotifier
 
     internal static void Publish(string message, ENotificationPriority priority)
     {
-        foreach (Tuple<Action<string>, ENotificationPriority> subscriber in Subscribers.Where(subscriber => priority >= subscriber.Item2))
+        foreach ((Action<string>? callback, ENotificationPriority callbackPriority) in Subscribers)
         {
-            subscriber.Item1.Invoke(message);
+            if(priority >= callbackPriority) callback.Invoke(message);
         }
     }
 }

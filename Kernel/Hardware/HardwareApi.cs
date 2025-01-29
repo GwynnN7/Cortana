@@ -2,7 +2,9 @@ using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Devices;
 using Kernel.Hardware.SocketHandler;
 using Kernel.Hardware.Utility;
+using Kernel.Software;
 using Kernel.Software.DataStructures;
+using Kernel.Software.Extensions;
 
 namespace Kernel.Hardware;
 
@@ -51,7 +53,7 @@ public static class HardwareApi
 		
 		public static string GetData(string sensor)
 		{
-			ESensor? sensorValue = Helper.EnumFromString<ESensor>(sensor);
+			ESensor? sensorValue = sensor.ToEnum<ESensor>();
 			return sensorValue.HasValue ? GetData(sensorValue.Value) : "Sensor offline";
 		}
 	}
@@ -137,8 +139,8 @@ public static class HardwareApi
 		}
 		public static string GetPower(string device)
 		{
-			EDevice? dev = Helper.EnumFromString<EDevice>(device);
-			return dev == null ? "Status not detectable" : $"{Helper.CapitalizeLetter(device)} is {GetPower(dev.Value)}";
+			EDevice? dev = device.ToEnum<EDevice>();
+			return dev == null ? "Status not detectable" : $"{device.Capitalize()} is {GetPower(dev.Value)}";
 		}
 		
 		public static string Switch(EDevice device, EPowerAction trigger)
@@ -158,8 +160,8 @@ public static class HardwareApi
 		}
 		public static string Switch(string device, string trigger)
 		{
-			EDevice? elementResult = Helper.EnumFromString<EDevice>(device);
-			EPowerAction? triggerResult = Helper.EnumFromString<EPowerAction>(trigger);
+			EDevice? elementResult = device.ToEnum<EDevice>();
+			EPowerAction? triggerResult = trigger.ToEnum<EPowerAction>();
 			if (triggerResult == null) return "Invalid action";
 			if (elementResult != null) return Switch(elementResult.Value, triggerResult.Value);
 			return device == "room" ? SwitchRoom(triggerResult.Value) : "Hardware device not listed";

@@ -19,7 +19,7 @@ public class DeviceController : ControllerBase
 		return HardwareApi.Devices.Switch(device, t ?? "toggle");
 	}
 	
-	[HttpGet("status/{device}")]
+	[HttpGet("{device}/status")]
 	public string DeviceStatus([FromRoute] string device)
 	{
 		return HardwareApi.Devices.GetPower(device);
