@@ -2,11 +2,13 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
 using Kernel.Hardware.DataStructures;
+using Kernel.Software;
 
 namespace Kernel.Hardware.Utility;
 
 internal static class Helper
 {
+	internal static readonly string StoragePath =  Path.Combine(FileHandler.ProjectStoragePath, "Config/Hardware/");
 	internal static void RunCommand(string command, bool stdRedirect = false)
 	{
 		Process.Start(new ProcessStartInfo

@@ -64,7 +64,7 @@ void loop() {
     connectToCortana();
 
     char buff[100];
-    snprintf(buff, 100, "{ \"bigMotion\": \"%s\", \"smallMotion\": \"%s\", \"light\": %d, \"temperature\": %f }", currentMotionBig == 1 ? "On" : "Off", currentMotionSmall == 1 ? "On" : "Off", light, temp);
+    snprintf(buff, 100, "{ \"wideMotion\": \"%s\", \"preciseMotion\": \"%s\", \"light\": %d, \"temperature\": %f }", currentMotionBig == 1 ? "On" : "Off", currentMotionSmall == 1 ? "On" : "Off", light, temp);
     client.print(buff);
 
     lastMotionBig = currentMotionBig;

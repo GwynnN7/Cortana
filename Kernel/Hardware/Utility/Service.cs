@@ -22,12 +22,11 @@ internal static class Service
     
     static Service()
     {
-        string storagePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Hardware/");
-        var orvietoNet = FileHandler.Deserialize<NetworkData>(Path.Combine(storagePath, "NetworkDataOrvieto.json"));
-        var pisaNet = FileHandler.Deserialize<NetworkData>(Path.Combine(storagePath, "NetworkDataPisa.json"));
+        var orvietoNet = FileHandler.Deserialize<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataOrvieto.json"));
+        var pisaNet = FileHandler.Deserialize<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
-        Settings = Settings.Load(Path.Combine(storagePath, "Settings.json"));
+        Settings = Settings.Load(Path.Combine(Helper.StoragePath, "Settings.json"));
         
         Task.Run(ServerHandler.StartListening);
         ResetControllerTimer();

@@ -20,7 +20,7 @@ internal class SensorsHandler : ClientHandler
 
 	protected override void HandleRead(string message)
 	{
-		var newData = JsonSerializer.Deserialize<SensorData>(message);
+		var newData = JsonSerializer.Deserialize<SensorData>(message, FileHandler.SerializerOptions);
 
 		if (_lastSensorData != null)
 		{

@@ -8,7 +8,7 @@ public static class FileHandler
 {
 	public static readonly Secrets Secrets;
 	public static readonly string ProjectStoragePath;
-	private static readonly JsonSerializerOptions SerializerOptions;
+	internal static readonly JsonSerializerOptions SerializerOptions;
 
 	static FileHandler()
 	{

@@ -1,3 +1,4 @@
+using Kernel.Hardware.Utility;
 using Kernel.Software;
 using Kernel.Software.DataStructures;
 
@@ -6,13 +7,27 @@ namespace Kernel.Hardware.DataStructures;
 public class Settings : ISerializable
 {
     private const int MaxAnalogRead = 4096;
+
     public int LightThreshold
     {
         get;
-        set => field = Math.Clamp(value, 0, MaxAnalogRead);
+        set
+        {
+            field = Math.Clamp(value, 0, MaxAnalogRead);
+            Serialize(Path.Combine(Helper.StoragePath, "Settings.json"));
+        }
     } = 1500;
-    public EControlMode LimitControlMode { get; set; } = EControlMode.Automatic;
-    
+
+    public EControlMode LimitControlMode
+    {
+        get;
+        set
+        {
+            field = value;
+            Serialize(Path.Combine(Helper.StoragePath, "Settings.json"));
+        }
+    } = EControlMode.Automatic;
+
     public void Serialize(string path)
     {
         FileHandler.SerializeObject(this, path);
