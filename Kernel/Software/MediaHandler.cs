@@ -5,10 +5,10 @@ using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 using CliWrap;
+using Kernel.Software.DataStructures;
 using QRCoder;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
-using Kernel.Software.Utility;
 
 namespace Kernel.Software;
 

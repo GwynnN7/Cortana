@@ -1,4 +1,4 @@
-﻿namespace Kernel.Software.Utility;
+﻿namespace Kernel.Software.DataStructures;
 
 public enum ETimerType
 {

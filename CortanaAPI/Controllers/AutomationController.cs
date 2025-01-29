@@ -16,12 +16,12 @@ public class AutomationController : ControllerBase
 	[HttpGet("{device}")]
 	public string PowerDevice([FromRoute] string device, [FromQuery] string? t)
 	{
-		return HardwareAdapter.SwitchDevice(device, t ?? "toggle");
+		return HardwareApi.Devices.Switch(device, t ?? "toggle");
 	}
 	
 	[HttpGet("status/{device}")]
 	public string DeviceStatus([FromRoute] string device)
 	{
-		return HardwareAdapter.GetDevicePower(device);
+		return HardwareApi.Devices.GetPower(device);
 	}
 }

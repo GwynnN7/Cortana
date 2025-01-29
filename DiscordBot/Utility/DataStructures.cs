@@ -1,50 +1,52 @@
-using System.Text.Json.Serialization;
+using Kernel.Software;
+using Kernel.Software.DataStructures;
 
 namespace DiscordBot.Utility;
 
-[method: Newtonsoft.Json.JsonConstructor]
-internal class GuildSettings(
-	bool autoJoin,
-	bool greetings,
-	ulong greetingsChannel,
-	ulong? afkChannel,
-	List<string> bannedWords)
+internal class Guilds : Dictionary<ulong, GuildSettings>, ISerializable //: SerializedObject
 {
-	public bool AutoJoin { get; set; } = autoJoin;
-	public bool Greetings { get; set; } = greetings;
-	public ulong GreetingsChannel { get; set; } = greetingsChannel;
-	public ulong? AfkChannel { get; set; } = afkChannel;
-	public List<string> BannedWords { get; } = bannedWords;
+	public void Serialize(string path)
+	{
+		FileHandler.SerializeObject(this, path);
+	}
+
+	public static Guilds Load(string path)
+	{
+		return FileHandler.Deserialize<Guilds>(path) ?? new Guilds();
+	}
 }
 
-[method: Newtonsoft.Json.JsonConstructor]
-internal readonly struct DataStruct(
-	ulong cortanaId,
-	ulong chiefId,
-	ulong noMenId,
-	ulong homeId,
-	ulong cortanaChannelId,
-	ulong cortanaLogChannelId)
+internal class GuildSettings //: SerializedObject
 {
-	public ulong CortanaId { get; } = cortanaId;
-	public ulong ChiefId { get; } = chiefId;
-	public ulong NoMenId { get; } = noMenId;
-	public ulong HomeId { get; } = homeId;
-	public ulong CortanaChannelId { get; } = cortanaChannelId;
-	public ulong CortanaLogChannelId { get; } = cortanaLogChannelId;
+	public bool AutoJoin { get; set; }
+	public bool Greetings { get; set; }
+	public ulong GreetingsChannel { get; set; }
+	public ulong? AfkChannel { get; set; }
+	public List<string> BannedWords { get; init; } = [];
 }
 
-[method: Newtonsoft.Json.JsonConstructor]
-public readonly struct MemeJsonStructure(
-	List<string> alias,
-	string link,
-	EMemeCategory category)
+internal readonly struct DataStruct //: DeserializedObject
 {
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public List<string> Alias { get; } = alias;
+	public ulong CortanaId { get; init; }
+	public ulong ChiefId { get; init; }
+	public ulong NoMenId { get; init; }
+	public ulong HomeId { get; init; }
+	public ulong CortanaChannelId { get; init; }
+	public ulong CortanaLogChannelId { get; init; }
+}
 
-	public string Link { get; } = link;
+internal class Memes : Dictionary<string, MemeJsonStructure> //: DeserializedObject
+{
+	public static Memes Load(string path)
+	{
+		return FileHandler.Deserialize<Memes>(path) ?? new Memes();
+	}
+}
 
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public EMemeCategory Category { get; } = category;
+
+public readonly struct MemeJsonStructure //: DeserializedObject
+{
+	public List<string> Alias { get; init; }
+	public string Link { get; init;  }
+	public EMemeCategory Category { get; init; }
 }

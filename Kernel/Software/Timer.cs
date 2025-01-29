@@ -1,5 +1,5 @@
 ﻿global using Times = (int Seconds, int Minutes, int Hours);
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 
 namespace Kernel.Software;
 

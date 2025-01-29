@@ -17,40 +17,32 @@ public class SensorController : ControllerBase
     [HttpGet("{sensor}")]
     public string SensorData([FromRoute] string sensor)
     {
-        return HardwareAdapter.GetSensorInfo(sensor);
+        return HardwareApi.Sensors.GetData(sensor);
     }
     
     [HttpGet("mode")]
     public string Mode()
     {
-        return HardwareAdapter.ControlMode.ToString();
+        return HardwareApi.Sensors.ControlMode.ToString();
     }
     
     [HttpGet("mode/{mode}")]
     public string SetMode([FromRoute] int mode)
     {
-        Settings settings = HardwareAdapter.GetSettings();
-        settings.LimitControlMode = mode switch
-        {
-            0 => EControlMode.Manual,
-            1 => EControlMode.Night,
-            2 => EControlMode.Automatic,
-            _ => settings.LimitControlMode
-        };
-        return $"Limit mode: {settings.LimitControlMode} ~ Current mode: {HardwareAdapter.ControlMode}";
+        HardwareApi.Sensors.Settings.LimitControlMode = (EControlMode) Math.Clamp(mode, (int) EControlMode.Manual, (int) EControlMode.Automatic);
+        return $"Limit mode: {HardwareApi.Sensors.Settings.LimitControlMode} ~ Current mode: {HardwareApi.Sensors.ControlMode}";
     }
     
     [HttpGet("threshold")]
     public string Light()
     {
-        return HardwareAdapter.GetSettings().LightThreshold.ToString();
+        return HardwareApi.Sensors.Settings.LightThreshold.ToString();
     }
     
     [HttpGet("threshold/{light}")]
     public string SetLight([FromRoute] int light)
     {
-        Settings settings = HardwareAdapter.GetSettings();
-        settings.LightThreshold = light;
-        return $"Current Light: {HardwareAdapter.GetSensorInfo(ESensor.Light)} ~ Light Threshold: {settings.LightThreshold}";
+        HardwareApi.Sensors.Settings.LightThreshold = light;
+        return $"Current Light: {HardwareApi.Sensors.GetData(ESensor.Light)} ~ Light Threshold: {HardwareApi.Sensors.Settings.LightThreshold}";
     }
 }

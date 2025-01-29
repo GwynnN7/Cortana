@@ -7,15 +7,15 @@ namespace Kernel.Hardware.Devices;
 
 internal static class DeviceHandler
 {
-	private const int RelayPin0 = 25; //Lamp Orvieto
-	private const int RelayPin1 = 23; //Generic (Lamp Pisa)
-	private const int RelayPin2 = 24; //Computer Power
+	private const int Gpio23 = 23; //Lamp Pisa && Generic
+	private const int Gpio24 = 24; //Computer Power
+	private const int Gpio25 = 25; //Lamp Orvieto
+	
+	private static int LampPin => Service.NetworkData.Location == ELocation.Orvieto ? Gpio25 : Gpio23;
+	private static int PowerPin => Gpio24;
+	private static int GenericPin => Gpio23;
 	
 	internal static readonly Dictionary<EDevice, EPower> HardwareStates;
-	private static int LampPin => Service.NetworkData.Location == ELocation.Orvieto ? RelayPin0 : RelayPin1;
-	private static int ComputerPlugsPin => RelayPin2;
-	private static int GenericPin => RelayPin1;
-	
 	private static readonly Lock LampLock = new();
 
 	static DeviceHandler()
@@ -59,12 +59,13 @@ internal static class DeviceHandler
 			case EPowerAction.Toggle:
 				return PowerLamp(Helper.ConvertToggle(EDevice.Lamp));
 		}
+		if (LampPin == GenericPin) HardwareStates[EDevice.Generic] = HardwareStates[EDevice.Lamp];
 		return HardwareStates[EDevice.Lamp];
 	}
 
 	internal static EPower PowerGeneric(EPowerAction state)
 	{
-		if (Service.NetworkData.Location == ELocation.Pisa) return PowerLamp(state);
+		if (LampPin == GenericPin) return PowerLamp(state);
 
 		switch (state)
 		{
@@ -104,11 +105,11 @@ internal static class DeviceHandler
 		switch (state)
 		{
 			case EPowerAction.On:
-				UseGpio(ComputerPlugsPin, PinValue.High);
+				UseGpio(PowerPin, PinValue.High);
 				HardwareStates[EDevice.Power] = EPower.On;
 				break;
 			case EPowerAction.Off:
-				UseGpio(ComputerPlugsPin, PinValue.Low);
+				UseGpio(PowerPin, PinValue.Low);
 				HardwareStates[EDevice.Power] = EPower.Off;
 				break;
 			case EPowerAction.Toggle:
@@ -123,6 +124,7 @@ internal static class DeviceHandler
 		using var controller = new GpioController();
 		controller.OpenPin(pin, PinMode.Output);
 		controller.Write(pin, value);
+		controller.ClosePin(pin);
 	}
 }
 

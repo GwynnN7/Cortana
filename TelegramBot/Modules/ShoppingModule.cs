@@ -1,5 +1,5 @@
 ﻿using Kernel.Software;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -9,8 +9,10 @@ namespace TelegramBot.Modules;
 
 internal static class ShoppingModule
 {
+	private static readonly string SerializePath = Path.Combine(TelegramUtils.StoragePath, "Debts.json");
+	
 	private static CurrentPurchase? _currentPurchase;
-	private static readonly Dictionary<long, List<Debts>> Debts;
+	private static readonly Debts Debts;
 	
 	private static readonly List<long> DebtUsers;
 	private static readonly List<long> DebtChats;
@@ -19,13 +21,10 @@ internal static class ShoppingModule
 	{
 		DebtUsers = TelegramUtils.Data.DebtUsers;
 		DebtChats = TelegramUtils.Data.DebtChats;
-		Debts = FileHandler.LoadFile<Dictionary<long, List<Debts>>>(Path.Combine(TelegramUtils.StoragePath, "Debts.json")) ?? new Dictionary<long, List<Debts>>();
+		Debts = Debts.Load(SerializePath);
 	}
 
-	private static void UpdateDebts()
-	{
-		FileHandler.WriteFile(Path.Combine(TelegramUtils.StoragePath, "Debts.json"), Debts);
-	}
+	private static void UpdateDebts() => Debts.Serialize(SerializePath);
 
 	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{
@@ -114,7 +113,7 @@ internal static class ShoppingModule
 	private static string GetDebts()
 	{
 		var debts = "";
-		foreach ((long userId, List<Debts> debtsList) in Debts)
+		foreach ((long userId, List<Debt> debtsList) in Debts)
 		{
 			if (debtsList.Count == 0) continue;
 			debts += $"{TelegramUtils.IdToName(userId)} owes:\n";
@@ -221,7 +220,7 @@ internal static class ShoppingModule
 		if (_currentPurchase == null) return;
 		long buyerId = _currentPurchase.Buyer;
 		if (!Debts.ContainsKey(buyerId)) Debts.Add(buyerId, []);
-		foreach (Debts debt in Debts[buyerId].ToList())
+		foreach (Debt debt in Debts[buyerId].ToList())
 		{
 			foreach ((long customerId, double amount) in _currentPurchase.Purchases)
 			{
@@ -244,9 +243,9 @@ internal static class ShoppingModule
 	{
 		if (!Debts.ContainsKey(customer)) Debts.Add(customer, []);
 
-		if (!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debts(towards: buyer, amount: Math.Round(amount, 3)));
+		if (!Debts[customer].Exists(x => x.Towards == buyer)) Debts[customer].Add(new Debt { Towards = buyer, Amount = Math.Round(amount, 3)});
 		else
-			foreach (Debts debt in Debts[customer].Where(debt => debt.Towards == buyer))
+			foreach (Debt debt in Debts[customer].Where(debt => debt.Towards == buyer))
 				debt.Amount = Math.Round(debt.Amount + amount, 3);
 	}
 

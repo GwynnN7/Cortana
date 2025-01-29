@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using System.Text;
 using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware.SocketHandler;

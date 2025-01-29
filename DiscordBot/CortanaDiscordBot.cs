@@ -7,7 +7,7 @@ using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
 using Microsoft.Extensions.DependencyInjection;
 using Kernel.Software;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using Timer = Kernel.Software.Timer;
 
 namespace DiscordBot;
@@ -107,7 +107,7 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			string temp = HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature);
+			string temp = HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Temperature);
 			var activity = new Game($"on Raspberry at {temp}");
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
 		}

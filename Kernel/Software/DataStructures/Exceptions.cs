@@ -1,11 +1,9 @@
-namespace Kernel.Software.Utility;
+namespace Kernel.Software.DataStructures;
 
 [Serializable]
 public class CortanaException : Exception
 {
-	public CortanaException()
-	{
-	}
+	public CortanaException() { }
 
 	public CortanaException(string message) : base(message)
 	{

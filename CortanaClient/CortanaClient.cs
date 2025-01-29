@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json;
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using Timer = System.Timers.Timer;
 
 namespace CortanaClient;
@@ -136,7 +136,7 @@ public static class ComputerClient
 		try
 		{
 			string file = File.ReadAllText(confPath);
-			return JsonConvert.DeserializeObject<ClientInfo>(file);
+			return JsonSerializer.Deserialize<ClientInfo>(file);
 		}
 		catch (Exception ex)
 		{

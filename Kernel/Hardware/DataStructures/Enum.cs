@@ -61,9 +61,9 @@ public enum EHardwareInfo
 
 public enum EControlMode
 {
-	Manual = 0,
-	Night = 1,
-	Automatic = 2
+	Manual = 1,
+	Night = 2,
+	Automatic = 3
 }
 
 public enum ENotificationPriority

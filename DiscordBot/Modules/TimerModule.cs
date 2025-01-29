@@ -3,7 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using DiscordBot.Utility;
 using Kernel.Software;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using DateTime = System.DateTime;
 using Timer = Kernel.Software.Timer;
 

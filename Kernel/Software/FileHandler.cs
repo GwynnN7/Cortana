@@ -1,5 +1,6 @@
-﻿using Kernel.Software.Utility;
-using Newtonsoft.Json;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
+using Kernel.Software.DataStructures;
 
 namespace Kernel.Software;
 
@@ -7,24 +8,31 @@ public static class FileHandler
 {
 	public static readonly Secrets Secrets;
 	public static readonly string ProjectStoragePath;
+	private static readonly JsonSerializerOptions SerializerOptions;
 
 	static FileHandler()
 	{
 		ProjectStoragePath = Path.Combine(Environment.CurrentDirectory, "Storage/");
 		if(!Path.Exists(ProjectStoragePath)) throw new CortanaException("Could not find storage path");
 		
-		Secrets = LoadFile<Secrets>(Path.Combine(ProjectStoragePath, "Config/Secrets.json"));
+		SerializerOptions = new JsonSerializerOptions()
+		{
+			WriteIndented = true,
+			PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+			Converters = { new JsonStringEnumConverter() }
+		};
+		
+		Secrets = Deserialize<Secrets>(Path.Combine(ProjectStoragePath, "Config/Secrets.json"));
 	}
 
-	public static void WriteFile<T>(string fileName, T data, JsonSerializerSettings? options = null)
+	public static void SerializeObject<T>(T obj, string path)
 	{
-		options ??= new JsonSerializerSettings { Formatting = Formatting.Indented };
-		string newJson = JsonConvert.SerializeObject(data, options);
-		string filePath = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+		string newJson = JsonSerializer.Serialize(obj, SerializerOptions);
+		string filePath = Path.Combine(Directory.GetCurrentDirectory(), path);
 		File.WriteAllText(filePath, newJson);
 	}
-	
-	public static T? LoadFile<T>(string path)
+
+	public static T? Deserialize<T>(string path)
 	{
 		T? dataToLoad = default;
 		if (!File.Exists(path)) return dataToLoad;
@@ -32,13 +40,12 @@ public static class FileHandler
 		try
 		{
 			string file = File.ReadAllText(path);
-			dataToLoad = JsonConvert.DeserializeObject<T>(file);
+			dataToLoad = JsonSerializer.Deserialize<T>(file, SerializerOptions);
 		}
 		catch (Exception ex)
 		{
 			throw new CortanaException(ex.Message, ex);
 		}
-
 		return dataToLoad;
 	}
 
@@ -62,4 +69,3 @@ public static class FileHandler
 		logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
 	}
 }
-

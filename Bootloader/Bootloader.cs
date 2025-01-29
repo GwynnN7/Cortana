@@ -1,7 +1,7 @@
 ﻿using CortanaAPI;
 using DiscordBot;
+using Kernel.Software.DataStructures;
 using TelegramBot;
-using Kernel.Software.Utility;
 
 namespace Bootloader;
 

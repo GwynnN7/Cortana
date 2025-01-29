@@ -16,7 +16,7 @@
     <ItemGroup>
         <PackageReference Include="Discord.Net" Version="3.17.1" />
         <PackageReference Include="IGDB" Version="5.1.0"/>
-        <PackageReference Include="JetBrains.Annotations" Version="2024.3.0"/>
+        <PackageReference Include="JetBrains.Annotations" Version="2025.1.0-eap1" />
         <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
         <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.1" />
     </ItemGroup>

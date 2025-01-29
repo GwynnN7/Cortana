@@ -1,9 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Utility;
 using Kernel.Software;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -21,7 +20,7 @@ internal static class TelegramUtils
 	static TelegramUtils()
 	{
 		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Telegram/");
-		Data = FileHandler.LoadFile<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
+		Data = FileHandler.Deserialize<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}
@@ -29,7 +28,7 @@ internal static class TelegramUtils
 	public static void Init(TelegramBotClient newClient)
 	{
 		_cortana = newClient;
-		HardwareAdapter.SubscribeNotification(HardwareSubscription, ENotificationPriority.High);
+		HardwareApi.SubscribeNotification(HardwareSubscription, ENotificationPriority.High);
 	}
 
 	public static async Task SendToUser(long userId, string message, bool notify = true)

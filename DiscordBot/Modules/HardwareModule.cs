@@ -14,7 +14,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Accendi o spegni la luce")]
 	public async Task LightToggle()
 	{
-		string result = HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Toggle);
+		string result = HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Toggle);
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
@@ -24,7 +24,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		string result = HardwareAdapter.SwitchDevice(element, action);
+		string result = HardwareApi.Devices.Switch(element, action);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -35,7 +35,18 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		string result = HardwareAdapter.GetHardwareInfo(info);
+		string result = HardwareApi.Raspberry.GetHardwareInfo(info);
+
+		Embed embed = DiscordUtils.CreateEmbed(result);
+		await FollowupAsync(embed: embed, ephemeral: true);
+	}
+	
+	[SlashCommand("sensor", "Ricevi informazioni dai sensori", runMode: RunMode.Async)]
+	public async Task SensorInfo([Summary("info", "Quale informazione vuoi?")] ESensor info)
+	{
+		await DeferAsync(true);
+
+		string result = HardwareApi.Sensors.GetData(info);
 
 		Embed embed = DiscordUtils.CreateEmbed(result);
 		await FollowupAsync(embed: embed, ephemeral: true);

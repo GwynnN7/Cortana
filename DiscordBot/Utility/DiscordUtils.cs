@@ -11,8 +11,8 @@ internal static class DiscordUtils
 	private static readonly string StoragePath;
 
 	public static readonly DataStruct Data;
-	public static readonly Dictionary<string, MemeJsonStructure> Memes;
-	public static readonly Dictionary<ulong, GuildSettings> GuildSettings;
+	public static readonly Memes Memes;
+	public static readonly Guilds GuildSettings;
 	public static readonly Dictionary<ulong, DateTime> TimeConnected;
 	
 	public static DiscordSocketClient Cortana { get; private set; } = null!;
@@ -21,12 +21,12 @@ internal static class DiscordUtils
 	{
 		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Discord/");
 		
-		Data = FileHandler.LoadFile<DataStruct>(Path.Combine(StoragePath, "DiscordData.json"));
-		Memes = FileHandler.LoadFile<Dictionary<string, MemeJsonStructure>>(Path.Combine(StoragePath, "Memes.json")) ?? new Dictionary<string, MemeJsonStructure>();
-		GuildSettings = FileHandler.LoadFile<Dictionary<ulong, GuildSettings>>(Path.Combine(StoragePath, "DiscordGuilds.json")) ?? new Dictionary<ulong, GuildSettings>();
+		Data = FileHandler.Deserialize<DataStruct>(Path.Combine(StoragePath, "DiscordData.json"));
+		Memes = Memes.Load(Path.Combine(StoragePath, "Memes.json"));
+		GuildSettings = Guilds.Load(Path.Combine(StoragePath, "DiscordGuilds.json"));
 		TimeConnected = new Dictionary<ulong, DateTime>();
 		
-		HardwareAdapter.SubscribeNotification(HardwareSubscription, ENotificationPriority.Low);
+		HardwareApi.SubscribeNotification(HardwareSubscription, ENotificationPriority.Low);
 	}
 
 	public static void InitSettings(DiscordSocketClient client)
@@ -43,22 +43,19 @@ internal static class DiscordUtils
 	public static void AddGuildSettings(SocketGuild guild)
 	{
 		var defaultGuildSettings = new GuildSettings
-		(
-			false,
-			false,
-			guild.DefaultChannel.Id,
-			null,
-			[]
-		);
+		{
+			AutoJoin = false,
+			Greetings = false,
+			GreetingsChannel = guild.DefaultChannel.Id,
+			AfkChannel = null,
+			BannedWords = []
+		};
 		GuildSettings.Add(guild.Id, defaultGuildSettings);
 		UpdateSettings();
 	}
 
-	public static void UpdateSettings()
-	{
-		FileHandler.WriteFile(Path.Combine(StoragePath, "DiscordGuilds.json"), GuildSettings);
-	}
-
+	public static void UpdateSettings() => GuildSettings.Serialize(Path.Combine(StoragePath, "DiscordGuilds.json"));
+	
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,
 		bool withoutAuthor = false)
 	{

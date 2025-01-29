@@ -1,7 +1,7 @@
 using Kernel.Hardware;
 using Kernel.Hardware.DataStructures;
-using Kernel.Hardware.Utility;
 using Mono.Unix;
+using Mono.Unix.Native;
 
 namespace Bootloader;
 
@@ -9,16 +9,16 @@ public static class Cortana
 {
 	private static readonly UnixSignal[] Signals =
 	[
-		new(Mono.Unix.Native.Signum.SIGTERM), 
-		new(Mono.Unix.Native.Signum.SIGINT),
-		new(Mono.Unix.Native.Signum.SIGUSR1)
+		new(Signum.SIGTERM), 
+		new(Signum.SIGINT),
+		new(Signum.SIGUSR1)
 	];
 
 	private static void Main()
 	{
 		Console.Clear();
 		
-		Console.WriteLine($"Compilation completed at {HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareAdapter.GetHardwareInfo(EHardwareInfo.Location)}");
+		Console.WriteLine($"Compilation completed at {HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Location)}");
 		Console.WriteLine("Initiating Bootloader...");
 
 		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
@@ -36,7 +36,7 @@ public static class Cortana
 		{
 			UnixSignal.WaitAny(Signals, Timeout.Infinite);
 			await Bootloader.StopSubFunctions();
-			HardwareAdapter.ShutdownServices();
+			HardwareApi.ShutdownServices();
 		});
 		
 		Task.WaitAll(Bootloader.GetSubFunctionsTasks());

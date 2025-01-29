@@ -37,7 +37,7 @@ public static class CortanaApi
 			FileProvider = new PhysicalFileProvider(Path.Combine(FileHandler.ProjectStoragePath, "Assets/")),
 			RequestPath = "/resources"
 		});
-		CortanaWebApi.Urls.Add($"http://*:{HardwareAdapter.GetNetworkData().ApiPort}");
+		CortanaWebApi.Urls.Add($"http://*:{HardwareApi.NetworkData.ApiPort}");
 		CortanaWebApi.MapControllers();
 		await CortanaWebApi.RunAsync();
 	}

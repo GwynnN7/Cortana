@@ -41,7 +41,7 @@ internal static class Helper
 
 	internal static EPowerAction ConvertToggle(EDevice device)
 	{
-		return Wrapper.GetDevicePower(device) == EPower.On ? EPowerAction.Off : EPowerAction.On;
+		return HardwareApi.Devices.GetPower(device) == EPower.On ? EPowerAction.Off : EPowerAction.On;
 	}
 	
 	internal static T? EnumFromString<T>(string value) where T: struct

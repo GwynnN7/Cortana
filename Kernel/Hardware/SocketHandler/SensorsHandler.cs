@@ -1,9 +1,9 @@
 using System.Net.Sockets;
+using System.Text.Json;
 using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Utility;
 using Kernel.Software;
-using Kernel.Software.Utility;
-using Newtonsoft.Json;
+using Kernel.Software.DataStructures;
 using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware.SocketHandler;
@@ -20,14 +20,14 @@ internal class SensorsHandler : ClientHandler
 
 	protected override void HandleRead(string message)
 	{
-		var newData = JsonConvert.DeserializeObject<SensorData>(message);
+		var newData = JsonSerializer.Deserialize<SensorData>(message);
 
 		if (_lastSensorData != null)
 		{
 			switch (newData)
 			{
-				case { BigMotion: EPower.On } when _lastSensorData is {BigMotion: EPower.Off}:
-				case { SmallMotion: EPower.On } when _lastSensorData is {SmallMotion: EPower.Off}:
+				case { WideMotion: EPower.On } when _lastSensorData is {WideMotion: EPower.Off}:
+				case { PreciseMotion: EPower.On } when _lastSensorData is {PreciseMotion: EPower.Off}:
 					FileHandler.Log("SensorsLog", message);
 					break;
 			}
@@ -35,18 +35,18 @@ internal class SensorsHandler : ClientHandler
 		
 		if (Service.CurrentControlMode == EControlMode.Automatic)
 		{
-			if (HardwareAdapter.GetDevicePower(EDevice.Lamp) == EPower.On)
+			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPower.On)
 			{
 				switch (newData)
 				{
-					case { SmallMotion: EPower.Off, BigMotion: EPower.Off } when _motionTimer == null:
+					case { PreciseMotion: EPower.Off, WideMotion: EPower.Off } when _motionTimer == null:
 					{
-						int seconds = HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.On ? 45 : 10;
+						int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EPower.On ? 60 : 15;
 						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 						_motionTimer.Set((seconds, 0, 0));
 						break;
 					}
-					case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
+					case { PreciseMotion: EPower.On } or { WideMotion: EPower.On }:
 						_motionTimer?.Destroy();
 						_motionTimer = null;
 						break;
@@ -56,11 +56,11 @@ internal class SensorsHandler : ClientHandler
 			{
 				switch (newData)
 				{
-					case { SmallMotion: EPower.On } or { BigMotion: EPower.On }:
+					case { PreciseMotion: EPower.On } or { WideMotion: EPower.On }:
 					{
-						if (HardwareAdapter.GetDevicePower(EDevice.Lamp) == EPower.Off && newData.Light <= Service.Settings.LightThreshold)
+						if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPower.Off && newData.Light <= Service.Settings.LightThreshold)
 						{
-							HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.On);
+							HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
 							HardwareNotifier.Publish("Motion detected, switching lamp on!", ENotificationPriority.High);
 						}
 						
@@ -77,7 +77,7 @@ internal class SensorsHandler : ClientHandler
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
-		HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Off);
+		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 		HardwareNotifier.Publish("No motion detected, switching lamp off...", ENotificationPriority.Low);
 
 		return Task.CompletedTask;
@@ -108,7 +108,7 @@ internal class SensorsHandler : ClientHandler
 		lock (InstanceLock)
 		{
 			if(_instance?._lastSensorData == null) return null;
-			return _instance._lastSensorData.Value.BigMotion == EPower.On || _instance._lastSensorData.Value.SmallMotion == EPower.On ? EPower.On : EPower.Off;
+			return _instance._lastSensorData.Value.WideMotion == EPower.On || _instance._lastSensorData.Value.PreciseMotion == EPower.On ? EPower.On : EPower.Off;
 		}
 	}
 	

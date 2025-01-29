@@ -1,7 +1,8 @@
 using Kernel.Hardware.DataStructures;
 using Kernel.Hardware.Devices;
+using Kernel.Hardware.SocketHandler;
 using Kernel.Software;
-using Kernel.Software.Utility;
+using Kernel.Software.DataStructures;
 using Timer = Kernel.Software.Timer;
 
 namespace Kernel.Hardware.Utility;
@@ -9,26 +10,27 @@ namespace Kernel.Hardware.Utility;
 internal static class Service
 {
 	internal static readonly NetworkData NetworkData;
-	internal static Settings Settings;
+	internal static readonly Settings Settings;
 	
 	private static Timer? _controllerTimer;
 	private static bool _morningMessage;
-	private static EControlMode _controlMode = EControlMode.Automatic;
-    internal static EControlMode CurrentControlMode => 
-	    Math.Min( (int) _controlMode, (int) Settings.LimitControlMode) switch
-	    {
-		    0 => EControlMode.Manual, 1 => EControlMode.Night, 2 => EControlMode.Automatic,
-		    _ => _controlMode
-	    };
+
+	internal static EControlMode CurrentControlMode { 
+		get => (EControlMode) Math.Min((int) field, (int) Settings.LimitControlMode);
+		private set;
+	} = EControlMode.Automatic;
     
     static Service()
     {
-        string networkPath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Network/");
-        var orvietoNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataOrvieto.json"));
-        var pisaNet = FileHandler.LoadFile<NetworkData>(Path.Combine(networkPath, "NetworkDataPisa.json"));
+        string storagePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Hardware/");
+        var orvietoNet = FileHandler.Deserialize<NetworkData>(Path.Combine(storagePath, "NetworkDataOrvieto.json"));
+        var pisaNet = FileHandler.Deserialize<NetworkData>(Path.Combine(storagePath, "NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
-        Settings = new Settings(1500, EControlMode.Automatic);
+        Settings = Settings.Load(Path.Combine(storagePath, "Settings.json"));
+        
+        Task.Run(ServerHandler.StartListening);
+        ResetControllerTimer();
     }
     
     internal static void ResetControllerTimer()
@@ -43,7 +45,7 @@ internal static class Service
     {
 	    if (DateTime.Now.Hour <= 6)
 	    {
-		    if (HardwareAdapter.GetDevicePower(EDevice.Computer) == EPower.Off)
+		    if (HardwareApi.Devices.GetPower(EDevice.Computer) == EPower.Off)
 		    {
 			    EnterSleepMode();
 			    return Task.CompletedTask;
@@ -58,7 +60,7 @@ internal static class Service
 	    else
 	    {
 		    if(_morningMessage) HardwareNotifier.Publish("Good morning, switching to Automatic Mode", ENotificationPriority.High);
-		    _controlMode = EControlMode.Automatic;
+		    CurrentControlMode = EControlMode.Automatic;
 		    _morningMessage = false;
 	    }
     
@@ -69,14 +71,14 @@ internal static class Service
     
     internal static void EnterSleepMode(bool userAction = false)
     {
-	    _controlMode = EControlMode.Night;
+	    CurrentControlMode = EControlMode.Night;
 	    
-	    if (!userAction && HardwareAdapter.GetDevicePower(EDevice.Lamp) == EPower.Off) return;
+	    if (!userAction && HardwareApi.Devices.GetPower(EDevice.Lamp) == EPower.Off) return;
 	    HardwareNotifier.Publish("Good night, switching to Night Mode", ENotificationPriority.Low);
 	    
 	    if (userAction || (!userAction && CurrentControlMode != EControlMode.Manual))
 	    {
-		    HardwareAdapter.SwitchDevice(EDevice.Lamp, EPowerAction.Off);
+		    HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 	    }
 	    
 	    ResetControllerTimer();

@@ -24,18 +24,18 @@ internal static class SensorModule
 		switch (command)
 		{
 			case "light":
-				string light = HardwareAdapter.GetSensorInfo(ESensor.Light);
-				int threshold = HardwareAdapter.GetSettings().LightThreshold;
+				string light = HardwareApi.Sensors.GetData(ESensor.Light);
+				int threshold = HardwareApi.Sensors.Settings.LightThreshold;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light Level: {light} ~ Threshold: {threshold}");
 				break;
 			case "temperature":
-				string temp = HardwareAdapter.GetSensorInfo(ESensor.Temperature);
+				string temp = HardwareApi.Sensors.GetData(ESensor.Temperature);
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp}");
 				break;
 			case "motion":
-				string motion = HardwareAdapter.GetSensorInfo(ESensor.Motion);
-				EControlMode currentMode = HardwareAdapter.ControlMode;
-				EControlMode limitMode = HardwareAdapter.GetSettings().LimitControlMode;
+				string motion = HardwareApi.Sensors.GetData(ESensor.Motion);
+				EControlMode currentMode = HardwareApi.Sensors.ControlMode;
+				EControlMode limitMode = HardwareApi.Sensors.Settings.LimitControlMode;
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit: {currentMode}/{limitMode}");
 				break;
 			case "settings":
@@ -47,7 +47,7 @@ internal static class SensorModule
 				break;
 			case "set_control_mode":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetControlMode, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Write the control mode code (0/1/2)", replyMarkup: CreateCancelButton());
+					await cortana.EditMessageText(chatId, messageId, "Write the control mode code (1/2/3)", replyMarkup: CreateCancelButton());
 				break;
 			case "cancel":
 				await CreateSensorMenu(cortana, callbackQuery.Message);
@@ -65,22 +65,14 @@ internal static class SensorModule
 		{
 			case ETelegramChatArg.SetControlMode:
 			{
-				Settings settings = HardwareAdapter.GetSettings();
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					EControlMode mode = code switch
-					{
-						0 => EControlMode.Manual,
-						1 => EControlMode.Night,
-						2 => EControlMode.Automatic,
-						_ => settings.LimitControlMode
-					};
-					settings.LimitControlMode = mode;
+					HardwareApi.Sensors.Settings.LimitControlMode = (EControlMode) Math.Clamp(code, (int) EControlMode.Manual, (int) EControlMode.Automatic);
 				}
 
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 
-				string modeResponse = $"Current: {HardwareAdapter.ControlMode} ~ Limit: {settings.LimitControlMode}";
+				string modeResponse = $"Current: {HardwareApi.Sensors.ControlMode} ~ Limit: {HardwareApi.Sensors.Settings.LimitControlMode}";
 				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId,
 					TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
@@ -88,14 +80,13 @@ internal static class SensorModule
 			}
 			case ETelegramChatArg.SetLightThreshold:
 			{
-				Settings settings = HardwareAdapter.GetSettings();
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					settings.LightThreshold = threshold;
+					HardwareApi.Sensors.Settings.LightThreshold = threshold;
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				string lightResponse = $"Current: {HardwareAdapter.GetSensorInfo(ESensor.Light)} ~ Threshold: {settings.LightThreshold}";
+				string lightResponse = $"Current: {HardwareApi.Sensors.GetData(ESensor.Light)} ~ Threshold: {HardwareApi.Sensors.Settings.LightThreshold}";
 				await TelegramUtils.AnswerOrMessage(cortana, lightResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateSensorMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;

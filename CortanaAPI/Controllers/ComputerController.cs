@@ -18,36 +18,36 @@ public class ComputerController : ControllerBase
 	[HttpGet("notify")]
 	public string Notify([FromQuery] string? text)
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.Notify, text);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.Notify, text);
 	}
 	
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.Shutdown);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.Shutdown);
 	}
 	
 	[HttpGet("suspend")]
 	public string Suspend()
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.Suspend);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.Suspend);
 	}
 	
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.Reboot);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.Reboot);
 	}
 	
 	[HttpGet("swap-os")]
 	public string SwapOs()
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.SwapOs);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.SwapOs);
 	}
 	
 	[HttpGet("command")]
 	public string CommandPc([FromQuery] string? cmd)
 	{
-		return HardwareAdapter.CommandComputer(EComputerCommand.Command, cmd);
+		return HardwareApi.Devices.CommandComputer(EComputerCommand.Command, cmd);
 	}
 }

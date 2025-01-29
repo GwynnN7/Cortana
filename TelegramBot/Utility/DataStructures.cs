@@ -1,6 +1,7 @@
+using Kernel.Software;
+using Kernel.Software.DataStructures;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using System.Text.Json.Serialization;
 
 namespace TelegramBot.Utility;
 
@@ -12,11 +13,11 @@ internal class TelegramChatArg(ETelegramChatArg type, CallbackQuery callbackQuer
 	public readonly Message InteractionMessage = interactionMessage;
 	public readonly ETelegramChatArg Type = type;
 }
-internal class TelegramChatArg<T>(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, T arg) 
-	: TelegramChatArg(type, callbackQuery, interactionMessage)
+internal class TelegramChatArg<T>(ETelegramChatArg type, CallbackQuery callbackQuery, Message interactionMessage, T arg) : TelegramChatArg(type, callbackQuery, interactionMessage)
 {
 	public readonly T Arg = arg;
 }
+
 internal struct MessageStats
 {
 	public Message Message;
@@ -32,29 +33,18 @@ internal struct MessageStats
 
 // Config Data Structure
 
-[method: Newtonsoft.Json.JsonConstructor]
-internal readonly struct DataStruct(
-	Dictionary<long, string> usernames,
-	Dictionary<long, string> groups,
-	List<long> rootPermissions,
-	List<long> debtChats,
-	List<long> debtUsers)
+internal readonly struct DataStruct //: DeserializedObject
 {
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public Dictionary<long, string> Usernames { get; } = usernames;
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public Dictionary<long, string> Groups { get; } = groups;
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public List<long> RootPermissions { get; } = rootPermissions;
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public List<long> DebtChats { get; } = debtChats;
-	[JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
-	public List<long> DebtUsers { get; } = debtUsers;
+	public Dictionary<long, string> Usernames { get; init; }
+	public Dictionary<long, string> Groups { get; init; }
+	public List<long> RootPermissions { get; init; }
+	public List<long> DebtChats { get; init; }
+	public List<long> DebtUsers { get; init; }
 }
 
 // Hardware data structure
 
-internal static class HardwareEmoji
+internal readonly struct HardwareEmoji
 {
 	public const string Lamp = "\ud83d\udca1";
 	public const string Generic = "\ud83d\udd0c";
@@ -68,13 +58,23 @@ internal static class HardwareEmoji
 
 // Debts data structures
 
-[method: JsonConstructor]
-internal class Debts(
-	double amount,
-	long towards)
+internal class Debts : Dictionary<long, List<Debt>>, ISerializable //: SerializedObject
 {
-	public double Amount { get; set; } = amount;
-	public long Towards { get; } = towards;
+	public void Serialize(string path)
+	{
+		FileHandler.SerializeObject(this, path);
+	}
+
+	public static Debts Load(string path)
+	{
+		return FileHandler.Deserialize<Debts>(path) ?? new Debts();
+	}
+}
+
+internal class Debt //: SerializedObject
+{
+	public double Amount { get; set; }
+	public long Towards { get; init; }
 }
 
 internal class CurrentPurchase

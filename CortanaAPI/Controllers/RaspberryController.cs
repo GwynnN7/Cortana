@@ -17,42 +17,42 @@ public class RaspberryController : ControllerBase
 	[HttpGet("temperature")]
 	public string Temperature()
 	{
-		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Temperature);
+		return HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Temperature);
 	}
 
 	[HttpGet("ip")]
 	public string Ip()
 	{
-		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Ip);
+		return HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Ip);
 	}
 
 	[HttpGet("gateway")]
 	public string Gateway()
 	{
-		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Gateway);
+		return HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Gateway);
 	}
 
 	[HttpGet("location")]
 	public string Location()
 	{
-		return HardwareAdapter.GetHardwareInfo(EHardwareInfo.Location);
+		return HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Location);
 	}
 
 	[HttpGet("shutdown")]
 	public string Shutdown()
 	{
-		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Shutdown);
+		return HardwareApi.Raspberry.Command(ERaspberryOption.Shutdown);
 	}
 
 	[HttpGet("reboot")]
 	public string Reboot()
 	{
-		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Reboot);
+		return HardwareApi.Raspberry.Command(ERaspberryOption.Reboot);
 	}
 
 	[HttpGet("update")]
 	public string Update()
 	{
-		return HardwareAdapter.CommandRaspberry(ERaspberryOption.Update);
+		return HardwareApi.Raspberry.Command(ERaspberryOption.Update);
 	}
 }
