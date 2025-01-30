@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Bootloader", "Bootloader\Bo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaClient", "CortanaClient\CortanaClient.csproj", "{1A158608-74FB-44CF-9B17-110A6555AE22}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaWeb", "CortanaWeb\CortanaWeb.csproj", "{C20187D7-D438-48B1-84F3-6952EFF0F637}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -169,6 +171,26 @@ Global
 		{1A158608-74FB-44CF-9B17-110A6555AE22}.Release|x64.Build.0 = Release|Any CPU
 		{1A158608-74FB-44CF-9B17-110A6555AE22}.Release|x86.ActiveCfg = Release|Any CPU
 		{1A158608-74FB-44CF-9B17-110A6555AE22}.Release|x86.Build.0 = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|ARM.Build.0 = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|x64.Build.0 = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Debug|x86.Build.0 = Debug|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|ARM.ActiveCfg = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|ARM.Build.0 = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|ARM64.Build.0 = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|x64.ActiveCfg = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|x64.Build.0 = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|x86.ActiveCfg = Release|Any CPU
+		{C20187D7-D438-48B1-84F3-6952EFF0F637}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
