@@ -10,6 +10,9 @@ public static class CortanaWeb
     
     static CortanaWeb()
     {
+        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"https://*:{HardwareApi.NetworkData.ApiPort};http://*:{HardwareApi.NetworkData.ApiPort+1}");
+        Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
+        
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         
         builder.Services.AddOpenApi("api"); 
@@ -29,8 +32,6 @@ public static class CortanaWeb
     
     public static async Task BootCortanaWeb()
     {
-        CortanaWebApi.Urls.Add($"https://*:{HardwareApi.NetworkData.ApiPort}");
-        CortanaWebApi.Urls.Add($"http://*:{HardwareApi.NetworkData.ApiPort + 1}");
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.UseHttpsRedirection();
