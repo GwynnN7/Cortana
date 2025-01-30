@@ -8,8 +8,8 @@
         <IsPackable>false</IsPackable>
         <Title>TelegramBot</Title>
         <Authors>Gwynn7</Authors>
-        <PackageProjectUrl>https://github.com/GwynbleiddN7/Cortana</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/GwynbleiddN7/Cortana</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/GwynnN7/Cortana</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/GwynnN7/Cortana</RepositoryUrl>
         <Company>Gwynn7</Company>
     </PropertyGroup>
 

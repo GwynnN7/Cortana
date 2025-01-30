@@ -27,20 +27,21 @@ public static class CortanaWeb
         CortanaWebApi = builder.Build();
     }
     
-    public static async Task BootCortanaApi()
+    public static async Task BootCortanaWeb()
     {
-        CortanaWebApi.Urls.Add($"https://*:{HardwareApi.NetworkData.ApiPort}");
+        CortanaWebApi.Urls.Add($"https://*:{HardwareApi.NetworkData.ApiPort};http://*:{HardwareApi.NetworkData.ApiPort + 1}");
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.UseHttpsRedirection();
+        
+        CortanaWebApi.MapGet("/api", () => "Hi, I'm Cortana!")
+            .WithName("Cortana");
+        
         CortanaWebApi.UseAntiforgery();
 
         CortanaWebApi.MapStaticAssets();
         CortanaWebApi.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
-        
-        CortanaWebApi.MapGet("/api", () => "Hi, I'm Cortana!")
-            .WithName("Cortana");
         
         await CortanaWebApi.RunAsync();
     }

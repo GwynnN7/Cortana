@@ -5,6 +5,14 @@
         <TargetFramework>net9.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <LangVersion>default</LangVersion>
+        <IsPackable>false</IsPackable>
+        <Title>CortanaClient</Title>
+        <Authors>Gwynn7</Authors>
+        <PackageProjectUrl>https://github.com/GwynnN7/Cortana</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/GwynnN7/Cortana</RepositoryUrl>
+        <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
+        <Company>Gwynn7</Company>
     </PropertyGroup>
 
 </Project>

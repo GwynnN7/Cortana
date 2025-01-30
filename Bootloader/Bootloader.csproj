@@ -11,9 +11,9 @@
         <IsPackable>false</IsPackable>
         <Title>Cortana</Title>
         <Authors>Gwynn7</Authors>
-        <PackageProjectUrl>https://github.com/GwynbleiddN7/Cortana</PackageProjectUrl>
+        <PackageProjectUrl>https://github.com/GwynnN7/Cortana</PackageProjectUrl>
         <PackageIcon>Storage\Assets\cortana.jpg</PackageIcon>
-        <RepositoryUrl>https://github.com/GwynbleiddN7/Cortana</RepositoryUrl>
+        <RepositoryUrl>https://github.com/GwynnN7/Cortana</RepositoryUrl>
         <Company>Gwynn7</Company>
         <Product>Cortana</Product>
     </PropertyGroup>
