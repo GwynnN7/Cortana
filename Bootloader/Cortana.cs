@@ -21,7 +21,7 @@ public static class Cortana
 		Console.WriteLine($"Compilation completed at {HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Temperature)}, loading data for {HardwareApi.Raspberry.GetHardwareInfo(EHardwareInfo.Location)}");
 		Console.WriteLine("Initiating Bootloader...");
 
-		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaWeb);
+		int threadId = Bootloader.BootSubFunction(ESubFunctions.CortanaApi);
 		Console.WriteLine($"Cortana API ready on Thread {threadId}");
 
 		threadId = Bootloader.BootSubFunction(ESubFunctions.DiscordBot);

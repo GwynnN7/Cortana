@@ -1,4 +1,4 @@
-﻿using CortanaWeb;
+﻿using CortanaAPI;
 using DiscordBot;
 using Kernel.Software.DataStructures;
 using TelegramBot;
@@ -7,7 +7,7 @@ namespace Bootloader;
 
 internal enum ESubFunctions
 {
-	CortanaWeb,
+	CortanaApi,
 	DiscordBot,
 	TelegramBot
 }
@@ -20,14 +20,14 @@ internal static class Bootloader
 	{
 		Task subFunctionTask = subFunction switch
 		{
-			ESubFunctions.CortanaWeb => Task.Run(CortanaWeb.CortanaWeb.BootCortanaWeb),
+			ESubFunctions.CortanaApi => Task.Run(CortanaApi.BootCortanaApi),
 			ESubFunctions.DiscordBot => Task.Run(CortanaDiscordBot.BootDiscordBot),
 			ESubFunctions.TelegramBot => Task.Run(CortanaTelegramBot.BootTelegramBot),
 			_ => throw new CortanaException("Unknown SubFunction type, quitting...")
 		};
 		Func<Task> cancellationFunction = subFunction switch
 		{
-			ESubFunctions.CortanaWeb => CortanaWeb.CortanaWeb.StopCortanaWeb,
+			ESubFunctions.CortanaApi => CortanaApi.StopCortanaApi,
 			ESubFunctions.DiscordBot => CortanaDiscordBot.StopDiscordBot,
 			ESubFunctions.TelegramBot => CortanaTelegramBot.StopTelegramBot,
 			_ => throw new CortanaException("Unknown SubFunction type, quitting...")

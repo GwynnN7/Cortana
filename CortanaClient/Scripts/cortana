@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import os, sys, time, requests
 
-root="http://cortana-home.ddns.net:8080/api/"
+root="https://cortana-home.ddns.net:8080/api/"
 def executeInBlue(sh):
     os.system(f"echo -e \"\\e[1;34m$({sh})\\e[0m\"")
 
@@ -12,11 +12,14 @@ def requestAPI(url):
 command = " ".join(sys.argv[1:])
 if len(sys.argv) > 1:
     if sys.argv[1] == "log":
-        text = requests.get(root).text.replace("'", "\\'")
-        cpuTemp = requests.get(root + "raspberry/temperature").text
-        roomTemp = requests.get(root + "sensor/temperature").text
-        executeInBlue("echo {} \"~\" {}".format(text, cpuTemp))
-        executeInBlue("echo Room Temperature: {}".format(roomTemp))
+        try:
+            text = requests.get(root).text.replace("'", "\\'")
+            cpuTemp = requests.get(root + "raspberry/temperature").text
+            roomTemp = requests.get(root + "sensor/temperature").text
+            executeInBlue("echo {} \"~\" {}".format(text, cpuTemp))
+            executeInBlue("echo Room Temperature: {}".format(roomTemp))
+        except:
+            executeInBlue("echo Cortana Offline")
     elif sys.argv[1] == "copy":
         os.system("rsync -ru --info=progress2 --force --delete --delete-excluded --include Config --filter=\":- \"\"$CORTANA_PATH\"\"/.gitignore\" \"$CORTANA_PATH\" cortana@192.168.1.117:~/")
     elif sys.argv[1] == "run":
