@@ -29,7 +29,8 @@ public static class CortanaWeb
     
     public static async Task BootCortanaWeb()
     {
-        CortanaWebApi.Urls.Add($"https://*:{HardwareApi.NetworkData.ApiPort};http://*:{HardwareApi.NetworkData.ApiPort + 1}");
+        CortanaWebApi.Urls.Add($"https://*:{HardwareApi.NetworkData.ApiPort}");
+        CortanaWebApi.Urls.Add($"http://*:{HardwareApi.NetworkData.ApiPort + 1}");
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.UseHttpsRedirection();
