@@ -13,8 +13,12 @@ public static class CortanaWeb
         Environment.SetEnvironmentVariable("ASPNETCORE_URLS", $"https://*:{HardwareApi.NetworkData.ApiPort};http://*:{HardwareApi.NetworkData.ApiPort+1}");
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Development");
         
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        WebApplicationOptions options = new WebApplicationOptions {
+            ContentRootPath = "../../../../CortanaWeb"
+        };
         
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(options);
+        builder.WebHost.UseStaticWebAssets();
         builder.Services.AddOpenApi("api"); 
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
@@ -41,7 +45,7 @@ public static class CortanaWeb
         
         CortanaWebApi.UseAntiforgery();
 
-        CortanaWebApi.MapStaticAssets();
+        CortanaWebApi.MapStaticAssets("CortanaWeb.staticwebassets.endpoints.json");
         CortanaWebApi.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
         
