@@ -32,8 +32,8 @@ public static class Bootloader
 			if(process.ShuttingDown) return;
 			await Task.Delay(2000);
 			Console.WriteLine($"{projectName} exited. Restarting...");
-			RunningSubFunctions.Remove(process);
-			BootSubFunction(process.Type);
+			//RunningSubFunctions.Remove(process);
+			//BootSubFunction(process.Type);
 		};
 
 		try

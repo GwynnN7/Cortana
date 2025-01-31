@@ -39,7 +39,7 @@ public static class Cortana
         
         Console.WriteLine("Initiating Bootloader...");
 
-        //Bootloader.BootSubFunction(ESubFunctionType.CortanaWeb);
+        Bootloader.BootSubFunction(ESubFunctionType.CortanaWeb);
         Bootloader.BootSubFunction(ESubFunctionType.CortanaTelegram);
         Bootloader.BootSubFunction(ESubFunctionType.CortanaDiscord);
 
