@@ -1,0 +1,7 @@
+.config
+.log
+
+bin
+obj
+
+.idea

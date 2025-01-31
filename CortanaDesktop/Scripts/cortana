@@ -1,0 +1,73 @@
+#!/usr/bin/python
+import os, sys, time, requests
+
+def executeInBlue(sh):
+    os.system(f"echo -e \"\\e[1;34m$({sh})\\e[0m\"")
+    
+if "CORTANA_PATH" not in os.environ:
+    executeInBlue("echo Cortana Path not set in env")
+    exit(-1)
+    
+if "CORTANA_API" not in os.environ:
+    executeInBlue("echo Cortana API not set in env")
+    exit(-1)
+
+api = os.environ.get("CORTANA_API")
+
+def cortanaGet(route = ""):
+    try:
+        return requests.get(f"{api}/{route}").text
+    except:
+        return "Cortana Offline"
+    
+def cortanaPost(route, argValue):
+    try:
+        return requests.post(f"{api}/{route}", argValue).text
+    except:
+        return "Cortana Offline"
+def requestAPI(route = ""):
+    res = cortanaGet(route).replace("'", "\\'")
+    executeInBlue(f"echo {res}")
+
+command = " ".join(sys.argv[1:])
+if len(sys.argv) > 1:
+    if sys.argv[1] == "log":
+        text = cortanaGet().replace("'", "\\'")
+        cpuTemp = cortanaGet("raspberry/temperature")
+        roomTemp = cortanaGet("sensor/temperature")
+        if text == "Cortana Offline":
+            executeInBlue(f"echo {text}")
+        else:
+            executeInBlue("echo {} \"~\" {}".format(text, cpuTemp))
+            executeInBlue("echo Room Temperature: {}".format(roomTemp))
+    elif sys.argv[1] == "run":
+        os.system("mkdir -p \"$CORTANA_PATH\"/.log")
+        os.system("nohup dotnet run --project \"$CORTANA_PATH\"/CortanaDesktop/CortanaDesktop.csproj >\"$CORTANA_PATH\"/.log/CortanaDesktop.log 2>\"$CORTANA_PATH\"/.log/CortanaDesktop.err /dev/null & disown;")
+        executeInBlue("echo Cortana Client started")
+    elif sys.argv[1] == "update":
+        commit = " ".join(sys.argv[2:])
+        if commit == "":
+            executeInBlue("echo Update information needed")
+        else:
+            os.system(f"cd \"$CORTANA_PATH\" && git add . && git commit -m \"{commit}\" && git push")
+            executeInBlue("echo Updating code...")
+            time.sleep(2)
+            requestAPI("raspberry/update")
+    elif sys.argv[1] == "kill":
+        os.system("killall CortanaDesktop")
+        executeInBlue("echo Cortana Desktop killed")
+    else:
+        if "=" in command:
+            data = command.split("=")
+            path = data[0].split(" ")
+            val = cortanaPost("/".join(path), "+".join(data[1].split(" ")))
+            executeInBlue(f"echo {val}")
+        else:
+            val = cortanaGet("/".join(command.split(" ")))
+            executeInBlue(f"echo {val}")
+else:
+    requestAPI()
+    
+    
+
+    

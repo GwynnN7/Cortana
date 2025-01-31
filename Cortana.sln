@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaKernel", "CortanaKernel\CortanaKernel.csproj", "{019A013E-FA84-4943-8775-51D631FED081}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaLib", "CortanaLib\CortanaLib.csproj", "{29AC84A1-6564-4B3C-90D9-AED0AA8EE65B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaDiscord", "CortanaDiscord\CortanaDiscord.csproj", "{C94BC35A-880C-42FF-88DC-1595B1ECF836}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaTelegram", "CortanaTelegram\CortanaTelegram.csproj", "{7D9D11F5-EA1F-476E-B815-BE5BA4AB17F7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaDesktop", "CortanaDesktop\CortanaDesktop.csproj", "{12ACFEF6-4992-4305-892A-1ABE2C64DAB1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CortanaWeb", "CortanaWeb\CortanaWeb.csproj", "{8FBE0894-9B94-467A-8B11-1955FA78B83F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{019A013E-FA84-4943-8775-51D631FED081}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{019A013E-FA84-4943-8775-51D631FED081}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{019A013E-FA84-4943-8775-51D631FED081}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{019A013E-FA84-4943-8775-51D631FED081}.Release|Any CPU.Build.0 = Release|Any CPU
+		{29AC84A1-6564-4B3C-90D9-AED0AA8EE65B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{29AC84A1-6564-4B3C-90D9-AED0AA8EE65B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{29AC84A1-6564-4B3C-90D9-AED0AA8EE65B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{29AC84A1-6564-4B3C-90D9-AED0AA8EE65B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C94BC35A-880C-42FF-88DC-1595B1ECF836}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C94BC35A-880C-42FF-88DC-1595B1ECF836}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C94BC35A-880C-42FF-88DC-1595B1ECF836}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C94BC35A-880C-42FF-88DC-1595B1ECF836}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7D9D11F5-EA1F-476E-B815-BE5BA4AB17F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7D9D11F5-EA1F-476E-B815-BE5BA4AB17F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7D9D11F5-EA1F-476E-B815-BE5BA4AB17F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7D9D11F5-EA1F-476E-B815-BE5BA4AB17F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{12ACFEF6-4992-4305-892A-1ABE2C64DAB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{12ACFEF6-4992-4305-892A-1ABE2C64DAB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{12ACFEF6-4992-4305-892A-1ABE2C64DAB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{12ACFEF6-4992-4305-892A-1ABE2C64DAB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FBE0894-9B94-467A-8B11-1955FA78B83F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FBE0894-9B94-467A-8B11-1955FA78B83F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FBE0894-9B94-467A-8B11-1955FA78B83F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FBE0894-9B94-467A-8B11-1955FA78B83F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
