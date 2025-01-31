@@ -28,7 +28,7 @@ public class RaspberryEndpoints : ICarterModule
 	{
 		IOption<ERaspberryInfo> cmd = info.ToEnum<ERaspberryInfo>();
 
-		Result<string, string> result = cmd.Match(
+		StringResult result = cmd.Match(
 			onSome: HardwareApi.Raspberry.GetHardwareInfo,
 			onNone: () => StringResult.Failure("Raspberry information not found")
 		);
@@ -43,7 +43,7 @@ public class RaspberryEndpoints : ICarterModule
 	{
 		IOption<ERaspberryCommand> cmd = command.ToEnum<ERaspberryCommand>();
 
-		Result<string, string> result = cmd.Match(
+		StringResult result = cmd.Match(
 			onSome: HardwareApi.Raspberry.Command,
 			onNone: () => StringResult.Failure("Command not found")
 		);

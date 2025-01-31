@@ -35,7 +35,7 @@ public class SensorEndpoints : ICarterModule
     {
         IOption<ESensor> cmd = sensor.ToEnum<ESensor>();
 
-        Result<string, string> result = cmd.Match(
+        StringResult result = cmd.Match(
             onSome: HardwareApi.Sensors.GetData,
             onNone: () => StringResult.Failure("Sensor offline")
         );

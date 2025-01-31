@@ -16,16 +16,17 @@ public static class CortanaApi
         builder.Services.AddOpenApi();
         builder.Services.AddCarter();
         CortanaWebApi = builder.Build();
-        
-        CortanaWebApi.Urls.Add($"http://*:{HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort)}");
-        Console.WriteLine(HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort));
+
+        StringResult portResult = HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort);
+        string port = portResult.Match(
+            success => success,
+            _ => throw new CortanaException("Cannot find API port")
+        );
+        CortanaWebApi.Urls.Add($"http://*:{port}");
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.UseHttpsRedirection();
         CortanaWebApi.UseAuthorization();
         CortanaWebApi.MapCarter();
-        
-        ComputerEndpoints.AddRoutes(CortanaWebApi);
-        HomeEndpoints.AddRoutes(CortanaWebApi);
     }
     
     public static async Task RunAsync() => await CortanaWebApi.RunAsync();

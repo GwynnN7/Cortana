@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
-public class ComputerEndpoints : IEndpoint
+public class ComputerEndpoints : ICarterModule
 {
-	public static void AddRoutes(IEndpointRouteBuilder app)
+	public void AddRoutes(IEndpointRouteBuilder app)
 	{
 		RouteGroupBuilder group = app.MapGroup("computer/");
 		
@@ -27,7 +27,7 @@ public class ComputerEndpoints : IEndpoint
 	{
 		IOption<EComputerCommand> cmd = command.ToEnum<EComputerCommand>();
 
-		Result<string, string> result = cmd.Match(
+		StringResult result = cmd.Match(
 			onSome: value => HardwareApi.Devices.CommandComputer(value, argument),
 			onNone: () => StringResult.Failure("Command not found")
 		);

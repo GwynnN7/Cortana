@@ -40,7 +40,7 @@ public class DeviceEndpoints: ICarterModule
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
 		IOption<EPowerAction> action = trigger is null ? new Some<EPowerAction>(EPowerAction.Toggle) : trigger.ToEnum<EPowerAction>();
 
-		Result<string, string> result = dev.Match(
+		StringResult result = dev.Match(
 			onSome: deviceVal =>
 			{
 				return action.Match(
