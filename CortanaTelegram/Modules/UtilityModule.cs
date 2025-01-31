@@ -5,7 +5,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Utility;
 using File = System.IO.File;
 using Video = YoutubeExplode.Videos.Video;
 using Timer = CortanaLib.Timer;

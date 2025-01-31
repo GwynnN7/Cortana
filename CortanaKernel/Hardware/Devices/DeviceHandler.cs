@@ -1,6 +1,5 @@
 ﻿using System.Device.Gpio;
 using CortanaKernel.Hardware.SocketHandler;
-using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
 using CortanaLib.Structures;
 
