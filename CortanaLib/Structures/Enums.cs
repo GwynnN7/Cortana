@@ -26,6 +26,7 @@ public enum EDirType
 {
 	Config,
 	Storage,
-	Log
+	Log,
+	Projects
 }
 

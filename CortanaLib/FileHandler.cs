@@ -13,7 +13,8 @@ public static class FileHandler
 	{
 		{ EDirType.Config, Path.Combine(CortanaPath, ".config/") },
 		{ EDirType.Storage, Path.Combine(CortanaPath, "Storage/") },
-		{ EDirType.Log, Path.Combine(CortanaPath, ".log/") }
+		{ EDirType.Log, Path.Combine(CortanaPath, ".log/") },
+		{ EDirType.Projects, CortanaPath }
 	};
 	
 	public static readonly JsonSerializerOptions SerializerOptions;
@@ -59,5 +60,5 @@ public static class FileHandler
 		logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
 	}
 	
-	public static string GetPath(EDirType type, string path) => Path.Combine(Folders[type], path);
+	public static string GetPath(EDirType type, string path = "") => Path.Combine(Folders[type], path);
 }

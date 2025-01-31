@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
+using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Subfunctions;
@@ -12,13 +12,13 @@ public static class Bootloader
 	public static void BootSubFunction(ESubFunctionType subFunctionType)
 	{
 		string projectName = subFunctionType.ToString();
-		
+
 		var process = new SubFunction();
 		process.Type = subFunctionType;
 		process.StartInfo = new ProcessStartInfo
 		{
 			FileName = "dotnet",
-			Arguments = $"run --project {projectName}/{projectName}.csproj",
+			Arguments = $"run --project {FileHandler.GetPath(EDirType.Projects)}/{projectName}/{projectName}.csproj",
 			UseShellExecute = false,
 			RedirectStandardOutput = true,
 			RedirectStandardError = true,
@@ -32,8 +32,8 @@ public static class Bootloader
 			if(process.ShuttingDown) return;
 			await Task.Delay(2000);
 			Console.WriteLine($"{projectName} exited. Restarting...");
-			//RunningSubFunctions.Remove(process);
-			//BootSubFunction(process.Type);
+			RunningSubFunctions.Remove(process);
+			BootSubFunction(process.Type);
 		};
 
 		try
