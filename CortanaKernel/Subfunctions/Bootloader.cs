@@ -25,6 +25,9 @@ public static class Bootloader
 			CreateNoWindow = true
 		};
 		process.EnableRaisingEvents = true;
+		process.OutputDataReceived += (_, e) => Console.WriteLine(e.Data);
+		process.ErrorDataReceived += (_, e) => Console.WriteLine($"[ERROR] {e.Data}");
+		
 		process.Exited += async (_, _) => {
 			if(process.ShuttingDown) return;
 			await Task.Delay(2000);
