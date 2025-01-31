@@ -8,9 +8,9 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
-public class ComputerEndpoints : ICarterModule
+public class ComputerEndpoints : IEndpoint
 {
-	public void AddRoutes(IEndpointRouteBuilder app)
+	public static void AddRoutes(IEndpointRouteBuilder app)
 	{
 		RouteGroupBuilder group = app.MapGroup("computer/");
 		

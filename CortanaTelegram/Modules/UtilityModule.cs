@@ -15,7 +15,7 @@ internal abstract class UtilityModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Software CortanaLib", replyMarkup: CreateButtons());
+		await cortana.EditMessageText(message.Chat.Id, message.Id, "Utility", replyMarkup: CreateButtons());
 	}
 
 	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)

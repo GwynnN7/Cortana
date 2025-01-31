@@ -1,7 +1,6 @@
 global using StringOrNotFoundResult = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<string>, Microsoft.AspNetCore.Http.HttpResults.NotFound<string>>;
 using Carter;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.API;
@@ -16,14 +15,17 @@ public static class CortanaApi
         builder.Services.AddAuthorization();
         builder.Services.AddOpenApi();
         builder.Services.AddCarter();
-        builder.Services.AddLogging(c => c.ClearProviders());
         CortanaWebApi = builder.Build();
         
         CortanaWebApi.Urls.Add($"http://*:{HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort)}");
+        Console.WriteLine(HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort));
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.UseHttpsRedirection();
         CortanaWebApi.UseAuthorization();
         CortanaWebApi.MapCarter();
+        
+        ComputerEndpoints.AddRoutes(CortanaWebApi);
+        HomeEndpoints.AddRoutes(CortanaWebApi);
     }
     
     public static async Task RunAsync() => await CortanaWebApi.RunAsync();

@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace CortanaKernel.API;
 
-public class HomeEndpoints : ICarterModule
+public class HomeEndpoints : IEndpoint
 {
-	public void AddRoutes(IEndpointRouteBuilder app)
+	public static void AddRoutes(IEndpointRouteBuilder app)
 	{
 		app.MapGet("", Root);
 	}

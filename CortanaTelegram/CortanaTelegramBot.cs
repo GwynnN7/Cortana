@@ -198,7 +198,7 @@ public static class CortanaTelegramBot
 			.AddNewRow()
 			.AddButton("Commands", "command")
 			.AddNewRow()
-			.AddButton("CortanaLib", "utility")
+			.AddButton("Utility", "utility")
 			.AddNewRow()
 			.AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynbleiddN7/Cortana"));
 	}
