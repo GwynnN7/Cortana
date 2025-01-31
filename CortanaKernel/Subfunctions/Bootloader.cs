@@ -58,7 +58,6 @@ public static class Bootloader
 		subFunction.Kill();
 		await subFunction.WaitForExitAsync();
 		Console.WriteLine($"{subFunction.Type} stopped");
-		RunningSubFunctions.Remove(subFunction);
 	}
 	
 	public static async Task StopSubFunction(ESubFunctionType subFuncType)
@@ -66,6 +65,7 @@ public static class Bootloader
 		foreach (SubFunction subFunction in RunningSubFunctions.Where(func => func.Type == subFuncType && !func.HasExited))
 		{
 			await StopSubFunction(subFunction);
+			RunningSubFunctions.Remove(subFunction);
 			break;
 		}
 	}

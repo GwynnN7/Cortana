@@ -44,17 +44,19 @@ public static class Cortana
         Bootloader.BootSubFunction(ESubFunctionType.CortanaDiscord);
 
         Console.WriteLine("Boot Completed, I'm Online!");
-
-        await WaitForSignal();
-        Console.WriteLine("Shutting down...");
-        await apiTask;
+        
+        await WaitForSignal(apiTask);
     }
 
-    private static async Task WaitForSignal()
+    private static async Task WaitForSignal(Task taskToWait)
     {
         UnixSignal.WaitAny(Signals, Timeout.Infinite);
+        Console.WriteLine("Shutting down...");
+        
         await Bootloader.StopSubFunctions();
         await CortanaApi.ShutdownService();
         HardwareApi.ShutdownService();
+
+        await taskToWait;
     }
 }
