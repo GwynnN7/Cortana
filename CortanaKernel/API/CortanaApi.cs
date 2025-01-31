@@ -15,6 +15,7 @@ public static class CortanaApi
         builder.Services.AddAuthorization();
         builder.Services.AddOpenApi();
         builder.Services.AddCarter();
+        builder.Services.AddLogging(c => c.ClearProviders());
         CortanaWebApi = builder.Build();
 
         StringResult portResult = HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort);

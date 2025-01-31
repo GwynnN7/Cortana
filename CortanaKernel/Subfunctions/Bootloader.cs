@@ -75,10 +75,8 @@ public static class Bootloader
 
 	public static async Task StopSubFunctions()
 	{
-		foreach (SubFunction subFunction in RunningSubFunctions.Where(func => !func.HasExited))
-		{
-			await StopSubFunction(subFunction);
-		}
+		List<Task> subfunctionsToStop = RunningSubFunctions.Where(sf => !sf.HasExited).Select(StopSubFunction).ToList();
+		await Task.WhenAll(subfunctionsToStop);
 		RunningSubFunctions.Clear();
 	}
 }
