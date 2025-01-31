@@ -1,11 +1,12 @@
+using CortanaLib;
+using CortanaLib.Structures;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using Utility;
-using Utility.Structures;
-using Timer = Utility.Timer;
+using Timer = CortanaLib.Timer;
 
 namespace CortanaTelegram.Modules;
 

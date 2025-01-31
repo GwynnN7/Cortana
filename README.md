@@ -1,4 +1,4 @@
-![Logo](Storage/Assets/cortana.jpg)
+![Logo](Storage/cortana.jpg)
 
 # Cortana
 

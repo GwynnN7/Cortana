@@ -1,8 +1,8 @@
 ﻿using CortanaDiscord.Utility;
+using CortanaLib;
+using CortanaLib.Structures;
 using Discord;
 using Discord.Interactions;
-using Utility;
-using Utility.Structures;
 
 namespace CortanaDiscord.Modules;
 

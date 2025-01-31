@@ -1,4 +1,4 @@
-namespace Utility.Structures;
+namespace CortanaLib.Structures;
 
 public interface IOption<T>
 {

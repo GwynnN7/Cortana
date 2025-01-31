@@ -2,9 +2,10 @@ using System.Net.Sockets;
 using System.Text.Json;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
+using CortanaLib;
+using CortanaLib.Structures;
 using Utility;
-using Utility.Structures;
-using Timer = Utility.Timer;
+using Timer = CortanaLib.Timer;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 

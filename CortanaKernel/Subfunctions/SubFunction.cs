@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using CortanaKernel.Hardware.Structures;
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Subfunctions;
 

@@ -1,4 +1,4 @@
-﻿namespace Utility.Structures;
+﻿namespace CortanaLib.Structures;
 
 public enum ETimerType
 {
@@ -22,5 +22,10 @@ public enum EVideoQuality
 	Balanced
 }
 
-
+public enum EDirType
+{
+	Config,
+	Storage,
+	Log
+}
 

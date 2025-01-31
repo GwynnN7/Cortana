@@ -1,15 +1,13 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
-using CortanaKernel.Hardware.Structures;
-using Utility;
-using Utility.Structures;
+using CortanaLib;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Utility;
 
 public static class Helper
 {
-	public static readonly string StoragePath =  Path.Combine(FileHandler.ProjectStoragePath, "Config/Hardware/");
 	public static Process RunCommand(string command, bool stdRedirect = false)
 	{
 		var process = new Process();

@@ -1,4 +1,4 @@
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Structures;
 

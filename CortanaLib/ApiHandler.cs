@@ -1,6 +1,6 @@
-using Utility.Structures;
+using CortanaLib.Structures;
 
-namespace Utility;
+namespace CortanaLib;
 
 public static class ApiHandler
 {

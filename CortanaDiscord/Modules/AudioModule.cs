@@ -1,9 +1,9 @@
 ﻿using CortanaDiscord.Handlers;
 using CortanaDiscord.Utility;
+using CortanaLib;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Utility;
 using YoutubeExplode.Videos;
 
 namespace CortanaDiscord.Modules;

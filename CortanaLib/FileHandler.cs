@@ -1,19 +1,28 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
-using Utility.Structures;
+using CortanaLib.Structures;
 
-namespace Utility;
+namespace CortanaLib;
 
 public static class FileHandler
 {
 	public static readonly Secrets Secrets;
-	public static readonly string ProjectStoragePath;
+
+	private static readonly Dictionary<EDirType, string> Folders = new()
+	{
+		{ EDirType.Config, Path.Combine(Environment.CurrentDirectory, ".config/") },
+		{ EDirType.Storage, Path.Combine(Environment.CurrentDirectory, "Storage/") },
+		{ EDirType.Log, Path.Combine(Environment.CurrentDirectory, ".log/") }
+	};
+	
 	public static readonly JsonSerializerOptions SerializerOptions;
 
 	static FileHandler()
 	{
-		ProjectStoragePath = Path.Combine(Environment.CurrentDirectory, "Storage/");
-		if(!Path.Exists(ProjectStoragePath)) throw new CortanaException("Could not find storage path");
+		foreach ((EDirType type, string path) in Folders)
+		{
+			if(!Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
+		}
 		
 		SerializerOptions = new JsonSerializerOptions()
 		{
@@ -22,7 +31,7 @@ public static class FileHandler
 			Converters = { new JsonStringEnumConverter() }
 		};
 		
-		Secrets = DeserializeJson<Secrets>(GetPath("Config/Secrets.json"));
+		Secrets = DeserializeJson<Secrets>(GetPath(EDirType.Config,"Secrets.json"));
 	}
 
 	public static T? DeserializeJson<T>(string path)
@@ -44,10 +53,10 @@ public static class FileHandler
 
 	public static void Log(string fileName, string log)
 	{
-		string logPath = GetPath($".log/{fileName}.log");
+		string logPath = GetPath(EDirType.Log,$"{fileName}.log");
 		using StreamWriter logFile = File.Exists(logPath) ? File.AppendText(logPath) : File.CreateText(logPath);
 		logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
 	}
 	
-	private static string GetPath(string path) => Path.Combine(ProjectStoragePath, path);
+	public static string GetPath(EDirType type, string path) => Path.Combine(Folders[type], path);
 }

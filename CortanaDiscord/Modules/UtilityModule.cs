@@ -1,10 +1,10 @@
 ﻿using System.Globalization;
 using CortanaDiscord.Utility;
+using CortanaLib;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using IGDB;
-using Utility;
 using Game = IGDB.Models.Game;
 
 namespace CortanaDiscord.Modules;

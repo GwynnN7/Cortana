@@ -1,4 +1,4 @@
-namespace Utility.Structures;
+namespace CortanaLib.Structures;
 
 public readonly struct Secrets{
 	public string DiscordToken { get; init; }

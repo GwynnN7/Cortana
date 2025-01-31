@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace Utility.Extensions;
+namespace CortanaLib.Extensions;
 
 public static class ObjectExtensions
 {

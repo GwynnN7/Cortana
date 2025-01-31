@@ -1,10 +1,9 @@
 using System.Net.NetworkInformation;
-using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
+using CortanaLib;
+using CortanaLib.Structures;
 using Iot.Device.CpuTemperature;
 using UnitsNet;
-using Utility;
-using Utility.Structures;
 
 namespace CortanaKernel.Hardware.Devices;
 

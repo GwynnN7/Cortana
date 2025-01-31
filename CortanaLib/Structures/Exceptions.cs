@@ -1,4 +1,4 @@
-namespace Utility.Structures;
+namespace CortanaLib.Structures;
 
 [Serializable]
 public class CortanaException : Exception

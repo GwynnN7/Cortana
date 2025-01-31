@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 

@@ -1,4 +1,5 @@
-﻿using CortanaTelegram.Modules;
+﻿using CortanaLib;
+using CortanaTelegram.Modules;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
@@ -6,7 +7,6 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Utility;
 
 namespace CortanaTelegram;
 

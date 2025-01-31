@@ -1,16 +1,16 @@
-﻿using CortanaTelegram.Utility;
+﻿using CortanaLib;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
+using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using Utility.Extensions;
-using Utility.Structures;
 
 namespace CortanaTelegram.Modules;
 
 internal abstract class ShoppingModule : IModuleInterface
 {
-	private static readonly string SerializePath = Path.Combine(TelegramUtils.StoragePath, "Debts.json");
-	
+
 	private static CurrentPurchase? _currentPurchase;
 	private static readonly Debts Debts;
 	
@@ -21,10 +21,10 @@ internal abstract class ShoppingModule : IModuleInterface
 	{
 		DebtUsers = TelegramUtils.Data.DebtUsers;
 		DebtChats = TelegramUtils.Data.DebtChats;
-		Debts = Debts.Load(SerializePath);
+		Debts = Debts.Load(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
 	}
 
-	private static void UpdateDebts() => Debts.Serialize().Dump(SerializePath);
+	private static void UpdateDebts() => Debts.Serialize().Dump(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
 
 	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{

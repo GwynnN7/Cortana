@@ -1,9 +1,9 @@
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Structures;
-using Utility;
-using Utility.Structures;
-using Timer = Utility.Timer;
+using CortanaLib;
+using CortanaLib.Structures;
+using Timer = CortanaLib.Timer;
 
 namespace CortanaKernel.Hardware.Utility;
 
@@ -22,8 +22,8 @@ public static class Service
     
     static Service()
     {
-        var orvietoNet = FileHandler.DeserializeJson<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataOrvieto.json"));
-        var pisaNet = FileHandler.DeserializeJson<NetworkData>(Path.Combine(Helper.StoragePath, "NetworkDataPisa.json"));
+        var orvietoNet = FileHandler.DeserializeJson<NetworkData>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataOrvieto.json"));
+        var pisaNet = FileHandler.DeserializeJson<NetworkData>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         Settings = Settings.Load();

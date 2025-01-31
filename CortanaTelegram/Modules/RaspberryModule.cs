@@ -1,8 +1,8 @@
+using CortanaLib;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
-using Utility;
 
 namespace CortanaTelegram.Modules;
 

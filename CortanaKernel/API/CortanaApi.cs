@@ -2,7 +2,7 @@ global using StringOrNotFoundResult = Microsoft.AspNetCore.Http.HttpResults.Resu
 using Carter;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Structures;
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.API;
 

@@ -2,9 +2,9 @@ using CortanaKernel.API;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Subfunctions;
+using CortanaLib.Structures;
 using Mono.Unix;
 using Mono.Unix.Native;
-using Utility.Structures;
 
 namespace CortanaKernel;
 

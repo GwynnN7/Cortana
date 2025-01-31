@@ -1,10 +1,10 @@
 using Carter;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Structures;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Utility.Extensions;
-using Utility.Structures;
 
 namespace CortanaKernel.API;
 
@@ -27,7 +27,7 @@ public class ComputerEndpoints : ICarterModule
 	{
 		IOption<EComputerCommand> cmd = command.ToEnum<EComputerCommand>();
 
-		StringResult result = cmd.Match(
+		Result<string, string> result = cmd.Match(
 			onSome: value => HardwareApi.Devices.CommandComputer(value, argument),
 			onNone: () => StringResult.Failure("Command not found")
 		);

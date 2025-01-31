@@ -1,4 +1,4 @@
-using Utility;
+using CortanaLib;
 
 namespace CortanaDiscord.Utility;
 

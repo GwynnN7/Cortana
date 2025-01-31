@@ -1,4 +1,4 @@
-namespace Utility.Structures;
+namespace CortanaLib.Structures;
 
 public readonly struct Result<T, E> {
     private readonly bool _success;

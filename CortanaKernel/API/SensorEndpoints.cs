@@ -1,10 +1,10 @@
 using Carter;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Structures;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Utility.Extensions;
-using Utility.Structures;
 
 namespace CortanaKernel.API;
 

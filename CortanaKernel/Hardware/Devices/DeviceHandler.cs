@@ -2,7 +2,7 @@
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Devices;
 

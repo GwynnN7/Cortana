@@ -9,21 +9,21 @@ namespace CortanaDesktop;
 
 public static class ComputerDesktop
 {
-    internal static ClientInfo ClientInfo { get; private set; }
-    private const string ClientInfoPath = $".config/{nameof(ComputerDesktop)}/Client.json";
+    internal static DesktopInfo DesktopInfo { get; private set; }
+    private const string ClientInfoPath = $".config/{nameof(ComputerDesktop)}/DesktopInfo.json";
     private static Socket? _computerSocket;
 
     private static void Main()
     {
-        ClientInfo = GetClientInfo();
+        DesktopInfo = GetClientInfo();
         string gateway = GetCortanaGateway().Result;
-        string address = gateway[..^1] + ClientInfo.CortanaIp;
+        string address = gateway[..^1] + DesktopInfo.CortanaIp;
 
         StartAliveTimer();
 
         while(true)
         {
-            CreateSocketConnection(address, ClientInfo.ClientPort);
+            CreateSocketConnection(address, DesktopInfo.DesktopPort);
             
             Write("computer");
             Read();
@@ -129,7 +129,7 @@ public static class ComputerDesktop
         _computerSocket = null;
     }
 
-    private static ClientInfo GetClientInfo()
+    private static DesktopInfo GetClientInfo()
 	{
         string cortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? throw new Exception("Cortana path not set in env");
 		string confPath = Path.Combine(cortanaPath, ClientInfoPath);
@@ -145,7 +145,7 @@ public static class ComputerDesktop
                 Converters = { new JsonStringEnumConverter() }
             };
             
-			return JsonSerializer.Deserialize<ClientInfo>(file, options);
+			return JsonSerializer.Deserialize<DesktopInfo>(file, options);
 		}
 		catch (Exception ex)
 		{

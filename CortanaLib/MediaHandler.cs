@@ -1,8 +1,8 @@
 using CliWrap;
+using CortanaLib.Structures;
 using QRCoder;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Png;
-using Utility.Structures;
 using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
@@ -10,7 +10,7 @@ using YoutubeExplode.Search;
 using YoutubeExplode.Videos;
 using YoutubeExplode.Videos.Streams;
 
-namespace Utility;
+namespace CortanaLib;
 
 public static class MediaHandler
 {

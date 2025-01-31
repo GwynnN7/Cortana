@@ -1,14 +1,13 @@
-﻿using Discord;
+﻿using CortanaLib;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
+using Discord;
 using Discord.WebSocket;
-using Utility;
-using Utility.Extensions;
 
 namespace CortanaDiscord.Utility;
 
 internal static class DiscordUtils
 {
-	private static readonly string StoragePath;
-
 	public static readonly DataStruct Data;
 	public static readonly Memes Memes;
 	public static readonly Guilds GuildSettings;
@@ -18,11 +17,9 @@ internal static class DiscordUtils
 
 	static DiscordUtils()
 	{
-		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Discord/");
-		
-		Data = FileHandler.DeserializeJson<DataStruct>(Path.Combine(StoragePath, "DiscordData.json"));
-		Memes = Memes.Load(Path.Combine(StoragePath, "Memes.json"));
-		GuildSettings = Guilds.Load(Path.Combine(StoragePath, "DiscordGuilds.json"));
+		Data = FileHandler.DeserializeJson<DataStruct>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordData.json"));
+		Memes = Memes.Load(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
+		GuildSettings = Guilds.Load(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordGuilds.json"));
 		TimeConnected = new Dictionary<ulong, DateTime>();
 	}
 
@@ -51,7 +48,7 @@ internal static class DiscordUtils
 		UpdateSettings();
 	}
 
-	public static void UpdateSettings() => GuildSettings.Serialize().Dump("DiscordGuilds.json", StoragePath);
+	public static void UpdateSettings() => GuildSettings.Serialize().Dump(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordGuilds.json"));
 	
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,
 		bool withoutAuthor = false)

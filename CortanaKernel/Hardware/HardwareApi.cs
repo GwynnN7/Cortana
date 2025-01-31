@@ -1,9 +1,9 @@
-global using StringResult = Utility.Structures.Result<string, string>;
+global using StringResult = CortanaLib.Structures.Result<string, string>;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
-using Utility.Structures;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware;
 
@@ -36,7 +36,7 @@ public static class HardwareApi
 					break;
 				case ESensor.Motion:
 					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
-					if (motion is not null) return StringResult.Success(motion.Value == EPowerStatus.On ? "Motion Detected" : "Motion not detected");
+					if (motion is not null) return StringResult.Success(motion.Value == EPowerStatus.On ? "Motion detected" : "Motion not detected");
 					break;
 			}
 			return StringResult.Failure("Sensor offline");

@@ -1,7 +1,8 @@
 using CortanaDiscord.Utility;
+using CortanaLib;
+using CortanaLib.Structures;
 using Discord.Audio;
 using Discord.WebSocket;
-using Utility;
 
 namespace CortanaDiscord.Handlers;
 
@@ -23,7 +24,7 @@ internal static class AudioHandler
 
 	public static async Task<bool> SayHello(ulong guildId)
 	{
-		MemoryStream memoryStream = await MediaHandler.ExecuteFfmpeg(filePath: Path.Combine(FileHandler.ProjectStoragePath, "Sound/Hello.mp3"));
+		MemoryStream memoryStream = await MediaHandler.ExecuteFfmpeg(filePath: FileHandler.GetPath(EDirType.Storage, "Hello.mp3"));
 
 		return Play(memoryStream, guildId);
 	}

@@ -1,14 +1,14 @@
-using CortanaKernel.Hardware.Utility;
-using Utility;
-using Utility.Extensions;
-using Utility.Structures;
+using CortanaLib;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Structures;
 
 public class Settings
 {
     private const int MaxAnalogRead = 4096;
-    private static readonly string FilePath = Path.Combine(Helper.StoragePath, "Settings.json");
+
+    private static readonly string FilePath = FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/Settings.json");
 
     public int LightThreshold
     {

@@ -1,10 +1,10 @@
 ﻿using Carter;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Structures;
+using CortanaLib.Extensions;
+using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using Utility.Extensions;
-using Utility.Structures;
 
 namespace CortanaKernel.API;
 
@@ -40,7 +40,7 @@ public class DeviceEndpoints: ICarterModule
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
 		IOption<EPowerAction> action = trigger is null ? new Some<EPowerAction>(EPowerAction.Toggle) : trigger.ToEnum<EPowerAction>();
 
-		StringResult result = dev.Match(
+		Result<string, string> result = dev.Match(
 			onSome: deviceVal =>
 			{
 				return action.Match(

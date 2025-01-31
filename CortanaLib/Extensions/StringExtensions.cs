@@ -1,6 +1,6 @@
-using Utility.Structures;
+using CortanaLib.Structures;
 
-namespace Utility.Extensions;
+namespace CortanaLib.Extensions;
 
 public static class StringExtensions
 {
@@ -16,10 +16,8 @@ public static class StringExtensions
         return enumValid ? new Some<T>(value) : new None<T>();
     }
 
-    public static void Dump(this string str, string file, string? path = null)
+    public static void Dump(this string str, string path)
     {
-        if(path != null) file = Path.Combine(path, file);
-        string filePath = Path.Combine(Directory.GetCurrentDirectory(), file);
-        File.WriteAllText(filePath, str);
+        File.WriteAllText(path, str);
     }
 }

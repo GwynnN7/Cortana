@@ -1,8 +1,8 @@
 using System.Net.Sockets;
 using System.Text;
 using CortanaKernel.Hardware.Utility;
-using Utility.Structures;
-using Timer = Utility.Timer;
+using CortanaLib.Structures;
+using Timer = CortanaLib.Timer;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 

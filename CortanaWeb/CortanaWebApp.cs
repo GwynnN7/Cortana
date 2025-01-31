@@ -2,7 +2,7 @@ using CortanaWeb.Components;
 
 namespace CortanaWeb;
 
-public class Program
+public class CortanaWebApp
 {
     public static void Main(string[] args)
     {

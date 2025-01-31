@@ -1,15 +1,13 @@
 ﻿using System.Text.RegularExpressions;
+using CortanaLib;
+using CortanaLib.Structures;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Utility;
-using Utility.Structures;
 
 namespace CortanaTelegram.Utility;
 
 internal static class TelegramUtils
 {
-	public static readonly string StoragePath;
-	
 	private static TelegramBotClient _cortana = null!;
 	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
 	public static readonly DataStruct Data;
@@ -17,8 +15,7 @@ internal static class TelegramUtils
 
 	static TelegramUtils()
 	{
-		StoragePath = Path.Combine(FileHandler.ProjectStoragePath, "Config/Telegram/");
-		Data = FileHandler.DeserializeJson<DataStruct>(Path.Combine(StoragePath, "TelegramData.json"));
+		Data = FileHandler.DeserializeJson<DataStruct>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}
