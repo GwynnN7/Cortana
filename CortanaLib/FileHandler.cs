@@ -8,11 +8,12 @@ public static class FileHandler
 {
 	public static readonly Secrets Secrets;
 
+	private static readonly string CortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? "~/Cortana";
 	private static readonly Dictionary<EDirType, string> Folders = new()
 	{
-		{ EDirType.Config, Path.Combine(Environment.CurrentDirectory, ".config/") },
-		{ EDirType.Storage, Path.Combine(Environment.CurrentDirectory, "Storage/") },
-		{ EDirType.Log, Path.Combine(Environment.CurrentDirectory, ".log/") }
+		{ EDirType.Config, Path.Combine(CortanaPath, ".config/") },
+		{ EDirType.Storage, Path.Combine(CortanaPath, "Storage/") },
+		{ EDirType.Log, Path.Combine(CortanaPath, ".log/") }
 	};
 	
 	public static readonly JsonSerializerOptions SerializerOptions;

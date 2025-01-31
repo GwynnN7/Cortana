@@ -8,7 +8,7 @@ public static class ApiHandler
 
     static ApiHandler()
     {
-        var apiRoot = Environment.GetEnvironmentVariable("API_ROOT") ?? throw new CortanaException("Cortana API not set in env");
+        var apiRoot = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new CortanaException("Cortana API not set in env");
         
         ApiClient = new HttpClient();
         ApiClient.BaseAddress = new Uri(apiRoot);
