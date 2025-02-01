@@ -1,10 +1,8 @@
 ﻿using Carter;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
@@ -35,10 +33,12 @@ public class DeviceEndpoints: ICarterModule
 		);
 	}
 	
-	private static StringOrNotFoundResult SwitchDevice(string device, [FromBody] string? trigger)
+	private static async Task<StringOrNotFoundResult> SwitchDevice(string device, HttpContext context)
 	{
+		string trigger = await new StreamReader(context.Request.Body).ReadToEndAsync();
+		
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
-		IOption<EPowerAction> action = trigger is null ? new Some<EPowerAction>(EPowerAction.Toggle) : trigger.ToEnum<EPowerAction>();
+		IOption<EPowerAction> action = trigger == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : trigger.ToEnum<EPowerAction>();
 
 		StringResult result = dev.Match(
 			onSome: deviceVal =>

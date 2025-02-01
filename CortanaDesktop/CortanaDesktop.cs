@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -17,9 +18,8 @@ public static class CortanaDesktop
     {
         DesktopInfo = GetClientInfo();
         string gateway = GetCortanaGateway().Result;
-        Console.WriteLine($"Gateway: {gateway}");
         string address = gateway[..^1] + DesktopInfo.CortanaIp;
-
+        
         StartAliveTimer();
 
         while(true)
@@ -39,8 +39,7 @@ public static class CortanaDesktop
         try
         {
             string cortanaApi = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new Exception("Cortana API not set in env");
-            HttpResponseMessage result = await httpClient.GetAsync($"{cortanaApi}/raspberry/gateway");
-            return await result.Content.ReadAsStringAsync();
+            return await httpClient.GetFromJsonAsync<string>($"{cortanaApi}/raspberry/gateway") ?? throw new Exception("Cortana offline");
         }
         catch{
             throw new Exception("Cortana not reachable, can't find correct address");
@@ -52,12 +51,11 @@ public static class CortanaDesktop
         try
         {
             _computerSocket?.Close();
-
+            
             var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
             _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _computerSocket.SendTimeout = 2000;
             _computerSocket.Connect(ipEndPoint);
-            
             OsHandler.ExecuteCommand("notify", "Cortana connected", false);
         }
         catch

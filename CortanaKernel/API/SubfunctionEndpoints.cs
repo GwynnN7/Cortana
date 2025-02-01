@@ -1,6 +1,5 @@
 using Carter;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
@@ -25,7 +24,7 @@ public class SubfunctionEndpoints : ICarterModule
 		    return TypedResults.NotFound(subfunction);
     	}
     	
-    	private static StringOrNotFoundResult HandleSubfunction(string subfunction, [FromBody] string? action)
+    	private static StringOrNotFoundResult HandleSubfunction(string subfunction)
     	{
 		    return TypedResults.NotFound(subfunction);
     	}

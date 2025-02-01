@@ -1,7 +1,15 @@
 ﻿@page "/"
+@inject HttpClient Client
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<h1>@GetHome().Result</h1>
 
 Welcome to your new app.
+
+@code {
+    private async Task<string> GetHome()
+    {
+        return await Client.GetFromJsonAsync<string>("") ?? "Err"; 
+    }
+}

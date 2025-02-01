@@ -26,13 +26,13 @@ def cortanaPost(route, argValue):
     except:
         return "Cortana Offline"
 def requestAPI(route = ""):
-    res = cortanaGet(route).replace("'", "\\'")
+    res = cortanaGet(route)
     executeInBlue(f"echo {res}")
 
 command = " ".join(sys.argv[1:])
 if len(sys.argv) > 1:
     if sys.argv[1] == "log":
-        text = cortanaGet().replace("'", "\\'")
+        text = cortanaGet()
         cpuTemp = cortanaGet("raspberry/temperature")
         roomTemp = cortanaGet("sensor/temperature")
         if text == "Cortana Offline":

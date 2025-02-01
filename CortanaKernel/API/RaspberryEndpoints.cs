@@ -1,10 +1,8 @@
 using Carter;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
@@ -39,8 +37,10 @@ public class RaspberryEndpoints : ICarterModule
 		);
 	}
 	
-	private static StringOrNotFoundResult Command(string command, [FromBody] string? argument)
+	private static async Task<StringOrNotFoundResult> Command(string command, HttpContext context)
 	{
+		string arg = await new StreamReader(context.Request.Body).ReadToEndAsync();
+		
 		IOption<ERaspberryCommand> cmd = command.ToEnum<ERaspberryCommand>();
 
 		StringResult result = cmd.Match(

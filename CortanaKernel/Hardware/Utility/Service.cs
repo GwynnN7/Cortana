@@ -36,8 +36,11 @@ public static class Service
     {
 	    _controllerTimer?.Destroy();
 	    _controllerTimer = new Timer("controller-timer", null, ControllerCallback, ETimerType.Utility);
-	    DateTime time = DateTime.Now.Minute >= 15 && DateTime.Now.Minute < 45 ? DateTime.Today.AddHours(DateTime.Now.Hour + 1) : DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(30);
-	    _controllerTimer.Set((0, 30, 0));
+	    DateTime time = DateTime.Now.Minute >= 15 && DateTime.Now.Minute < 45 ? 
+		    DateTime.Today.AddHours(DateTime.Now.Hour + 1) : 
+		    DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(30);
+	    if (time < DateTime.Now) time = time.AddHours(1);
+	    _controllerTimer.Set(time);
     }
 
     private static Task ControllerCallback(object? sender)

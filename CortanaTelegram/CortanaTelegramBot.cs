@@ -200,7 +200,7 @@ public static class CortanaTelegramBot
 			.AddNewRow()
 			.AddButton("Utility", "utility")
 			.AddNewRow()
-			.AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynbleiddN7/Cortana"));
+			.AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynnN7/Cortana"));
 	}
 
 	private static Task ErrorHandler(ITelegramBotClient cortana, Exception exception, CancellationToken cancellationToken)

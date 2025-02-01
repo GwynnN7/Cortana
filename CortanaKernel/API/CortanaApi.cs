@@ -2,6 +2,7 @@ global using StringOrNotFoundResult = Microsoft.AspNetCore.Http.HttpResults.Resu
 using Carter;
 using CortanaKernel.Hardware;
 using CortanaLib.Structures;
+using Scalar.AspNetCore;
 
 namespace CortanaKernel.API;
 
@@ -25,6 +26,7 @@ public static class CortanaApi
         );
         CortanaWebApi.Urls.Add($"http://*:{port}");
         CortanaWebApi.MapOpenApi();
+        CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.UseHttpsRedirection();
         CortanaWebApi.UseAuthorization();
         CortanaWebApi.MapCarter();

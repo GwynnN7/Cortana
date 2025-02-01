@@ -1,10 +1,8 @@
 using Carter;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
@@ -61,8 +59,14 @@ public class SensorEndpoints : ICarterModule
         );
     }
     
-    private static Results<Ok<int>, NotFound<string>> SetSettings(string setting, [FromBody] int value)
+    private static async Task<Results<Ok<int>, NotFound<string>, BadRequest<string>>> SetSettings(string setting, HttpContext context)
     {
+        string body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+        if (!int.TryParse(body, out int value))
+        {
+            return TypedResults.BadRequest("Value not valid");
+        }
+        
         IOption<ESensorSettings> settings = setting.ToEnum<ESensorSettings>();
 
         Result<int, string> result = settings.Match(
@@ -70,7 +74,7 @@ public class SensorEndpoints : ICarterModule
             onNone: () => Result<int, string>.Failure("Settings not found")
         );
 
-        return result.Match<Results<Ok<int>, NotFound<string>>>(
+        return result.Match<Results<Ok<int>, NotFound<string>, BadRequest<string>>>(
             val => TypedResults.Ok(val),
             err => TypedResults.NotFound(err)
         );

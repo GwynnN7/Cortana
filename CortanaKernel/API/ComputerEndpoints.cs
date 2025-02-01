@@ -1,10 +1,8 @@
 using Carter;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CortanaKernel.API;
 
@@ -23,12 +21,14 @@ public class ComputerEndpoints : ICarterModule
 		return TypedResults.Ok("Computer API");
 	}
 
-	private static StringOrNotFoundResult Command(string command, [FromBody] string? argument)
+	private static async Task<StringOrNotFoundResult> Command(string command, HttpContext context)
 	{
+		string body = await new StreamReader(context.Request.Body).ReadToEndAsync();
+		
 		IOption<EComputerCommand> cmd = command.ToEnum<EComputerCommand>();
 
 		StringResult result = cmd.Match(
-			onSome: value => HardwareApi.Devices.CommandComputer(value, argument),
+			onSome: value => HardwareApi.Devices.CommandComputer(value, body),
 			onNone: () => StringResult.Failure("Command not found")
 		);
 
