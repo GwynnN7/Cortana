@@ -1,4 +1,5 @@
 using CortanaLib;
+using CortanaLib.Structures;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -23,19 +24,19 @@ internal abstract class SensorModule : IModuleInterface
 		switch (command)
 		{
 			case "light":
-				string light = await ApiHandler.Get("sensor", "light");
-				string threshold = await ApiHandler.Get("sensor", "settings", "lightThreshold");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light}/{threshold}");
+				ResponseMessage light = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
+				ResponseMessage threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light.Message}/{threshold.Message}");
 				break;
 			case "temperature":
-				string temp = await ApiHandler.Get("sensor", "temperature");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp}");
+				ResponseMessage temp = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp.Message}");
 				break;
 			case "motion":
-				string motion = await ApiHandler.Get("sensor", "motion");
-				string currentMode = await ApiHandler.Get("sensor", "settings", "currentControlMode");
-				string limitMode = await ApiHandler.Get("sensor", "settings", "limitControlMode");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion} ~ Current/Limit: {currentMode}/{limitMode}");
+				ResponseMessage motion = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}");
+				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.ControlMode}");
+				ResponseMessage limitMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LimitMode}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Message} ~ Current/Limit: {currentMode.Message}/{limitMode.Message}");
 				break;
 			case "settings":
 				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
@@ -64,36 +65,38 @@ internal abstract class SensorModule : IModuleInterface
 		{
 			case ETelegramChatArg.SetControlMode:
 			{
-				string limitMode;
-				string currentMode = await ApiHandler.Get("sensor", "settings", "currentControlMode");
+				string modeResponse;
+				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.ControlMode}");
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					limitMode = await ApiHandler.Post(Math.Clamp(code, 1, 3).ToString(), "sensor", "settings", "limitControlMode");// TODO: dadwa
+					ResponseMessage limitMode = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LimitMode}", new PostValue(Math.Clamp(code, 1, 3)));
+					modeResponse = $"Current/Limit: {currentMode.Message}/{limitMode.Message}";
 				}
 				else
 				{
-					break; // TODO: dawwad
+					modeResponse = "Please enter a valid number";
 				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				string modeResponse = $"Current: {currentMode} ~ Limit: {limitMode}";
-				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId,
-					TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				await TelegramUtils.AnswerOrMessage(cortana, modeResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			}
 			case ETelegramChatArg.SetLightThreshold:
 			{
-				string lightThreshold;
-				string lightLevel = await ApiHandler.Get("sensor", "light");
+				string lightResponse;
+				ResponseMessage lightLevel = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					lightThreshold = await ApiHandler.Post(threshold.ToString(), "sensor", "settings", "lightThreshold");
+					ResponseMessage lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
+					lightResponse = $"Current/Threshold: {lightLevel.Message}/{lightThreshold.Message}";
 				}
-				else break;  // TODO: dawwaddw
+				else
+				{
+					lightResponse = "Please enter a valid number";
+				}
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				string lightResponse = $"Current: {lightLevel} ~ Threshold: {lightThreshold}";
 				await TelegramUtils.AnswerOrMessage(cortana, lightResponse, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;

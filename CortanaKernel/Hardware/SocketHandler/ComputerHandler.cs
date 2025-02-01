@@ -63,9 +63,9 @@ public class ComputerHandler : ClientHandler
 		return _instance?.Write("reboot") ?? false;
 	}
 
-	public static bool SwapOs()
+	public static bool SwitchOs()
 	{
-		return _instance?.Write("swap-os") ?? false;
+		return _instance?.Write("system") ?? false;
 	}
 	
 	public static bool Notify(string text)

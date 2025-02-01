@@ -1,4 +1,4 @@
-global using StringOrNotFoundResult = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<string>, Microsoft.AspNetCore.Http.HttpResults.NotFound<string>>;
+global using StringOrFail = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<CortanaLib.ResponseMessage>, Microsoft.AspNetCore.Http.HttpResults.BadRequest<CortanaLib.ResponseMessage>>;
 using Carter;
 using CortanaKernel.Hardware;
 using CortanaLib.Structures;

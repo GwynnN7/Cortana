@@ -8,13 +8,6 @@ public enum EDevice
 	Generic
 }
 
-public enum ESubFunctionType
-{
-	CortanaWeb,
-	CortanaDiscord,
-	CortanaTelegram
-}
-
 public enum ERaspberryInfo
 {
 	Location,
@@ -28,7 +21,8 @@ public enum ERaspberryCommand
 {
 	Shutdown,
 	Reboot,
-	Update
+	Update,
+	Command
 }
 
 public enum EComputerCommand
@@ -37,7 +31,7 @@ public enum EComputerCommand
 	Suspend,
 	Reboot,
 	Notify,
-	Swapos,
+	System,
 	Command
 }
 
@@ -48,10 +42,11 @@ public enum ESensor
 	Motion
 }
 
-public enum ESensorSettings
+public enum ESettings
 {
 	LightThreshold,
-	LimitControlMode
+	LimitMode,
+	ControlMode
 }
 
 public enum EControlMode
@@ -69,8 +64,8 @@ public enum EPowerStatus
 
 public enum EPowerAction
 {
-	On,
 	Off,
+	On,
 	Toggle
 }
 

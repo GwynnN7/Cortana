@@ -4,6 +4,8 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CortanaLib;
+using CortanaLib.Structures;
 using Timer = System.Timers.Timer;
 
 namespace CortanaDesktop;
@@ -11,7 +13,6 @@ namespace CortanaDesktop;
 public static class CortanaDesktop
 {
     internal static DesktopInfo DesktopInfo { get; private set; }
-    private const string ClientInfoPath = $".config/{nameof(CortanaDesktop)}/DesktopInfo.json";
     private static Socket? _computerSocket;
 
     private static void Main()
@@ -39,7 +40,8 @@ public static class CortanaDesktop
         try
         {
             string cortanaApi = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new Exception("Cortana API not set in env");
-            return await httpClient.GetFromJsonAsync<string>($"{cortanaApi}/raspberry/gateway") ?? throw new Exception("Cortana offline");
+            ResponseMessage result = await httpClient.GetFromJsonAsync<ResponseMessage>($"{cortanaApi}/{ERoute.Raspberry}/{ERaspberryInfo.Gateway}") ?? throw new Exception("Cortana offline");
+            return result.Message;
         }
         catch{
             throw new Exception("Cortana not reachable, can't find correct address");
@@ -87,7 +89,7 @@ public static class CortanaDesktop
 
                 switch (message)
                 {
-                    case "shutdown" or "suspend" or "reboot" or "swap-os":
+                    case "shutdown" or "suspend" or "reboot" or "system":
                         OsHandler.ExecuteCommand(message);
                         break;
                     case "notify" or "cmd":
@@ -131,20 +133,13 @@ public static class CortanaDesktop
     private static DesktopInfo GetClientInfo()
 	{
         string cortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? throw new Exception("Cortana path not set in env");
-		string confPath = Path.Combine(cortanaPath, ClientInfoPath);
+		string confPath = Path.Combine(cortanaPath, FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDesktop)}/DesktopInfo.json"));
         if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
 
 		try
 		{
 			string file = File.ReadAllText(confPath);
-                
-            var options = new JsonSerializerOptions()
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                Converters = { new JsonStringEnumConverter() }
-            };
-            
-			return JsonSerializer.Deserialize<DesktopInfo>(file, options);
+			return JsonSerializer.Deserialize<DesktopInfo>(file, FileHandler.SerializerOptions);
 		}
 		catch (Exception ex)
 		{

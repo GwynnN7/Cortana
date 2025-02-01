@@ -1,5 +1,6 @@
 ﻿using Carter;
 using CortanaKernel.Hardware;
+using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,7 +11,7 @@ public class DeviceEndpoints: ICarterModule
 {
 	public void AddRoutes(IEndpointRouteBuilder app) 
 	{
-		RouteGroupBuilder group = app.MapGroup("device/");
+		RouteGroupBuilder group = app.MapGroup($"{ERoute.Device}/");
 		
 		group.MapGet("", Root);
 		group.MapGet("{device}", DeviceStatus);
@@ -18,27 +19,25 @@ public class DeviceEndpoints: ICarterModule
 		group.MapPost("sleep", Sleep);
 	}
 	
-	private static Ok<string> Root()
+	private static Ok<ResponseMessage> Root()
 	{
-		return TypedResults.Ok("Device API");
+		return TypedResults.Ok(new ResponseMessage("Device API"));
 	}
 	
-	private static StringOrNotFoundResult DeviceStatus(string device)
+	private static StringOrFail DeviceStatus(string device)
 	{
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
 		
-		return dev.Match<StringOrNotFoundResult>(
-			onSome: deviceVal => TypedResults.Ok($"{deviceVal} is {HardwareApi.Devices.GetPower(deviceVal)}"),
-			onNone: () => TypedResults.NotFound("Device not found")
+		return dev.Match<StringOrFail>(
+			onSome: deviceVal => TypedResults.Ok(new ResponseMessage($"{deviceVal} is {HardwareApi.Devices.GetPower(deviceVal)}")),
+			onNone: () => TypedResults.BadRequest(new ResponseMessage("Device not found"))
 		);
 	}
 	
-	private static async Task<StringOrNotFoundResult> SwitchDevice(string device, HttpContext context)
+	private static StringOrFail SwitchDevice(string device, PostAction status)
 	{
-		string trigger = await new StreamReader(context.Request.Body).ReadToEndAsync();
-		
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
-		IOption<EPowerAction> action = trigger == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : trigger.ToEnum<EPowerAction>();
+		IOption<EPowerAction> action = status.Action == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : status.Action.ToEnum<EPowerAction>();
 
 		StringResult result = dev.Match(
 			onSome: deviceVal =>
@@ -58,15 +57,15 @@ public class DeviceEndpoints: ICarterModule
 			}
 		);
 		
-		return result.Match<StringOrNotFoundResult>(
-			val => TypedResults.Ok(val),
-			err => TypedResults.NotFound(err)
+		return result.Match<StringOrFail>(
+			val => TypedResults.Ok(new ResponseMessage(val)),
+			err => TypedResults.BadRequest(new ResponseMessage(err))
 		);
 	}
 	
-	private static Ok<string> Sleep()
+	private static Ok<ResponseMessage> Sleep()
 	{
 		HardwareApi.Devices.EnterSleepMode();
-		return TypedResults.Ok("Entering sleep mode");
+		return TypedResults.Ok(new ResponseMessage("Entering sleep mode"));
 	}
 }

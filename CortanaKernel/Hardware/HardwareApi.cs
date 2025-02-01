@@ -42,24 +42,25 @@ public static class HardwareApi
 			return StringResult.Failure("Sensor offline");
 		}
 
-		public static Result<int, string> GetSettings(ESensorSettings settings)
+		public static Result<int, string> GetSettings(ESettings settings)
 		{
 			return settings switch
 			{
-				ESensorSettings.LightThreshold => Result<int, string>.Success(Service.Settings.LightThreshold),
-				ESensorSettings.LimitControlMode => Result<int, string>.Success((int)Service.Settings.LimitControlMode),
+				ESettings.LightThreshold => Result<int, string>.Success(Service.Settings.LightThreshold),
+				ESettings.LimitMode => Result<int, string>.Success((int)Service.Settings.LimitControlMode),
+				ESettings.ControlMode => Result<int, string>.Success((int)Service.CurrentControlMode),
 				_ => Result<int, string>.Failure("Settings not found")
 			};
 		}
 		
-		public static Result<int, string> SetSettings(ESensorSettings settings, int value)
+		public static Result<int, string> SetSettings(ESettings settings, int value)
 		{
 			switch (settings)
 			{
-				case ESensorSettings.LightThreshold:
+				case ESettings.LightThreshold:
 					Service.Settings.LightThreshold = value;
 					break;
-				case ESensorSettings.LimitControlMode:
+				case ESettings.LimitMode:
 					Service.Settings.LimitControlMode = (EControlMode) Math.Clamp(value, (int) EControlMode.Manual, (int) EControlMode.Automatic);
 					break;
 			}
@@ -124,7 +125,7 @@ public static class HardwareApi
 					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Raspberry.GetHardwareInfo(ERaspberryInfo.Temperature)}"),
 					EComputerCommand.Reboot => ComputerHandler.Reboot(),
 					EComputerCommand.Command => ComputerHandler.Command(args ?? "dir"),
-					EComputerCommand.Swapos => ComputerHandler.SwapOs(),
+					EComputerCommand.System => ComputerHandler.SwitchOs(),
 					_ => false
 				};
 

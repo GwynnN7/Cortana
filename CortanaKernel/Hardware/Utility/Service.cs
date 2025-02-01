@@ -47,7 +47,7 @@ public static class Service
     {
 	    ResetControllerTimer();
 	    
-	    if (DateTime.Now.Hour <= 6)
+	    if (DateTime.Now.Hour <= 9)
 	    {
 		    _morningMessage = true;
 		    

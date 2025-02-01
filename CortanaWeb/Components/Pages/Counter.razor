@@ -1,24 +1,23 @@
 ﻿@page "/counter"
 @using System.Text
 @rendermode InteractiveServer
-@inject HttpClient Client
 
 <PageTitle>Counter</PageTitle>
 
 <h1>Counter</h1>
 
-<p role="status">Current count: @GetStatus().Result</p>
+<p role="status">Current count: @GetStatus()</p>
 
 <button class="btn btn-primary" @onclick="ToggleLight">Click me</button>
 
 @code {
-    private async Task ToggleLight()
+    private void ToggleLight()
     {
-        await Client.PostAsync("device/lamp", new StringContent("toggle", Encoding.UTF8, "text/plain")); 
+        
     }
     
-    private async Task<string> GetStatus()
+    private string GetStatus()
     {
-        return await Client.GetFromJsonAsync<string>("device/lamp") ?? "Err"; 
+        return "Cortana";
     }
 }

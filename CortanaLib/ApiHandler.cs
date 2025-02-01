@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text;
+using CortanaLib.Extensions;
 using CortanaLib.Structures;
 
 namespace CortanaLib;
@@ -16,31 +17,37 @@ public static class ApiHandler
         ApiClient.BaseAddress = new Uri(apiRoot);
     }
 
-    public static async Task<string> Get(params string[] routes)
+    public static async Task<ResponseMessage> Get(string route)
     {
-        string route = string.Join("/", routes);
         try
         {
-            return await ApiClient.GetFromJsonAsync<string>(route) ?? "Error reading response data";
+            return await ApiClient.GetFromJsonAsync<ResponseMessage>(route) ?? new ResponseMessage("Bad Response");
         }
         catch
         {
-            return "Error reading response data";
+            return new ResponseMessage("Cortana Offline");
         }
     }
     
-    public static async Task<string> Post(string? value, params string[] routes)
+    public static async Task<ResponseMessage> Post(string route, object? body = null)
     {
-        string route = string.Join("/", routes);
-        HttpContent content = new StringContent(value ?? "", Encoding.UTF8, "text/plain");
+        HttpContent content = new StringContent(body?.Serialize() ?? "{}", Encoding.UTF8, "application/json");
         try
         {
             using HttpResponseMessage response = await ApiClient.PostAsync(route, content);
-            return await response.Content.ReadFromJsonAsync<string>() ?? "Error reading response data";
+            return await response.Content.ReadFromJsonAsync<ResponseMessage>() ?? new ResponseMessage("Bad Response");
         }
         catch
         {
-            return "Error reading response data";
+            return new ResponseMessage("Cortana Offline");
         }
     }
 }
+
+// Requests
+public record PostCommand(string Command, string Args = "");
+public record PostAction(string Action);
+public record PostValue(int Value);
+
+// Responses
+public record ResponseMessage(string Message);

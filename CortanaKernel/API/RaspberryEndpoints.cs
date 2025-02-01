@@ -1,5 +1,6 @@
 using Carter;
 using CortanaKernel.Hardware;
+using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,19 +11,19 @@ public class RaspberryEndpoints : ICarterModule
 {
 	public void AddRoutes(IEndpointRouteBuilder app)
 	{
-		RouteGroupBuilder group = app.MapGroup("raspberry/");
+		RouteGroupBuilder group = app.MapGroup($"{ERoute.Raspberry}/");
 		
 		group.MapGet("", Root);
 		group.MapGet("{info}", GetInfo);
-		group.MapPost("{command}", Command);
+		group.MapPost("", Command);
 	}
 
-	private static Ok<string> Root()
+	private static Ok<ResponseMessage> Root()
 	{
-		return TypedResults.Ok("Raspberry API");
+		return TypedResults.Ok(new ResponseMessage("Raspberry API"));
 	}
 
-	private static StringOrNotFoundResult GetInfo(string info)
+	private static StringOrFail GetInfo(string info)
 	{
 		IOption<ERaspberryInfo> cmd = info.ToEnum<ERaspberryInfo>();
 
@@ -31,26 +32,25 @@ public class RaspberryEndpoints : ICarterModule
 			onNone: () => StringResult.Failure("Raspberry information not found")
 		);
 
-		return result.Match<StringOrNotFoundResult>(
-			val => TypedResults.Ok(val),
-			err => TypedResults.NotFound(err)
+		return result.Match<StringOrFail>(
+			val => TypedResults.Ok(new ResponseMessage(val)),
+			err => TypedResults.BadRequest(new ResponseMessage(err))
 		);
 	}
 	
-	private static async Task<StringOrNotFoundResult> Command(string command, HttpContext context)
+	private static StringOrFail Command(PostCommand command)
 	{
-		string arg = await new StreamReader(context.Request.Body).ReadToEndAsync();
-		
-		IOption<ERaspberryCommand> cmd = command.ToEnum<ERaspberryCommand>();
+	
+		IOption<ERaspberryCommand> cmd = command.Command.ToEnum<ERaspberryCommand>();
 
 		StringResult result = cmd.Match(
 			onSome: HardwareApi.Raspberry.Command,
 			onNone: () => StringResult.Failure("Command not found")
 		);
 
-		return result.Match<StringOrNotFoundResult>(
-			val => TypedResults.Ok(val),
-			err => TypedResults.NotFound(err)
+		return result.Match<StringOrFail>(
+			val => TypedResults.Ok(new ResponseMessage(val)),
+			err => TypedResults.BadRequest(new ResponseMessage(err))
 		);
 	}
 }

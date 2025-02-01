@@ -49,7 +49,7 @@ internal readonly struct HardwareEmoji
 	public const string Generic = "\ud83d\udd0c";
 	public const string Pc = "\u26a1\ufe0f";
 	public const string Reboot = "\u2699\ufe0f";
-	public const string SwapOs = "\ud83c\udfae";
+	public const string System = "\ud83c\udfae";
 	public const string On = "\ud83d\udd0b";
 	public const string Off = "\ud83e\udeab";
 	public const string Night = "\ud83c\udf19";

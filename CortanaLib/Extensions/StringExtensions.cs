@@ -11,9 +11,15 @@ public static class StringExtensions
     
     public static IOption<T> ToEnum<T>(this string str) where T : struct
     {
-        str = str.ToLower().Capitalize();
-        bool enumValid = Enum.TryParse(str, out T value);
-        return enumValid ? new Some<T>(value) : new None<T>();
+        try
+        {
+            var value = Enum.Parse<T>(str, true);
+            return new Some<T>(value);
+        }
+        catch
+        {
+            return new None<T>();
+        }
     }
 
     public static void Dump(this string str, string path)

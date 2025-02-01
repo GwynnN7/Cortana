@@ -1,4 +1,6 @@
 using Carter;
+using CortanaLib;
+using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace CortanaKernel.API;
@@ -7,7 +9,7 @@ public class SubfunctionEndpoints : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app) 
     	{
-    		RouteGroupBuilder group = app.MapGroup("subfunctions/");
+    		RouteGroupBuilder group = app.MapGroup($"{ERoute.SubFunction}/");
     		
     		group.MapGet("", Root);
     		group.MapGet("{subfunction}", SubFunctionStatus);
@@ -19,13 +21,13 @@ public class SubfunctionEndpoints : ICarterModule
     		return TypedResults.Ok("SubFunctions API");
     	}
     	
-    	private static StringOrNotFoundResult SubFunctionStatus(string subfunction)
+    	private static StringOrFail SubFunctionStatus(string subfunction)
     	{
-		    return TypedResults.NotFound(subfunction);
+		    return TypedResults.BadRequest(new ResponseMessage(subfunction));
     	}
     	
-    	private static StringOrNotFoundResult HandleSubfunction(string subfunction)
+    	private static StringOrFail HandleSubfunction(string subfunction)
     	{
-		    return TypedResults.NotFound(subfunction);
+		    return TypedResults.BadRequest(new ResponseMessage(subfunction));
     	}
 }

@@ -1,5 +1,22 @@
 ﻿namespace CortanaLib.Structures;
 
+public enum ERoute
+{
+	Computer,
+	Device,
+	Raspberry,
+	Sensor,
+	SubFunction,
+	Settings
+}
+
+public enum ESubFunctionType
+{
+	CortanaWeb,
+	CortanaDiscord,
+	CortanaTelegram
+}
+
 public enum ETimerType
 {
 	Utility,

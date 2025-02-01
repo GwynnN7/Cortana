@@ -1,5 +1,6 @@
 using Carter;
 using CortanaKernel.Hardware;
+using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,31 +11,29 @@ public class ComputerEndpoints : ICarterModule
 {
 	public void AddRoutes(IEndpointRouteBuilder app)
 	{
-		RouteGroupBuilder group = app.MapGroup("computer/");
+		RouteGroupBuilder group = app.MapGroup($"{ERoute.Computer}/");
 		
 		group.MapGet("", Root);
-		group.MapPost("{command}", Command);
+		group.MapPost("", Command);
 	}
 
-	private static Ok<string> Root()
+	private static Ok<ResponseMessage> Root()
 	{
-		return TypedResults.Ok("Computer API");
+		return TypedResults.Ok(new ResponseMessage("Computer API"));
 	}
 
-	private static async Task<StringOrNotFoundResult> Command(string command, HttpContext context)
+	private static StringOrFail Command(PostCommand command)
 	{
-		string body = await new StreamReader(context.Request.Body).ReadToEndAsync();
-		
-		IOption<EComputerCommand> cmd = command.ToEnum<EComputerCommand>();
+		IOption<EComputerCommand> cmd = command.Command.ToEnum<EComputerCommand>();
 
 		StringResult result = cmd.Match(
-			onSome: value => HardwareApi.Devices.CommandComputer(value, body),
+			onSome: value => HardwareApi.Devices.CommandComputer(value, command.Args),
 			onNone: () => StringResult.Failure("Command not found")
 		);
 
-		return result.Match<StringOrNotFoundResult>(
-			val => TypedResults.Ok(val),
-			err => TypedResults.NotFound(err)
+		return result.Match<StringOrFail>(
+			val => TypedResults.Ok(new ResponseMessage(val)),
+			err => TypedResults.BadRequest(new ResponseMessage(err))
 		);
 	}
 }

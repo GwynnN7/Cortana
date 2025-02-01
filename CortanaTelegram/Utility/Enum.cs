@@ -9,6 +9,7 @@ internal enum ETelegramChatArg
 	Ping,
 	HardwareTimer,
 	ComputerCommand,
+	RaspberryCommand,
 	Shopping,
 	AudioDownloader,
 	VideoDownloader,

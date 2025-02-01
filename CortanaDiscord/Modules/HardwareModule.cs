@@ -13,41 +13,41 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Switch Lamp")]
 	public async Task LightToggle()
 	{
-		string result = await ApiHandler.Post("toggle", "device", "lamp");
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{EDevice.Lamp}");
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
 
 	[SlashCommand("device", "Switch Device", runMode: RunMode.Async)]
-	public async Task DeviceInteract([Summary("device", "Select Device")] EDevice element, [Summary("azione", "Select Action")] EPowerAction action)
+	public async Task DeviceInteract([Summary("device", "Select Device")] EDevice device, [Summary("azione", "Select Action")] EPowerAction action)
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Post(action.ToString(), "device", element.ToString());
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
 	[SlashCommand("device-info", "Get Device Status", runMode: RunMode.Async)]
-	public async Task DeviceStatus([Summary("device", "Select Device")] EDevice element)
+	public async Task DeviceStatus([Summary("device", "Select Device")] EDevice device)
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Get("device", element.ToString());
+		ResponseMessage result = await ApiHandler.Get($"{ERoute.Device}/{device}");
 		
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 
-	[SlashCommand("command-raspberry", "Command Raspberry", runMode: RunMode.Async)]
-	public async Task CommandRaspberry([Summary("option", "Select Option")] ERaspberryCommand option)
+	[SlashCommand("command-raspberry", "Interact with Raspberry", runMode: RunMode.Async)]
+	public async Task CommandRaspberry([Summary("option", "Select Option")] ERaspberryCommand command, [Summary("args", "Insert Argument")] string args = "")
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Post(null, "raspberry", option.ToString());
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -56,20 +56,20 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Get("raspberry", info.ToString());
+		ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
 	[SlashCommand("command-pc", "Interact with PC", runMode: RunMode.Async)]
-	public async Task ComputerCommand([Summary("command", "Select Command")] EComputerCommand command, [Summary("args", "Insert Argument")] string? args = null)
+	public async Task ComputerCommand([Summary("command", "Select Command")] EComputerCommand command, [Summary("args", "Insert Argument")] string args = "")
 	{
 		await DeferAsync(true);
 
-		string result = await ApiHandler.Post(args, "computer", command.ToString());
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args));
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -78,9 +78,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Get( "sensor", info.ToString());
+		ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensor}/{info}");
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -89,9 +89,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		string result = await ApiHandler.Post("", "device", "sleep");
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/sleep");
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 }

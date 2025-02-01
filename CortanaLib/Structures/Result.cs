@@ -16,12 +16,12 @@ public readonly struct Result<T, E> {
 
     public static Result<T, E> Success(T v)
     {
-        return new Result<T, E>(v, default(E), true);
+        return new Result<T, E>(v, default(E)!, true);
     }
 
     public static Result<T, E> Failure(E e)
     {
-        return new Result<T, E>(default(T), e, false);
+        return new Result<T, E>(default(T)!, e, false);
     }
 
     public R Match<R>(

@@ -35,29 +35,19 @@ internal abstract class DeviceModule : IModuleInterface
 	{
 		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
 		string arg = messageStats.FullMessage;
-		switch (arg)
+		ResponseMessage? response = arg switch
 		{
-			case HardwareEmoji.Lamp:
-			case HardwareEmoji.Pc:
-			case HardwareEmoji.Generic:
-				await ApiHandler.Post("toggle", "device", arg);
-				break;
-			case HardwareEmoji.On:
-				await ApiHandler.Post("on", "device", "room");
-				break;
-			case HardwareEmoji.Off:
-				await ApiHandler.Post("off", "device", "room");
-				break;
-			case HardwareEmoji.Night:
-				await ApiHandler.Post(null, "device", "sleep");
-				break;
-			case HardwareEmoji.Reboot:
-				await ApiHandler.Post(null, "computer", arg);
-				break;
-			default:
-				return false;
-		}
-
+			HardwareEmoji.Lamp => await ApiHandler.Post($"{ERoute.Device}/{EDevice.Lamp}"),
+			HardwareEmoji.Pc => await ApiHandler.Post($"{ERoute.Device}/{EDevice.Computer}"),
+			HardwareEmoji.Generic => await ApiHandler.Post($"{ERoute.Device}/{EDevice.Generic}"),
+			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Device}/room", new PostAction($"{EPowerAction.On}")),
+			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Device}/room", new PostAction($"{EPowerAction.Off}")),
+			HardwareEmoji.Night => await ApiHandler.Post($"{ERoute.Device}/sleep"),
+			HardwareEmoji.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
+			HardwareEmoji.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
+			_ => null
+		};
+		if (response == null) return false;
 		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 		return true;
 	}
@@ -86,15 +76,15 @@ internal abstract class DeviceModule : IModuleInterface
 					TelegramUtils.ChatArgs.Remove(chatId);
 					break;
 				default:
-					string result = await ApiHandler.Post(command, "device", HardwareAction[messageId]);
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
+					ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{HardwareAction[messageId]}", new PostAction(command));
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Message);
 					await CreateMenu(cortana, callbackQuery.Message);
 					break;
 			}
 			return;
 		}
-		string devicePower = await ApiHandler.Get("device", command);
-		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower, replyMarkup: CreateOnOffToggleButtons());
+		ResponseMessage devicePower = await ApiHandler.Get($"{ERoute.Device}/{command}");
+		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower.Message, replyMarkup: CreateOnOffToggleButtons());
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
@@ -135,8 +125,8 @@ internal abstract class DeviceModule : IModuleInterface
 		try
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
-			string result = await ApiHandler.Post(payload.Arg.action, "device", payload.Arg.device);
-			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
+			ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{payload.Arg.device}", new PostAction(payload.Arg.action));
+			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result.Message}");
 		}
 		catch (Exception e)
 		{
@@ -185,7 +175,7 @@ internal abstract class DeviceModule : IModuleInterface
 	private static InlineKeyboardMarkup CreateCancelButton()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("<<", $"device-cancel");
+			.AddButton("<<", "device-cancel");
 	}
 
 	private static ReplyKeyboardMarkup CreateHardwareToggles()
@@ -193,7 +183,7 @@ internal abstract class DeviceModule : IModuleInterface
 		return new ReplyKeyboardMarkup(true)
 			.AddButtons(HardwareEmoji.Lamp, HardwareEmoji.Generic)
 			.AddNewRow()
-			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot, HardwareEmoji.SwapOs)
+			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot, HardwareEmoji.System)
 			.AddNewRow()
 			.AddButtons(HardwareEmoji.On, HardwareEmoji.Night, HardwareEmoji.Off);
 	}
