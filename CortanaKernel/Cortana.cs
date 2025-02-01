@@ -35,7 +35,7 @@ public static class Cortana
         Console.WriteLine($"CPU Temperature: {temp.Value}, loaded data for {location.Value}");
         
         Console.WriteLine("Initializing API...");
-        Task apiTask = Task.Run(CortanaApi.RunAsync);
+        
         
         Console.WriteLine("Initiating Bootloader...");
 
@@ -43,21 +43,21 @@ public static class Cortana
         await Bootloader.HandleSubFunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Start);
         await Bootloader.HandleSubFunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Start);
 
+        _ = Task.Run(WaitForSignal);
         Console.WriteLine("Boot Completed, I'm Online!");
         
-        await WaitForSignal(apiTask);
+        await CortanaApi.RunAsync();
     }
 
-    private static async Task WaitForSignal(Task taskToWait)
+    private static async Task WaitForSignal()
     {
         UnixSignal.WaitAny(Signals, Timeout.Infinite);
         Console.WriteLine("Shutting down...");
         
         await Bootloader.StopSubFunctions();
-        await CortanaApi.ShutdownService();
         HardwareApi.ShutdownService();
         NotificationHandler.Stop();
-
-        await taskToWait;
+        await CortanaApi.ShutdownService();
+        
     }
 }
