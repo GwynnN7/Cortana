@@ -7,16 +7,17 @@ using Timer = System.Timers.Timer;
 
 namespace CortanaDesktop;
 
-public static class ComputerDesktop
+public static class CortanaDesktop
 {
     internal static DesktopInfo DesktopInfo { get; private set; }
-    private const string ClientInfoPath = $".config/{nameof(ComputerDesktop)}/DesktopInfo.json";
+    private const string ClientInfoPath = $".config/{nameof(CortanaDesktop)}/DesktopInfo.json";
     private static Socket? _computerSocket;
 
     private static void Main()
     {
         DesktopInfo = GetClientInfo();
         string gateway = GetCortanaGateway().Result;
+        Console.WriteLine($"Gateway: {gateway}");
         string address = gateway[..^1] + DesktopInfo.CortanaIp;
 
         StartAliveTimer();
@@ -38,8 +39,8 @@ public static class ComputerDesktop
         try
         {
             string cortanaApi = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new Exception("Cortana API not set in env");
-            string result = await httpClient.GetStringAsync($"{cortanaApi}/raspberry/gateway");
-            return result;
+            HttpResponseMessage result = await httpClient.GetAsync($"{cortanaApi}/raspberry/gateway");
+            return await result.Content.ReadAsStringAsync();
         }
         catch{
             throw new Exception("Cortana not reachable, can't find correct address");

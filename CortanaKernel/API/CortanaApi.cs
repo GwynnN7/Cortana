@@ -13,7 +13,7 @@ public static class CortanaApi
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         
         builder.Services.AddAuthorization();
-        builder.Services.AddOpenApi();
+        builder.Services.AddOpenApi("api");
         builder.Services.AddCarter();
         builder.Services.AddLogging(c => c.ClearProviders());
         CortanaWebApi = builder.Build();

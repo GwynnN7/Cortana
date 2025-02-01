@@ -46,9 +46,9 @@ internal static class OsHandler
 			"shutdown" => onLinux ? "systemctl poweroff" : "shutdown /s /f /t 0",
 			"suspend" => onLinux ? "systemctl suspend" : "shutdown /s /f /t 0",
 			"reboot" => onLinux ? "systemctl reboot" : "shutdown /r /f /t 0",
-			"swap-os" => onLinux ? $"echo {ComputerDesktop.DesktopInfo.DesktopPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
+			"swap-os" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
 			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
-			"cmd" => onLinux ? $"echo {ComputerDesktop.DesktopInfo.DesktopPassword} | sudo -S {arg}" : arg,
+			"cmd" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S {arg}" : arg,
 			_ => ""
 		};
 	}
@@ -74,8 +74,8 @@ internal static class OsHandler
 		process.Start();
 		if(!sendResult) return;
 		
-		if(process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) ComputerDesktop.Write("Command executed");
-		if(!process.StandardOutput.EndOfStream) ComputerDesktop.Write(process.StandardOutput.ReadToEnd());
-		if(!process.StandardError.EndOfStream) ComputerDesktop.Write(process.StandardError.ReadToEnd());
+		if(process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) CortanaDesktop.Write("Command executed");
+		if(!process.StandardOutput.EndOfStream) CortanaDesktop.Write(process.StandardOutput.ReadToEnd());
+		if(!process.StandardError.EndOfStream) CortanaDesktop.Write(process.StandardError.ReadToEnd());
 	}
 }

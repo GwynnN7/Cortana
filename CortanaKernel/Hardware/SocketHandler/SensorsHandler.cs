@@ -8,15 +8,13 @@ using Timer = CortanaLib.Timer;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 
-public class SensorsHandler : ClientHandler
+public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 {
     private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
 
 	private Timer? _motionTimer;
 	private SensorData? _lastSensorData;
-
-	public SensorsHandler(Socket socket) : base(socket, "ESP32") { }
 
 	protected override void HandleRead(string message)
 	{
