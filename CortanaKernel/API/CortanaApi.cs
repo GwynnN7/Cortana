@@ -31,12 +31,16 @@ public static class CortanaApi
         CortanaWebApi.UseAuthorization();
         CortanaWebApi.MapCarter();
     }
-    
-    public static async Task RunAsync() => await CortanaWebApi.RunAsync();
+
+    public static async Task RunAsync()
+    {
+        await CortanaWebApi.RunAsync();
+    } 
     
     public static async Task ShutdownService()
     {
         await CortanaWebApi.StopAsync();
+        await CortanaWebApi.DisposeAsync();
         Console.WriteLine("API service interrupted.");
     }
 }
