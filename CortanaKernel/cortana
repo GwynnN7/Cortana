@@ -32,7 +32,7 @@ then
         mv ~/Config Storage/
     elif [ "$1" = "--kill" ] || [ "$1" = "-k" ]
     then
-        killall -s SIGINT --quiet --ignore-case --wait Cortana;
+        killall -s SIGINT --quiet --ignore-case --wait CortanaKernel;
         echo "Cortana stopped"
 	elif [ "$1" = "--help" ] || [ "$1" = "-h" ]
     then

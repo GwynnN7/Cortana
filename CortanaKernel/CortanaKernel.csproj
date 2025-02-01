@@ -6,7 +6,6 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
         <LangVersion>preview</LangVersion>
-        <AssemblyName>Cortana</AssemblyName>
     </PropertyGroup>
 
     <ItemGroup>
