@@ -26,4 +26,10 @@ public static class StringExtensions
     {
         File.WriteAllText(path, str);
     }
+
+    public static string Log(this string str)
+    {
+        Console.WriteLine($"{DateTime.Now}: {str}");
+        return str;
+    }
 }

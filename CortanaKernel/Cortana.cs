@@ -42,10 +42,11 @@ public static class Cortana
         await Bootloader.HandleSubFunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Start);
         await Bootloader.HandleSubFunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Start);
         await Bootloader.HandleSubFunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Start);
-        
+        Task apiTask = Task.Run(async () => await CortanaApi.RunAsync());
+        Task shutdownTask = Task.Run(async () => await WaitForSignal());
         Console.WriteLine("Boot Completed, I'm Online!");
 
-        await Task.WhenAll(WaitForSignal(), CortanaApi.RunAsync());
+        await Task.WhenAll(apiTask, shutdownTask);
         Console.WriteLine("Shutting Down...");
     }
 
@@ -53,11 +54,13 @@ public static class Cortana
     {
         UnixSignal.WaitAny(Signals, Timeout.Infinite);
         Console.WriteLine("Initiating Termination Sequence...");
-        var hardwareStop = new Task(() =>
+        Task stopHardware = Task.Run(async () =>
         {
+            await Task.Delay(500);
             NotificationHandler.Stop();
             HardwareApi.ShutdownService();
         });
-        await Task.WhenAll(Bootloader.StopSubFunctions(), CortanaApi.ShutdownService(), hardwareStop);
+        await Task.WhenAll(Bootloader.StopSubFunctions(), CortanaApi.ShutdownService(), stopHardware);
+        Console.WriteLine("Termination Sequence Completed!");
     }
 }

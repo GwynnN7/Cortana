@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using CortanaKernel.Hardware.Utility;
 using CortanaLib;
+using CortanaLib.Extensions;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Subfunctions;
@@ -31,7 +32,7 @@ public static class Bootloader
 	{
 		if (RunningSubFunctions.ContainsKey(subFunctionType))
 		{
-			return StringResult.Failure("Subfunction already running");
+			return StringResult.Failure("Subfunction already running".Log());
 		}
 		
 		string projectName = subFunctionType.ToString();
@@ -52,7 +53,7 @@ public static class Bootloader
 		process.Exited += async (_, _) => {
 			if(process.ShuttingDown) return;
 			await Task.Delay(1000);
-			Console.WriteLine($"{projectName} exited. Restarting...");
+			$"{projectName} exited. Restarting...".Log();
 			RunningSubFunctions.Remove(process.Type);
 			await BootSubFunction(process.Type);
 		};
@@ -62,15 +63,11 @@ public static class Bootloader
 			process.Start();
 			RunningSubFunctions.Add(process.Type, process);
 			await Task.Delay(500);
-			string text = $"{projectName} started with pid {process.Id}.";
-			Console.WriteLine(text);
-			return StringResult.Success(text);
+			return StringResult.Success($"{projectName} started with pid {process.Id}.".Log());
 		}
 		catch
 		{
-			string text = $"Failed to start {projectName}";
-			Console.WriteLine(text);
-			return StringResult.Failure(text);
+			return StringResult.Failure($"Failed to start {projectName}".Log());
 		}
 	}
 
@@ -95,7 +92,7 @@ public static class Bootloader
 	
 	private static async Task<StringResult> StopSubFunction(SubFunction subFunction)
 	{
-		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}");
+		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}".Log());
 		subFunction.ShuttingDown = true;
 
 		foreach (Process process in Process.GetProcessesByName(subFunction.Type.ToString()))
@@ -105,14 +102,14 @@ public static class Bootloader
 		await TryKillProcess(subFunction);
 		
 		RunningSubFunctions.Remove(subFunction.Type);
-		return StringResult.Success($"{subFunction.Type} stopped");
+		return StringResult.Success($"{subFunction.Type} stopped".Log());
 	}
 	
 	private static async Task<StringResult> StopSubFunction(ESubFunctionType subFuncType)
 	{
 		if (!RunningSubFunctions.TryGetValue(subFuncType, out SubFunction? subFunction))
 		{
-			return StringResult.Failure($"Failed to stop {subFuncType}, subfunction not running");
+			return StringResult.Failure($"Failed to stop {subFuncType}, subfunction not running".Log());
 		}
 		return await StopSubFunction(subFunction);
 	}
