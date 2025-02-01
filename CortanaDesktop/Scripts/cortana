@@ -16,13 +16,13 @@ api = os.environ.get("CORTANA_API")
 
 def cortanaGet(route = ""):
     try:
-        return requests.get(f"{api}/{route}").json()["message"].replace("'", "\\'")
+        return requests.get(f"{api}/{route}").json()["response"].replace("'", "\\'")
     except:
         return "Cortana Offline"
     
 def cortanaPost(route, argValue):
     try:
-        return requests.post(f"{api}/{route}", argValue).json()["message"]
+        return requests.post(f"{api}/{route}", argValue).json()["response"]
     except:
         return "Cortana Offline"
 def requestAPI(route = ""):

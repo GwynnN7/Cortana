@@ -78,7 +78,7 @@ public static class Bootloader
 		process.Kill(true);
 		try
 		{
-			await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+			await process.WaitForExitAsync().WaitAsync(TimeSpan.FromMilliseconds(1500));
 		}
 		catch (TimeoutException)
 		{
@@ -90,7 +90,7 @@ public static class Bootloader
 	{
 		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}");
 		subFunction.ShuttingDown = true;
-		
+
 		foreach (Process process in Process.GetProcessesByName(subFunction.Type.ToString()))
 		{
 			await TryKillProcess(process);
