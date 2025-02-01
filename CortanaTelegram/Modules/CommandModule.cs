@@ -26,7 +26,7 @@ internal abstract class CommandModule : IModuleInterface
 			case "suspend":
 			case "system":
 				ResponseMessage result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command));
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Message);
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Response);
 				break;
 			case "notify":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Notification, callbackQuery, callbackQuery.Message), callbackQuery))
@@ -42,7 +42,7 @@ internal abstract class CommandModule : IModuleInterface
 				break;
 			case "sleep":
 				ResponseMessage sleep = await ApiHandler.Post($"{ERoute.Device}/sleep");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, sleep.Message);
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, sleep.Response);
 				break;
 			case "cancel":
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
@@ -63,14 +63,14 @@ internal abstract class CommandModule : IModuleInterface
 				ResponseMessage result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", messageStats.FullMessage));
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				await TelegramUtils.AnswerOrMessage(cortana, result.Message, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				await TelegramUtils.AnswerOrMessage(cortana, result.Response, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.ComputerCommand:
 				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
 				{
 					ResponseMessage commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Message);
+					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Response);
 					chatArg.Arg.Add(messageStats.MessageId);
 					chatArg.Arg.Add(msg.MessageId);
 					return;

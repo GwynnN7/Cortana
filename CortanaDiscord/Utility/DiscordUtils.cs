@@ -13,14 +13,14 @@ internal static class DiscordUtils
 	public static readonly Memes Memes;
 	public static readonly Guilds GuildSettings;
 	public static readonly Dictionary<ulong, DateTime> TimeConnected;
-	
+	private static ConnectionMultiplexer CommunicationClient { get; }
 	public static DiscordSocketClient Cortana { get; private set; } = null!;
 
 	static DiscordUtils()
 	{
-		ConnectionMultiplexer communicationClient = ConnectionMultiplexer.Connect("localhost");
+		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 		
-		ISubscriber sub = communicationClient.GetSubscriber();
+		ISubscriber sub = CommunicationClient.GetSubscriber();
 		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage => {
 			if(channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
 		});

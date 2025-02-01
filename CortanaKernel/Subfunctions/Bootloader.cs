@@ -72,14 +72,33 @@ public static class Bootloader
 		return await BootSubFunction(subFuncType);
 	}
 
+	private static async Task TryKillProcess(Process process)
+	{
+		if(process.HasExited) return;
+		process.Kill(true);
+		try
+		{
+			await process.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+		}
+		catch (TimeoutException)
+		{
+			Process.Start("kill", "-9 " + process.Id);
+		}
+	}
+	
 	private static async Task<StringResult> StopSubFunction(SubFunction subFunction)
 	{
 		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}");
 		subFunction.ShuttingDown = true;
-		subFunction.Kill(true);
-		await subFunction.WaitForExitAsync();
+		
+		foreach (Process process in Process.GetProcessesByName(subFunction.Type.ToString()))
+		{
+			await TryKillProcess(process);
+		}
+		await TryKillProcess(subFunction);
+		
 		RunningSubFunctions.Remove(subFunction);
-		return StringResult.Failure($"{subFunction.Type} stopped");
+		return StringResult.Success($"{subFunction.Type} stopped");
 	}
 	
 	private static async Task<StringResult> StopSubFunction(ESubFunctionType subFuncType)

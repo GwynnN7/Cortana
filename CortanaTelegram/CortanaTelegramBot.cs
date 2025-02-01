@@ -103,7 +103,13 @@ public static class CortanaTelegramBot
 					break;
 				case ETelegramChatArg.SetControlMode:
 				case ETelegramChatArg.SetLightThreshold:
+				case ETelegramChatArg.SetMorningHour:
+				case ETelegramChatArg.SetMotionOffMax:
+				case ETelegramChatArg.SetMotionOffMin:
 					await SensorModule.HandleTextMessage(cortana, messageStats);
+					break;
+				case ETelegramChatArg.RaspberryCommand:
+					await RaspberryModule.HandleTextMessage(cortana, messageStats);
 					break;
 			}
 			

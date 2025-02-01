@@ -28,7 +28,7 @@ internal abstract class RaspberryModule : IModuleInterface
 			case "location":
 			case "temperature":
 				ResponseMessage response = await ApiHandler.Get($"{ERoute.Raspberry}/{command}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{command.Capitalize()}: {response.Message}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{command.Capitalize()}: {response.Response}");
 				break;
 			case "command":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<List<int>>(ETelegramChatArg.RaspberryCommand, callbackQuery, callbackQuery.Message, []), callbackQuery))
@@ -37,7 +37,7 @@ internal abstract class RaspberryModule : IModuleInterface
 			case "reboot":
 			case "shutdown":
 				ResponseMessage commandResponse = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command));
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, commandResponse.Message, true);
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, commandResponse.Response, true);
 				break;
 			case "cancel":
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
@@ -58,7 +58,7 @@ internal abstract class RaspberryModule : IModuleInterface
 		   		if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
 		   		{
 		   			ResponseMessage commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-		   			Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Message);
+		   			Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Response);
 		   			chatArg.Arg.Add(messageStats.MessageId);
 		   			chatArg.Arg.Add(msg.MessageId);
 		   			return;

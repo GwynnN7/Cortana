@@ -41,7 +41,7 @@ public static class CortanaDesktop
         {
             string cortanaApi = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new Exception("Cortana API not set in env");
             ResponseMessage result = await httpClient.GetFromJsonAsync<ResponseMessage>($"{cortanaApi}/{ERoute.Raspberry}/{ERaspberryInfo.Gateway}") ?? throw new Exception("Cortana offline");
-            return result.Message;
+            return result.Response;
         }
         catch{
             throw new Exception("Cortana not reachable, can't find correct address");

@@ -1,4 +1,5 @@
 using Carter;
+using CortanaKernel.Hardware.Utility;
 using CortanaKernel.Subfunctions;
 using CortanaLib;
 using CortanaLib.Extensions;
@@ -14,6 +15,7 @@ public class SubfunctionEndpoints : ICarterModule
     	RouteGroupBuilder group = app.MapGroup($"{ERoute.SubFunction}/");
     	
     	group.MapGet("", Root);
+	    group.MapPost("publish", PublishMessage);
     	group.MapGet("{subfunction}", SubFunctionStatus);
 	    group.MapPost("{subfunction}", HandleSubfunction);
 	    group.MapPost("", HandleSubfunctions);
@@ -22,6 +24,25 @@ public class SubfunctionEndpoints : ICarterModule
     private static Ok<string> Root()
     {
     	return TypedResults.Ok("SubFunctions API");
+    }
+    
+    private static StringOrFail PublishMessage(PostCommand message)
+    {
+	    IOption<EMessageCategory> category = message.Command.ToEnum<EMessageCategory>();
+
+	    StringResult result = category.Match(
+		    onSome: value =>
+		    {
+			     NotificationHandler.Publish(value, string.IsNullOrEmpty(message.Args) ? "Hi, I'm Cortana" : message.Args);
+			     return StringResult.Success("Message published!");
+		    },
+		    onNone: () => StringResult.Failure("Command not found")
+	    );
+
+	    return result.Match<StringOrFail>(
+		    val => TypedResults.Ok(new ResponseMessage(val)),
+		    err => TypedResults.BadRequest(new ResponseMessage(err))
+	    );
     }
     
     private static StringOrFail SubFunctionStatus(string subfunction)

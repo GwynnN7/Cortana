@@ -50,4 +50,4 @@ public record PostAction(string Action = "toggle");
 public record PostValue(int Value);
 
 // Responses
-public record ResponseMessage(string Message);
+public record ResponseMessage(string Response);

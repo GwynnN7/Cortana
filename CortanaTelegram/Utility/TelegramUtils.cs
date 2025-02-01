@@ -9,6 +9,7 @@ namespace CortanaTelegram.Utility;
 
 internal static class TelegramUtils
 {
+	private static ConnectionMultiplexer CommunicationClient { get; }
 	private static TelegramBotClient _cortana = null!;
 
 	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
@@ -17,9 +18,9 @@ internal static class TelegramUtils
 
 	static TelegramUtils()
 	{
-		ConnectionMultiplexer communicationClient = ConnectionMultiplexer.Connect("localhost");
+		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 		
-		ISubscriber sub = communicationClient.GetSubscriber();
+		ISubscriber sub = CommunicationClient.GetSubscriber();
 		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
 			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
 		});

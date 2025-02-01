@@ -77,14 +77,14 @@ internal abstract class DeviceModule : IModuleInterface
 					break;
 				default:
 					ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{HardwareAction[messageId]}", new PostAction(command));
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Message);
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Response);
 					await CreateMenu(cortana, callbackQuery.Message);
 					break;
 			}
 			return;
 		}
 		ResponseMessage devicePower = await ApiHandler.Get($"{ERoute.Device}/{command}");
-		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower.Message, replyMarkup: CreateOnOffToggleButtons());
+		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower.Response, replyMarkup: CreateOnOffToggleButtons());
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
@@ -126,7 +126,7 @@ internal abstract class DeviceModule : IModuleInterface
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
 			ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{payload.Arg.device}", new PostAction(payload.Arg.action));
-			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result.Message}");
+			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result.Response}");
 		}
 		catch (Exception e)
 		{
