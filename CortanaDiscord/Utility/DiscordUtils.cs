@@ -3,6 +3,7 @@ using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Discord;
 using Discord.WebSocket;
+using StackExchange.Redis;
 
 namespace CortanaDiscord.Utility;
 
@@ -17,6 +18,13 @@ internal static class DiscordUtils
 
 	static DiscordUtils()
 	{
+		ConnectionMultiplexer communicationClient = ConnectionMultiplexer.Connect("localhost");
+		
+		ISubscriber sub = communicationClient.GetSubscriber();
+		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage => {
+			if(channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
+		});
+		
 		Data = FileHandler.DeserializeJson<DataStruct>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordData.json"));
 		Memes = Memes.Load(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
 		GuildSettings = Guilds.Load(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordGuilds.json"));
@@ -98,11 +106,5 @@ internal static class DiscordUtils
 				break;
 		}
 	}
-	
-	/*
-	private static void HardwareSubscription(string message)
-	{
-		Task.Run(async () => await SendToChannel(message, ECortanaChannels.Log));
-	}*/
 }
 

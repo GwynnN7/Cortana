@@ -46,7 +46,7 @@ public static class ApiHandler
 
 // Requests
 public record PostCommand(string Command, string Args = "");
-public record PostAction(string Action);
+public record PostAction(string Action = "toggle");
 public record PostValue(int Value);
 
 // Responses

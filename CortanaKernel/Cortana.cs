@@ -1,6 +1,6 @@
 using CortanaKernel.API;
 using CortanaKernel.Hardware;
-using CortanaKernel.Hardware.Structures;
+using CortanaKernel.Hardware.Utility;
 using CortanaKernel.Subfunctions;
 using CortanaLib.Structures;
 using Mono.Unix;
@@ -39,9 +39,9 @@ public static class Cortana
         
         Console.WriteLine("Initiating Bootloader...");
 
-        Bootloader.BootSubFunction(ESubFunctionType.CortanaWeb);
-        Bootloader.BootSubFunction(ESubFunctionType.CortanaTelegram);
-        Bootloader.BootSubFunction(ESubFunctionType.CortanaDiscord);
+        await Bootloader.HandleSubFunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Start);
+        await Bootloader.HandleSubFunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Start);
+        await Bootloader.HandleSubFunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Start);
 
         Console.WriteLine("Boot Completed, I'm Online!");
         
@@ -56,6 +56,7 @@ public static class Cortana
         await Bootloader.StopSubFunctions();
         await CortanaApi.ShutdownService();
         HardwareApi.ShutdownService();
+        NotificationHandler.Stop();
 
         await taskToWait;
     }

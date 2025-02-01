@@ -47,7 +47,7 @@ public static class Service
     {
 	    ResetControllerTimer();
 	    
-	    if (DateTime.Now.Hour <= 9)
+	    if (DateTime.Now.Hour <= Settings.MorningHour)
 	    {
 		    _morningMessage = true;
 		    
@@ -59,12 +59,12 @@ public static class Service
 		    
 		    if (DateTime.Now.Hour % 2 != 0)
 		    {
-			    HardwareNotifier.Publish("You should go to sleep");
+			    NotificationHandler.Publish(EMessageCategory.Urgent,"You should go to sleep");
 		    }
 	    }
 	    else
 	    {
-		    if(_morningMessage) HardwareNotifier.Publish("Good morning, switching to Automatic Mode");
+		    if(_morningMessage) NotificationHandler.Publish(EMessageCategory.Urgent,"Good morning, switching to Automatic Mode");
 		    CurrentControlMode = EControlMode.Automatic;
 		    _morningMessage = false;
 	    }
@@ -85,7 +85,7 @@ public static class Service
 			    return;
 	    }
 
-	    HardwareNotifier.Publish("Good night, switching to Night Mode");
+	    NotificationHandler.Publish(EMessageCategory.Urgent,"Good night, switching to Night Mode");
 	    
 	    if (userAction || (!userAction && CurrentControlMode != EControlMode.Manual))
 	    {

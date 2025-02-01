@@ -1,19 +1,25 @@
+using CortanaLib.Structures;
+using StackExchange.Redis;
+
 namespace CortanaKernel.Hardware.Utility;
 
-public static class HardwareNotifier
+public static class NotificationHandler
 {
-    private static readonly List<Action<string>> Subscribers = [];
+    private static readonly ConnectionMultiplexer CommunicationClient;
 
-    public static void Subscribe(Action<string> action)
+    static NotificationHandler()
     {
-        Subscribers.Add(action);
+        CommunicationClient = ConnectionMultiplexer.Connect("localhost");
     }
 
-    public static void Publish(string message)
+    public static void Stop()
     {
-        foreach (Action<string>? callback in Subscribers)
-        {
-            callback.Invoke(message);
-        }
+        CommunicationClient.Close();
+    }
+    
+    public static void Publish(EMessageCategory category, string message)
+    {
+        ISubscriber pub = CommunicationClient.GetSubscriber();
+        pub.Publish(RedisChannel.Literal(category.ToString()), message);
     }
 }

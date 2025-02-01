@@ -39,7 +39,9 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 				{
 					case { PreciseMotion: EPowerStatus.Off, WideMotion: EPowerStatus.Off } when _motionTimer == null:
 					{
-						int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EPowerStatus.On ? 60 : 15;
+						int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EPowerStatus.On
+							? Service.Settings.MotionOffMax
+							: Service.Settings.MotionOffMin;
 						_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 						_motionTimer.Set((seconds, 0, 0));
 						break;
@@ -59,7 +61,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 						if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 						{
 							HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
-							HardwareNotifier.Publish("Motion detected, switching lamp on!");
+							NotificationHandler.Publish(EMessageCategory.Update,"Motion detected, switching lamp on!");
 						}
 						
 						break;
@@ -76,7 +78,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 		_motionTimer?.Destroy();
 		_motionTimer = null;
 		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
-		HardwareNotifier.Publish("No motion detected, switching lamp off...");
+		NotificationHandler.Publish(EMessageCategory.Update,"No motion detected, switching lamp off...");
 
 		return Task.CompletedTask;
 	}

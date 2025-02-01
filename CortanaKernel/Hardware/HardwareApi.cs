@@ -49,6 +49,9 @@ public static class HardwareApi
 				ESettings.LightThreshold => Result<int, string>.Success(Service.Settings.LightThreshold),
 				ESettings.LimitMode => Result<int, string>.Success((int)Service.Settings.LimitControlMode),
 				ESettings.ControlMode => Result<int, string>.Success((int)Service.CurrentControlMode),
+				ESettings.MorningHour => Result<int, string>.Success(Service.Settings.MorningHour),
+				ESettings.MotionOffMax => Result<int, string>.Success(Service.Settings.MotionOffMax),
+				ESettings.MotionOffMin => Result<int, string>.Success(Service.Settings.MotionOffMin),
 				_ => Result<int, string>.Failure("Settings not found")
 			};
 		}
@@ -62,6 +65,15 @@ public static class HardwareApi
 					break;
 				case ESettings.LimitMode:
 					Service.Settings.LimitControlMode = (EControlMode) Math.Clamp(value, (int) EControlMode.Manual, (int) EControlMode.Automatic);
+					break;
+				case ESettings.MorningHour:
+					Service.Settings.MorningHour = value;
+					break;
+				case ESettings.MotionOffMax:
+					Service.Settings.MotionOffMax = value;
+					break;
+				case ESettings.MotionOffMin:
+					Service.Settings.MotionOffMin = value;
 					break;
 			}
 			return GetSettings(settings);

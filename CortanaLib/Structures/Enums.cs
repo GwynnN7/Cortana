@@ -47,3 +47,8 @@ public enum EDirType
 	Projects
 }
 
+public enum EMessageCategory
+{
+	Urgent,
+	Update
+}

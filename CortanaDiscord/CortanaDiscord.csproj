@@ -12,6 +12,7 @@
       <PackageReference Include="IGDB" Version="5.1.0" />
       <PackageReference Include="JetBrains.Annotations" Version="2025.1.0-eap1" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.1" />
+      <PackageReference Include="StackExchange.Redis" Version="2.8.24" />
     </ItemGroup>
 
     <ItemGroup>

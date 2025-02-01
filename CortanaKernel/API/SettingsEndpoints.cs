@@ -40,7 +40,6 @@ public class SettingsEndpoints : ICarterModule
     
     private static StringOrFail SetSettings(string setting, PostValue value)
     {
-       
         IOption<ESettings> settings = setting.ToEnum<ESettings>();
 
         Result<int, string> result = settings.Match(

@@ -21,7 +21,7 @@ public abstract class ClientHandler
 		_deviceName = deviceName;
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
-		HardwareNotifier.Publish($"{_deviceName} connected ~ {DateTime.Now}");
+		NotificationHandler.Publish(EMessageCategory.Update, $"{_deviceName} connected ~ {DateTime.Now}");
 		
 		Task.Run(Read);
 		RestartConnectionTimer();
@@ -73,7 +73,7 @@ public abstract class ClientHandler
     
     protected virtual void DisconnectSocket()
     {
-	    HardwareNotifier.Publish($"{_deviceName} disconnected at {DateTime.Now}");
+	    NotificationHandler.Publish(EMessageCategory.Update,$"{_deviceName} disconnected at {DateTime.Now}");
 	    _socket?.Close();
 	    _socket = null;
     }

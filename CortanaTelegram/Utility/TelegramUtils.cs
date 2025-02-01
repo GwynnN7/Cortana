@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using CortanaLib;
 using CortanaLib.Structures;
+using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -9,12 +10,20 @@ namespace CortanaTelegram.Utility;
 internal static class TelegramUtils
 {
 	private static TelegramBotClient _cortana = null!;
+
 	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
 	public static readonly DataStruct Data;
 	public static readonly long AuthorId;
 
 	static TelegramUtils()
 	{
+		ConnectionMultiplexer communicationClient = ConnectionMultiplexer.Connect("localhost");
+		
+		ISubscriber sub = communicationClient.GetSubscriber();
+		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
+			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
+		});
+		
 		Data = FileHandler.DeserializeJson<DataStruct>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
@@ -109,11 +118,4 @@ internal static class TelegramUtils
 			await cortana.SendMessage(chatId, text);
 		}
 	}
-	
-	/*
-	private static void HardwareSubscription(string message)
-	{
-		Task.Run(async () => await SendToUser(AuthorId, message));
-	}
-	*/
 }

@@ -17,6 +17,14 @@ public enum ERaspberryInfo
 	ApiPort
 }
 
+public enum ESubfunctionAction
+{
+	Stop,
+	Start,
+	Restart,
+	Update
+}
+
 public enum ERaspberryCommand
 {
 	Shutdown,
@@ -46,7 +54,10 @@ public enum ESettings
 {
 	LightThreshold,
 	LimitMode,
-	ControlMode
+	ControlMode,
+	MorningHour,
+	MotionOffMax,
+	MotionOffMin
 }
 
 public enum EControlMode

@@ -34,10 +34,10 @@ public class DeviceEndpoints: ICarterModule
 		);
 	}
 	
-	private static StringOrFail SwitchDevice(string device, PostAction status)
+	private static StringOrFail SwitchDevice(string device, PostAction? status)
 	{
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
-		IOption<EPowerAction> action = status.Action == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : status.Action.ToEnum<EPowerAction>();
+		IOption<EPowerAction> action = status is null || status.Action == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : status.Action.ToEnum<EPowerAction>();
 
 		StringResult result = dev.Match(
 			onSome: deviceVal =>

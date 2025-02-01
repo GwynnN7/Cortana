@@ -27,7 +27,7 @@ public class ComputerEndpoints : ICarterModule
 		IOption<EComputerCommand> cmd = command.Command.ToEnum<EComputerCommand>();
 
 		StringResult result = cmd.Match(
-			onSome: value => HardwareApi.Devices.CommandComputer(value, command.Args),
+			onSome: value => HardwareApi.Devices.CommandComputer(value, string.IsNullOrEmpty(command.Args) ? null : command.Args),
 			onNone: () => StringResult.Failure("Command not found")
 		);
 

@@ -9,7 +9,25 @@ public static class Bootloader
 {
 	private static readonly List<SubFunction> RunningSubFunctions = [];
 
-	public static void BootSubFunction(ESubFunctionType subFunctionType)
+	public static async Task<StringResult> HandleSubFunction(ESubFunctionType type, ESubfunctionAction action)
+	{
+		switch (action)
+		{
+			case ESubfunctionAction.Stop:
+				return await StopSubFunction(type);
+			case ESubfunctionAction.Restart:
+				return await RebootSubFunction(type);
+			case ESubfunctionAction.Update:
+				await Helper.AwaitCommand("cortana --update");
+				return await RebootSubFunction(type);
+			case ESubfunctionAction.Start:
+				return await BootSubFunction(type);
+			default:
+				return StringResult.Failure("Subfunction not found");
+		}
+	}
+	
+	private static async Task<StringResult> BootSubFunction(ESubFunctionType subFunctionType)
 	{
 		string projectName = subFunctionType.ToString();
 
@@ -28,53 +46,60 @@ public static class Bootloader
 		
 		process.Exited += async (_, _) => {
 			if(process.ShuttingDown) return;
-			await Task.Delay(2000);
+			await Task.Delay(1000);
 			Console.WriteLine($"{projectName} exited. Restarting...");
 			RunningSubFunctions.Remove(process);
-			BootSubFunction(process.Type);
+			await BootSubFunction(process.Type);
 		};
 
 		try
 		{
 			process.Start();
 			RunningSubFunctions.Add(process);
-			Console.WriteLine($"{projectName} started successfully with pid {process.Id}.");
+			await Task.Delay(500);
+			return StringResult.Success($"{projectName} started with pid {process.Id}.");
 		}
 		catch
 		{
-			Console.WriteLine($"Failed to start {projectName}");
+			return StringResult.Failure($"Failed to start {projectName}");
 		}
 	}
 
-	public static async Task RebootSubFunction(ESubFunctionType subFuncType)
+	private static async Task<StringResult> RebootSubFunction(ESubFunctionType subFuncType)
 	{
-		await Helper.AwaitCommand("cortana --update");
 		await StopSubFunction(subFuncType);
-		BootSubFunction(subFuncType);
+		await Task.Delay(500);
+		return await BootSubFunction(subFuncType);
 	}
 
-	private static async Task StopSubFunction(SubFunction subFunction)
+	private static async Task<StringResult> StopSubFunction(SubFunction subFunction)
 	{
+		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}");
 		subFunction.ShuttingDown = true;
-		subFunction.Kill();
+		subFunction.Kill(true);
 		await subFunction.WaitForExitAsync();
-		Console.WriteLine($"{subFunction.Type} stopped");
+		RunningSubFunctions.Remove(subFunction);
+		return StringResult.Failure($"{subFunction.Type} stopped");
 	}
 	
-	public static async Task StopSubFunction(ESubFunctionType subFuncType)
+	private static async Task<StringResult> StopSubFunction(ESubFunctionType subFuncType)
 	{
-		foreach (SubFunction subFunction in RunningSubFunctions.Where(func => func.Type == subFuncType && !func.HasExited))
+		foreach (SubFunction subFunction in RunningSubFunctions.Where(func => func.Type == subFuncType))
 		{
-			await StopSubFunction(subFunction);
-			RunningSubFunctions.Remove(subFunction);
-			break;
+			return await StopSubFunction(subFunction);
 		}
+		return StringResult.Failure($"Failed to stop subfunction {subFuncType}");
 	}
 
 	public static async Task StopSubFunctions()
 	{
-		List<Task> subfunctionsToStop = RunningSubFunctions.Where(sf => !sf.HasExited).Select(StopSubFunction).ToList();
+		List<Task<StringResult>> subfunctionsToStop = RunningSubFunctions.Select(StopSubFunction).ToList();
 		await Task.WhenAll(subfunctionsToStop);
 		RunningSubFunctions.Clear();
+	}
+
+	public static bool IsSubfunctionActive(ESubFunctionType subFuncType)
+	{
+		return RunningSubFunctions.Any(func => func.Type == subFuncType && !func.HasExited);
 	}
 }

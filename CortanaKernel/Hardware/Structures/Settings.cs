@@ -29,6 +29,36 @@ public class Settings
             this.Serialize().Dump(FilePath);
         }
     } = EControlMode.Automatic;
+
+    public int MorningHour
+    {
+        get;
+        set
+        {
+            field = Math.Clamp(value, 0, 23);
+            this.Serialize().Dump(FilePath);
+        }
+    } = 9;
+    
+    public int MotionOffMin
+    {
+        get;
+        set
+        {
+            field = Math.Clamp(value, 0, MotionOffMax);
+            this.Serialize().Dump(FilePath);
+        }
+    } = 9;
+    
+    public int MotionOffMax
+    {
+        get;
+        set
+        {
+            field = Math.Clamp(value, MotionOffMin, 3600);
+            this.Serialize().Dump(FilePath);
+        }
+    } = 60;
     
     public static Settings Load()
     {
