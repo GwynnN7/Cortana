@@ -5,7 +5,7 @@
 const char WIFI_SSID[] = "Jonny Jr";
 const char WIFI_PASSWORD[] = "ProcioneSpazialeMistico";
 const char CORTANA_IP[] = "192.168.178.117";
-const int CORTANA_PORT = 5000;
+const int CORTANA_PORT = 5116;
 
 const int led_blue = 32;
 const int led_white = 33;
