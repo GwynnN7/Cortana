@@ -4,11 +4,11 @@ using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 
-namespace CortanaKernel.Subfunctions;
+namespace CortanaKernel.Kernel;
 
 public static class Bootloader
 {
-	private static readonly Dictionary<ESubFunctionType, SubFunction> RunningSubFunctions = new();
+	private static readonly Dictionary<ESubFunctionType, Subfunction> RunningSubFunctions = new();
 
 	public static async Task<StringResult> HandleSubFunction(ESubFunctionType type, ESubfunctionAction action)
 	{
@@ -37,7 +37,7 @@ public static class Bootloader
 		
 		string projectName = subFunctionType.ToString();
 
-		var process = new SubFunction();
+		var process = new Subfunction();
 		process.Type = subFunctionType;
 		process.StartInfo = new ProcessStartInfo
 		{
@@ -90,24 +90,24 @@ public static class Bootloader
 		}
 	}
 	
-	private static async Task<StringResult> StopSubFunction(SubFunction subFunction)
+	private static async Task<StringResult> StopSubFunction(Subfunction subfunction)
 	{
-		if(subFunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subFunction.Type}".Log());
-		subFunction.ShuttingDown = true;
+		if(subfunction.HasExited) return StringResult.Failure($"Failed to stop subfunction {subfunction.Type}".Log());
+		subfunction.ShuttingDown = true;
 
-		foreach (Process process in Process.GetProcessesByName(subFunction.Type.ToString()))
+		foreach (Process process in Process.GetProcessesByName(subfunction.Type.ToString()))
 		{
 			await TryKillProcess(process);
 		}
-		await TryKillProcess(subFunction);
+		await TryKillProcess(subfunction);
 		
-		RunningSubFunctions.Remove(subFunction.Type);
-		return StringResult.Success($"{subFunction.Type} stopped".Log());
+		RunningSubFunctions.Remove(subfunction.Type);
+		return StringResult.Success($"{subfunction.Type} stopped".Log());
 	}
 	
 	private static async Task<StringResult> StopSubFunction(ESubFunctionType subFuncType)
 	{
-		if (!RunningSubFunctions.TryGetValue(subFuncType, out SubFunction? subFunction))
+		if (!RunningSubFunctions.TryGetValue(subFuncType, out Subfunction? subFunction))
 		{
 			return StringResult.Failure($"Failed to stop {subFuncType}, subfunction not running".Log());
 		}
@@ -124,7 +124,7 @@ public static class Bootloader
 
 	public static bool IsSubfunctionActive(ESubFunctionType subFuncType)
 	{
-		if (RunningSubFunctions.TryGetValue(subFuncType, out SubFunction? subFunction))
+		if (RunningSubFunctions.TryGetValue(subFuncType, out Subfunction? subFunction))
 		{
 			return !subFunction.HasExited;
 		}

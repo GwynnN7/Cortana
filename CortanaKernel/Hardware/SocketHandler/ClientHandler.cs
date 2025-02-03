@@ -1,6 +1,7 @@
 using System.Net.Sockets;
 using System.Text;
 using CortanaKernel.Hardware.Utility;
+using CortanaKernel.Kernel;
 using CortanaLib.Structures;
 using Timer = CortanaLib.Timer;
 
@@ -21,7 +22,7 @@ public abstract class ClientHandler
 		_deviceName = deviceName;
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
-		NotificationHandler.Publish(EMessageCategory.Update, $"{_deviceName} connected ~ {DateTime.Now}");
+		IpcService.Publish(EMessageCategory.Update, $"{_deviceName} connected ~ {DateTime.Now}");
 		
 		Task.Run(Read);
 		RestartConnectionTimer();
@@ -73,7 +74,7 @@ public abstract class ClientHandler
     
     protected virtual void DisconnectSocket()
     {
-	    NotificationHandler.Publish(EMessageCategory.Update,$"{_deviceName} disconnected at {DateTime.Now}");
+	    IpcService.Publish(EMessageCategory.Update,$"{_deviceName} disconnected at {DateTime.Now}");
 	    _socket?.Close();
 	    _socket = null;
     }

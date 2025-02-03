@@ -1,6 +1,7 @@
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Structures;
+using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
 using Timer = CortanaLib.Timer;
@@ -41,13 +42,14 @@ public static class Service
 		    DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(30);
 	    if (time < DateTime.Now) time = time.AddHours(1);
 	    _controllerTimer.Set(time);
+	    FileHandler.Log("Service", _controllerTimer.NextTargetTime.ToString("dd HH:mm:ss"));
     }
 
     private static Task ControllerCallback(object? sender)
     {
 	    ResetControllerTimer();
 	    
-	    if (DateTime.Now.Hour <= Settings.MorningHour)
+	    if (DateTime.Now.Hour < Settings.MorningHour)
 	    {
 		    _morningMessage = true;
 		    
@@ -59,12 +61,12 @@ public static class Service
 		    
 		    if (DateTime.Now.Hour % 2 != 0)
 		    {
-			    NotificationHandler.Publish(EMessageCategory.Urgent,"You should go to sleep");
+			    IpcService.Publish(EMessageCategory.Urgent,"You should go to sleep");
 		    }
 	    }
 	    else
 	    {
-		    if(_morningMessage) NotificationHandler.Publish(EMessageCategory.Urgent,"Good morning, switching to Automatic Mode");
+		    if(_morningMessage) IpcService.Publish(EMessageCategory.Urgent,"Good morning, switching to Automatic Mode");
 		    CurrentControlMode = EControlMode.Automatic;
 		    _morningMessage = false;
 	    }
@@ -85,7 +87,7 @@ public static class Service
 			    return;
 	    }
 
-	    NotificationHandler.Publish(EMessageCategory.Urgent,"Good night, switching to Night Mode");
+	    IpcService.Publish(EMessageCategory.Urgent,"Good night, switching to Night Mode");
 	    
 	    if (userAction || (!userAction && CurrentControlMode != EControlMode.Manual))
 	    {

@@ -27,9 +27,9 @@ public class SettingsEndpoints : ICarterModule
     {
         IOption<ESettings> settings = setting.ToEnum<ESettings>();
 
-        Result<int, string> result = settings.Match(
+        StringResult result = settings.Match(
             onSome: HardwareApi.Sensors.GetSettings,
-            onNone: () => Result<int, string>.Failure("Settings not found")
+            onNone: () => StringResult.Failure("Settings not found")
         );
 
         return result.Match<StringOrFail>(
@@ -42,9 +42,9 @@ public class SettingsEndpoints : ICarterModule
     {
         IOption<ESettings> settings = setting.ToEnum<ESettings>();
 
-        Result<int, string> result = settings.Match(
+        StringResult result = settings.Match(
             onSome: val => HardwareApi.Sensors.SetSettings(val, value.Value),
-            onNone: () => Result<int, string>.Failure("Settings not found")
+            onNone: () => StringResult.Failure("Settings not found")
         );
 
         return result.Match<StringOrFail>(

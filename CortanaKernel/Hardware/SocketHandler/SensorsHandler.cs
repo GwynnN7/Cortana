@@ -2,6 +2,7 @@ using System.Net.Sockets;
 using System.Text.Json;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
+using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
 using Timer = CortanaLib.Timer;
@@ -61,7 +62,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 						if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 						{
 							HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
-							NotificationHandler.Publish(EMessageCategory.Update,"Motion detected, switching lamp on!");
+							IpcService.Publish(EMessageCategory.Update,"Motion detected, switching lamp on!");
 						}
 						
 						break;
@@ -77,8 +78,10 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
+		if (Service.CurrentControlMode != EControlMode.Automatic) return Task.CompletedTask;
+		
 		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
-		NotificationHandler.Publish(EMessageCategory.Update,"No motion detected, switching lamp off...");
+		IpcService.Publish(EMessageCategory.Update,"No motion detected, switching lamp off...");
 
 		return Task.CompletedTask;
 	}

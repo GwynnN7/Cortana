@@ -1,6 +1,6 @@
 using Carter;
 using CortanaKernel.Hardware.Utility;
-using CortanaKernel.Subfunctions;
+using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
@@ -33,7 +33,7 @@ public class SubfunctionEndpoints : ICarterModule
 	    StringResult result = category.Match(
 		    onSome: value =>
 		    {
-			     NotificationHandler.Publish(value, string.IsNullOrEmpty(message.Args) ? "Hi, I'm Cortana" : message.Args);
+			     IpcService.Publish(value, string.IsNullOrEmpty(message.Args) ? "Hi, I'm Cortana" : message.Args);
 			     return StringResult.Success("Message published!");
 		    },
 		    onNone: () => StringResult.Failure("Command not found")

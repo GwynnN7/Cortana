@@ -1,7 +1,7 @@
 using CortanaKernel.API;
 using CortanaKernel.Hardware;
 using CortanaKernel.Hardware.Utility;
-using CortanaKernel.Subfunctions;
+using CortanaKernel.Kernel;
 using CortanaLib.Structures;
 using Mono.Unix;
 using Mono.Unix.Native;
@@ -33,9 +33,8 @@ public static class Cortana
             return;
         }
         Console.WriteLine($"CPU Temperature: {temp.Value}, loaded data for {location.Value}");
-        
+
         Console.WriteLine("Initializing API...");
-        
         
         Console.WriteLine("Initiating Bootloader...");
 
@@ -57,7 +56,7 @@ public static class Cortana
         Task stopHardware = Task.Run(async () =>
         {
             await Task.Delay(500);
-            NotificationHandler.Stop();
+            IpcService.ShutdownService();
             HardwareApi.ShutdownService();
         });
         await Task.WhenAll(Bootloader.StopSubFunctions(), CortanaApi.ShutdownService(), stopHardware);

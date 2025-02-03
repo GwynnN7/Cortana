@@ -42,21 +42,21 @@ public static class HardwareApi
 			return StringResult.Failure("Sensor offline");
 		}
 
-		public static Result<int, string> GetSettings(ESettings settings)
+		public static StringResult GetSettings(ESettings settings)
 		{
 			return settings switch
 			{
-				ESettings.LightThreshold => Result<int, string>.Success(Service.Settings.LightThreshold),
-				ESettings.LimitMode => Result<int, string>.Success((int)Service.Settings.LimitControlMode),
-				ESettings.ControlMode => Result<int, string>.Success((int)Service.CurrentControlMode),
-				ESettings.MorningHour => Result<int, string>.Success(Service.Settings.MorningHour),
-				ESettings.MotionOffMax => Result<int, string>.Success(Service.Settings.MotionOffMax),
-				ESettings.MotionOffMin => Result<int, string>.Success(Service.Settings.MotionOffMin),
-				_ => Result<int, string>.Failure("Settings not found")
+				ESettings.LightThreshold => StringResult.Success(Service.Settings.LightThreshold.ToString()),
+				ESettings.LimitMode => StringResult.Success(Service.Settings.LimitControlMode.ToString()),
+				ESettings.ControlMode => StringResult.Success(Service.CurrentControlMode.ToString()),
+				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
+				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
+				ESettings.MotionOffMin => StringResult.Success(Service.Settings.MotionOffMin.ToString()),
+				_ => StringResult.Failure("Settings not found")
 			};
 		}
 		
-		public static Result<int, string> SetSettings(ESettings settings, int value)
+		public static StringResult SetSettings(ESettings settings, int value)
 		{
 			switch (settings)
 			{

@@ -1,18 +1,18 @@
 using CortanaLib.Structures;
 using StackExchange.Redis;
 
-namespace CortanaKernel.Hardware.Utility;
+namespace CortanaKernel.Kernel;
 
-public static class NotificationHandler
+public static class IpcService
 {
     private static readonly ConnectionMultiplexer CommunicationClient;
 
-    static NotificationHandler()
+    static IpcService()
     {
         CommunicationClient = ConnectionMultiplexer.Connect("localhost");
     }
 
-    public static void Stop()
+    public static void ShutdownService()
     {
         CommunicationClient.Close();
     }
