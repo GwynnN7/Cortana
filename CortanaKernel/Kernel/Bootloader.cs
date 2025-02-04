@@ -85,23 +85,6 @@ public static class Bootloader
 			CreateNoWindow = true
 		};
 		process.EnableRaisingEvents = true;
-		switch (type)
-		{
-			case ESubFunctionType.CortanaDiscord:
-				process.StartInfo.Environment.Add("CORTANA_DISCORD_TOKEN", DataHandler.Env("CORTANA_DISCORD_TOKEN"));
-				process.StartInfo.Environment.Add("CORTANA_IGDB_CLIENT", DataHandler.Env("CORTANA_IGDB_CLIENT"));
-				process.StartInfo.Environment.Add("CORTANA_IGDB_SECRET", DataHandler.Env("CORTANA_IGDB_SECRET"));
-				break;
-			case ESubFunctionType.CortanaTelegram:
-				process.StartInfo.Environment.Add("CORTANA_TELEGRAM_TOKEN", DataHandler.Env("CORTANA_TELEGRAM_TOKEN"));
-				break;
-			case ESubFunctionType.CortanaWeb:
-				process.StartInfo.Environment.Add("ASPNETCORE_ENVIRONMENT", DataHandler.Env("ASPNETCORE_ENVIRONMENT"));
-				process.StartInfo.Environment.Add("ASPNETCORE_URLS", DataHandler.Env("ASPNETCORE_URLS"));
-				break;
-		}
-		process.StartInfo.Environment.Add("CORTANA_API", DataHandler.Env("CORTANA_API"));
-		process.StartInfo.Environment.Add("CORTANA_PATH", DataHandler.Env("CORTANA_PATH"));
 		
 		process.Exited += async (_, _) => {
 			if(process.ShuttingDown) return;

@@ -20,7 +20,7 @@ public static class Cortana
 		
         Console.WriteLine("Build completed");
         
-        DotEnv.Load();
+        EnvService.Load(".env");
         
         Console.WriteLine("Initiating Hardware...");
         Task shutdownTask = Task.Run(WaitForShutdown);
