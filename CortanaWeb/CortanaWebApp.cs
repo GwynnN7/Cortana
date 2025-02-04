@@ -1,12 +1,11 @@
 using CortanaLib;
-using CortanaLib.Structures;
 using CortanaWeb.Components;
 
 namespace CortanaWeb;
 
 public class CortanaWebApp
 {
-    public static void Main(string[] args)
+    public static async Task Main(string[] args)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
         
@@ -24,6 +23,12 @@ public class CortanaWebApp
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        app.Run();
+        _ = Task.Run(async () =>
+        {
+            await SignalHandler.WaitForInterrupt();
+            await app.StopAsync();
+        });
+        
+        await app.RunAsync();
     }
 }

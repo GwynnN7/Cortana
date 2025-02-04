@@ -21,10 +21,10 @@ internal abstract class ShoppingModule : IModuleInterface
 	{
 		DebtUsers = TelegramUtils.Data.DebtUsers;
 		DebtChats = TelegramUtils.Data.DebtChats;
-		Debts = Debts.Load(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
+		Debts = Debts.Load(DataHandler.Path(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
 	}
 
-	private static void UpdateDebts() => Debts.Serialize().Dump(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
+	private static void UpdateDebts() => Debts.Serialize().Dump(DataHandler.Path(EDirType.Config, $"{nameof(CortanaTelegram)}/Debts.json"));
 
 	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{

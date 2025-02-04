@@ -6,22 +6,24 @@ namespace CortanaLib;
 
 public static class DataHandler
 {
-	private static readonly string CortanaPath = Env("CORTANA_PATH");
-	private static readonly Dictionary<EDirType, string> Folders = new()
-	{
-		{ EDirType.Config, Path.Combine(CortanaPath, ".config/") },
-		{ EDirType.Log, Path.Combine(CortanaPath, ".log/") },
-		{ EDirType.Storage, Path.Combine(CortanaPath, "Storage/") },
-		{ EDirType.Projects, CortanaPath }
-	};
-	
+	private static readonly string CortanaFolder = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "Cortana");
+	private static readonly Dictionary<EDirType, string> Folders;
 	public static readonly JsonSerializerOptions SerializerOptions;
 
 	static DataHandler()
 	{
+		if (!Directory.Exists(CortanaFolder)) throw new CortanaException("Could not find .config folder");
+		
+		Folders = new Dictionary<EDirType, string>
+		{
+			{ EDirType.Config, System.IO.Path.Combine(CortanaFolder, "Config/") },
+			{ EDirType.Log, System.IO.Path.Combine(CortanaFolder, "Log/") },
+			{ EDirType.Storage, System.IO.Path.Combine(CortanaFolder, "Storage/") }
+		};
+		
 		foreach ((EDirType type, string path) in Folders)
 		{
-			if(!Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
+			if(!System.IO.Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
 		}
 		
 		SerializerOptions = new JsonSerializerOptions()
@@ -33,7 +35,8 @@ public static class DataHandler
 	}
 	
 	public static string Env(string env) => Environment.GetEnvironmentVariable(env) ?? throw new EnvironmentException(env);
-
+	public static string Path(EDirType type, string path = "") => System.IO.Path.Combine(Folders[type], path);
+	
 	public static T? DeserializeJson<T>(string path)
 	{
 		T? dataToLoad = default;
@@ -53,11 +56,9 @@ public static class DataHandler
 
 	public static string Log(string fileName, string log)
 	{
-		string logPath = GetPath(EDirType.Log,$"{fileName}.log");
+		string logPath = Path(EDirType.Log,$"{fileName}.log");
 		using StreamWriter logFile = File.Exists(logPath) ? File.AppendText(logPath) : File.CreateText(logPath);
 		logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
 		return log;
 	}
-	
-	public static string GetPath(EDirType type, string path = "") => Path.Combine(Folders[type], path);
 }

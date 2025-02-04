@@ -20,12 +20,12 @@ internal static class TelegramUtils
 	{
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 		
-		ISubscriber sub = CommunicationClient.GetSubscriber();
-		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
+		ISubscriber ipc = CommunicationClient.GetSubscriber();
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
 			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
 		});
 		
-		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/TelegramData.json"));
+		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}

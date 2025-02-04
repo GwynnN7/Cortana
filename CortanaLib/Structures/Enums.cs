@@ -12,6 +12,7 @@ public enum ERoute
 
 public enum ESubFunctionType
 {
+	CortanaKernel,
 	CortanaWeb,
 	CortanaDiscord,
 	CortanaTelegram
@@ -43,8 +44,7 @@ public enum EDirType
 {
 	Config,
 	Storage,
-	Log,
-	Projects
+	Log
 }
 
 public enum EMessageCategory

@@ -44,7 +44,7 @@ public static class CortanaDesktop
             return result.Response;
         }
         catch{
-            throw new Exception("Cortana not reachable, can't find correct address");
+            throw new CortanaException("Cortana not reachable, can't find correct address");
         } 
     }
 
@@ -133,17 +133,8 @@ public static class CortanaDesktop
     private static DesktopInfo GetClientInfo()
 	{
         string cortanaPath = DataHandler.Env("CORTANA_PATH");
-		string confPath = Path.Combine(cortanaPath, DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDesktop)}/DesktopInfo.json"));
+		string confPath = Path.Combine(cortanaPath, DataHandler.Path(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json"));
         if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
-
-		try
-		{
-			string file = File.ReadAllText(confPath);
-			return JsonSerializer.Deserialize<DesktopInfo>(file, DataHandler.SerializerOptions);
-		}
-		catch (Exception ex)
-		{
-			throw new Exception(ex.Message, ex);
-		}
-	}
+        return DataHandler.DeserializeJson<DesktopInfo>(confPath);
+    }
 }

@@ -12,14 +12,21 @@ public static class IpcService
         CommunicationClient = ConnectionMultiplexer.Connect("localhost");
     }
 
-    public static void ShutdownService()
+    public static async Task ShutdownService()
     {
-        CommunicationClient.Close();
+        await CommunicationClient.CloseAsync();
     }
     
     public static void Publish(EMessageCategory category, string message)
     {
-        ISubscriber pub = CommunicationClient.GetSubscriber();
-        pub.Publish(RedisChannel.Literal(category.ToString()), message);
+        try
+        {
+            ISubscriber pub = CommunicationClient.GetSubscriber();
+            pub.Publish(RedisChannel.Literal(category.ToString()), message);
+        }
+        catch
+        {
+            //Best-Effort
+        }
     }
 }

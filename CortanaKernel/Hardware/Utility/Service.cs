@@ -23,8 +23,8 @@ public static class Service
     
     static Service()
     {
-        var orvietoNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataOrvieto.json"));
-        var pisaNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataPisa.json"));
+        var orvietoNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataOrvieto.json"));
+        var pisaNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         Settings = Settings.Load();
@@ -92,5 +92,10 @@ public static class Service
 	    {
 		    HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 	    }
+    }
+
+    public static void InterruptController()
+    {
+	    _controllerTimer?.Destroy();
     }
 }

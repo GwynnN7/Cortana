@@ -36,18 +36,8 @@ public static class RaspberryHandler
 
 	public static ELocation GetNetworkLocation() => Service.NetworkData.Location;
 
-	public static void Shutdown() => RunCommandWithDelay("shutdown");
-	public static void Reboot() => RunCommandWithDelay("reboot");
-	public static void Update() => RunCommandWithDelay("update");
-	
-	private static void RunCommandWithDelay(string command)
-	{
-		Task.Run(async () =>
-		{
-			await Task.Delay(1000);
-			Helper.RunCommand(DecodeCommand(command));
-		});
-	}
+	public static void Shutdown() => Helper.DelayCommand(DecodeCommand("shutdown"));
+	public static void Reboot() => Helper.DelayCommand(DecodeCommand("reboot"));
 	
 	public static string DecodeCommand(string command, string arg = "")
 	{
@@ -56,7 +46,6 @@ public static class RaspberryHandler
 		{
 			"shutdown" => $"{sudo} shutdown now",
 			"reboot" => $"{sudo} reboot",
-			"update" => "cortana --restart",
 			"wakeonlan" => $"{sudo} wakeonlan {arg}",
 			"etherwake" => $"{sudo} etherwake {arg}",
 			_ => ""

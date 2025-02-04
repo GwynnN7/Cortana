@@ -19,8 +19,8 @@ public enum ERaspberryInfo
 public enum ESubfunctionAction
 {
 	Build,
-	Boot,
-	Reboot,
+	Restart,
+	Update,
 	Stop
 }
 

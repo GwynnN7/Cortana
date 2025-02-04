@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using CortanaLib;
-using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 

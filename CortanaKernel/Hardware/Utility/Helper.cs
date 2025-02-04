@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Net.NetworkInformation;
-using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Utility;
@@ -21,6 +20,15 @@ public static class Helper
 		};
 		process.Start();
 		return process;
+	}
+	
+	public static void DelayCommand(string command)
+	{
+		Task.Run(async () =>
+		{
+			await Task.Delay(1000);
+			RunCommand(command);
+		});
 	}
 	
 	public static bool Ping(string ip)

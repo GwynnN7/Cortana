@@ -24,7 +24,7 @@ internal static class AudioHandler
 
 	public static async Task<bool> SayHello(ulong guildId)
 	{
-		MemoryStream memoryStream = await MediaHandler.ExecuteFfmpeg(filePath: DataHandler.GetPath(EDirType.Storage, "hello.mp3"));
+		MemoryStream memoryStream = await MediaHandler.ExecuteFfmpeg(filePath: DataHandler.Path(EDirType.Storage, "hello.mp3"));
 
 		return Play(memoryStream, guildId);
 	}

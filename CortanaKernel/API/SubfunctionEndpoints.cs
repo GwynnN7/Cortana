@@ -1,5 +1,4 @@
 using Carter;
-using CortanaKernel.Hardware.Utility;
 using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Extensions;
@@ -50,7 +49,7 @@ public class SubfunctionEndpoints : ICarterModule
 	    IOption<ESubFunctionType> settings = subfunction.ToEnum<ESubFunctionType>();
 
 	    StringResult result = settings.Match(
-		    onSome: val => StringResult.Success(Bootloader.IsSubfunctionActive(val) ? $"{val} is running!" : $"{val} is not running."),
+		    onSome: val => StringResult.Success(Bootloader.IsSubfunctionRunning(val) ? $"{val} is running!" : $"{val} is not running."),
 		    onNone: () => StringResult.Failure("Subfunction not found")
 	    );
 
@@ -88,9 +87,12 @@ public class SubfunctionEndpoints : ICarterModule
 	    StringResult result = action.Match(
 		    onSome: _ =>
 		    {
-			    HandleSubfunction(ESubFunctionType.CortanaTelegram.ToString(), command);
-			    HandleSubfunction(ESubFunctionType.CortanaDiscord.ToString(), command);
-			    HandleSubfunction(ESubFunctionType.CortanaWeb.ToString(), command);
+			    Task.Run(() =>
+			    {
+				    HandleSubfunction(ESubFunctionType.CortanaTelegram.ToString(), command);
+				    HandleSubfunction(ESubFunctionType.CortanaDiscord.ToString(), command);
+				    HandleSubfunction(ESubFunctionType.CortanaWeb.ToString(), command);
+			    });
 			    return StringResult.Success("Action sent to subfunctions");
 		    },
 		    onNone: () => StringResult.Failure("Subfunction not found")

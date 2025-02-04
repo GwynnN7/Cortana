@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using CortanaLib.Structures;
 
 namespace CortanaDesktop;
 
@@ -35,7 +36,7 @@ internal static class OsHandler
 	{
 		if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) OperatingSystem = Os.Linux;
 		else if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) OperatingSystem = Os.Windows;
-		else throw new Exception("Unsupported Operating System");
+		else throw new CortanaException("Unsupported Operating System");
 	}
 
 	private static string DecodeCommand(string command, string arg = "")

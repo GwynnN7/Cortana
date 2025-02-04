@@ -20,14 +20,14 @@ internal static class DiscordUtils
 	{
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 		
-		ISubscriber sub = CommunicationClient.GetSubscriber();
-		sub.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage => {
+		ISubscriber ipc = CommunicationClient.GetSubscriber();
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage => {
 			if(channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
 		});
 		
-		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordData.json"));
-		Memes = Memes.Load(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
-		GuildSettings = Guilds.Load(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordGuilds.json"));
+		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Data.json"));
+		Memes = Memes.Load(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
+		GuildSettings = Guilds.Load(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
 		TimeConnected = new Dictionary<ulong, DateTime>();
 	}
 
@@ -56,11 +56,11 @@ internal static class DiscordUtils
 		UpdateSettings();
 	}
 
-	public static void UpdateSettings() => GuildSettings.Serialize().Dump(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/DiscordGuilds.json"));
+	public static void UpdateSettings() => GuildSettings.Serialize().Dump(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
 	public static void UpdateMemes(Memes newMemes)
 	{
 		Memes = newMemes;
-		Memes.Serialize().Dump(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
+		Memes.Serialize().Dump(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
 	}
 
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,

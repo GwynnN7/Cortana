@@ -1,5 +1,4 @@
 ﻿using CortanaDiscord.Utility;
-using CortanaLib;
 using CortanaLib.Structures;
 using Discord;
 using Discord.Interactions;

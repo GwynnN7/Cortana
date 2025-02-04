@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import os, sys, time, requests
+import os, sys, time, requests, argparse
 
 def executeInBlue(sh):
     os.system(f"echo -e \"\\e[1;34m$({sh})\\e[0m\"")
@@ -20,11 +20,12 @@ def cortanaGet(route = ""):
     except:
         return "Cortana Offline"
     
-def cortanaPost(route, argValue):
+def cortanaPost(route, param, argValue, arg = ""):
     try:
-        return requests.post(f"{api}/{route}", argValue).json()["response"]
+        return requests.post(f"{api}/{route}", json={param: argValue, "args": arg}).json()["response"]
     except:
         return "Cortana Offline"
+
 def requestAPI(route = ""):
     res = cortanaGet(route)
     executeInBlue(f"echo {res}")
@@ -41,7 +42,7 @@ if len(sys.argv) > 1:
             executeInBlue("echo {} \"~\" {}".format(text, cpuTemp))
             executeInBlue("echo Room Temperature: {}".format(roomTemp))
     elif sys.argv[1] == "run":
-        os.system("mkdir -p \"$CORTANA_PATH\"/.log")
+        os.system("mkdir -p ~/.config/Cortana/Log")
         os.system("dotnet build -o \"$CORTANA_PATH\"/CortanaDesktop/out --artifacts-path \"$CORTANA_PATH\"/CortanaDesktop/out/lib \"$CORTANA_PATH\"/CortanaDesktop && nohup \"$CORTANA_PATH\"/CortanaDesktop/out/CortanaDesktop >\"$CORTANA_PATH\"/.log/CortanaDesktop.log 2>\"$CORTANA_PATH\"/.log/CortanaDesktop.err /dev/null & disown;")
         executeInBlue("echo Cortana Client started")
     elif sys.argv[1] == "update":
@@ -52,19 +53,29 @@ if len(sys.argv) > 1:
             os.system(f"cd \"$CORTANA_PATH\" && git add . && git commit -m \"{commit}\" && git push")
             executeInBlue("echo Updating code...")
             time.sleep(2)
-            requestAPI("raspberry/update")
+            cortanaPost("subfunction/CortanaKernel", "action", "update")
     elif sys.argv[1] == "kill":
         os.system("killall CortanaDesktop")
         executeInBlue("echo Cortana Desktop killed")
     else:
-        if "=" in command:
-            data = command.split("=")
-            path = data[0].split(" ")
-            val = cortanaPost("/".join(path), "+".join(data[1].split(" ")))
-            executeInBlue(f"echo {val}")
+        parser = argparse.ArgumentParser()
+        parser.add_argument("api", type=str, help="Api Route", default="")
+        parser.add_argument("-act", dest="action", type=str, help="Action to perform", default="")
+        parser.add_argument("-cmd", dest="command", type=str, help="Command to perform", default="")
+        parser.add_argument("-arg", dest="arg", type=str, help="Command arguments", default="")
+        args = parser.parse_args()
+
+        path = "/".join(args.api.split(" "))
+
+        if args.action != "":
+            val = cortanaPost(path, "action", args.action)
+        elif args.command != "":
+            val = cortanaPost(path, "command", args.command, args.arg)
+        elif args.value != "":
+            val = cortanaPost(path, "value", args.value)
         else:
-            val = cortanaGet("/".join(command.split(" ")))
-            executeInBlue(f"echo {val}")
+            val = cortanaGet(path)
+        executeInBlue(f"echo {val}")
 else:
     requestAPI()
     

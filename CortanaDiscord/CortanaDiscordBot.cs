@@ -12,7 +12,6 @@ namespace CortanaDiscord;
 
 public static class CortanaDiscordBot
 {
-	private static CancellationTokenSource? _token;
 	public static async Task Main()
 	{
 		var client = new DiscordSocketClient(ConfigureSocket());
@@ -46,6 +45,7 @@ public static class CortanaDiscordBot
 			}
 
 			await DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
+			DataHandler.Log(ESubFunctionType.CortanaKernel.ToString(), "Discord Bot Online");
 		};
 
 		await client.LoginAsync(TokenType.Bot, DataHandler.Env("CORTANA_DISCORD_TOKEN"));
@@ -53,7 +53,7 @@ public static class CortanaDiscordBot
 
 		await SignalHandler.WaitForInterrupt();
 		await StopDiscordBot();
-		Console.WriteLine("Discord Bot shut down");
+		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Discord Bot Offline");
 	}
 	
 	private static async Task StopDiscordBot()
@@ -103,7 +103,7 @@ public static class CortanaDiscordBot
 		}
 		catch
 		{
-			DataHandler.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
+			DataHandler.Log(nameof(CortanaDiscord), "Errore di connessione, impossibile aggiornare l'Activity Status");
 		}
 	}
 
@@ -170,7 +170,7 @@ public static class CortanaDiscordBot
 
 	private static Task LogAsync(LogMessage message)
 	{
-		DataHandler.Log("Discord", message.Message);
+		DataHandler.Log(nameof(CortanaDiscord), message.Message);
 		return Task.CompletedTask;
 	}
 

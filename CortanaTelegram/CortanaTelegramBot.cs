@@ -1,4 +1,5 @@
 ﻿using CortanaLib;
+using CortanaLib.Structures;
 using CortanaTelegram.Modules;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
@@ -19,9 +20,10 @@ public static class CortanaTelegramBot
 
 		TelegramUtils.Init(cortana);
 		await TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
+		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot Online");
 
 		await SignalHandler.WaitForInterrupt();
-		Console.WriteLine("Telegram Bot shut down");
+		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot  Offline");
 	}
 
 	private static async Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
@@ -203,7 +205,7 @@ public static class CortanaTelegramBot
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
-		DataHandler.Log("Telegram", errorMessage);
+		DataHandler.Log(nameof(CortanaTelegram), errorMessage);
 		return Task.CompletedTask;
 	}
 }

@@ -7,12 +7,21 @@ namespace CortanaKernel.Kernel;
 
 public static class Bootloader
 {
-	private static readonly Dictionary<ESubFunctionType, Subfunction> RunningSubFunctions = new();
+	private static readonly Dictionary<ESubFunctionType, Process> RunningSubFunctions = new();
 
+	public static void LoadKernel()
+	{
+		Process process = Process.GetProcessesByName("CortanaKernel").FirstOrDefault() ?? throw new CortanaException("Cannot find CortanaKernel process");
+		RunningSubFunctions.Add(ESubFunctionType.CortanaKernel, process);
+		EnvService.SetEnv(process);
+	}
+	
 	public static async Task<StringResult> SubfunctionCall(ESubFunctionType type, ESubfunctionAction action)
 	{
 		switch (action)
 		{
+			case ESubfunctionAction.Build when type == ESubFunctionType.CortanaKernel:
+				return await SubfunctionCall(ESubFunctionType.CortanaKernel, ESubfunctionAction.Update);
 			case ESubfunctionAction.Build:
 			{
 				StringResult stopResult = await StopSubfunction(type);
@@ -20,14 +29,22 @@ public static class Bootloader
 				StringResult buildResult = await BuildSubfunction(type);
 				return !buildResult.IsOk ? buildResult : BootSubFunction(type);
 			}
-			case ESubfunctionAction.Boot:
+			case ESubfunctionAction.Restart when type == ESubFunctionType.CortanaKernel:
+				Helper.DelayCommand("cortana restart");
+				return StringResult.Success(
+					DataHandler.Log(nameof(CortanaKernel),"Kernel restarting, shutting down..."));
+			case ESubfunctionAction.Restart:
 			{
 				StringResult stopResult = await StopSubfunction(type);
 				return !stopResult.IsOk ? stopResult : BootSubFunction(type);
 			}
-			case ESubfunctionAction.Reboot:
+			case ESubfunctionAction.Update when type == ESubFunctionType.CortanaKernel:
+				Helper.DelayCommand("cortana update");
+				return StringResult.Success(
+					DataHandler.Log(nameof(CortanaKernel),"Kernel updating, shutting down..."));
+			case ESubfunctionAction.Update:
 			{
-				await Helper.RunCommand("cortana update").WaitForExitAsync();
+				await Helper.RunCommand("cortana git").WaitForExitAsync();
 				return await SubfunctionCall(type, ESubfunctionAction.Build);
 			}
 			case ESubfunctionAction.Stop:
@@ -39,6 +56,8 @@ public static class Bootloader
 
 	private static async Task<StringResult> BuildSubfunction(ESubFunctionType type)
 	{
+		if(type == ESubFunctionType.CortanaKernel) return StringResult.Failure("Cannot build Kernel from here");
+		
 		string projectName = type.ToString();
 		
 		var process = new Process();
@@ -58,7 +77,7 @@ public static class Bootloader
 		{
 			process.Start();
 			await process.WaitForExitAsync();
-			if (process.ExitCode != 0) throw new CortanaException();
+			if (process.ExitCode != 0) throw new CortanaException($"Failed to build subfunction {type}");
 			return StringResult.Success(
 				DataHandler.Log(nameof(CortanaKernel), $"Subfunction {type} built!"));
 		}
@@ -71,6 +90,8 @@ public static class Bootloader
 	
 	private static StringResult BootSubFunction(ESubFunctionType type)
 	{
+		if(type == ESubFunctionType.CortanaKernel) return StringResult.Failure("Cannot boot Kernel from here");
+		
 		string projectName = type.ToString();
 
 		var process = new Subfunction();
@@ -85,23 +106,8 @@ public static class Bootloader
 			CreateNoWindow = true
 		};
 		process.EnableRaisingEvents = true;
-		switch (type)
-		{
-			case ESubFunctionType.CortanaDiscord:
-				process.StartInfo.Environment.Add("CORTANA_DISCORD_TOKEN", DataHandler.Env("CORTANA_DISCORD_TOKEN"));
-				process.StartInfo.Environment.Add("CORTANA_IGDB_CLIENT", DataHandler.Env("CORTANA_IGDB_CLIENT"));
-				process.StartInfo.Environment.Add("CORTANA_IGDB_SECRET", DataHandler.Env("CORTANA_IGDB_SECRET"));
-				break;
-			case ESubFunctionType.CortanaTelegram:
-				process.StartInfo.Environment.Add("CORTANA_TELEGRAM_TOKEN", DataHandler.Env("CORTANA_TELEGRAM_TOKEN"));
-				break;
-			case ESubFunctionType.CortanaWeb:
-				process.StartInfo.Environment.Add("ASPNETCORE_ENVIRONMENT", DataHandler.Env("ASPNETCORE_ENVIRONMENT"));
-				process.StartInfo.Environment.Add("ASPNETCORE_URLS", DataHandler.Env("ASPNETCORE_URLS"));
-				break;
-		}
-		process.StartInfo.Environment.Add("CORTANA_API", DataHandler.Env("CORTANA_API"));
-		process.StartInfo.Environment.Add("CORTANA_PATH", DataHandler.Env("CORTANA_PATH"));
+		
+		EnvService.SetEnv(process);
 		
 		process.Exited += async (_, _) => {
 			if(process.ShuttingDown) return;
@@ -126,35 +132,39 @@ public static class Bootloader
 		}
 	}
 	
-	private static async Task<StringResult> KillSubfunction(Subfunction subfunction)
+	private static async Task<StringResult> KillSubfunction(Process subfunction, ESubFunctionType type)
 	{
-		if(subfunction.HasExited) return StringResult.Success($"{subfunction.Type} subfunction already exited");
-		subfunction.ShuttingDown = true;
+		if(subfunction.HasExited) return StringResult.Success($"{type} subfunction already exited");
+		
+		if (subfunction is Subfunction subfunctionProcess)
+		{
+			subfunctionProcess.ShuttingDown = true;
+		}
 		
 		Task stoppingTask = subfunction.WaitForExitAsync();
 		string[] signals = ["SIGUSR1", "SIGINT", "SIGKILL"];
 		foreach (var signal in signals)
 		{
 			if(subfunction.HasExited) break;
-			Process.Start("pkill", $"-{signal} -i {subfunction.Type}");
+			Process.Start("pkill", $"-{signal} -i {type}");
 			Task winner = await Task.WhenAny(stoppingTask, Task.Delay(TimeSpan.FromSeconds(2)));
 			if (winner != stoppingTask && !subfunction.HasExited) continue;
 			
-			RunningSubFunctions.Remove(subfunction.Type);
+			RunningSubFunctions.Remove(type);
 			return StringResult.Success(
-				DataHandler.Log(nameof(CortanaKernel),$"{subfunction.Type} stopped with signal {signal}"));
+				DataHandler.Log(nameof(CortanaKernel),$"{type} stopped with signal {signal}"));
 		}
 		return StringResult.Failure(
-			DataHandler.Log(nameof(CortanaKernel),$"Failed to stop {subfunction.Type}")); 
+			DataHandler.Log(nameof(CortanaKernel),$"Failed to stop {type}")); 
 	}
 	
 	private static async Task<StringResult> StopSubfunction(ESubFunctionType subFuncType)
 	{
-		if (!RunningSubFunctions.TryGetValue(subFuncType, out Subfunction? subFunction))
+		if (!RunningSubFunctions.TryGetValue(subFuncType, out Process? subFunction))
 		{
 			return StringResult.Success($"{subFuncType} subfunction not running");
 		}
-		return await KillSubfunction(subFunction);
+		return await KillSubfunction(subFunction, subFuncType);
 	}
 
 	public static async Task<StringResult> StopSubfunctions()
@@ -162,15 +172,16 @@ public static class Bootloader
 		bool result = true;
 		foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
 		{
+			if(type == ESubFunctionType.CortanaKernel) continue;
 			StringResult stopResult = await StopSubfunction(type);
 			result &= stopResult.IsOk;
 		}
 		return result ? StringResult.Success("All subfunction stopped") : StringResult.Failure("Failed to stop one or more subfunctions");
 	}
 
-	public static bool IsSubfunctionActive(ESubFunctionType subFuncType)
+	public static bool IsSubfunctionRunning(ESubFunctionType subFuncType)
 	{
-		if (RunningSubFunctions.TryGetValue(subFuncType, out Subfunction? subFunction))
+		if (RunningSubFunctions.TryGetValue(subFuncType, out Process? subFunction))
 		{
 			return !subFunction.HasExited;
 		}

@@ -1,7 +1,6 @@
 global using StringResult = CortanaLib.Structures.Result<string, string>;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
-using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
 using CortanaLib.Structures;
 
@@ -18,6 +17,7 @@ public static class HardwareApi
 		ComputerHandler.Interrupt();
 		SensorsHandler.Interrupt();
 		ServerHandler.ShutdownServer();
+		Service.InterruptController();
 	}
 
 	public static class Sensors
@@ -94,9 +94,6 @@ public static class HardwareApi
 					case ERaspberryCommand.Reboot:
 						RaspberryHandler.Reboot();
 						break;
-					case ERaspberryCommand.Update:
-						RaspberryHandler.Update();
-						break;
 					default:
 						return StringResult.Failure("Command not found");
 				}
@@ -133,7 +130,7 @@ public static class HardwareApi
 				{
 					EComputerCommand.Shutdown => ComputerHandler.Shutdown(),
 					EComputerCommand.Suspend => ComputerHandler.Suspend(),
-					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Raspberry.GetHardwareInfo(ERaspberryInfo.Temperature)}"),
+					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Raspberry.GetHardwareInfo(ERaspberryInfo.Temperature).Value}"),
 					EComputerCommand.Reboot => ComputerHandler.Reboot(),
 					EComputerCommand.Command => ComputerHandler.Command(args ?? "dir"),
 					EComputerCommand.System => ComputerHandler.SwitchOs(),

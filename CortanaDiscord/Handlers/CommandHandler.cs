@@ -10,7 +10,7 @@ internal class CommandHandler(DiscordSocketClient client, InteractionService com
 {
 	public async Task InitializeAsync()
 	{
-		Assembly discordBotAssembly = Assembly.Load(new AssemblyName("CortanaDiscord"));
+		Assembly discordBotAssembly = Assembly.Load(new AssemblyName(nameof(CortanaDiscord)));
 		await commands.AddModulesAsync(discordBotAssembly, services);
 		client.InteractionCreated += HandleInteraction;
 
