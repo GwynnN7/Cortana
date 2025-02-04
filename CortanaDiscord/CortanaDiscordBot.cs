@@ -6,7 +6,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
-using Timer = CortanaLib.Timer;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaDiscord;
 
@@ -51,7 +51,7 @@ public static class CortanaDiscordBot
 		await client.LoginAsync(TokenType.Bot, DataHandler.Env("CORTANA_DISCORD_TOKEN"));
 		await client.StartAsync();
 
-		await Signals.WaitForInterrupt();
+		await SignalHandler.WaitForInterrupt();
 		await StopDiscordBot();
 		Console.WriteLine("Discord Bot shut down");
 	}

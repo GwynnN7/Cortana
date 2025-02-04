@@ -4,7 +4,7 @@ using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
-using Timer = CortanaLib.Timer;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaKernel.Hardware.Utility;
 

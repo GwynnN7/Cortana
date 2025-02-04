@@ -8,6 +8,7 @@ using dotenv.net;
 using Iot.Device.Display;
 using Mono.Unix;
 using Mono.Unix.Native;
+using SignalHandler = CortanaLib.SignalHandler;
 
 namespace CortanaKernel;
 
@@ -49,7 +50,7 @@ public static class Cortana
 
     private static async Task WaitForShutdown()
     {
-        await Signals.WaitForInterrupt();
+        await SignalHandler.WaitForInterrupt();
         
         Console.WriteLine("Initiating Termination Sequence...");
         Task stopHardware = Task.Run(async () =>

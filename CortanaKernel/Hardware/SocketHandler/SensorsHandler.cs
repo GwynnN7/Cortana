@@ -5,7 +5,7 @@ using CortanaKernel.Hardware.Utility;
 using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
-using Timer = CortanaLib.Timer;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 

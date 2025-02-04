@@ -4,7 +4,7 @@ using CortanaLib.Structures;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using Timer = CortanaLib.Timer;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaDiscord.Modules;
 

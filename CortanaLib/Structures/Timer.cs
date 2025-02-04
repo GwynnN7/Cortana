@@ -1,7 +1,6 @@
 ﻿global using Times = (int Seconds, int Minutes, int Hours);
-using CortanaLib.Structures;
 
-namespace CortanaLib;
+namespace CortanaLib.Structures;
 
 public record TimerArg<T>(T? Arg);
 public record TelegramTimerPayload<T>(long ChatId, long UserId, T? Arg) : TimerArg<T>(Arg);

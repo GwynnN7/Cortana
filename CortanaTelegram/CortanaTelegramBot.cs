@@ -20,7 +20,7 @@ public static class CortanaTelegramBot
 		TelegramUtils.Init(cortana);
 		await TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
 
-		await Signals.WaitForInterrupt();
+		await SignalHandler.WaitForInterrupt();
 		Console.WriteLine("Telegram Bot shut down");
 	}
 

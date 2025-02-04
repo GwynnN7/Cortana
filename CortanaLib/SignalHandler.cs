@@ -3,7 +3,7 @@ using Mono.Unix.Native;
 
 namespace CortanaLib;
 
-public static class Signals
+public static class SignalHandler
 {
     private static readonly UnixSignal[] SignalsList =
     [
