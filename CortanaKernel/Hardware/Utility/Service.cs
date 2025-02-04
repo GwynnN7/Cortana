@@ -23,8 +23,8 @@ public static class Service
     
     static Service()
     {
-        var orvietoNet = FileHandler.DeserializeJson<NetworkData>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataOrvieto.json"));
-        var pisaNet = FileHandler.DeserializeJson<NetworkData>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataPisa.json"));
+        var orvietoNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataOrvieto.json"));
+        var pisaNet = DataHandler.DeserializeJson<NetworkData>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaKernel)}/NetworkDataPisa.json"));
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         Settings = Settings.Load();
@@ -42,7 +42,6 @@ public static class Service
 		    DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(30);
 	    if (time < DateTime.Now) time = time.AddHours(1);
 	    _controllerTimer.Set(time);
-	    FileHandler.Log("Service", _controllerTimer.NextTargetTime.ToString("dd HH:mm:ss"));
     }
 
     private static Task ControllerCallback(object? sender)

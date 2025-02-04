@@ -39,8 +39,8 @@ public static class CortanaDesktop
         using var httpClient = new HttpClient();
         try
         {
-            string cortanaApi = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new Exception("Cortana API not set in env");
-            ResponseMessage result = await httpClient.GetFromJsonAsync<ResponseMessage>($"{cortanaApi}/{ERoute.Raspberry}/{ERaspberryInfo.Gateway}") ?? throw new Exception("Cortana offline");
+            string cortanaApi = DataHandler.Env("CORTANA_API");
+            ResponseMessage result = await httpClient.GetFromJsonAsync<ResponseMessage>($"{cortanaApi}/{ERoute.Raspberry}/{ERaspberryInfo.Gateway}") ?? throw new CortanaException("Cortana offline");
             return result.Response;
         }
         catch{
@@ -132,14 +132,14 @@ public static class CortanaDesktop
 
     private static DesktopInfo GetClientInfo()
 	{
-        string cortanaPath = Environment.GetEnvironmentVariable("CORTANA_PATH") ?? throw new Exception("Cortana path not set in env");
-		string confPath = Path.Combine(cortanaPath, FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaDesktop)}/DesktopInfo.json"));
+        string cortanaPath = DataHandler.Env("CORTANA_PATH");
+		string confPath = Path.Combine(cortanaPath, DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaDesktop)}/DesktopInfo.json"));
         if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
 
 		try
 		{
 			string file = File.ReadAllText(confPath);
-			return JsonSerializer.Deserialize<DesktopInfo>(file, FileHandler.SerializerOptions);
+			return JsonSerializer.Deserialize<DesktopInfo>(file, DataHandler.SerializerOptions);
 		}
 		catch (Exception ex)
 		{

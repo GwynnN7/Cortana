@@ -65,7 +65,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		await RespondAsync(text, ephemeral: ephemeral == EAnswer.Si);
 	}
 
-	[SlashCommand("scarica-musica", "Scarica una canzone da youtube", runMode: RunMode.Async)]
+	[SlashCommand("download-music", "Scarica una canzone da youtube", runMode: RunMode.Async)]
 	public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
 		await DeferAsync(ephemeral == EAnswer.Si);
@@ -113,7 +113,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: ephemeral == EAnswer.Si);
 	}
 
-	[SlashCommand("elenco-meme", "Lista dei meme disponibili")]
+	[SlashCommand("meme-list", "Lista dei meme disponibili")]
 	public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
 	{
 		Embed embed = DiscordUtils.CreateEmbed("Memes");
@@ -126,5 +126,41 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		}
 
 		await RespondAsync(embed: tempEmbed.Build(), ephemeral: ephemeral == EAnswer.Si);
+	}
+	
+	[SlashCommand("meme-fix", "Rimuovi meme non più disponibili")]
+	public async Task FixMemes()
+	{
+		await DeferAsync(ephemeral: true);
+		
+		Embed embed = DiscordUtils.CreateEmbed("Memes fixed!");
+		var embedBuilder = embed.ToEmbedBuilder();
+		
+		using HttpClient client = new();
+		Memes memes = new();
+		bool error = false;
+		foreach (KeyValuePair<string, MemeJsonStructure> meme in DiscordUtils.Memes)
+		{
+			try
+			{
+				HttpResponseMessage response = await client.GetAsync(meme.Value.Link);
+				string content = await response.Content.ReadAsStringAsync();
+				if (content.Contains("video non è più disponibile") || content.Contains("video unavailable"))
+				{
+					embedBuilder.AddField(meme.Key, "Video unavailable");
+					continue;
+				}
+			}
+			catch
+			{
+				error = true;
+			}
+			memes.Add(meme.Key, meme.Value);
+		}
+		DiscordUtils.UpdateMemes(memes);
+		
+		if (error) embedBuilder.WithFooter("I was unable to fix some of them");
+		
+		await FollowupAsync(embed: embedBuilder.Build(), ephemeral: true);
 	}
 }

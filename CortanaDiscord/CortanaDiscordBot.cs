@@ -48,21 +48,15 @@ public static class CortanaDiscordBot
 			await DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
 		};
 
-		await client.LoginAsync(TokenType.Bot, FileHandler.Secrets.DiscordToken);
+		await client.LoginAsync(TokenType.Bot, DataHandler.Env("CORTANA_DISCORD_TOKEN"));
 		await client.StartAsync();
 
-		_token = new CancellationTokenSource();
-		try
-		{
-			await Task.Delay(Timeout.Infinite, _token.Token);
-		}
-		catch (TaskCanceledException)
-		{
-			Console.WriteLine("Discord Bot shut down");
-		}
+		await Signals.WaitForInterrupt();
+		await StopDiscordBot();
+		Console.WriteLine("Discord Bot shut down");
 	}
 	
-	public static async Task StopDiscordBot()
+	private static async Task StopDiscordBot()
 	{
 		foreach ((ulong clientId, _) in AudioHandler.AudioClients)
 		{
@@ -72,8 +66,6 @@ public static class CortanaDiscordBot
 
 		await Task.Delay(1000);
 		await DiscordUtils.Cortana.StopAsync();
-		
-		if(_token != null) await _token.CancelAsync();
 	}
 
 	private static async Task ClientMessageReceived(SocketMessage arg)
@@ -105,13 +97,13 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			ResponseMessage response = await ApiHandler.Get("raspberry/temperature");
+			ResponseMessage response = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
 			var activity = new Game($"on Raspberry at {response.Response}");
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
 		}
 		catch
 		{
-			FileHandler.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
+			DataHandler.Log("Discord", "Errore di connessione, impossibile aggiornare l'Activity Status");
 		}
 	}
 
@@ -178,7 +170,7 @@ public static class CortanaDiscordBot
 
 	private static Task LogAsync(LogMessage message)
 	{
-		FileHandler.Log("Discord", message.Message);
+		DataHandler.Log("Discord", message.Message);
 		return Task.CompletedTask;
 	}
 

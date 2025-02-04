@@ -14,6 +14,7 @@ public class ComputerHandler : ClientHandler
 	public ComputerHandler (Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPowerStatus.On);
+		Service.ResetControllerTimer();
 	}
 
 	protected override void HandleRead(string message)
@@ -38,6 +39,7 @@ public class ComputerHandler : ClientHandler
 		_messages.Clear();
 		_instance = null;
 		UpdateComputerStatus(EPowerStatus.Off);
+		Service.ResetControllerTimer();
 	}
 	
 	// Static methods
@@ -110,7 +112,6 @@ public class ComputerHandler : ClientHandler
 	private static void UpdateComputerStatus(EPowerStatus power)
 	{
 		DeviceHandler.DeviceStatus[EDevice.Computer] = power;
-		Service.ResetControllerTimer();
 	}
 	
 	private static EPowerStatus GetComputerStatus()

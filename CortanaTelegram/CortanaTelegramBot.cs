@@ -12,29 +12,16 @@ namespace CortanaTelegram;
 
 public static class CortanaTelegramBot
 {
-	private static CancellationTokenSource? _token;
 	public static async Task Main()
 	{
-		var cortana = new TelegramBotClient(FileHandler.Secrets.TelegramToken);
+		var cortana = new TelegramBotClient(DataHandler.Env("CORTANA_TELEGRAM_TOKEN"));
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		TelegramUtils.Init(cortana);
 		await TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
-		
-		_token = new CancellationTokenSource();
-		try
-		{
-			await Task.Delay(Timeout.Infinite, _token.Token);
-		}
-		catch (TaskCanceledException)
-		{
-			Console.WriteLine("Telegram Bot shut down");
-		}
-	}
 
-	public static async Task StopTelegramBot()
-	{
-		if(_token != null) await _token.CancelAsync();
+		await Signals.WaitForInterrupt();
+		Console.WriteLine("Telegram Bot shut down");
 	}
 
 	private static async Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
@@ -216,7 +203,7 @@ public static class CortanaTelegramBot
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
-		FileHandler.Log("Telegram", errorMessage);
+		DataHandler.Log("Telegram", errorMessage);
 		return Task.CompletedTask;
 	}
 }

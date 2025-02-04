@@ -61,7 +61,7 @@ internal class Debts : Dictionary<long, List<Debt>> //: SerializedObject
 {
 	public static Debts Load(string path)
 	{
-		return FileHandler.DeserializeJson<Debts>(path) ?? new Debts();
+		return DataHandler.DeserializeJson<Debts>(path) ?? new Debts();
 	}
 }
 

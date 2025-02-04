@@ -1,6 +1,7 @@
 global using StringOrFail = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<CortanaLib.ResponseMessage>, Microsoft.AspNetCore.Http.HttpResults.BadRequest<CortanaLib.ResponseMessage>>;
 using Carter;
 using CortanaKernel.Hardware;
+using CortanaLib;
 using CortanaLib.Structures;
 using Scalar.AspNetCore;
 
@@ -19,12 +20,7 @@ public static class CortanaApi
         builder.Services.AddLogging(c => c.ClearProviders());
         CortanaWebApi = builder.Build();
 
-        StringResult portResult = HardwareApi.Raspberry.GetHardwareInfo(ERaspberryInfo.ApiPort);
-        string port = portResult.Match(
-            success => success,
-            _ => throw new CortanaException("Cannot find API port")
-        );
-        CortanaWebApi.Urls.Add($"http://*:{port}");
+        CortanaWebApi.Urls.Add($"http://*:{DataHandler.Env("CORTANA_API_PORT")}");
         CortanaWebApi.MapOpenApi();
         CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.UseHttpsRedirection();

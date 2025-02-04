@@ -150,8 +150,8 @@ internal abstract class UtilityModule : IModuleInterface
 					{
 						case ETelegramChatArg.VideoDownloader:
 						{
-							await MediaHandler.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50, FileHandler.GetPath(EDirType.Storage));
-							Stream? videoStream = MediaHandler.GetStreamFromFile(FileHandler.GetPath(EDirType.Storage, "temp_video.mp4"));
+							await MediaHandler.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50, DataHandler.GetPath(EDirType.Storage));
+							Stream? videoStream = MediaHandler.GetStreamFromFile(DataHandler.GetPath(EDirType.Storage, "temp_video.mp4"));
 							if (videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, videoInfos.Title), videoInfos.Title);
 							else throw new CortanaException("Video file downloaded not found in Storage");
 							break;
@@ -171,7 +171,7 @@ internal abstract class UtilityModule : IModuleInterface
 				}
 				finally
 				{
-					string path = FileHandler.GetPath(EDirType.Storage, "temp_video.mp4");
+					string path = DataHandler.GetPath(EDirType.Storage, "temp_video.mp4");
 					if (File.Exists(path)) File.Delete(path);
 
 					await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);

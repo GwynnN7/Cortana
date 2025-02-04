@@ -25,7 +25,7 @@ internal static class TelegramUtils
 			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
 		});
 		
-		Data = FileHandler.DeserializeJson<DataStruct>(FileHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/TelegramData.json"));
+		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.GetPath(EDirType.Config, $"{nameof(CortanaTelegram)}/TelegramData.json"));
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}

@@ -1,7 +1,6 @@
 using System.Net.Http.Json;
 using System.Text;
 using CortanaLib.Extensions;
-using CortanaLib.Structures;
 
 namespace CortanaLib;
 
@@ -11,7 +10,7 @@ public static class ApiHandler
 
     static ApiHandler()
     {
-        var apiRoot = Environment.GetEnvironmentVariable("CORTANA_API") ?? throw new CortanaException("Cortana API not set in env");
+        var apiRoot = DataHandler.Env("CORTANA_API");
         
         ApiClient = new HttpClient();
         ApiClient.BaseAddress = new Uri(apiRoot);

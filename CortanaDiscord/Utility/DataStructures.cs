@@ -6,7 +6,7 @@ internal class Guilds : Dictionary<ulong, GuildSettings> //: SerializedObject
 {
 	public static Guilds Load(string path)
 	{
-		return FileHandler.DeserializeJson<Guilds>(path) ?? new Guilds();
+		return DataHandler.DeserializeJson<Guilds>(path) ?? new Guilds();
 	}
 }
 
@@ -33,7 +33,7 @@ internal class Memes : Dictionary<string, MemeJsonStructure> //: DeserializedObj
 {
 	public static Memes Load(string path)
 	{
-		return FileHandler.DeserializeJson<Memes>(path) ?? new Memes();
+		return DataHandler.DeserializeJson<Memes>(path) ?? new Memes();
 	}
 }
 

@@ -5,11 +5,11 @@ def executeInBlue(sh):
     os.system(f"echo -e \"\\e[1;34m$({sh})\\e[0m\"")
     
 if "CORTANA_PATH" not in os.environ:
-    executeInBlue("echo Cortana Path not set in env")
+    executeInBlue("echo CORTANA_PATH not set in the environment")
     exit(-1)
     
 if "CORTANA_API" not in os.environ:
-    executeInBlue("echo Cortana API not set in env")
+    executeInBlue("echo CORTANA_API not set in the environment")
     exit(-1)
 
 api = os.environ.get("CORTANA_API")
@@ -42,7 +42,7 @@ if len(sys.argv) > 1:
             executeInBlue("echo Room Temperature: {}".format(roomTemp))
     elif sys.argv[1] == "run":
         os.system("mkdir -p \"$CORTANA_PATH\"/.log")
-        os.system("nohup dotnet run --project \"$CORTANA_PATH\"/CortanaDesktop/CortanaDesktop.csproj >\"$CORTANA_PATH\"/.log/CortanaDesktop.log 2>\"$CORTANA_PATH\"/.log/CortanaDesktop.err /dev/null & disown;")
+        os.system("dotnet build -o \"$CORTANA_PATH\"/CortanaDesktop/out --artifacts-path \"$CORTANA_PATH\"/CortanaDesktop/out/lib \"$CORTANA_PATH\"/CortanaDesktop && nohup \"$CORTANA_PATH\"/CortanaDesktop/out/CortanaDesktop >\"$CORTANA_PATH\"/.log/CortanaDesktop.log 2>\"$CORTANA_PATH\"/.log/CortanaDesktop.err /dev/null & disown;")
         executeInBlue("echo Cortana Client started")
     elif sys.argv[1] == "update":
         commit = " ".join(sys.argv[2:])

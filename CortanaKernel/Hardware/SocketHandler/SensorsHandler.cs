@@ -19,7 +19,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 
 	protected override void HandleRead(string message)
 	{
-		var newData = JsonSerializer.Deserialize<SensorData>(message, FileHandler.SerializerOptions);
+		var newData = JsonSerializer.Deserialize<SensorData>(message, DataHandler.SerializerOptions);
 
 		if (_lastSensorData != null)
 		{
@@ -27,7 +27,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 			{
 				case { WideMotion: EPowerStatus.On } when _lastSensorData is {WideMotion: EPowerStatus.Off}:
 				case { PreciseMotion: EPowerStatus.On } when _lastSensorData is {PreciseMotion: EPowerStatus.Off}:
-					FileHandler.Log("SensorsLog", message);
+					DataHandler.Log("SensorsLog", message);
 					break;
 			}
 		}

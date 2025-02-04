@@ -23,12 +23,6 @@ public static class Helper
 		return process;
 	}
 	
-	public static async Task AwaitCommand(string command)
-	{
-		Process process = RunCommand(command);
-		await process.WaitForExitAsync();
-	}
-	
 	public static bool Ping(string ip)
 	{
 		using var pingSender = new Ping();

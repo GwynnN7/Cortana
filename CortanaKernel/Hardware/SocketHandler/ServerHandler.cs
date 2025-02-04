@@ -1,7 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using CortanaKernel.Hardware.Utility;
+using CortanaLib;
+using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 
@@ -11,7 +12,7 @@ public static class ServerHandler
 	
 	static ServerHandler()
 	{
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, Service.NetworkData.ServerPort);
+		var ipEndPoint = new IPEndPoint(IPAddress.Any, int.Parse(DataHandler.Env("CORTANA_TCP_PORT")));
 		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 		Server.Bind(ipEndPoint);
 	}

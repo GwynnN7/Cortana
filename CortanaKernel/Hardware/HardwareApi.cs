@@ -113,7 +113,6 @@ public static class HardwareApi
 					ERaspberryInfo.Ip => RaspberryHandler.RequestPublicIpv4().Result,
 					ERaspberryInfo.Gateway => RaspberryHandler.GetNetworkGateway(),
 					ERaspberryInfo.Temperature => Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()),
-					ERaspberryInfo.ApiPort => RaspberryHandler.GetApiPort().ToString(),
 					_ => null
 				};
 				return result is null ? StringResult.Failure("Raspberry information not supported") : StringResult.Success(result);

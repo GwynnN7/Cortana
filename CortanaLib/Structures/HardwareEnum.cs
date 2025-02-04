@@ -13,16 +13,15 @@ public enum ERaspberryInfo
 	Location,
 	Ip,
 	Gateway,
-	Temperature,
-	ApiPort
+	Temperature
 }
 
 public enum ESubfunctionAction
 {
-	Stop,
-	Start,
-	Restart,
-	Update
+	Build,
+	Boot,
+	Reboot,
+	Stop
 }
 
 public enum ERaspberryCommand

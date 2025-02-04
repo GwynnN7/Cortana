@@ -7,11 +7,15 @@ public class CortanaException : Exception
 
 	public CortanaException(string message) : base(message)
 	{
-		FileHandler.Log("CortanaException", message);
+		DataHandler.Log("CortanaException", message);
 	}
+}
 
-	public CortanaException(string message, Exception innerException) : base(message, innerException)
-	{
-		FileHandler.Log("CortanaException", message);
-	}
+[Serializable]
+public class EnvironmentException : Exception
+{
+	public EnvironmentException() { }
+
+	public EnvironmentException(string message) : base(message + " not set in the environment")
+	{}
 }

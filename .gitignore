@@ -6,3 +6,4 @@ obj
 
 .idea
 .env
+*.DotSettings.user

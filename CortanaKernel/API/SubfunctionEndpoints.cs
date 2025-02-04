@@ -69,7 +69,7 @@ public class SubfunctionEndpoints : ICarterModule
 		    onSome: val =>
 		    {
 			    return action.Match(
-				    onSome: act => Bootloader.HandleSubFunction(val, act).Result,
+				    onSome: act => Bootloader.SubfunctionCall(val, act).Result,
 				    onNone: () => StringResult.Failure("Action not supported")
 			    );
 		    },

@@ -35,7 +35,6 @@ public static class RaspberryHandler
 	}
 
 	public static ELocation GetNetworkLocation() => Service.NetworkData.Location;
-	public static int GetApiPort() => Service.NetworkData.ApiPort;
 
 	public static void Shutdown() => RunCommandWithDelay("shutdown");
 	public static void Reboot() => RunCommandWithDelay("reboot");
@@ -52,7 +51,7 @@ public static class RaspberryHandler
 	
 	public static string DecodeCommand(string command, string arg = "")
 	{
-		var sudo = $"echo {FileHandler.Secrets.CortanaPassword} | sudo -S";
+		var sudo = $"echo {DataHandler.Env("CORTANA_PASSWORD")} | sudo -S";
 		return command switch
 		{
 			"shutdown" => $"{sudo} shutdown now",

@@ -176,7 +176,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 
 		private static async Task<Embed?> GetGameEmbedAsync(string game, int count)
 		{
-			var igdb = new IGDBClient(FileHandler.Secrets.IgdbClient, FileHandler.Secrets.IgdbSecret);
+			var igdb = new IGDBClient(DataHandler.Env("CORTANA_IGDB_CLIENT"), DataHandler.Env("CORTANA_IGDB_SECRET"));
 			const string fields =
 				"cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
 			var query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";

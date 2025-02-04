@@ -6,15 +6,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
         <LangVersion>preview</LangVersion>
-        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
     </PropertyGroup>
 
     <ItemGroup>
         <PackageReference Include="Carter" Version="9.0.0" />
+        <PackageReference Include="dotenv.net" Version="3.2.1" />
         <PackageReference Include="Iot.Device.Bindings" Version="3.2.0" />
-        <PackageReference Include="JetBrains.Annotations" Version="2025.1.0-eap1" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.1"/>
-        <PackageReference Include="Mono.Posix" Version="7.1.0-final.1.21458.1" />
         <PackageReference Include="Scalar.AspNetCore" Version="2.0.9" />
         <PackageReference Include="StackExchange.Redis" Version="2.8.24" />
     </ItemGroup>
@@ -24,9 +22,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove=".env" />
-      <Content Include=".env">
+      <None Update=".env">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </Content>
+      </None>
     </ItemGroup>
 </Project>
