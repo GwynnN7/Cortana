@@ -1,9 +1,10 @@
 .config
 .log
+.env
 
 bin
 obj
+out
 
 .idea
-.env
 *.DotSettings.user
