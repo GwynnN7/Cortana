@@ -20,7 +20,7 @@ public static class Cortana
 		
         Console.WriteLine("Build completed");
         
-        EnvService.Load(".env");
+        EnvService.Load("/home/cortana/Cortana/CortanaKernel/.env");
         
         Console.WriteLine("Initiating Hardware...");
         Task shutdownTask = Task.Run(WaitForShutdown);
