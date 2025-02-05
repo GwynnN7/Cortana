@@ -1,7 +1,6 @@
 ﻿@page "/sensor"
 @using CortanaLib
 @using CortanaLib.Structures
-@attribute [StreamRendering]
 
 <PageTitle>Sensors List</PageTitle>
 
@@ -37,18 +36,35 @@ else
 }
 
 @code {
-    private SensorData[]? _data;
+    private List<SensorData>? _data;
 
-    protected override Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync()
     {
         TimeOnly time = TimeOnly.FromDateTime(DateTime.Now);
-        _data = Enum.GetValues<ESensor>().Select(value => new SensorData
-        {
-            Time = time,
-            Text = value.ToString(),
-            Value = ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}").Result.Response
-        }).ToArray();
-        return base.OnInitializedAsync();
+        _data =
+        [
+            new SensorData
+            {
+                Time = time,
+                Text = "Temperature",
+                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}")).Response
+            },
+
+            new SensorData
+            {
+                Time = time,
+                Text = "Motion",
+                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}")).Response
+            },
+
+            new SensorData
+            {
+                Time = time,
+                Text = "Light",
+                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}")).Response
+            }
+        ];
+        await base.OnInitializedAsync();
     }
 
     private class SensorData

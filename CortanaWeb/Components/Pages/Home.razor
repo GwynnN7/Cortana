@@ -52,18 +52,18 @@
                 <div class="device-card">
                     <h3>Power</h3>
                     <div>
-                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.On)">On</button>
-                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Off)">Off</button>
+                        <button class="device-button" @onclick="ABC">On</button>
+                        <button class="device-button" @onclick="ABC">Off</button>
                     </div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Toggle)">Toggle</button>
+                    <button class="device-button" @onclick="ABC">Toggle</button>
                 </div>
                 <div class="device-card">
                     <h3>Computer</h3>
                     <div>
-                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.On)">On</button>
-                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Off)">Off</button>
+                        <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Computer, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Computer, EPowerAction.Off)">Off</button>
                     </div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Toggle)">Toggle</button>
+                    <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Computer, EPowerAction.Toggle)">Toggle</button>
                 </div>
                 <div class="device-card">
                     <h3>Lamp</h3>
@@ -153,6 +153,14 @@
         
         ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
         await JsRuntime.InvokeVoidAsync("alert", result.Response);
+    }
+    private async Task ABC()
+    {
+        HttpContent content = new StringContent(new PostAction("toggle").Serialize(), Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await Client.PostAsync("device/lamp", content);
+
+        await JsRuntime.InvokeVoidAsync("alert", "ciao");
     }
     
     private async Task SwitchRoom(EPowerAction action)
