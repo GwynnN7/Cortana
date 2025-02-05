@@ -26,4 +26,9 @@ public static class StringExtensions
     {
         File.WriteAllText(path, str);
     }
+    
+    public static T Load<T>(this string path) where T : new()
+    {
+        return DataHandler.DeserializeJson<T>(path) ?? new T();
+    }
 }

@@ -2,14 +2,6 @@ using CortanaLib;
 
 namespace CortanaDiscord.Utility;
 
-internal class Guilds : Dictionary<ulong, GuildSettings> //: SerializedObject
-{
-	public static Guilds Load(string path)
-	{
-		return DataHandler.DeserializeJson<Guilds>(path) ?? new Guilds();
-	}
-}
-
 internal class GuildSettings //: SerializedObject
 {
 	public bool AutoJoin { get; set; }
@@ -27,14 +19,6 @@ internal readonly struct DataStruct //: DeserializedObject
 	public ulong HomeId { get; init; }
 	public ulong CortanaChannelId { get; init; }
 	public ulong CortanaLogChannelId { get; init; }
-}
-
-internal class Memes : Dictionary<string, MemeJsonStructure> //: DeserializedObject
-{
-	public static Memes Load(string path)
-	{
-		return DataHandler.DeserializeJson<Memes>(path) ?? new Memes();
-	}
 }
 
 public readonly struct MemeJsonStructure //: DeserializedObject

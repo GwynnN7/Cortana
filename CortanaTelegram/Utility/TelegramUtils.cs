@@ -1,5 +1,6 @@
 ﻿using System.Text.RegularExpressions;
 using CortanaLib;
+using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using StackExchange.Redis;
 using Telegram.Bot;
@@ -24,8 +25,8 @@ internal static class TelegramUtils
 		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
 			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
 		});
-		
-		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json"));
+
+		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json").Load<DataStruct>();
 		ChatArgs = new Dictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}

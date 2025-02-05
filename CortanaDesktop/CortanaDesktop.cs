@@ -133,7 +133,7 @@ public static class CortanaDesktop
     private static DesktopInfo GetClientInfo()
 	{
         string cortanaPath = DataHandler.Env("CORTANA_PATH");
-		string confPath = Path.Combine(cortanaPath, DataHandler.Path(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json"));
+		string confPath = Path.Combine(cortanaPath, DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json"));
         if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
         return DataHandler.DeserializeJson<DesktopInfo>(confPath);
     }

@@ -10,7 +10,7 @@ public static class EnvService
     private static readonly Dictionary<ESubFunctionType, Dictionary<string, string>> SubfunctionsEnv = new();
     public static void Load()
     {
-        string filePath = DataHandler.Path(EDirType.Config, ".env");
+        string filePath = DataHandler.CortanaPath(EDirType.Config, ".env");
         if (!File.Exists(filePath))
         {
             throw new CortanaException("Cannot load environment file, quitting...");

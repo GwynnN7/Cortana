@@ -55,16 +55,6 @@ internal readonly struct HardwareEmoji
 	public const string Night = "\ud83c\udf19";
 }
 
-// Debts data structures
-
-internal class Debts : Dictionary<long, List<Debt>> //: SerializedObject
-{
-	public static Debts Load(string path)
-	{
-		return DataHandler.DeserializeJson<Debts>(path) ?? new Debts();
-	}
-}
-
 internal class Debt //: SerializedObject
 {
 	public double Amount { get; set; }

@@ -8,7 +8,7 @@ public class Settings
 {
     private const int MaxAnalogRead = 4096;
 
-    private static readonly string FilePath = DataHandler.Path(EDirType.Config, $"{nameof(CortanaKernel)}/Settings.json");
+    private static readonly string FilePath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaKernel)}/Settings.json");
 
     public int LightThreshold
     {
@@ -62,6 +62,6 @@ public class Settings
     
     public static Settings Load()
     {
-        return DataHandler.DeserializeJson<Settings>(FilePath) ?? new Settings();
+        return FilePath.Load<Settings>();
     }
 }

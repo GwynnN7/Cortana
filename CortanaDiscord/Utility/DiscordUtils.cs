@@ -1,4 +1,7 @@
-﻿using CortanaLib;
+﻿global using Memes = System.Collections.Generic.Dictionary<string, CortanaDiscord.Utility.MemeJsonStructure>;
+global using Guilds = System.Collections.Generic.Dictionary<ulong, CortanaDiscord.Utility.GuildSettings>;
+
+using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Discord;
@@ -25,9 +28,9 @@ internal static class DiscordUtils
 			if(channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
 		});
 		
-		Data = DataHandler.DeserializeJson<DataStruct>(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Data.json"));
-		Memes = Memes.Load(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
-		GuildSettings = Guilds.Load(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
+		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Data.json").Load<DataStruct>();
+		Memes = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json").Load<Memes>();
+		GuildSettings = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json").Load<Guilds>();
 		TimeConnected = new Dictionary<ulong, DateTime>();
 	}
 
@@ -56,11 +59,11 @@ internal static class DiscordUtils
 		UpdateSettings();
 	}
 
-	public static void UpdateSettings() => GuildSettings.Serialize().Dump(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
+	public static void UpdateSettings() => GuildSettings.Serialize().Dump(DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
 	public static void UpdateMemes(Memes newMemes)
 	{
 		Memes = newMemes;
-		Memes.Serialize().Dump(DataHandler.Path(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
+		Memes.Serialize().Dump(DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
 	}
 
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,
