@@ -15,7 +15,7 @@
             <h1>Hi, I'm Cortana</h1>
             <p>Halo inspired Home Assistant and AI</p>
             <p id="temp">Room Temperature: @Temperature</p>
-            <button @onclick="OpenGithub" class="github-button">View on GitHub</button>
+            <a class="github-button" href="https://github.com/GwynnN7/Cortana" target="_blank">View on GitHub</a>
         </div>
     </header>
 
@@ -156,11 +156,7 @@
     }
     private async Task ABC()
     {
-        HttpContent content = new StringContent(new PostAction("toggle").Serialize(), Encoding.UTF8, "application/json");
-
-        using HttpResponseMessage response = await Client.PostAsync("device/lamp", content);
-
-        await JsRuntime.InvokeVoidAsync("alert", "ciao");
+        await ApiHandler.Post($"{ERoute.Device}/{EDevice.Lamp}");
     }
     
     private async Task SwitchRoom(EPowerAction action)
