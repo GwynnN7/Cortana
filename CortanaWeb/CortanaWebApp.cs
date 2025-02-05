@@ -14,10 +14,9 @@ public class CortanaWebApp
             .AddInteractiveServerComponents();
         
         builder.Services.AddScoped<HttpClient>(_ => new HttpClient { BaseAddress = new Uri(DataHandler.Env("CORTANA_API")) }); 
-     
+        
         WebApplication app = builder.Build();
-
-        app.UseHttpsRedirection();
+        
         app.UseAntiforgery();
         app.MapStaticAssets();
         app.MapRazorComponents<App>()
