@@ -1,0 +1,61 @@
+﻿@page "/sensor"
+@using CortanaLib
+@using CortanaLib.Structures
+@attribute [StreamRendering]
+
+<PageTitle>Sensors List</PageTitle>
+
+<h1>Sensors List</h1>
+
+@if (_data == null)
+{
+    <p>
+        <em>Reading sensors...</em>
+    </p>
+}
+else
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Time</th>
+            <th aria-label="Name">Name</th>
+            <th aria-label="Value">Value</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (SensorData data in _data)
+        {
+            <tr>
+                <td>@data.Time.ToShortTimeString()</td>
+                <td>@data.Text</td>
+                <td>@data.Value</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+
+@code {
+    private SensorData[]? _data;
+
+    protected override Task OnInitializedAsync()
+    {
+        TimeOnly time = TimeOnly.FromDateTime(DateTime.Now);
+        _data = Enum.GetValues<ESensor>().Select(value => new SensorData
+        {
+            Time = TimeOnly.FromDateTime(DateTime.Now),
+            Text = value.ToString(),
+            Value = ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}").Result.Response
+        }).ToArray();
+        return Task.CompletedTask;
+    }
+
+    private class SensorData
+    {
+        public TimeOnly Time { get; init; }
+        public required string Text { get; init; }
+        public required string Value { get; init; }
+    }
+
+}

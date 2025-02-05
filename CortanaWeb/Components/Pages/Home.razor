@@ -1,11 +1,154 @@
 ﻿@page "/"
+@using CortanaLib
+@using CortanaLib.Structures
+@inject IJSRuntime JsRuntime;
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hi, I'm Cortana</h1>
+<body>
+    <header>
+        <div class="title">
+            <img src="favicon.png" alt="Cortana Logo" class="logo">
+            <h1>Hi, I'm Cortana</h1>
+            <p>Halo inspired Home Assistant and AI</p>
+            <p id="temp">Room Temperature: @Temperature</p>
+            <button @onclick="OpenGithub" class="github-button">View on GitHub</button>
+        </div>
+    </header>
 
-Welcome to your new app.
+    <main>
+        <section id="features">
+            <h2>Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>Bootloader</h3>
+                    <p>Boots up and controls standalone <b>Subfunctions</b></p>
+                </div>
+                <div class="feature-card">
+                    <h3>Hardware Driver</h3>
+                    <p>Handles <b>Raspberry</b> and <b>Hardware Devices</b></p>
+                </div>
+                <div class="feature-card">
+                    <h3>Software Utility</h3>
+                    <p>Offers <b>Utility features</b> through every <i>Interface</i></p>
+                </div>
+                <div class="feature-card">
+                    <h3>Bots Interface</h3>
+                    <p>Interacts with users through <b>Telegram</b> and <b>Discord</b> bot</p>
+                </div>
+                <div class="feature-card">
+                    <h3>API Interface</h3>
+                    <p>Interacts with users through <b>HTTP Requests</b></p>
+                </div>
+            </div>
+        </section>
+        <hr class="solid">
+        <section id="devices">
+            <h2>Device Controller</h2>
+            <div class="device-grid">
+                <div class="device-card">
+                    <h3>Power</h3>
+                    <div>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Off)">Off</button>
+                    </div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Toggle)">Toggle</button>
+                </div>
+                <div class="device-card">
+                    <h3>Computer</h3>
+                    <div>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Off)">Off</button>
+                    </div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Toggle)">Toggle</button>
+                </div>
+                <div class="device-card">
+                    <h3>Lamp</h3>
+                    <div>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Off)">Off</button>
+                    </div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Toggle)">Toggle</button>
+                </div>
+                <div class="device-card">
+                    <h3>Generic</h3>
+                    <div>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Off)">Off</button>
+                    </div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Toggle)">Toggle</button>
+                </div>
+                <div class="device-card">
+                    <h3>Room</h3>
+                    <div>
+                        <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.Off)">Off</button>
+                    </div>
+                    <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.Toggle)">Toggle</button>
+                </div>
+            </div>
+        </section>
+        <hr class="solid">
+        <section id="raspberry">
+            <h2>Raspberry Controller</h2>
+            <div class="raspberry-grid">
+                <button class="raspberry-button" @onclick="() => GetRaspberryInfo(ERaspberryInfo.Ip)">Public IP</button>
+                <button class="raspberry-button" @onclick="() => GetRaspberryInfo(ERaspberryInfo.Temperature)">Temperature</button>
+                <button class="raspberry-button" @onclick="() => GetRaspberryInfo(ERaspberryInfo.Location)">Location</button>
+                <button class="raspberry-button" @onclick="() => GetRaspberryInfo(ERaspberryInfo.Gateway)">Gateway</button>
+                <button class="raspberry-button" id="shutdown" @onclick="() => CommandRaspberry(ERaspberryCommand.Shutdown)">Shutdown</button>
+                <button class="raspberry-button" id="reboot" @onclick="() => CommandRaspberry(ERaspberryCommand.Reboot)">Reboot</button>
+            </div>
+        </section>
+        <hr class="solid">
+        <section id="about">
+            <h2>About Cortana</h2>
+            <p><b>Halo</b> inspired <b>Home Assistant</b> and <i>Artificial Intelligence</i><br>
+                My personal assistant in daily routines, such as <b>domotics</b>, <b>utility</b>, <b>video & music</b> downloader<br>
+                Currently living on <b>Raspberry Pi 4</b> running on <b>dotnet C#</b>
+            </p>
+        </section>
+    </main>
 
+    <footer>
+        <p>Designed and Developed by <a href="https://github.com/GwynnN7">Gwynn7</a></p>
+    </footer>
+></body>
 @code {
+    public string? Temperature { get; set; }
 
+    protected override async Task OnInitializedAsync()
+    {
+        ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
+        Temperature = result.Response;
+    }
+
+    private async Task OpenGithub()
+    {
+        await JsRuntime.InvokeAsync<object>("open", "https://github.com/GwynnN7", "_blank");
+    }
+    
+    private async Task GetRaspberryInfo(ERaspberryInfo info)
+    {
+        ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
+        await JsRuntime.InvokeAsync<object>("open", result.Response, "_blank");
+    }
+    
+    private async Task CommandRaspberry(ERaspberryCommand command)
+    {
+        ResponseMessage result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString()));
+        await JsRuntime.InvokeAsync<object>("open", result.Response, "_blank");
+    }
+    
+    private async Task SwitchDevice(EDevice device, EPowerAction action)
+    {
+        ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
+        await JsRuntime.InvokeVoidAsync("alert", result.Response);
+    }
+    
+    private async Task SwitchRoom(EPowerAction action)
+    {
+        ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/room", new PostAction(action.ToString()));
+        await JsRuntime.InvokeVoidAsync("alert", result.Response);
+    }
 }

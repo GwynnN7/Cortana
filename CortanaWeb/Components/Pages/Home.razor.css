@@ -1,0 +1,212 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    color: #ffffff;
+    background: #121212;
+}
+
+header {
+    background: linear-gradient(to top, #1e1e1e, #1b7d8e);
+    color: #ffffff;
+    text-align: center;
+    padding: 2rem 0;
+}
+
+hr.solid {
+    border-top: 1px solid #bbb;
+    width:80%;
+    margin:50px auto;
+}
+
+.logo {
+    max-width: 120px;
+    margin-bottom: 10px;
+    border-radius: 50%;
+}
+
+.title h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.75rem;
+    color: #A7D8F7;
+}
+
+.title p {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+}
+
+main {
+    padding: 2rem;
+    background: #1e1e1e;
+}
+
+section {
+    margin-bottom: 3rem;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+h2 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: #ffffff;
+    font-size: 2.1rem;
+}
+
+.feature-grid {
+    display: grid;
+    width: 80%;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1rem;
+}
+
+.feature-card {
+    background: #333333;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.feature-card h3{
+    color: #B6E0F5;
+    margin-bottom: 0.5rem;
+}
+
+.feature-card p {
+    color: #bdbdbd;
+}
+
+.device-card h3{
+    color: #B6E0F5;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin-bottom: 0.5rem;
+    font-size: 1.5rem;
+}
+
+.device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    width: 80%;
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.raspberry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    width: 30%;
+    gap: 1.25rem;
+    margin: 0.5rem 0;
+}
+
+.device-card {
+    background: #333333;
+    padding: 0.6rem 0.6rem 1rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.device-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+.raspberry-grid button {
+    background: #333333;
+    padding: 1.2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.device-button{
+    text-decoration: transparent;
+    background: #54a7b6;
+    color: white;
+    font-size: 1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 30px;
+    margin: 6px 5px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(116, 200, 214, 0.3);
+}
+
+.github-button{
+    text-decoration: transparent;
+    background: #54a7b6;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 10px;
+    padding: 15px 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(116, 200, 214, 0.3);
+}
+
+.raspberry-button {
+    color: white;
+    font-size: 1.3rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-color: white;
+    border-width: 1px;
+}
+
+.raspberry-button:hover, .device-button:hover, .github-button:hover {
+    background: #8AC6E5;
+    transform: translateY(-2px);
+}
+
+.raspberry-button:active, .device-button:active, .github-button:active {
+    transform: scale(0.98);
+}
+
+#shutdown:hover{
+    background: #DB707B;
+    transform: translateY(-2px);
+}
+
+#reboot:hover{
+    background: #DB707B;
+    transform: translateY(-2px);
+}
+
+#about p {
+    max-width: 800px;
+    margin: 0 auto;
+    text-align: center;
+    font-size: 1.1rem;
+    color: #e0e0e0;
+}
+
+footer {
+    text-align: center;
+    padding: 1rem 0;
+    background: #121212;
+    color: #bdbdbd;
+}

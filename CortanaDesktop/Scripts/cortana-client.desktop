@@ -1,5 +1,5 @@
 [Desktop Entry]
-Exec=cortana run
+Exec=cortana start
 Type=Application
 Name=Cortana
 Terminal=false

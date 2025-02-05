@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
 using CortanaLib;
@@ -34,11 +33,9 @@ public static class CortanaDesktop
 
     private static async Task<string> GetCortanaGateway()
     {
-        using var httpClient = new HttpClient();
         try
         {
-            string cortanaApi = DataHandler.Env("CORTANA_API");
-            ResponseMessage result = await httpClient.GetFromJsonAsync<ResponseMessage>($"{cortanaApi}/{ERoute.Raspberry}/{ERaspberryInfo.Gateway}") ?? throw new CortanaException("Cortana offline");
+            ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
             return result.Response;
         }
         catch{

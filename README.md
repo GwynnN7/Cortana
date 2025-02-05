@@ -1,4 +1,4 @@
-![Logo](Storage/cortana.jpg)
+![Logo](CortanaWeb/wwwroot/favicon.png)
 
 # Cortana
 
@@ -11,19 +11,24 @@ Currently living on **Raspberry Pi 4** running on **dotnet C#**
 ***
 ## Structure
 
-### Core
+### Cortana Kernel
 
 - **Bootloader**
-- **Kernel**
-- **CortanaClient**
+- **Hardware API** ~ Client/Server
+- **Cortana API** ~ REST API
+
+### Subfunctions
+
+- **Cortana Telegram**
+- **Cortana Discord**
+- **Cortana Web**
 
 ### Modules
 
-- **Cortana API**
-- **Discord Bot**
-- **Telegram Bot**
+- **Cortana Desktop**
+- **Cortana Embedded**
 
-Each module is booted by the **Bootloader** and runs in a thread. Then the **Kernel** waits for any call from the modules.
+Each subfunction is built and started by the **Bootloader**. Then they communicate with the **Kernel** through **Cortana API**. Each **Module** communicate with the **Kernel** through **Cortana API** or **Hardware API**
 
 **CortanaClient** is a standalone program that handles the communication with a Desktop Computer.
 
