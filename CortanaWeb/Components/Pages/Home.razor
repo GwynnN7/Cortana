@@ -148,7 +148,7 @@
     {
         HttpContent content = new StringContent(new PostAction(action.ToString()).Serialize(), Encoding.UTF8, "application/json");
 
-        using HttpResponseMessage response = await Client.PostAsync("http://192.168.178.117/api/device/lamp", content);
+        using HttpResponseMessage response = await Client.PostAsync("device/lamp", content);
 
         
         ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
