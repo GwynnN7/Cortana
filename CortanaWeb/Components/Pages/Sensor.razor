@@ -44,11 +44,11 @@ else
         TimeOnly time = TimeOnly.FromDateTime(DateTime.Now);
         _data = Enum.GetValues<ESensor>().Select(value => new SensorData
         {
-            Time = TimeOnly.FromDateTime(DateTime.Now),
+            Time = time,
             Text = value.ToString(),
             Value = ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}").Result.Response
         }).ToArray();
-        return Task.CompletedTask;
+        return base.OnInitializedAsync();
     }
 
     private class SensorData

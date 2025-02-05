@@ -113,14 +113,15 @@
     <footer>
         <p>Designed and Developed by <a href="https://github.com/GwynnN7">Gwynn7</a></p>
     </footer>
-></body>
+</body>
 @code {
-    public string? Temperature { get; set; }
+    private string? Temperature { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
         ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
         Temperature = result.Response;
+        await base.OnInitializedAsync();
     }
 
     private async Task OpenGithub()
