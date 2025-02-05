@@ -1,7 +1,10 @@
 ﻿@page "/"
+@using System.Text
 @using CortanaLib
+@using CortanaLib.Extensions
 @using CortanaLib.Structures
 @inject IJSRuntime JsRuntime;
+@inject HttpClient Client;
 
 <PageTitle>Home</PageTitle>
 
@@ -126,23 +129,28 @@
 
     private async Task OpenGithub()
     {
-        await JsRuntime.InvokeAsync<object>("open", "https://github.com/GwynnN7", "_blank");
+        await JsRuntime.InvokeVoidAsync("open", "https://github.com/GwynnN7", "_blank");
     }
     
     private async Task GetRaspberryInfo(ERaspberryInfo info)
     {
         ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
-        await JsRuntime.InvokeAsync<object>("open", result.Response, "_blank");
+        await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
     
     private async Task CommandRaspberry(ERaspberryCommand command)
     {
         ResponseMessage result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString()));
-        await JsRuntime.InvokeAsync<object>("open", result.Response, "_blank");
+        await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
     
     private async Task SwitchDevice(EDevice device, EPowerAction action)
     {
+        HttpContent content = new StringContent(new PostAction(action.ToString()).Serialize(), Encoding.UTF8, "application/json");
+
+        using HttpResponseMessage response = await Client.PostAsync("http://192.168.178.117/api/device/lamp", content);
+
+        
         ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
         await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
