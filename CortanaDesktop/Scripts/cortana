@@ -27,8 +27,8 @@ def cortanaPost(route, param, argValue, arg = ""):
         return "Cortana Offline"
 
 def requestAPI(route = ""):
-    res = cortanaGet(route)
-    executeInBlue(f"echo {res}")
+    req = cortanaGet(route)
+    executeInBlue(f"echo {req}")
 
 command = " ".join(sys.argv[1:])
 if len(sys.argv) > 1:
@@ -42,9 +42,10 @@ if len(sys.argv) > 1:
             executeInBlue("echo {} \"~\" {}".format(text, cpuTemp))
             executeInBlue("echo Room Temperature: {}".format(roomTemp))
     elif sys.argv[1] == "run":
-        os.system("mkdir -p ~/.config/Cortana/Log")
-        os.system("dotnet build -o \"$CORTANA_PATH\"/CortanaDesktop/out --artifacts-path \"$CORTANA_PATH\"/CortanaDesktop/out/lib \"$CORTANA_PATH\"/CortanaDesktop && nohup \"$CORTANA_PATH\"/CortanaDesktop/out/CortanaDesktop >\"$CORTANA_PATH\"/.log/CortanaDesktop.log 2>\"$CORTANA_PATH\"/.log/CortanaDesktop.err /dev/null & disown;")
+        os.system("dotnet build -o \"$CORTANA_PATH\"/CortanaDesktop/out --artifacts-path \"$CORTANA_PATH\"/CortanaDesktop/out/lib \"$CORTANA_PATH\"/CortanaDesktop && nohup \"$CORTANA_PATH\"/CortanaDesktop/out/CortanaDesktop &>\"$CORTANA_PATH\"/.log/CortanaDesktop.log & disown;")
         executeInBlue("echo Cortana Client started")
+    elif sys.argv[1] == "copy":
+        os.system("rsync -ru --info=progress2 --force --delete --delete-excluded --filter=\":- \"\"$CORTANA_PATH\"\"/.gitignore\" \"$CORTANA_PATH\" cortana@192.168.178.117:~/")
     elif sys.argv[1] == "update":
         commit = " ".join(sys.argv[2:])
         if commit == "":
@@ -53,9 +54,10 @@ if len(sys.argv) > 1:
             os.system(f"cd \"$CORTANA_PATH\" && git add . && git commit -m \"{commit}\" && git push")
             executeInBlue("echo Updating code...")
             time.sleep(2)
-            cortanaPost("subfunction/CortanaKernel", "action", "update")
+            res = cortanaPost("subfunction/CortanaKernel", "action", "update")
+            executeInBlue(f"echo {res}")
     elif sys.argv[1] == "kill":
-        os.system("killall CortanaDesktop")
+        os.system("pkill CortanaDesktop")
         executeInBlue("echo Cortana Desktop killed")
     else:
         parser = argparse.ArgumentParser()

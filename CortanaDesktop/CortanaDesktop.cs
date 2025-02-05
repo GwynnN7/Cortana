@@ -2,8 +2,6 @@
 using System.Net.Http.Json;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using CortanaLib;
 using CortanaLib.Structures;
 using Timer = System.Timers.Timer;
@@ -19,13 +17,13 @@ public static class CortanaDesktop
     {
         DesktopInfo = GetClientInfo();
         string gateway = GetCortanaGateway().Result;
-        string address = gateway[..^1] + DesktopInfo.CortanaIp;
+        string address = gateway[..^1] + DesktopInfo.NetworkAddr;
         
         StartAliveTimer();
 
         while(true)
         {
-            CreateSocketConnection(address, DesktopInfo.DesktopPort);
+            CreateSocketConnection(address, DesktopInfo.TcpPort);
             
             Write("computer");
             Read();

@@ -18,6 +18,14 @@ public enum ESubFunctionType
 	CortanaTelegram
 }
 
+public enum ESubfunctionAction
+{
+	Restart,
+	Reboot,
+	Update,
+	Stop
+}
+
 public enum ETimerType
 {
 	Utility,

@@ -20,9 +20,11 @@ public static class Bootloader
 	{
 		switch (action)
 		{
-			case ESubfunctionAction.Build when type == ESubFunctionType.CortanaKernel:
-				return await SubfunctionCall(ESubFunctionType.CortanaKernel, ESubfunctionAction.Update);
-			case ESubfunctionAction.Build:
+			case ESubfunctionAction.Reboot when type == ESubFunctionType.CortanaKernel:
+				Helper.DelayCommand("cortana reboot");
+				return StringResult.Success(
+					DataHandler.Log(nameof(CortanaKernel),"Kernel rebooting, shutting down..."));
+			case ESubfunctionAction.Reboot:
 			{
 				StringResult stopResult = await StopSubfunction(type);
 				if (!stopResult.IsOk) return stopResult;
@@ -45,7 +47,7 @@ public static class Bootloader
 			case ESubfunctionAction.Update:
 			{
 				await Helper.RunCommand("cortana git").WaitForExitAsync();
-				return await SubfunctionCall(type, ESubfunctionAction.Build);
+				return await SubfunctionCall(type, ESubfunctionAction.Reboot);
 			}
 			case ESubfunctionAction.Stop:
 				return await StopSubfunction(type);

@@ -14,10 +14,9 @@ public class SubfunctionEndpoints : ICarterModule
     	RouteGroupBuilder group = app.MapGroup($"{ERoute.SubFunction}/");
     	
     	group.MapGet("", Root);
-	    group.MapPost("publish", PublishMessage);
+	    group.MapPost("", PublishMessage);
     	group.MapGet("{subfunction}", SubFunctionStatus);
 	    group.MapPost("{subfunction}", HandleSubfunction);
-	    group.MapPost("", HandleSubfunctions);
     }
     
     private static Ok<string> Root()
@@ -71,29 +70,6 @@ public class SubfunctionEndpoints : ICarterModule
 				    onSome: act => Bootloader.SubfunctionCall(val, act).Result,
 				    onNone: () => StringResult.Failure("Action not supported")
 			    );
-		    },
-		    onNone: () => StringResult.Failure("Subfunction not found")
-	    );
-
-	    return result.Match<StringOrFail>(
-		    val => TypedResults.Ok(new ResponseMessage(val)),
-		    err => TypedResults.BadRequest(new ResponseMessage(err))
-	    );
-    }
-    
-    private static StringOrFail HandleSubfunctions(PostAction command)
-    {
-	    IOption<ESubfunctionAction> action = command.Action.ToEnum<ESubfunctionAction>();
-	    StringResult result = action.Match(
-		    onSome: _ =>
-		    {
-			    Task.Run(() =>
-			    {
-				    HandleSubfunction(ESubFunctionType.CortanaTelegram.ToString(), command);
-				    HandleSubfunction(ESubFunctionType.CortanaDiscord.ToString(), command);
-				    HandleSubfunction(ESubFunctionType.CortanaWeb.ToString(), command);
-			    });
-			    return StringResult.Success("Action sent to subfunctions");
 		    },
 		    onNone: () => StringResult.Failure("Subfunction not found")
 	    );

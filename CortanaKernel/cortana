@@ -1,6 +1,8 @@
 #!/usr/bin/zsh
+
 mkdir -p ~/.config/Cortana
 cd ~/Cortana || exit;
+log_folder=~/.config/Cortana/Log;
 
 if (($# == 1))
 then
@@ -9,40 +11,57 @@ then
       git fetch --all && git pull;
     elif [ "$1" = "run" ]
     then
-      log_folder=~/.config/Cortana/Log;
+      CortanaKernel/out/CortanaKernel >>"$log_folder"/CortanaKernel.log 2>>"$log_folder"/CortanaKernel.log;
+    elif [ "$1" = "build" ]
+    then
       rm -rf "$log_folder";
       mkdir "$log_folder";
-      dotnet build CortanaKernel -o CortanaKernel/out --artifacts-path CortanaKernel/out/lib;
-      nohup CortanaKernel/out/CortanaKernel >>"$log_folder"/Cortana.log 2>>"$log_folder"/Cortana.err & disown;
-      echo "Cortana started!";
+      dotnet build CortanaKernel -o CortanaKernel/out --artifacts-path CortanaKernel/out/lib >>"$log_folder"/CortanaBuild.log 2>>"$log_folder"/CortanaBuild.err;
+    elif [ "$1" = "start" ]
+    then
+      nohup cortana run &>/dev/null & disown;
+      echo "Cortana starting";
+    elif [ "$1" = "boot" ]
+    then
+      nohup sh -c "cortana build && cortana start" &>/dev/null & disown;
+      echo "Cortana building";
     elif [ "$1" = "restart" ]
     then
-      cmd="sleep 5 && cortana run";
+      cmd="sleep 5 && cortana start";
+      eval "${cmd}" &>/dev/null & disown;
+      cortana stop;
+    elif [ "$1" = "reboot" ]
+    then
+      cmd="sleep 5 && cortana boot";
       eval "${cmd}" &>/dev/null & disown;
       cortana stop;
     elif [ "$1" = "update" ]
     then
       cortana git;
-	    cortana restart;
+	    cortana reboot;
     elif [ "$1" = "reset" ]
     then
+        cortana stop;
         rm -rf ./*
 	      git fetch --all && git reset --hard origin/main;
+	      cortana boot;
     elif [ "$1" = "stop" ]
     then
-        killall -s SIGUSR1 --quiet --ignore-case --wait CortanaKernel;
+        killall -s SIGUSR1 --quiet --ignore-case --wait CortanaKernel &>/dev/null;
         echo "Cortana stopped"
     elif [ "$1" = "kill" ]
     then
-        killall -s SIGKILL --quiet --ignore-case --wait CortanaKernel;
-        echo "Cortana stopped"
+        killall -s SIGKILL --quiet --ignore-case --wait CortanaKernel &>/dev/null;
+        echo "Cortana killed"
 	elif [ "$1" = "help" ]
     then
-      echo "cortana update    git fetch and pull";
-      echo "cortana reset     git fetch and reset";
-      echo "cortana stop      stops cortana safely";
-      echo "cortana kill      stops cortana immediately";
-      echo "cortana run       boots up cortana";
-      echo "cortana restart   update and restart";
+      echo "cortana git             git fetch and pull";
+      echo "cortana build           build source only";
+      echo "cortana start/restart   start/restart without building";
+      echo "cortana boot/reboot     start/restart after building";
+      echo "cortana update          update source and reboot";
+      echo "cortana reset           force update source";
+      echo "cortana stop            stop safely";
+      echo "cortana kill            kill process";
     fi
 fi

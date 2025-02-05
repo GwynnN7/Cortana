@@ -11,7 +11,6 @@ using Debts = Dictionary<long, List<Debt>>;
 
 internal abstract class ShoppingModule : IModuleInterface
 {
-	
 	private static CurrentPurchase? _currentPurchase;
 	private static readonly Debts Debts;
 	

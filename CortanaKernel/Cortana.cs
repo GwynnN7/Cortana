@@ -20,9 +20,9 @@ public static class Cortana
         Task apiTask = Task.Run(async () => await CortanaApi.RunAsync());
         
         DataHandler.Log(nameof(CortanaKernel), "Loading Bootloader...");
-        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Build);
-        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Build);
-        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaWeb, ESubfunctionAction.Build);
+        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Reboot);
+        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Reboot);
+        await Bootloader.SubfunctionCall(ESubFunctionType.CortanaWeb, ESubfunctionAction.Reboot);
         
         DataHandler.Log(nameof(CortanaKernel), "Boot Completed, I'm Online!");
         await Task.WhenAll(apiTask, shutdownTask);

@@ -16,19 +16,10 @@ public enum ERaspberryInfo
 	Temperature
 }
 
-public enum ESubfunctionAction
-{
-	Build,
-	Restart,
-	Update,
-	Stop
-}
-
 public enum ERaspberryCommand
 {
 	Shutdown,
 	Reboot,
-	Update,
 	Command
 }
 
