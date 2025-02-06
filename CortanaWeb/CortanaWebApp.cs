@@ -13,8 +13,8 @@ public class CortanaWebApp
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
         
-        builder.Services.AddScoped<HttpClient>(_ => new HttpClient { BaseAddress = new Uri(DataHandler.Env("CORTANA_API")) }); 
-        
+        builder.Services.AddScoped<HttpClient>(_ => new HttpClient { BaseAddress = new Uri(DataHandler.Env("CORTANA_API")) });
+ 
         WebApplication app = builder.Build();
         
         app.UseAntiforgery();

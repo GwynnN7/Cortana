@@ -21,6 +21,7 @@ public abstract class ClientHandler
 		_deviceName = deviceName;
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
+		_socket.ReceiveTimeout = 2 * DisconnectTime * 1000;
 		IpcService.Publish(EMessageCategory.Update, $"{_deviceName} connected ~ {DateTime.Now}");
 		
 		Task.Run(Read);

@@ -12,11 +12,24 @@ public static class CortanaDesktop
     internal static DesktopInfo DesktopInfo { get; private set; }
     private static Socket? _computerSocket;
 
-    private static void Main()
+    private static async Task Main()
     {
         DesktopInfo = GetClientInfo();
-        string gateway = GetCortanaGateway().Result;
-        string address = gateway[..^1] + DesktopInfo.NetworkAddr;
+
+        string address = "";
+        while (string.IsNullOrEmpty(address))
+        {
+            await Task.Delay(3000);
+            IOption<string> gatewayOption = await GetCortanaGateway();
+            
+            address = gatewayOption.Match(
+                gateway => gateway[..^1] + DesktopInfo.NetworkAddr,
+                () =>
+                {
+                    DataHandler.Log(nameof(CortanaDesktop), "Cortana not reachable, can't find correct address");
+                    return "";
+                });
+        }
         
         StartAliveTimer();
 
@@ -25,21 +38,21 @@ public static class CortanaDesktop
             CreateSocketConnection(address, DesktopInfo.TcpPort);
             
             Write("computer");
-            Read();
+            await Read();
             
-            Thread.Sleep(1000);
+            await Task.Delay(2000);
         }
     }
 
-    private static async Task<string> GetCortanaGateway()
+    private static async Task<IOption<string>> GetCortanaGateway()
     {
         try
         {
-            ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
-            return result.Response;
+            return await ApiHandler.GetOption($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
         }
-        catch{
-            throw new CortanaException("Cortana not reachable, can't find correct address");
+        catch
+        {
+            return new None<string>();
         } 
     }
 
@@ -68,7 +81,7 @@ public static class CortanaDesktop
         timer.Start();
     }
     
-    private static void Read()
+    private static async Task Read()
     {
         if(_computerSocket == null) return;
 
@@ -95,7 +108,7 @@ public static class CortanaDesktop
                         textCommand = null;
                         break;
                 }
-                Thread.Sleep(250);
+                await Task.Delay(250);
             }
         }
         catch
@@ -127,9 +140,8 @@ public static class CortanaDesktop
 
     private static DesktopInfo GetClientInfo()
 	{
-        string cortanaPath = DataHandler.Env("CORTANA_PATH");
-		string confPath = Path.Combine(cortanaPath, DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json"));
-        if (!File.Exists(confPath)) throw new Exception("Unknown client connection info");
+		string confPath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json");
+        if (!File.Exists(confPath)) throw new CortanaException("Unknown client connection info");
         return DataHandler.DeserializeJson<DesktopInfo>(confPath);
     }
 }
