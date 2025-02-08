@@ -1,7 +1,5 @@
 ﻿@page "/"
-@using System.Text
 @using CortanaLib
-@using CortanaLib.Extensions
 @using CortanaLib.Structures
 @inject IJSRuntime JsRuntime;
 
@@ -140,26 +138,14 @@
     
     private async Task SwitchDevice(EDevice device, EPowerAction action)
     {
-        HttpClient client = new HttpClient();
-        switch (device)
-        {
-            case EDevice.Computer:
-                client.BaseAddress = new Uri("http://localhost:5117");
-                break;
-            case EDevice.Power:
-                client.BaseAddress = new Uri("http://192.168.178.117:5117");
-                break;
-            case EDevice.Lamp:
-                client.BaseAddress = new Uri("http://cortana.viewdns.net:5117");
-                break;
-        }
-        HttpContent content = new StringContent(new PostAction(action.ToString()).Serialize(), Encoding.UTF8, "application/json");
-        var result = await client.PostAsync($"{ERoute.Device}/{device}", content);
-        //await JsRuntime.InvokeVoidAsync("alert", result.);
+        await JsRuntime.InvokeVoidAsync("alert", "test");
+        ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
+        await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
     
     private async Task SwitchRoom(EPowerAction action)
     {
+        Temperature = "dodici";
         ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/room", new PostAction(action.ToString()));
         await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
