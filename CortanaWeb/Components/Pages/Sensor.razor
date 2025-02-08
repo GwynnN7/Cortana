@@ -1,77 +1,69 @@
-﻿@page "/sensor"
+﻿@page "/sensors"
 @using CortanaLib
 @using CortanaLib.Structures
+@rendermode InteractiveServer
 
 <PageTitle>Sensors List</PageTitle>
-
-<h1>Sensors List</h1>
-
-@if (_data == null)
-{
-    <p>
-        <em>Reading sensors...</em>
-    </p>
-}
-else
-{
-    <table class="table">
-        <thead>
-        <tr>
-            <th>Time</th>
-            <th aria-label="Name">Name</th>
-            <th aria-label="Value">Value</th>
-        </tr>
-        </thead>
-        <tbody>
-        @foreach (SensorData data in _data)
-        {
+<main>
+    <div class="table-container">
+        <table class="raspberry-table">
+            <thead>
             <tr>
-                <td>@data.Time.ToShortTimeString()</td>
-                <td>@data.Text</td>
-                <td>@data.Value</td>
+                <th>Sensor</th>
+                <th>Data</th>
             </tr>
-        }
-        </tbody>
-    </table>
-}
+            </thead>
+            <tbody>
+            <tr>
+                <td>Room Temperature</td>
+                <td>@_data?.Temperature</td>
+            </tr>
+            <tr>
+                <td>Light Level</td>
+                <td>@_data?.Light</td>
+            </tr>
+            <tr>
+                <td>Movement</td>
+                <td>@_data?.Motion</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
 
 @code {
-    private List<SensorData>? _data;
+    private SensorData? _data;
+    private System.Threading.Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
-        TimeOnly time = TimeOnly.FromDateTime(DateTime.Now);
-        _data =
-        [
-            new SensorData
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync( async ()  =>
             {
-                Time = time,
-                Text = "Temperature",
-                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}")).Response
-            },
+                ResponseMessage newTemp = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
+                ResponseMessage newLight = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
+                ResponseMessage newMotion = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}");
+                
+                _data = new SensorData
+                {
+                    Temperature = newTemp.Response,
+                    Light = newLight.Response,
+                    Motion = newMotion.Response
+                };
 
-            new SensorData
-            {
-                Time = time,
-                Text = "Motion",
-                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}")).Response
-            },
+                StateHasChanged();
+            });
+        }, null, 0, 2000);
 
-            new SensorData
-            {
-                Time = time,
-                Text = "Light",
-                Value = (await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}")).Response
-            }
-        ];
         await base.OnInitializedAsync();
     }
 
     private class SensorData
     {
-        public TimeOnly Time { get; init; }
-        public required string Text { get; init; }
-        public required string Value { get; init; }
+        public string Temperature { get; init; } = "Loading...";
+        public string Light { get; init; } = "Loading...";
+        public string Motion { get; init; } = "Loading...";
     }
-
 }

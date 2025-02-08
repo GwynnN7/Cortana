@@ -1,0 +1,91 @@
+@page "/raspberry"
+@using CortanaLib
+@using CortanaLib.Structures
+@rendermode InteractiveServer
+
+<PageTitle>Sensors List</PageTitle>
+<main>
+    <div class="table-container">
+        <table class="raspberry-table">
+            <thead>
+            <tr>
+                <th>Info</th>
+                <th>Data</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>CPU Temperature</td>
+                <td>@_data?.Temperature</td>
+            </tr>
+            <tr>
+                <td>Location</td>
+                <td>@_data?.Location</td>
+            </tr>
+            <tr>
+                <td>Gateway</td>
+                <td>@_data?.Gateway</td>
+            </tr>
+            <tr>
+                <td>IPv4 Address</td>
+                <td>@_data?.Ip</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="container">
+        <div class="card">
+            <h2>Commands</h2>
+            <div class="button-group">
+                <button @onclick="() => CommandRaspberry(ERaspberryCommand.Shutdown)">Shutdown</button>
+                <button @onclick="() => CommandRaspberry(ERaspberryCommand.Reboot)">Reboot</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+@code {
+    private SensorData? _data;
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ResponseMessage gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+        ResponseMessage ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
+        ResponseMessage location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
+
+        _data = new SensorData
+        {
+            Gateway = gateway.Response,
+            Ip = ip.Response,
+            Location = location.Response
+        };
+        
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync( async ()  =>
+            {
+                ResponseMessage newTemp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
+                _data = _data with { Temperature = newTemp.Response };
+
+                StateHasChanged();
+            });
+        }, null, 0, 2000);
+
+        await base.OnInitializedAsync();
+    }
+
+    private record SensorData
+    {
+        public string Temperature { get; init; } = "Loading...";
+        public string Location { get; init; } = "Loading...";
+        public string Gateway { get; init; } = "Loading...";
+        public string Ip { get; init; } = "Loading...";
+    }
+
+    private async Task CommandRaspberry(ERaspberryCommand command)
+    {
+        await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString()));
+    }
+
+}

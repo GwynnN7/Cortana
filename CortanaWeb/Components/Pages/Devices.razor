@@ -1,0 +1,113 @@
+@page "/devices"
+@using CortanaLib
+@using CortanaLib.Structures
+@rendermode InteractiveServer
+
+<main>
+    <section id="devices">
+        <div class="device-grid">
+            <div class="device-card">
+                <h3>Power</h3>
+                <p>@_deviceStatus?[EDevice.Power]</p>
+                <div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.On)">On</button>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Off)">Off</button>
+                </div>
+                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Toggle)">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Computer</h3>
+                <p>@_deviceStatus?[EDevice.Computer]</p>
+                <div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.On)">On</button>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Off)">Off</button>
+                </div>
+                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Toggle)">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Lamp</h3>
+                <p>@_deviceStatus?[EDevice.Lamp]</p>
+                <div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.On)">On</button>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Off)">Off</button>
+                </div>
+                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Toggle)">Toggle</button>
+            </div>
+            <div class="device-card">
+                <h3>Generic</h3>
+                <p>@_deviceStatus?[EDevice.Generic]</p>
+                <div>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.On)">On</button>
+                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Off)">Off</button>
+                </div>
+                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Toggle)">Toggle</button>
+            </div>
+        </div>
+    </section>
+
+    <div class="container">
+        <div class="card">
+            <h2>Commands</h2>
+            <div class="button-group">
+                <button @onclick="() => CommandPc(EComputerCommand.Reboot)">Reboot</button>
+                <button @onclick="() => CommandPc(EComputerCommand.Suspend)">Suspend</button>
+                <button @onclick="() => CommandPc(EComputerCommand.System)">Linux/Windows</button>
+                <button @onclick="Sleep">Sleep</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+@code {
+    private System.Threading.Timer? _timer;
+    private Dictionary<EDevice, string>? _deviceStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync( async ()  =>
+            {
+                await UpdateStatus();
+                StateHasChanged();
+            });
+        }, null, 0, 2000);
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task SwitchDevice(EDevice device, EPowerAction action)
+    {
+        await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
+        await UpdateStatus();
+    }
+
+    private async Task UpdateStatus()
+    {
+        ResponseMessage lamp = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Lamp}");
+        ResponseMessage power = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Power}");
+        ResponseMessage computer = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Computer}");
+        ResponseMessage generic = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Generic}");
+
+        _deviceStatus = new Dictionary<EDevice, string>
+        {
+            { EDevice.Lamp, lamp.Response },
+            { EDevice.Power, power.Response },
+            { EDevice.Computer, computer.Response },
+            { EDevice.Generic, generic.Response }
+        };
+    }
+
+    private async Task Sleep()
+    {
+        await ApiHandler.Post($"{ERoute.Device}/sleep");
+        await UpdateStatus();
+    }
+
+    private async Task CommandPc(EComputerCommand command)
+    {
+        await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString()));
+        await UpdateStatus();
+    }
+
+}
