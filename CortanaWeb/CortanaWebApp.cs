@@ -22,12 +22,13 @@ public class CortanaWebApp
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        _ = Task.Run(async () =>
+        Task webTask = Task.Run(async () => await app.RunAsync());
+        Task stopTask = Task.Run(async () =>
         {
             await SignalHandler.WaitForInterrupt();
             await app.StopAsync();
+            await app.DisposeAsync();
         });
-        
-        await app.RunAsync();
+        await Task.WhenAll(webTask, stopTask);
     }
 }

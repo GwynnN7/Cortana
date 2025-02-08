@@ -12,6 +12,13 @@ public static class HardwareApi
 	private static readonly Lock ComputerLock = new();
 	private static readonly Lock DeviceLock = new();
 
+	public static void InitializeHardware()
+	{
+		DeviceHandler.LoadDevices();
+		ServerHandler.Initialize();
+		Service.Start();
+	}
+	
 	public static void ShutdownService()
 	{
 		ComputerHandler.Interrupt();

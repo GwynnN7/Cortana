@@ -21,6 +21,10 @@ public static class DeviceHandler
 	static DeviceHandler()
 	{
 		DeviceStatus = new Dictionary<EDevice, EPowerStatus>();
+	}
+	
+	public static void LoadDevices()
+	{
         foreach (EDevice device in Enum.GetValues<EDevice>()) DeviceStatus.Add(device, EPowerStatus.Off);
 	}
 

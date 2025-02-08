@@ -14,6 +14,9 @@ public static class Cortana
         
         EnvService.Load();
         Bootloader.LoadKernel();
+        HardwareApi.InitializeHardware();
+        IpcService.Publish(EMessageCategory.Urgent, "Initializing IPC Service");
+        
         Task shutdownTask = Task.Run(WaitForShutdown);
 
         DataHandler.Log(nameof(CortanaKernel), "Initializing API...");

@@ -28,9 +28,12 @@ public static class Service
 		
         NetworkData = RaspberryHandler.GetNetworkGateway() == orvietoNet.Gateway ? orvietoNet : pisaNet;
         Settings = Settings.Load();
-        
-        Task.Run(ServerHandler.StartListening);
-        ResetControllerTimer();
+    }
+
+    public static void Start()
+    {
+	    Task.Run(ServerHandler.StartListening);
+	    ResetControllerTimer();
     }
     
     public static void ResetControllerTimer()

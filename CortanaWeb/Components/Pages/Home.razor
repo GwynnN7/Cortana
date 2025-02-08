@@ -1,5 +1,7 @@
 ﻿@page "/"
+@using System.Text
 @using CortanaLib
+@using CortanaLib.Extensions
 @using CortanaLib.Structures
 @inject IJSRuntime JsRuntime;
 
@@ -49,10 +51,10 @@
                 <div class="device-card">
                     <h3>Power</h3>
                     <div>
-                        <button class="device-button" @onclick="ABC">On</button>
-                        <button class="device-button" @onclick="ABC">Off</button>
+                        <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Power, EPowerAction.On)">On</button>
+                        <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Power, EPowerAction.Off)">Off</button>
                     </div>
-                    <button class="device-button" @onclick="ABC">Toggle</button>
+                    <button class="device-button" @onclick="async () => await SwitchDevice(EDevice.Power, EPowerAction.Toggle)">Toggle</button>
                 </div>
                 <div class="device-card">
                     <h3>Computer</h3>
@@ -138,13 +140,22 @@
     
     private async Task SwitchDevice(EDevice device, EPowerAction action)
     {
-       
-        ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
-        await JsRuntime.InvokeVoidAsync("alert", result.Response);
-    }
-    private async Task ABC()
-    {
-        await ApiHandler.Post($"{ERoute.Device}/{EDevice.Lamp}");
+        HttpClient client = new HttpClient();
+        switch (device)
+        {
+            case EDevice.Computer:
+                client.BaseAddress = new Uri("http://localhost:5117");
+                break;
+            case EDevice.Power:
+                client.BaseAddress = new Uri("http://192.168.178.117:5117");
+                break;
+            case EDevice.Lamp:
+                client.BaseAddress = new Uri("http://cortana.viewdns.net:5117");
+                break;
+        }
+        HttpContent content = new StringContent(new PostAction(action.ToString()).Serialize(), Encoding.UTF8, "application/json");
+        var result = await client.PostAsync($"{ERoute.Device}/{device}", content);
+        //await JsRuntime.InvokeVoidAsync("alert", result.);
     }
     
     private async Task SwitchRoom(EPowerAction action)

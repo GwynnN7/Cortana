@@ -11,8 +11,12 @@ public static class ServerHandler
 	
 	static ServerHandler()
 	{
+		Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
+	}
+	
+	public static void Initialize()
+	{
 		var ipEndPoint = new IPEndPoint(IPAddress.Any, int.Parse(DataHandler.Env("CORTANA_TCP_PORT")));
-		Server = new Socket(ipEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 		Server.Bind(ipEndPoint);
 	}
 	
