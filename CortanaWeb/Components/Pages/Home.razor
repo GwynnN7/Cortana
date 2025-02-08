@@ -81,10 +81,10 @@
                 <div class="device-card">
                     <h3>Room</h3>
                     <div>
-                        <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.On)">On</button>
-                        <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.Off)">Off</button>
+                        <button class="device-button" @onclick="SwitchRoom">On</button>
+                        <button class="device-button" @onclick="SwitchRoom">Off</button>
                     </div>
-                    <button class="device-button" @onclick="() => SwitchRoom(EPowerAction.Toggle)">Toggle</button>
+                    <button class="device-button" @onclick="SwitchRoom">Toggle</button>
                 </div>
             </div>
         </section>
@@ -143,10 +143,11 @@
         await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
     
-    private async Task SwitchRoom(EPowerAction action)
+    private async Task SwitchRoom()
     {
+        await Task.Delay(1000);
         Temperature = "dodici";
-        ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/room", new PostAction(action.ToString()));
-        await JsRuntime.InvokeVoidAsync("alert", result.Response);
+        //ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/room", new PostAction(action.ToString()));
+        //await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
 }
