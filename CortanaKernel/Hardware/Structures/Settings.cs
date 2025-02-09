@@ -48,7 +48,7 @@ public class Settings
             field = Math.Clamp(value, 0, MotionOffMax);
             this.Serialize().Dump(FilePath);
         }
-    } = 9;
+    } = 1;
     
     public int MotionOffMax
     {
@@ -58,7 +58,7 @@ public class Settings
             field = Math.Clamp(value, MotionOffMin, 3600);
             this.Serialize().Dump(FilePath);
         }
-    } = 60;
+    } = 30;
     
     public static Settings Load()
     {

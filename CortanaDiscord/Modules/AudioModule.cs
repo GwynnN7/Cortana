@@ -1,4 +1,5 @@
-﻿using CortanaDiscord.Handlers;
+﻿using System.Collections.Concurrent;
+using CortanaDiscord.Handlers;
 using CortanaDiscord.Utility;
 using CortanaLib;
 using Discord;
@@ -136,30 +137,22 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		Embed embed = DiscordUtils.CreateEmbed("Memes fixed!");
 		var embedBuilder = embed.ToEmbedBuilder();
 		
-		using HttpClient client = new();
-		Memes memes = new();
-		bool error = false;
-		foreach (KeyValuePair<string, MemeJsonStructure> meme in DiscordUtils.Memes)
+		HttpClient client = new();
+
+		ConcurrentDictionary<string, MemeJsonStructure> memes = new();
+		IEnumerable<Task> tasks = DiscordUtils.Memes.Select(async pair =>
 		{
-			try
+			HttpResponseMessage response = await client.GetAsync(pair.Value.Link);
+			string content = await response.Content.ReadAsStringAsync();
+			if (content.Contains("video non è più disponibile") || content.Contains("video unavailable"))
 			{
-				HttpResponseMessage response = await client.GetAsync(meme.Value.Link);
-				string content = await response.Content.ReadAsStringAsync();
-				if (content.Contains("video non è più disponibile") || content.Contains("video unavailable"))
-				{
-					embedBuilder.AddField(meme.Key, "Video unavailable");
-					continue;
-				}
+				lock(embedBuilder) embedBuilder.AddField(pair.Key, "Video unavailable");
+				return;
 			}
-			catch
-			{
-				error = true;
-			}
-			memes.Add(meme.Key, meme.Value);
-		}
-		DiscordUtils.UpdateMemes(memes);
-		
-		if (error) embedBuilder.WithFooter("I was unable to fix some of them");
+			memes.TryAdd(pair.Key, pair.Value);
+		});
+		await Task.WhenAll(tasks);
+		DiscordUtils.UpdateMemes(memes.ToDictionary());
 		
 		await FollowupAsync(embed: embedBuilder.Build(), ephemeral: true);
 	}

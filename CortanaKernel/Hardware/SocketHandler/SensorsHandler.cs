@@ -27,7 +27,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 			{
 				switch (newData)
 				{
-					case { PreciseMotion: EPowerStatus.Off, WideMotion: EPowerStatus.Off } when _motionTimer == null:
+					case { Motion: (int) EPowerStatus.Off } when _motionTimer == null:
 					{
 						int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EPowerStatus.On
 							? Service.Settings.MotionOffMax
@@ -36,26 +36,18 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 						_motionTimer.Set((seconds, 0, 0));
 						break;
 					}
-					case { PreciseMotion: EPowerStatus.On } or { WideMotion: EPowerStatus.On }:
+					case { Motion: (int) EPowerStatus.On }:
 						_motionTimer?.Destroy();
 						_motionTimer = null;
 						break;
 				}
 			}
-			else
+			else if(newData.Motion == (int) EPowerStatus.On)
 			{
-				switch (newData)
+				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 				{
-					case { PreciseMotion: EPowerStatus.On } or { WideMotion: EPowerStatus.On }:
-					{
-						if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
-						{
-							HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
-							IpcService.Publish(EMessageCategory.Update,"Motion detected, switching lamp on!");
-						}
-						
-						break;
-					}
+					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
+					IpcService.Publish(EMessageCategory.Update,"Motion detected, switching lamp on!");
 				}
 			}
 		}
@@ -100,7 +92,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 		lock (InstanceLock)
 		{
 			if(_instance?._lastSensorData == null) return null;
-			return _instance._lastSensorData.Value.WideMotion == EPowerStatus.On || _instance._lastSensorData.Value.PreciseMotion == EPowerStatus.On ? EPowerStatus.On : EPowerStatus.Off;
+			return _instance._lastSensorData.Value.Motion == (int) EPowerStatus.On ? EPowerStatus.On : EPowerStatus.Off;
 		}
 	}
 	
