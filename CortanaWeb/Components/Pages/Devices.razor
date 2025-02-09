@@ -78,16 +78,16 @@
 
     private async Task SwitchDevice(EDevice device, EPowerAction action)
     {
-        await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
+        await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
         await UpdateStatus();
     }
 
     private async Task UpdateStatus()
     {
-        ResponseMessage lamp = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Lamp}");
-        ResponseMessage power = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Power}");
-        ResponseMessage computer = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Computer}");
-        ResponseMessage generic = await ApiHandler.Get($"{ERoute.Device}/{EDevice.Generic}");
+        ResponseMessage lamp = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}");
+        ResponseMessage power = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}");
+        ResponseMessage computer = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}");
+        ResponseMessage generic = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}");
 
         _deviceStatus = new Dictionary<EDevice, string>
         {
@@ -100,7 +100,7 @@
 
     private async Task Sleep()
     {
-        await ApiHandler.Post($"{ERoute.Device}/sleep");
+        await ApiHandler.Post($"{ERoute.Devices}/sleep");
         await UpdateStatus();
     }
 

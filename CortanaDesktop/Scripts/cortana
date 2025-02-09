@@ -35,7 +35,7 @@ if len(sys.argv) > 1:
     if sys.argv[1] == "log":
         text = cortanaGet()
         cpuTemp = cortanaGet("raspberry/temperature")
-        roomTemp = cortanaGet("sensor/temperature")
+        roomTemp = cortanaGet("sensors/temperature")
         if text == "Cortana Offline":
             executeInBlue(f"echo {text}")
         else:

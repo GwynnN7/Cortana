@@ -57,8 +57,8 @@
     <section id="about">
         <h2>About Cortana</h2>
         <p><b>Halo</b> inspired <b>Home Assistant</b> and <i>Artificial Intelligence</i><br>
-            My personal assistant in daily routines, integrated with sensors, devices, applications and internet<br/>
-            Currently living on <b>Raspberry Pi 4</b> running on <b>dotnet C#</b>
+            My personal assistant in daily routines, integrated with <b>sensors, devices, applications and internet</b><br/>
+            Currently living on <b>Raspberry Pi 4</b> running mostly on <b>C# .NET and ASP.NET CORE</b>
         </p>
     </section>
 </main>
@@ -76,7 +76,7 @@
         {
             InvokeAsync( async ()  =>
             {
-                ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
+                ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
                 Temperature = result.Response;       
                 StateHasChanged();
             });

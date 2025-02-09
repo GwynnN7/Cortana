@@ -18,9 +18,13 @@ WiFiClient client;
 
 int currentMotion = LOW;
 int lastMotion = LOW;
+float temp;
+int light;
 
 unsigned long tcpTime;
+unsigned long valueTime;
 const int transmissionTime = 2000;
+const int updateTime = 1000;
 
 void setup() {
   analogSetAttenuation(ADC_11db);
@@ -33,33 +37,43 @@ void setup() {
   connectToCortana();
 
   client.print("esp32");
+  readSensors();
 
   tcpTime = millis();
+  valueTime = millis();
 }
 
 void loop() {
   currentMotion = digitalRead(motion_sensor);
   digitalWrite(led, currentMotion);
-  delay(100);
-  return;
-  if((millis() - tcpTime >= transmissionTime) || (currentMotion == !lastMotion))
+ 
+  if((millis() - tcpTime >= transmissionTime) || (currentMotion != lastMotion))
   {
-    DS18B20.requestTemperatures();
-    float temp = DS18B20.getTempCByIndex(0);
-    int light = analogRead(light_sensor);
-    
-    connectToCortana();
-
     char buff[100];
-    snprintf(buff, 100, "{ \"motion\": \"%d\", \"light\": %d, \"temperature\": %f }", currentMotion, light, temp);
+    snprintf(buff, 100, "{ \"motion\": %d, \"light\": %d, \"temperature\": %f }", currentMotion, light, temp);
     client.print(buff);
 
     lastMotion = currentMotion;
 
     tcpTime = millis();
   }
-   
-  delay(50);
+
+  if(millis() - valueTime >= updateTime)
+  {
+    connectToCortana();
+    readSensors();
+
+    valueTime = millis();
+  }
+
+  delay(100);
+}
+
+void readSensors()
+{
+  DS18B20.requestTemperatures();
+  temp = DS18B20.getTempCByIndex(0);
+  light = analogRead(light_sensor);
 }
 
 void connectToCortana()

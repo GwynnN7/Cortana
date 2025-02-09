@@ -3,10 +3,10 @@
 public enum ERoute
 {
 	Computer,
-	Device,
+	Devices,
 	Raspberry,
-	Sensor,
-	SubFunction,
+	Sensors,
+	SubFunctions,
 	Settings
 }
 

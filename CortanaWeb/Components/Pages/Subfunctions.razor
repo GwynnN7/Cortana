@@ -72,17 +72,17 @@
     
     private async Task HandleSubfunction(ESubFunctionType type, ESubfunctionAction action)
     {
-        ResponseMessage result = await ApiHandler.Post($"{ERoute.SubFunction}/{type}", new PostAction(action.ToString()));
+        ResponseMessage result = await ApiHandler.Post($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
         await UpdateStatus();
         await JsRuntime.InvokeVoidAsync("alert", result.Response);
     }
 
     private async Task UpdateStatus()
     {
-        ResponseMessage kernel = await ApiHandler.Get($"{ERoute.SubFunction}/{ESubFunctionType.CortanaKernel}");
-        ResponseMessage discord = await ApiHandler.Get($"{ERoute.SubFunction}/{ESubFunctionType.CortanaDiscord}");
-        ResponseMessage telegram = await ApiHandler.Get($"{ERoute.SubFunction}/{ESubFunctionType.CortanaTelegram}");
-        ResponseMessage web = await ApiHandler.Get($"{ERoute.SubFunction}/{ESubFunctionType.CortanaWeb}");
+        ResponseMessage kernel = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaKernel}");
+        ResponseMessage discord = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}");
+        ResponseMessage telegram = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaTelegram}");
+        ResponseMessage web = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}");
 
         _subfunctionStatus = new Dictionary<ESubFunctionType, string>
         {

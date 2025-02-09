@@ -41,7 +41,7 @@ internal abstract class CommandModule : IModuleInterface
 					await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton());
 				break;
 			case "sleep":
-				ResponseMessage sleep = await ApiHandler.Post($"{ERoute.Device}/sleep");
+				ResponseMessage sleep = await ApiHandler.Post($"{ERoute.Devices}/sleep");
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, sleep.Response);
 				break;
 			case "cancel":

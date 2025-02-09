@@ -24,16 +24,16 @@ internal abstract class SensorModule : IModuleInterface
 		switch (command)
 		{
 			case "light":
-				ResponseMessage light = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
+				ResponseMessage light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
 				ResponseMessage threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light.Response}/{threshold.Response}");
 				break;
 			case "temperature":
-				ResponseMessage temp = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
+				ResponseMessage temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp.Response}");
 				break;
 			case "motion":
-				ResponseMessage motion = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}");
+				ResponseMessage motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
 				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.ControlMode}");
 				ResponseMessage limitMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LimitMode}");
 				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Response} ~ Current/Limit: {currentMode.Response}/{limitMode.Response}");
@@ -91,7 +91,7 @@ internal abstract class SensorModule : IModuleInterface
 			}
 			case ETelegramChatArg.SetLightThreshold:
 			{
-				ResponseMessage lightLevel = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
+				ResponseMessage lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
 					ResponseMessage lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));

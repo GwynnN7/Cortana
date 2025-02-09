@@ -42,9 +42,9 @@
         {
             InvokeAsync( async ()  =>
             {
-                ResponseMessage newTemp = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Temperature}");
-                ResponseMessage newLight = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Light}");
-                ResponseMessage newMotion = await ApiHandler.Get($"{ERoute.Sensor}/{ESensor.Motion}");
+                ResponseMessage newTemp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
+                ResponseMessage newLight = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+                ResponseMessage newMotion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
                 
                 _data = new SensorData
                 {

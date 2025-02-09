@@ -11,7 +11,7 @@ public class SubfunctionEndpoints : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app) 
     {
-    	RouteGroupBuilder group = app.MapGroup($"{ERoute.SubFunction}/");
+    	RouteGroupBuilder group = app.MapGroup($"{ERoute.SubFunctions}/");
     	
     	group.MapGet("", Root);
 	    group.MapPost("", PublishMessage);

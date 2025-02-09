@@ -11,7 +11,7 @@ public class SensorEndpoints : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-    	RouteGroupBuilder group = app.MapGroup($"{ERoute.Sensor}/");
+    	RouteGroupBuilder group = app.MapGroup($"{ERoute.Sensors}/");
     	
         group.MapGet("", Root);
         group.MapGet("{sensor}", GetData);

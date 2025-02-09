@@ -13,7 +13,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Switch Lamp")]
 	public async Task LightToggle()
 	{
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{EDevice.Lamp}");
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}");
 		Embed embed = DiscordUtils.CreateEmbed(result.Response);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
@@ -23,7 +23,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/{device}", new PostAction(action.ToString()));
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
 
 		Embed embed = DiscordUtils.CreateEmbed(result.Response);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -34,7 +34,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Get($"{ERoute.Device}/{device}");
+		ResponseMessage result = await ApiHandler.Get($"{ERoute.Devices}/{device}");
 		
 		Embed embed = DiscordUtils.CreateEmbed(result.Response);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -78,7 +78,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensor}/{info}");
+		ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensors}/{info}");
 
 		Embed embed = DiscordUtils.CreateEmbed(result.Response);
 		await FollowupAsync(embed: embed, ephemeral: true);
@@ -89,7 +89,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Device}/sleep");
+		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/sleep");
 
 		Embed embed = DiscordUtils.CreateEmbed(result.Response);
 		await FollowupAsync(embed: embed, ephemeral: true);

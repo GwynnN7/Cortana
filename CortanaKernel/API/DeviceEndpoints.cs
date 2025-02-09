@@ -11,7 +11,7 @@ public class DeviceEndpoints: ICarterModule
 {
 	public void AddRoutes(IEndpointRouteBuilder app) 
 	{
-		RouteGroupBuilder group = app.MapGroup($"{ERoute.Device}/");
+		RouteGroupBuilder group = app.MapGroup($"{ERoute.Devices}/");
 		
 		group.MapGet("", Root);
 		group.MapGet("{device}", DeviceStatus);
