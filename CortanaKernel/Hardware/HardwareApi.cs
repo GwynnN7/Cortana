@@ -181,11 +181,17 @@ public static class HardwareApi
 		{
 			lock (DeviceLock)
 			{
-				StringResult lampResult = Switch(EDevice.Lamp, action);
+				if (action == EPowerAction.On)
+				{
+					if (SensorsHandler.GetRoomLightLevel().GetValueOrDefault(0) <= Service.Settings.LightThreshold)
+					{
+						Switch(EDevice.Lamp, action);
+					}
+				}
+				else Switch(EDevice.Lamp, action);
 				StringResult powerResult = Switch(EDevice.Power, action);
 
-				if (lampResult.IsOk && powerResult.IsOk) return StringResult.Success($"Devices switched {action}");
-				return StringResult.Failure("A device failed to switch");
+				return powerResult.IsOk ? StringResult.Success($"Devices switched {action}") : StringResult.Failure("Devices failed to switch");
 			}
 		}
 		
