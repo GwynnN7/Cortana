@@ -8,7 +8,7 @@ const char CORTANA_IP[] = "192.168.178.117";
 const int CORTANA_PORT = 5116;
 
 const int led = 33;
-const int light_sensor = 25;
+const int light_sensor = 35;
 const int motion_sensor = 26;
 const int temp_sensor = 27;
 
