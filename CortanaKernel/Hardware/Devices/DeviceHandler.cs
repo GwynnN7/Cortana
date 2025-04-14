@@ -7,8 +7,8 @@ namespace CortanaKernel.Hardware.Devices;
 
 public static class DeviceHandler
 {
-	private const int Gpio23 = 23; //Lamp Pisa && Generic
-	private const int Gpio24 = 24; //Computer Power
+	private const int Gpio23 = 24; //Lamp Pisa && Generic
+	private const int Gpio24 = 23; //Computer Power
 	private const int Gpio25 = 25; //Lamp Orvieto
 	
 	private static int LampPin => Service.NetworkData.Location == ELocation.Orvieto ? Gpio25 : Gpio23;
