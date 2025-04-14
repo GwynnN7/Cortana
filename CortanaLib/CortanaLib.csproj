@@ -10,9 +10,9 @@
     <ItemGroup>
       <PackageReference Include="Mono.Unix" Version="7.1.0-final.1.21458.1" />
       <PackageReference Include="QRCoder" Version="1.6.0" />
-      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
-      <PackageReference Include="YoutubeExplode" Version="6.5.2" />
-      <PackageReference Include="YoutubeExplode.Converter" Version="6.5.2" />
+      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+      <PackageReference Include="YoutubeExplode" Version="6.5.4" />
+      <PackageReference Include="YoutubeExplode.Converter" Version="6.5.4" />
     </ItemGroup>
 
 </Project>
