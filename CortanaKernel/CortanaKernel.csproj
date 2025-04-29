@@ -12,7 +12,7 @@
         <PackageReference Include="Carter" Version="9.0.0" />
         <PackageReference Include="Iot.Device.Bindings" Version="3.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.0-preview.3.25172.1" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.1.13" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.2.1" />
         <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
     </ItemGroup>
 

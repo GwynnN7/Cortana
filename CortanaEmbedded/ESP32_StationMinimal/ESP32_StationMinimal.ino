@@ -7,10 +7,10 @@ const char WIFI_PASSWORD[] = "3YRC8T4GB3X4A4XA";
 const char CORTANA_IP[] = "192.168.1.117";
 const int CORTANA_PORT = 5116;
 
-const int led = 33;
+const int led = 21;
 const int light_sensor = 35;
-const int motion_sensor = 26;
-const int temp_sensor = 27;
+const int motion_sensor = 23;
+const int temp_sensor = 22;
 
 OneWire oneWire(temp_sensor);
 DallasTemperature DS18B20(&oneWire);
@@ -27,7 +27,6 @@ const int transmissionTime = 2000;
 const int updateTime = 1000;
 
 void setup() {
-  analogSetAttenuation(ADC_11db);
   DS18B20.begin();
 
   pinMode(motion_sensor, INPUT);
