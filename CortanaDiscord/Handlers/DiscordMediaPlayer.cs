@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using CliWrap;
 using CortanaLib;
 using Discord.Audio;
@@ -102,7 +103,7 @@ public class DiscordMediaPlayer(IAudioClient client)
                 continue;
             }
             
-            await using AudioOutStream? player = client.CreatePCMStream(AudioApplication.Music);
+           /* await using AudioOutStream? player = client.CreatePCMStream(AudioApplication.Music);
             
             Command ffmpeg = Cli.Wrap("ffmpeg")
                 .WithArguments([
@@ -115,23 +116,38 @@ public class DiscordMediaPlayer(IAudioClient client)
                     "pipe:1"
                 ])
                 .WithStandardOutputPipe(PipeTarget.ToStream(player))
-                .WithStandardErrorPipe(PipeTarget.ToDelegate(Console.Error.WriteLine));
+                .WithStandardErrorPipe(PipeTarget.ToDelegate(Console.Error.WriteLine));*/
+            
+            var x = Process.Start(new ProcessStartInfo
+            {
+                FileName = "ffmpeg",
+                Arguments = $"-hide_banner -loglevel panic -i \"{track.StreamUrl}\" -ac 2 -f s16le -ar 48000 pipe:1",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+            })!;
+            using (var y = x)
+            using (var output = y.StandardOutput.BaseStream)
+            using (var discord = client.CreatePCMStream(AudioApplication.Mixed))
+            {
+                try { await output.CopyToAsync(discord); }
+                finally { await discord.FlushAsync(); }
+            }
             
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, _currentTrackToken.Token);
             CancellationToken linkedToken = linkedCts.Token;
 
             try
             {
-                await ffmpeg.ExecuteAsync(linkedToken, linkedToken);
+                //await ffmpeg.ExecuteAsync(linkedToken, linkedToken);
             }
             catch (OperationCanceledException) when (_currentTrackToken.IsCancellationRequested)
             {
-                await player.FlushAsync(_cts.Token);
+                //await player.FlushAsync(_cts.Token);
             }
             catch
             {
                 _queue.Clear();
-                player.Flush();
+                //player.Flush();
                 
                 _cts.Dispose();
                 _cts = new CancellationTokenSource();
