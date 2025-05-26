@@ -102,6 +102,8 @@ public class DiscordMediaPlayer(IAudioClient client)
                 continue;
             }
             
+            await using AudioOutStream? player = client.CreatePCMStream(AudioApplication.Music);
+            
             Command ffmpeg = Cli.Wrap("ffmpeg")
                 .WithArguments([
                     "-hide_banner",
@@ -111,17 +113,16 @@ public class DiscordMediaPlayer(IAudioClient client)
                     "-f", "s16le",
                     "-ar", "48000",
                     "pipe:1"
-                ]);
-            
-            await using AudioOutStream? player = client.CreatePCMStream(AudioApplication.Music);
+                ])
+                .WithStandardOutputPipe(PipeTarget.ToStream(player))
+                .WithStandardErrorPipe(PipeTarget.ToDelegate(Console.Error.WriteLine));
             
             var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, _currentTrackToken.Token);
             CancellationToken linkedToken = linkedCts.Token;
 
             try
             {
-                await ffmpeg.ExecuteAsync(linkedToken);
-                await ffmpeg.StandardOutputPipe.CopyFromAsync(player, linkedToken);
+                await ffmpeg.ExecuteAsync(linkedToken, linkedToken);
             }
             catch (OperationCanceledException) when (_currentTrackToken.IsCancellationRequested)
             {

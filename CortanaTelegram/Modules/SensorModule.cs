@@ -157,7 +157,7 @@ internal abstract class SensorModule : IModuleInterface
 		return new InlineKeyboardMarkup()
 			.AddButton("Light Threshold", "sensor-set_lightth")
 			.AddNewRow()
-			.AddButton("Control Mode", "sensor-set_motiondetection")
+			.AddButton("Motion Detection", "sensor-set_motiondetection")
 			.AddNewRow()
 			.AddButton("Morning Hour", "sensor-set_morninghour")
 			.AddNewRow()
