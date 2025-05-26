@@ -90,7 +90,7 @@ public static class CortanaTelegramBot
 				case ETelegramChatArg.Shopping:
 					await ShoppingModule.HandleTextMessage(cortana, messageStats);
 					break;
-				case ETelegramChatArg.SetControlMode:
+				case ETelegramChatArg.SetMotionDetection:
 				case ETelegramChatArg.SetLightThreshold:
 				case ETelegramChatArg.SetMorningHour:
 				case ETelegramChatArg.SetMotionOffMax:

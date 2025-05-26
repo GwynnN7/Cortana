@@ -145,21 +145,22 @@ internal abstract class UtilityModule : IModuleInterface
 				await cortana.SendChatAction(messageStats.ChatId, ChatAction.UploadVideo);
 				try
 				{
-					Video videoInfos = await MediaHandler.GetYoutubeVideoInfos(messageStats.FullMessage);
+					AudioTrack? track = await MediaHandler.GetAudioTrack(messageStats.FullMessage);
+					if (track == null) throw new CortanaException("Video not available");
 					switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 					{
 						case ETelegramChatArg.VideoDownloader:
 						{
-							await MediaHandler.DownloadVideo(messageStats.FullMessage, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50, DataHandler.CortanaPath(EDirType.Storage));
+							await MediaHandler.DownloadVideo(track.OriginalUrl, (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<EVideoQuality>)!.Arg, 50, DataHandler.CortanaPath(EDirType.Storage));
 							Stream? videoStream = MediaHandler.GetStreamFromFile(DataHandler.CortanaPath(EDirType.Storage, "temp_video.mp4"));
-							if (videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, videoInfos.Title), videoInfos.Title);
+							if (videoStream != null) await cortana.SendVideo(messageStats.ChatId, InputFile.FromStream(videoStream, track.Title), track.Title);
 							else throw new CortanaException("Video file downloaded not found in Storage");
 							break;
 						}
 						case ETelegramChatArg.AudioDownloader:
 						{
-							Stream stream = await MediaHandler.GetAudioStream(messageStats.FullMessage);
-							await cortana.SendAudio(messageStats.ChatId, InputFile.FromStream(stream, videoInfos.Title));
+							Stream stream = await MediaHandler.GetAudioStream(track.OriginalUrl);
+							await cortana.SendAudio(messageStats.ChatId, InputFile.FromStream(stream, track.Title));
 							break;
 						}
 					}

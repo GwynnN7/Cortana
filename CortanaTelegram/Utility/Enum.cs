@@ -14,7 +14,7 @@ internal enum ETelegramChatArg
 	AudioDownloader,
 	VideoDownloader,
 	SetLightThreshold,
-	SetControlMode,
+	SetMotionDetection,
 	SetMotionOffMax,
 	SetMotionOffMin,
 	SetMorningHour

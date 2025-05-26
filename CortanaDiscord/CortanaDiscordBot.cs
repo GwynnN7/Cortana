@@ -58,7 +58,7 @@ public static class CortanaDiscordBot
 	
 	private static async Task StopDiscordBot()
 	{
-		foreach ((ulong clientId, _) in AudioHandler.AudioClients)
+		foreach ((ulong clientId, _) in AudioHandler.MediaQueue)
 		{
 			DiscordUtils.GuildSettings[clientId].AutoJoin = false;
 			AudioHandler.Disconnect(clientId);
@@ -129,7 +129,7 @@ public static class CortanaDiscordBot
 			if (newState.VoiceChannel != AudioHandler.GetCurrentCortanaChannel(guild)) return;
 
 			await Task.Delay(1000);
-			await AudioHandler.SayHello(newState.VoiceChannel.Guild.Id);
+			AudioHandler.SayHello(newState.VoiceChannel.Guild.Id);
 		}
 		else if (oldState.VoiceChannel != null && newState.VoiceChannel == null)
 		{

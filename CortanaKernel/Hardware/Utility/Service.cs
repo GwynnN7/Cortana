@@ -15,11 +15,6 @@ public static class Service
 	
 	private static Timer? _controllerTimer;
 	private static bool _morningMessage;
-
-	public static EControlMode CurrentControlMode { 
-		get => (EControlMode) Math.Min((int) field, (int) Settings.LimitControlMode);
-		private set;
-	} = EControlMode.Automatic;
     
     static Service()
     {
@@ -61,7 +56,7 @@ public static class Service
 			    return Task.CompletedTask;
 		    }
 		    
-		    if (DateTime.Now.Hour % 2 != 0)
+		    if (DateTime.Now.Hour % 2 != 0 && DateTime.Now.Hour < 6)
 		    {
 			    IpcService.Publish(EMessageCategory.Urgent,"You should go to sleep");
 		    }
@@ -69,7 +64,7 @@ public static class Service
 	    else
 	    {
 		    if(_morningMessage) IpcService.Publish(EMessageCategory.Urgent,"Good morning, switching to Automatic Mode");
-		    CurrentControlMode = EControlMode.Automatic;
+		    Settings.MotionDetection = EMotionDetection.On;
 		    _morningMessage = false;
 	    }
     	
@@ -78,7 +73,7 @@ public static class Service
     
     public static void EnterSleepMode(bool userAction = false)
     {
-	    CurrentControlMode = EControlMode.Night;
+	    Settings.MotionDetection = EMotionDetection.Off;
 	    
 	    switch (userAction)
 	    {
@@ -90,11 +85,7 @@ public static class Service
 	    }
 
 	    IpcService.Publish(EMessageCategory.Urgent,"Good night, switching to Night Mode");
-	    
-	    if (userAction || (!userAction && CurrentControlMode != EControlMode.Manual))
-	    {
-		    HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
-	    }
+	    HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
     }
 
     public static void InterruptController()

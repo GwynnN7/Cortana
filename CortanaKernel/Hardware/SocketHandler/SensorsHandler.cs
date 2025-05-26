@@ -21,7 +21,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		var newData = JsonSerializer.Deserialize<SensorData>(message, DataHandler.SerializerOptions);
 		
-		if (Service.CurrentControlMode == EControlMode.Automatic)
+		if (Service.Settings.MotionDetection == EMotionDetection.On)
 		{
 			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.On)
 			{
@@ -59,7 +59,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
-		if (Service.CurrentControlMode != EControlMode.Automatic) return Task.CompletedTask;
+		if (Service.Settings.MotionDetection == EMotionDetection.Off) return Task.CompletedTask;
 		
 		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 		IpcService.Publish(EMessageCategory.Update,"No motion detected, switching lamp off...");

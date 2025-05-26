@@ -34,9 +34,8 @@ internal abstract class SensorModule : IModuleInterface
 				break;
 			case "motion":
 				ResponseMessage motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
-				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.ControlMode}");
-				ResponseMessage limitMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LimitMode}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Response} ~ Current/Limit: {currentMode.Response}/{limitMode.Response}");
+				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Response} ~ Motion Detection: {currentMode.Response}");
 				break;
 			case "settings":
 				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
@@ -45,9 +44,9 @@ internal abstract class SensorModule : IModuleInterface
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetLightThreshold, callbackQuery, callbackQuery.Message), callbackQuery))
 					await cortana.EditMessageText(chatId, messageId, "Set Light Threshold (0~4096)", replyMarkup: CreateCancelButton());
 				break;
-			case "set_controlmode":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetControlMode, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Limit Control Mode (1/2/3)", replyMarkup: CreateCancelButton());
+			case "set_motiondetection":
+				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMotionDetection, callbackQuery, callbackQuery.Message), callbackQuery))
+					await cortana.EditMessageText(chatId, messageId, "Set Motion Detection (0:Off/1:On)", replyMarkup: CreateCancelButton());
 				break;
 			case "set_motionoffmax":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMotionOffMax, callbackQuery, callbackQuery.Message), callbackQuery))
@@ -75,13 +74,12 @@ internal abstract class SensorModule : IModuleInterface
 		string message = "Unknown Message";
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
-			case ETelegramChatArg.SetControlMode:
+			case ETelegramChatArg.SetMotionDetection:
 			{
-				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.ControlMode}");
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					ResponseMessage limitMode = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LimitMode}", new PostValue(Math.Clamp(code, 1, 3)));
-					message = $"Current/Limit: {currentMode.Response}/{limitMode.Response}";
+					ResponseMessage motionDetection = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
+					message = $"Motion Detection: {motionDetection.Response}";
 				}
 				else
 				{
@@ -159,7 +157,7 @@ internal abstract class SensorModule : IModuleInterface
 		return new InlineKeyboardMarkup()
 			.AddButton("Light Threshold", "sensor-set_lightth")
 			.AddNewRow()
-			.AddButton("Control Mode", "sensor-set_controlmode")
+			.AddButton("Control Mode", "sensor-set_motiondetection")
 			.AddNewRow()
 			.AddButton("Morning Hour", "sensor-set_morninghour")
 			.AddNewRow()

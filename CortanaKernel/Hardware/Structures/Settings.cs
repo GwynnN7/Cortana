@@ -20,15 +20,15 @@ public class Settings
         }
     } = 1500;
 
-    public EControlMode LimitControlMode
+    public EMotionDetection MotionDetection
     {
         get;
         set
         {
-            field = value;
+            field = (EMotionDetection) Math.Clamp((int) value, (int) EMotionDetection.Off, (int) EMotionDetection.On);
             this.Serialize().Dump(FilePath);
         }
-    } = EControlMode.Automatic;
+    } = EMotionDetection.On;
 
     public int MorningHour
     {

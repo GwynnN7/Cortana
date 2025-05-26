@@ -43,18 +43,16 @@ public enum ESensor
 public enum ESettings
 {
 	LightThreshold,
-	LimitMode,
-	ControlMode,
+	MotionDetection,
 	MorningHour,
 	MotionOffMax,
 	MotionOffMin
 }
 
-public enum EControlMode
+public enum EMotionDetection
 {
-	Manual = 1,
-	Night = 2,
-	Automatic = 3
+	Off = 0,
+	On = 1
 }
 
 public enum EPowerStatus
