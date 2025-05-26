@@ -1,9 +1,6 @@
 using System.Diagnostics;
-using CliWrap;
 using CortanaLib;
 using Discord.Audio;
-using Discord.WebSocket;
-
 namespace CortanaDiscord.Handlers;
 
 public class DiscordQueue<T> where T : class{
@@ -54,7 +51,6 @@ public class DiscordMediaPlayer(IAudioClient client)
 {
     private readonly DiscordQueue<AudioTrack> _queue = new();
     private CancellationTokenSource? _currentTrackToken;
-    private CancellationTokenSource _cts = new();
     
     private volatile bool _isPlaying;
 
@@ -82,12 +78,9 @@ public class DiscordMediaPlayer(IAudioClient client)
         return true;
     }
 
-    public async Task Stop() => await _cts.CancelAsync();
-
     public void Dispose()
     {
         client.Dispose();
-        _cts.Dispose();
     }
     
     private async Task PlayQueue()
@@ -102,63 +95,34 @@ public class DiscordMediaPlayer(IAudioClient client)
                 _currentTrackToken = null;
                 continue;
             }
-            
-           /* await using AudioOutStream? player = client.CreatePCMStream(AudioApplication.Music);
-            
-            Command ffmpeg = Cli.Wrap("ffmpeg")
-                .WithArguments([
-                    "-hide_banner",
-                    "-loglevel", "panic",
-                    "-i", track.StreamUrl,
-                    "-ac", "2",
-                    "-f", "s16le",
-                    "-ar", "48000",
-                    "pipe:1"
-                ])
-                .WithStandardOutputPipe(PipeTarget.ToStream(player))
-                .WithStandardErrorPipe(PipeTarget.ToDelegate(Console.Error.WriteLine));*/
-            
-            var x = Process.Start(new ProcessStartInfo
-            {
-                FileName = "ffmpeg",
-                Arguments = $"-hide_banner -loglevel panic -i \"{track.StreamUrl}\" -ac 2 -f s16le -ar 48000 pipe:1",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-            })!;
-            using (var y = x)
-            using (var output = y.StandardOutput.BaseStream)
-            using (var discord = client.CreatePCMStream(AudioApplication.Mixed))
-            {
-                try { await output.CopyToAsync(discord); }
-                finally { await discord.FlushAsync(); }
-            }
-            
-            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, _currentTrackToken.Token);
-            CancellationToken linkedToken = linkedCts.Token;
 
+            using Process ffmpeg = CreateStream(track.StreamUrl);
+            await using Stream output = ffmpeg.StandardOutput.BaseStream;
+            await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
+            
             try
             {
-                //await ffmpeg.ExecuteAsync(linkedToken, linkedToken);
-            }
-            catch (OperationCanceledException) when (_currentTrackToken.IsCancellationRequested)
-            {
-                //await player.FlushAsync(_cts.Token);
-            }
-            catch
-            {
-                _queue.Clear();
-                //player.Flush();
-                
-                _cts.Dispose();
-                _cts = new CancellationTokenSource();
+                await output.CopyToAsync(discord, _currentTrackToken.Token);
             }
             finally
             {
+                await discord.FlushAsync();
                 _currentTrackToken.Dispose();
                 _currentTrackToken = null;
             }
         }
 
         _isPlaying = false;
+    }
+    
+    private static Process CreateStream(string path)
+    {
+        return Process.Start(new ProcessStartInfo
+        {
+            FileName = "ffmpeg",
+            Arguments = $"-hide_banner -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 pipe:1",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+        })!;
     }
 }
