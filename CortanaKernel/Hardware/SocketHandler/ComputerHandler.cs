@@ -14,7 +14,7 @@ public class ComputerHandler : ClientHandler
 	public ComputerHandler (Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPowerStatus.On);
-		Service.ResetControllerTimer();
+		Service.ComputerStatusUpdated(EPowerStatus.On);
 	}
 
 	protected override void HandleRead(string message)
@@ -39,7 +39,7 @@ public class ComputerHandler : ClientHandler
 		_messages.Clear();
 		_instance = null;
 		UpdateComputerStatus(EPowerStatus.Off);
-		Service.ResetControllerTimer();
+		Service.ComputerStatusUpdated(EPowerStatus.Off);
 	}
 	
 	// Static methods

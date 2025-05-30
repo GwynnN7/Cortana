@@ -31,7 +31,7 @@ public static class Service
 	    ResetControllerTimer();
     }
     
-    public static void ResetControllerTimer()
+    private static void ResetControllerTimer()
     {
 	    _controllerTimer?.Destroy();
 	    _controllerTimer = new Timer("controller-timer", null, ControllerCallback, ETimerType.Utility);
@@ -63,7 +63,8 @@ public static class Service
 	    }
 	    else
 	    {
-		    if(_morningMessage) IpcService.Publish(EMessageCategory.Urgent,"Good morning, switching to Automatic Mode");
+		    if (!_morningMessage) return Task.CompletedTask;
+		    IpcService.Publish(EMessageCategory.Urgent,"Good morning, enabling Motion Detection");
 		    Settings.MotionDetection = EMotionDetection.On;
 		    _morningMessage = false;
 	    }
@@ -91,5 +92,11 @@ public static class Service
     public static void InterruptController()
     {
 	    _controllerTimer?.Destroy();
+    }
+
+    public static void ComputerStatusUpdated(EPowerStatus status)
+    {
+	    Settings.MotionDetection = EMotionDetection.On;
+	    ResetControllerTimer();
     }
 }
