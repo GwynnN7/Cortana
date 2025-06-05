@@ -1,7 +1,6 @@
 ﻿using Carter;
 using CortanaLib;
-using CortanaLib.Structures;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Primitives;
 
 namespace CortanaKernel.API;
 
@@ -12,8 +11,12 @@ public class HomeEndpoints : ICarterModule
 		app.MapGet("", Root);
 	}
 	
-	private static Ok<ResponseMessage> Root()
+	private static IResult Root(HttpRequest request)
 	{
-		return TypedResults.Ok(new ResponseMessage("Hi, I'm Cortana"));
+		StringValues acceptHeader = request.Headers.Accept;
+		if (acceptHeader.Contains("text/plain")) {
+			return TypedResults.Text("Hi, I'm Cortana", "text/plain");
+		}
+		return TypedResults.Json(new MessageResponse(Message: "Hi, I'm Cortana"));
 	}
 }

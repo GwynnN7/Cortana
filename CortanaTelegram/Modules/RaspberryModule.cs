@@ -27,8 +27,8 @@ internal abstract class RaspberryModule : IModuleInterface
 			case "gateway":
 			case "location":
 			case "temperature":
-				ResponseMessage response = await ApiHandler.Get($"{ERoute.Raspberry}/{command}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{command.Capitalize()}: {response.Response}");
+				MessageResponse messageResponse = await ApiHandler.Get($"{ERoute.Raspberry}/{command}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{command.Capitalize()}: {messageResponse.Message}");
 				break;
 			case "command":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<List<int>>(ETelegramChatArg.RaspberryCommand, callbackQuery, callbackQuery.Message, []), callbackQuery))
@@ -36,8 +36,8 @@ internal abstract class RaspberryModule : IModuleInterface
 				break;
 			case "reboot":
 			case "shutdown":
-				ResponseMessage commandResponse = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command));
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, commandResponse.Response, true);
+				MessageResponse commandMessageResponse = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command));
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, commandMessageResponse.Message, true);
 				break;
 			case "cancel":
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
@@ -57,8 +57,8 @@ internal abstract class RaspberryModule : IModuleInterface
 		   	case ETelegramChatArg.RaspberryCommand:
 		   		if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
 		   		{
-		   			ResponseMessage commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-		   			Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Response);
+		   			MessageResponse commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
+		   			Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Message);
 		   			chatArg.Arg.Add(messageStats.MessageId);
 		   			chatArg.Arg.Add(msg.MessageId);
 		   			return;

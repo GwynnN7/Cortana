@@ -3,7 +3,7 @@ using CortanaKernel.Hardware;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Primitives;
 
 namespace CortanaKernel.API;
 
@@ -19,23 +19,41 @@ public class DeviceEndpoints: ICarterModule
 		group.MapPost("sleep", Sleep);
 	}
 	
-	private static Ok<ResponseMessage> Root()
+	private static IResult Root(HttpRequest request)
 	{
-		return TypedResults.Ok(new ResponseMessage("Device API"));
+		StringValues acceptHeader = request.Headers.Accept;
+		if (acceptHeader.Contains("text/plain")) {
+			return TypedResults.Text("Device API", "text/plain");
+		}
+		return TypedResults.Json(new MessageResponse(Message: "Device API"));
 	}
 	
-	private static StringOrFail DeviceStatus(string device)
+	private static IResult DeviceStatus(string device, HttpRequest request)
 	{
+		StringValues acceptHeader = request.Headers.Accept;
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
-		
-		return dev.Match<StringOrFail>(
-			onSome: deviceVal => TypedResults.Ok(new ResponseMessage($"{deviceVal} is {HardwareApi.Devices.GetPower(deviceVal)}")),
-			onNone: () => TypedResults.BadRequest(new ResponseMessage("Device not found"))
+		return dev.Match<IResult>(
+			onSome: deviceVal =>
+			{
+				EPowerStatus status = HardwareApi.Devices.GetPower(deviceVal);
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text($"{deviceVal} is {status}", "text/plain");
+				}
+				return TypedResults.Json(new DeviceResponse(Device: deviceVal.ToString(), Status: status.ToString()));
+			},
+			onNone: () =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.BadRequest("Device not found");
+				}
+				return TypedResults.BadRequest(new ErrorResponse(Error: "Device not found"));
+			}
 		);
 	}
 	
-	private static StringOrFail SwitchDevice(string device, PostAction? status)
+	private static IResult SwitchDevice(string device, PostAction? status, HttpRequest request)
 	{
+		StringValues acceptHeader = request.Headers.Accept;
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
 		IOption<EPowerAction> action = status is null || status.Action == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : status.Action.ToEnum<EPowerAction>();
 
@@ -57,15 +75,30 @@ public class DeviceEndpoints: ICarterModule
 			}
 		);
 		
-		return result.Match<StringOrFail>(
-			val => TypedResults.Ok(new ResponseMessage(val)),
-			err => TypedResults.BadRequest(new ResponseMessage(err))
-		);
+		return result.Match<IResult>(
+			val =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text($"{dev} switched {val}", "text/plain");
+				}
+				return TypedResults.Json(new DeviceResponse(Device: dev.ToString(), Status: val));
+			},
+			err =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.BadRequest(err);
+				}
+				return TypedResults.BadRequest(new ErrorResponse(Error: err));
+			});
 	}
 	
-	private static Ok<ResponseMessage> Sleep()
+	private static IResult Sleep(HttpRequest request)
 	{
 		HardwareApi.Devices.EnterSleepMode();
-		return TypedResults.Ok(new ResponseMessage("Entering sleep mode"));
+		StringValues acceptHeader = request.Headers.Accept;
+		if (acceptHeader.Contains("text/plain")) {
+			return TypedResults.Text("Entering sleep mode", "text/plain");
+		}
+		return TypedResults.Json(new MessageResponse(Message: "Entering sleep mode"));
 	}
 }

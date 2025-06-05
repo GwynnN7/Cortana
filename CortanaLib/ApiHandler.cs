@@ -16,15 +16,15 @@ public static class ApiHandler
         ApiClient.BaseAddress = new Uri(apiRoot);
     }
 
-    public static async Task<ResponseMessage> Get(string route)
+    public static async Task<MessageResponse> Get(string route)
     {
         try
         {
-            return await ApiClient.GetFromJsonAsync<ResponseMessage>(route) ?? new ResponseMessage("Bad Response");
+            return await ApiClient.GetFromJsonAsync<MessageResponse>(route) ?? new MessageResponse("Bad Response");
         }
         catch
         {
-            return new ResponseMessage("Cortana Offline");
+            return new MessageResponse("Cortana Offline");
         }
     }
 
@@ -32,8 +32,8 @@ public static class ApiHandler
     {
         try
         {
-            var result = await ApiClient.GetFromJsonAsync<ResponseMessage>(route);
-            return result != null ? new Some<string>(result.Response) : new None<string>();
+            var result = await ApiClient.GetFromJsonAsync<MessageResponse>(route);
+            return result != null ? new Some<string>(result.Message) : new None<string>();
         }
         catch
         {
@@ -41,17 +41,17 @@ public static class ApiHandler
         }
     }
     
-    public static async Task<ResponseMessage> Post(string route, object? body = null)
+    public static async Task<MessageResponse> Post(string route, object? body = null)
     {
         HttpContent content = new StringContent(body?.Serialize() ?? "{}", Encoding.UTF8, "application/json");
         try
         {
             using HttpResponseMessage response = await ApiClient.PostAsync(route, content);
-            return await response.Content.ReadFromJsonAsync<ResponseMessage>() ?? new ResponseMessage("Bad Response");
+            return await response.Content.ReadFromJsonAsync<MessageResponse>() ?? new MessageResponse("Bad Response");
         }
         catch
         {
-            return new ResponseMessage("Cortana Offline");
+            return new MessageResponse("Cortana Offline");
         }
     }
 }
@@ -62,4 +62,8 @@ public record PostAction(string Action = "toggle");
 public record PostValue(int Value);
 
 // Responses
-public record ResponseMessage(string Response);
+public record MessageResponse(string Message);
+public record DeviceResponse(string Device, string Status);
+public record SensorResponse(string Sensor, string Value, string Unit);
+public record SettingsResponse(string Setting, string Value);
+public record ErrorResponse(string Error);

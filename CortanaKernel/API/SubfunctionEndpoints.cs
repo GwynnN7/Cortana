@@ -3,7 +3,7 @@ using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Primitives;
 
 namespace CortanaKernel.API;
 
@@ -19,13 +19,18 @@ public class SubfunctionEndpoints : ICarterModule
 	    group.MapPost("{subfunction}", HandleSubfunction);
     }
     
-    private static Ok<string> Root()
+    private static IResult Root(HttpRequest request)
     {
-    	return TypedResults.Ok("SubFunctions API");
+	    StringValues acceptHeader = request.Headers.Accept;
+	    if (acceptHeader.Contains("text/plain")) {
+		    return TypedResults.Text("Subfunctions API", "text/plain");
+	    }
+	    return TypedResults.Json(new MessageResponse(Message: "Subfunctions API"));
     }
     
-    private static StringOrFail PublishMessage(PostCommand message)
+    private static IResult PublishMessage(PostCommand message, HttpRequest request)
     {
+	    StringValues acceptHeader = request.Headers.Accept;
 	    IOption<EMessageCategory> category = message.Command.ToEnum<EMessageCategory>();
 
 	    StringResult result = category.Match(
@@ -37,14 +42,26 @@ public class SubfunctionEndpoints : ICarterModule
 		    onNone: () => StringResult.Failure("Command not found")
 	    );
 
-	    return result.Match<StringOrFail>(
-		    val => TypedResults.Ok(new ResponseMessage(val)),
-		    err => TypedResults.BadRequest(new ResponseMessage(err))
-	    );
+	    return result.Match<IResult>(
+		    val =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(val, "text/plain");
+			    }
+			    return TypedResults.Json(new MessageResponse(Message: val));
+		    },
+		    err =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(err, "text/plain");
+			    }
+			    return TypedResults.Json(new ErrorResponse(Error: err));
+		    });
     }
     
-    private static StringOrFail SubFunctionStatus(string subfunction)
+    private static IResult SubFunctionStatus(string subfunction, HttpRequest request)
     {
+	    StringValues acceptHeader = request.Headers.Accept;
 	    IOption<ESubFunctionType> settings = subfunction.ToEnum<ESubFunctionType>();
 
 	    StringResult result = settings.Match(
@@ -52,14 +69,26 @@ public class SubfunctionEndpoints : ICarterModule
 		    onNone: () => StringResult.Failure("Subfunction not found")
 	    );
 
-	    return result.Match<StringOrFail>(
-		    val => TypedResults.Ok(new ResponseMessage(val)),
-		    err => TypedResults.BadRequest(new ResponseMessage(err))
-	    );
+	    return result.Match<IResult>(
+		    val =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(val, "text/plain");
+			    }
+			    return TypedResults.Json(new MessageResponse(Message: val));
+		    },
+		    err =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(err, "text/plain");
+			    }
+			    return TypedResults.Json(new ErrorResponse(Error: err));
+		    });
     }
     
-    private static StringOrFail HandleSubfunction(string subfunction, PostAction command)
+    private static IResult HandleSubfunction(string subfunction, PostAction command, HttpRequest request)
     {
+	    StringValues acceptHeader = request.Headers.Accept;
 	    IOption<ESubFunctionType> func = subfunction.ToEnum<ESubFunctionType>();
 	    IOption<ESubfunctionAction> action = command.Action.ToEnum<ESubfunctionAction>();
 
@@ -74,9 +103,20 @@ public class SubfunctionEndpoints : ICarterModule
 		    onNone: () => StringResult.Failure("Subfunction not found")
 	    );
 
-	    return result.Match<StringOrFail>(
-		    val => TypedResults.Ok(new ResponseMessage(val)),
-		    err => TypedResults.BadRequest(new ResponseMessage(err))
-	    );
+	    return result.Match<IResult>(
+		    val =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(val, "text/plain");
+			    }
+			    return TypedResults.Json(new MessageResponse(Message: val));
+		    },
+		    err =>
+		    {
+			    if (acceptHeader.Contains("text/plain")) {
+				    return TypedResults.Text(err, "text/plain");
+			    }
+			    return TypedResults.Json(new ErrorResponse(Error: err));
+		    });
     }
 }

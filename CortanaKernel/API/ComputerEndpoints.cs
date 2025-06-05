@@ -3,7 +3,7 @@ using CortanaKernel.Hardware;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Primitives;
 
 namespace CortanaKernel.API;
 
@@ -17,13 +17,18 @@ public class ComputerEndpoints : ICarterModule
 		group.MapPost("", Command);
 	}
 
-	private static Ok<ResponseMessage> Root()
+	private static IResult Root(HttpRequest request)
 	{
-		return TypedResults.Ok(new ResponseMessage("Computer API"));
+		StringValues acceptHeader = request.Headers.Accept;
+		if (acceptHeader.Contains("text/plain")) {
+			return TypedResults.Text("Computer API", "text/plain");
+		}
+		return TypedResults.Json(new MessageResponse(Message: "Computer API"));
 	}
 
-	private static StringOrFail Command(PostCommand command)
+	private static IResult Command(PostCommand command, HttpRequest request)
 	{
+		StringValues acceptHeader = request.Headers.Accept;
 		IOption<EComputerCommand> cmd = command.Command.ToEnum<EComputerCommand>();
 
 		StringResult result = cmd.Match(
@@ -31,9 +36,20 @@ public class ComputerEndpoints : ICarterModule
 			onNone: () => StringResult.Failure("Command not found")
 		);
 
-		return result.Match<StringOrFail>(
-			val => TypedResults.Ok(new ResponseMessage(val)),
-			err => TypedResults.BadRequest(new ResponseMessage(err))
-		);
+		return result.Match<IResult>(
+			val =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text(val, "text/plain");
+				}
+				return TypedResults.Json(new MessageResponse(Message: val));
+			},
+			err =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text(err, "text/plain");
+				}
+				return TypedResults.Json(new ErrorResponse(Error: err));
+			});
 	}
 }

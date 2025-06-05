@@ -1,4 +1,5 @@
 global using StringResult = CortanaLib.Structures.Result<string, string>;
+using System.Globalization;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Utility;
@@ -35,15 +36,15 @@ public static class HardwareApi
 			{
 				case ESensor.Temperature:
 					double? temp = SensorsHandler.GetRoomTemperature();
-					if (temp is not null) return StringResult.Success($"{Helper.FormatTemperature(temp.Value)}");
+					if (temp is not null) return StringResult.Success(temp.Value.ToString(CultureInfo.CurrentCulture));
 					break;
 				case ESensor.Light:
 					int? light = SensorsHandler.GetRoomLightLevel();
-					if (light is not null) return StringResult.Success($"{light}");
+					if (light is not null) return StringResult.Success(light.ToString());
 					break;
 				case ESensor.Motion:
 					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
-					if (motion is not null) return StringResult.Success(motion.Value == EPowerStatus.On ? "Motion detected" : "Motion not detected");
+					if (motion is not null) return StringResult.Success((motion.Value == EPowerStatus.On).ToString());
 					break;
 			}
 			return StringResult.Failure("Sensor offline");
@@ -173,7 +174,7 @@ public static class HardwareApi
 					EDevice.Generic => DeviceHandler.PowerGeneric(trigger),
 					_ => null
 				};
-				return result is null ? StringResult.Failure("Device not supported") : StringResult.Success($"{device} switched {result}");
+				return result is null ? StringResult.Failure("Device not supported") : StringResult.Success(result.ToString());
 			}
 		}
 		
@@ -191,7 +192,7 @@ public static class HardwareApi
 				else Switch(EDevice.Lamp, action);
 				StringResult powerResult = Switch(EDevice.Power, action);
 
-				return powerResult.IsOk ? StringResult.Success($"Devices switched {action}") : StringResult.Failure("Devices failed to switch");
+				return powerResult.IsOk ? StringResult.Success(action.ToString()) : StringResult.Failure("Devices failed to switch");
 			}
 		}
 		

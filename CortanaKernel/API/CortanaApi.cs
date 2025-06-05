@@ -1,8 +1,6 @@
-global using StringOrFail = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<CortanaLib.ResponseMessage>, Microsoft.AspNetCore.Http.HttpResults.BadRequest<CortanaLib.ResponseMessage>>;
+global using StringOrFail = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<CortanaLib.MessageResponse>, Microsoft.AspNetCore.Http.HttpResults.BadRequest<CortanaLib.MessageResponse>>;
 using Carter;
-using CortanaKernel.Hardware;
 using CortanaLib;
-using CortanaLib.Structures;
 using Scalar.AspNetCore;
 
 namespace CortanaKernel.API;

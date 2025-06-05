@@ -84,17 +84,17 @@
 
     private async Task UpdateStatus()
     {
-        ResponseMessage lamp = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}");
-        ResponseMessage power = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}");
-        ResponseMessage computer = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}");
-        ResponseMessage generic = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}");
+        MessageResponse lamp = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}");
+        MessageResponse power = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}");
+        MessageResponse computer = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}");
+        MessageResponse generic = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}");
 
         _deviceStatus = new Dictionary<EDevice, string>
         {
-            { EDevice.Lamp, lamp.Response },
-            { EDevice.Power, power.Response },
-            { EDevice.Computer, computer.Response },
-            { EDevice.Generic, generic.Response }
+            { EDevice.Lamp, lamp.Message },
+            { EDevice.Power, power.Message },
+            { EDevice.Computer, computer.Message },
+            { EDevice.Generic, generic.Message }
         };
     }
 

@@ -97,8 +97,8 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			ResponseMessage response = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
-			var activity = new Game($"on Raspberry at {response.Response}");
+			MessageResponse messageResponse = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
+			var activity = new Game($"on Raspberry at {messageResponse.Message}");
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
 		}
 		catch

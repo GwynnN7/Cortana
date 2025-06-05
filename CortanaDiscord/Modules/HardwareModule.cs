@@ -13,8 +13,8 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	[SlashCommand("lamp", "Switch Lamp")]
 	public async Task LightToggle()
 	{
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}");
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		MessageResponse result = await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}");
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await RespondAsync(embed: embed, ephemeral: true);
 	}
 
@@ -23,9 +23,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
+		MessageResponse result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -34,9 +34,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Get($"{ERoute.Devices}/{device}");
+		MessageResponse result = await ApiHandler.Get($"{ERoute.Devices}/{device}");
 		
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 
@@ -45,9 +45,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
+		MessageResponse result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -56,9 +56,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
+		MessageResponse result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -67,9 +67,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args));
+		MessageResponse result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args));
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -78,9 +78,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Get($"{ERoute.Sensors}/{info}");
+		MessageResponse result = await ApiHandler.Get($"{ERoute.Sensors}/{info}");
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 	
@@ -89,9 +89,9 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		await DeferAsync(true);
 		
-		ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/sleep");
+		MessageResponse result = await ApiHandler.Post($"{ERoute.Devices}/sleep");
 
-		Embed embed = DiscordUtils.CreateEmbed(result.Response);
+		Embed embed = DiscordUtils.CreateEmbed(result.Message);
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 }

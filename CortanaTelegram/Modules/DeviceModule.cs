@@ -35,7 +35,7 @@ internal abstract class DeviceModule : IModuleInterface
 	{
 		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
 		string arg = messageStats.FullMessage;
-		ResponseMessage? response = arg switch
+		MessageResponse? response = arg switch
 		{
 			HardwareEmoji.Lamp => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}"),
 			HardwareEmoji.Pc => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Computer}"),
@@ -76,15 +76,15 @@ internal abstract class DeviceModule : IModuleInterface
 					TelegramUtils.ChatArgs.Remove(chatId);
 					break;
 				default:
-					ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{HardwareAction[messageId]}", new PostAction(command));
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Response);
+					MessageResponse result = await ApiHandler.Post($"{ERoute.Devices}/{HardwareAction[messageId]}", new PostAction(command));
+					await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Message);
 					await CreateMenu(cortana, callbackQuery.Message);
 					break;
 			}
 			return;
 		}
-		ResponseMessage devicePower = await ApiHandler.Get($"{ERoute.Devices}/{command}");
-		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower.Response, replyMarkup: CreateOnOffToggleButtons());
+		MessageResponse devicePower = await ApiHandler.Get($"{ERoute.Devices}/{command}");
+		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower.Message, replyMarkup: CreateOnOffToggleButtons());
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
@@ -125,8 +125,8 @@ internal abstract class DeviceModule : IModuleInterface
 		try
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
-			ResponseMessage result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
-			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result.Response}");
+			MessageResponse result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
+			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result.Message}");
 		}
 		catch (Exception e)
 		{

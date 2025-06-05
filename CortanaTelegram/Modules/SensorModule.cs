@@ -24,18 +24,18 @@ internal abstract class SensorModule : IModuleInterface
 		switch (command)
 		{
 			case "light":
-				ResponseMessage light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-				ResponseMessage threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light.Response}/{threshold.Response}");
+				MessageResponse light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+				MessageResponse threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light.Message}/{threshold.Message}");
 				break;
 			case "temperature":
-				ResponseMessage temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp.Response}");
+				MessageResponse temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp.Message}");
 				break;
 			case "motion":
-				ResponseMessage motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
-				ResponseMessage currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Response} ~ Motion Detection: {currentMode.Response}");
+				MessageResponse motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
+				MessageResponse currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Message} ~ Motion Detection: {currentMode.Message}");
 				break;
 			case "settings":
 				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
@@ -78,8 +78,8 @@ internal abstract class SensorModule : IModuleInterface
 			{
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					ResponseMessage motionDetection = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
-					message = $"Motion Detection: {motionDetection.Response}";
+					MessageResponse motionDetection = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
+					message = $"Motion Detection: {motionDetection.Message}";
 				}
 				else
 				{
@@ -89,11 +89,11 @@ internal abstract class SensorModule : IModuleInterface
 			}
 			case ETelegramChatArg.SetLightThreshold:
 			{
-				ResponseMessage lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+				MessageResponse lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					ResponseMessage lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
-					message = $"Current/Threshold: {lightLevel.Response}/{lightThreshold.Response}";
+					MessageResponse lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
+					message = $"Current/Threshold: {lightLevel.Message}/{lightThreshold.Message}";
 				}
 				else
 				{
@@ -105,8 +105,8 @@ internal abstract class SensorModule : IModuleInterface
 			{
 				if (int.TryParse(messageStats.FullMessage, out int hour))
 				{
-					ResponseMessage morningHour = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
-					message = $"Morning Hour: {morningHour.Response}";
+					MessageResponse morningHour = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
+					message = $"Morning Hour: {morningHour.Message}";
 				}
 				else
 				{
@@ -121,8 +121,8 @@ internal abstract class SensorModule : IModuleInterface
 				ESettings setting = TelegramUtils.ChatArgs[messageStats.ChatId].Type == ETelegramChatArg.SetMotionOffMax ? ESettings.MotionOffMax : ESettings.MotionOffMin;
 				if (int.TryParse(messageStats.FullMessage, out int motion))
 				{
-					ResponseMessage motionOff = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
-					message = $"{setting} Time: {motionOff.Response}";
+					MessageResponse motionOff = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
+					message = $"{setting} Time: {motionOff.Message}";
 				}
 				else
 				{

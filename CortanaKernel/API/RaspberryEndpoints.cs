@@ -1,9 +1,11 @@
+using AngleSharp.Text;
 using Carter;
 using CortanaKernel.Hardware;
+using CortanaKernel.Hardware.Utility;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.Extensions.Primitives;
 
 namespace CortanaKernel.API;
 
@@ -18,29 +20,55 @@ public class RaspberryEndpoints : ICarterModule
 		group.MapPost("", Command);
 	}
 
-	private static Ok<ResponseMessage> Root()
+	private static IResult Root(HttpRequest request)
 	{
-		return TypedResults.Ok(new ResponseMessage("Raspberry API"));
+		StringValues acceptHeader = request.Headers.Accept;
+		if (acceptHeader.Contains("text/plain")) {
+			return TypedResults.Text("Raspberry API", "text/plain");
+		}
+		return TypedResults.Json(new MessageResponse(Message: "Raspberry API"));
 	}
 
-	private static StringOrFail GetInfo(string info)
+	private static IResult GetInfo(string info, HttpRequest request)
 	{
+		StringValues acceptHeader = request.Headers.Accept;
 		IOption<ERaspberryInfo> cmd = info.ToEnum<ERaspberryInfo>();
 
+		ERaspberryInfo? raspberryInfo = null;
 		StringResult result = cmd.Match(
-			onSome: HardwareApi.Raspberry.GetHardwareInfo,
+			onSome: value =>
+			{
+				raspberryInfo = value;
+				return HardwareApi.Raspberry.GetHardwareInfo(value);
+			},
 			onNone: () => StringResult.Failure("Raspberry information not found")
 		);
 
-		return result.Match<StringOrFail>(
-			val => TypedResults.Ok(new ResponseMessage(val)),
-			err => TypedResults.BadRequest(new ResponseMessage(err))
-		);
+		return result.Match<IResult>(
+			val =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					var text = raspberryInfo switch
+					{
+						ERaspberryInfo.Temperature => Helper.FormatTemperature(val.ToDouble()),
+						_ => val
+					};
+					return TypedResults.Text($"{raspberryInfo}: {text}", "text/plain");
+				}
+				return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo.ToString(),  Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
+			},
+			err =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text(err, "text/plain");
+				}
+				return TypedResults.Json(new ErrorResponse(Error: err));
+			});
 	}
 	
-	private static StringOrFail Command(PostCommand command)
+	private static IResult Command(PostCommand command, HttpRequest request)
 	{
-	
+		StringValues acceptHeader = request.Headers.Accept;
 		IOption<ERaspberryCommand> cmd = command.Command.ToEnum<ERaspberryCommand>();
 
 		StringResult result = cmd.Match(
@@ -48,9 +76,20 @@ public class RaspberryEndpoints : ICarterModule
 			onNone: () => StringResult.Failure("Command not found")
 		);
 
-		return result.Match<StringOrFail>(
-			val => TypedResults.Ok(new ResponseMessage(val)),
-			err => TypedResults.BadRequest(new ResponseMessage(err))
-		);
+		return result.Match<IResult>(
+			val =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text(val, "text/plain");
+				}
+				return TypedResults.Json(new MessageResponse(Message: val));
+			},
+			err =>
+			{
+				if (acceptHeader.Contains("text/plain")) {
+					return TypedResults.Text(err, "text/plain");
+				}
+				return TypedResults.Json(new ErrorResponse(Error: err));
+			});
 	}
 }

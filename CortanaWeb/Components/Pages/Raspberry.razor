@@ -50,23 +50,23 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ResponseMessage gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
-        ResponseMessage ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
-        ResponseMessage location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
+        MessageResponse gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+        MessageResponse ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
+        MessageResponse location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
 
         _data = new SensorData
         {
-            Gateway = gateway.Response,
-            Ip = ip.Response,
-            Location = location.Response
+            Gateway = gateway.Message,
+            Ip = ip.Message,
+            Location = location.Message
         };
         
         _timer = new System.Threading.Timer(_ =>
         {
             InvokeAsync( async ()  =>
             {
-                ResponseMessage newTemp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
-                _data = _data with { Temperature = newTemp.Response };
+                MessageResponse newTemp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
+                _data = _data with { Temperature = newTemp.Message };
 
                 StateHasChanged();
             });
