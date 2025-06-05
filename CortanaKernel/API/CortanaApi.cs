@@ -19,8 +19,8 @@ public static class CortanaApi
         builder.Services.AddLogging(c => c.ClearProviders());
         builder.Services.AddCors(options =>
         {
-            options.AddPolicy("AllowCors",
-                policy => policy.AllowAnyOrigin()
+            options.AddPolicy("AllowCors", policy =>
+                policy.AllowAnyOrigin()
                     .AllowAnyMethod()
                     .AllowAnyHeader());
         });
@@ -28,10 +28,11 @@ public static class CortanaApi
         CortanaWebApi = builder.Build();
 
         CortanaWebApi.Urls.Add($"http://*:{DataHandler.Env("CORTANA_API_PORT")}");
+        CortanaWebApi.UseRouting();
         CortanaWebApi.UseCors("AllowCors");
-        CortanaWebApi.MapScalarApiReference();
-        CortanaWebApi.UseHttpsRedirection();
         CortanaWebApi.UseAuthorization();
+        CortanaWebApi.UseHttpsRedirection();
+        CortanaWebApi.MapScalarApiReference();
         CortanaWebApi.MapCarter();
     }
 
