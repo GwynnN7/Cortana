@@ -28,7 +28,7 @@ internal abstract class RaspberryModule : IModuleInterface
 			case "location":
 			case "temperature":
 				string messageResponse = await ApiHandler.Get($"{ERoute.Raspberry}/{command}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{command.Capitalize()}: {messageResponse}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, messageResponse);
 				break;
 			case "command":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<List<int>>(ETelegramChatArg.RaspberryCommand, callbackQuery, callbackQuery.Message, []), callbackQuery))

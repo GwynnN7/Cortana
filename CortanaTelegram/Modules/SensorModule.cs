@@ -26,11 +26,11 @@ internal abstract class SensorModule : IModuleInterface
 			case "light":
 				string light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
 				string threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{light}/{threshold}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light: {light} / {threshold}");
 				break;
 			case "temperature":
 				string temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, temp);
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Temperature: {temp}");
 				break;
 			case "motion":
 				string motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
@@ -91,7 +91,7 @@ internal abstract class SensorModule : IModuleInterface
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
 					string lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
-					message = $"{lightLevel}/{lightThreshold}";
+					message = $"Light: {lightLevel} / {lightThreshold}";
 				}
 				else
 				{
