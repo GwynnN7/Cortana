@@ -21,10 +21,9 @@ public class SettingsEndpoints : ICarterModule
     private static IResult Root(HttpRequest request)
     {
         StringValues acceptHeader = request.Headers.Accept;
-        if (acceptHeader.Contains("text/plain")) {
-            return TypedResults.Text("Settings API", "text/plain");
-        }
-        return TypedResults.Json(new MessageResponse(Message: "Settings API"));
+        return acceptHeader.Contains("text/plain") ? 
+            TypedResults.Text("Settings API", "text/plain") : 
+            TypedResults.Json(new MessageResponse(Message: "Settings API"));
     }
     
     private static IResult GetSettings(string setting, HttpRequest request)
@@ -43,20 +42,13 @@ public class SettingsEndpoints : ICarterModule
         );
 
         return result.Match<IResult>(
-            val =>
-            {
-                if (acceptHeader.Contains("text/plain")) {
-                    return TypedResults.Text($"{settingType}: {val}", "text/plain");
-                }
-                return TypedResults.Json(new SettingsResponse(Setting: settingType.ToString(),  Value: val));
-            },
-            err =>
-            {
-                if (acceptHeader.Contains("text/plain")) {
-                    return TypedResults.Text(err, "text/plain");
-                }
-                return TypedResults.Json(new ErrorResponse(Error: err));
-            });
+            val => acceptHeader.Contains("text/plain") ? 
+                TypedResults.Text($"{settingType}: {val}", "text/plain") :
+                TypedResults.Json(new SettingsResponse(Setting: settingType.ToString(),  Value: val)),
+            err => acceptHeader.Contains("text/plain") ? 
+                TypedResults.BadRequest(err) :
+                TypedResults.BadRequest(new ErrorResponse(Error: err))
+            );
     }
     
     private static IResult SetSettings(string setting, PostValue value, HttpRequest request)
@@ -75,19 +67,12 @@ public class SettingsEndpoints : ICarterModule
         );
 
         return result.Match<IResult>(
-            val =>
-            {
-                if (acceptHeader.Contains("text/plain")) {
-                    return TypedResults.Text($"{settingType}: {val}", "text/plain");
-                }
-                return TypedResults.Json(new SettingsResponse(Setting: settingType.ToString(),  Value: val));
-            },
-            err =>
-            {
-                if (acceptHeader.Contains("text/plain")) {
-                    return TypedResults.Text(err, "text/plain");
-                }
-                return TypedResults.Json(new ErrorResponse(Error: err));
-            });
+            val => acceptHeader.Contains("text/plain") ? 
+                TypedResults.Text($"{settingType}: {val}", "text/plain") :
+                TypedResults.Json(new SettingsResponse(Setting: settingType.ToString(),  Value: val)),
+            err => acceptHeader.Contains("text/plain") ? 
+                TypedResults.BadRequest(err) :
+                TypedResults.BadRequest(new ErrorResponse(Error: err))
+        );
     }
 }

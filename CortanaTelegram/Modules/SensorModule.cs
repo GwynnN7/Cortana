@@ -24,18 +24,17 @@ internal abstract class SensorModule : IModuleInterface
 		switch (command)
 		{
 			case "light":
-				MessageResponse light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-				MessageResponse threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light/Threshold: {light.Message}/{threshold.Message}");
+				string light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+				string threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{light}/{threshold}");
 				break;
 			case "temperature":
-				MessageResponse temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Room Temperature: {temp.Message}");
+				string temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, temp);
 				break;
 			case "motion":
-				MessageResponse motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
-				MessageResponse currentMode = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"{motion.Message} ~ Motion Detection: {currentMode.Message}");
+				string motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, motion);
 				break;
 			case "settings":
 				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
@@ -78,8 +77,7 @@ internal abstract class SensorModule : IModuleInterface
 			{
 				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					MessageResponse motionDetection = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
-					message = $"Motion Detection: {motionDetection.Message}";
+					message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
 				}
 				else
 				{
@@ -89,11 +87,11 @@ internal abstract class SensorModule : IModuleInterface
 			}
 			case ETelegramChatArg.SetLightThreshold:
 			{
-				MessageResponse lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+				string lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
 				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					MessageResponse lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
-					message = $"Current/Threshold: {lightLevel.Message}/{lightThreshold.Message}";
+					string lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
+					message = $"{lightLevel}/{lightThreshold}";
 				}
 				else
 				{
@@ -105,8 +103,7 @@ internal abstract class SensorModule : IModuleInterface
 			{
 				if (int.TryParse(messageStats.FullMessage, out int hour))
 				{
-					MessageResponse morningHour = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
-					message = $"Morning Hour: {morningHour.Message}";
+					message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
 				}
 				else
 				{
@@ -121,8 +118,7 @@ internal abstract class SensorModule : IModuleInterface
 				ESettings setting = TelegramUtils.ChatArgs[messageStats.ChatId].Type == ETelegramChatArg.SetMotionOffMax ? ESettings.MotionOffMax : ESettings.MotionOffMin;
 				if (int.TryParse(messageStats.FullMessage, out int motion))
 				{
-					MessageResponse motionOff = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
-					message = $"{setting} Time: {motionOff.Message}";
+					message = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
 				}
 				else
 				{

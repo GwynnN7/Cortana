@@ -72,24 +72,24 @@
     
     private async Task HandleSubfunction(ESubFunctionType type, ESubfunctionAction action)
     {
-        MessageResponse result = await ApiHandler.Post($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
+        string result = await ApiHandler.Post($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
         await UpdateStatus();
-        await JsRuntime.InvokeVoidAsync("alert", result.Message);
+        await JsRuntime.InvokeVoidAsync("alert", result);
     }
 
     private async Task UpdateStatus()
     {
-        MessageResponse kernel = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaKernel}");
-        MessageResponse discord = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}");
-        MessageResponse telegram = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaTelegram}");
-        MessageResponse web = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}");
+        string kernel = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaKernel}");
+        string discord = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}");
+        string telegram = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaTelegram}");
+        string web = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}");
 
         _subfunctionStatus = new Dictionary<ESubFunctionType, string>
         {
-            { ESubFunctionType.CortanaKernel, kernel.Message },
-            { ESubFunctionType.CortanaDiscord, discord.Message },
-            { ESubFunctionType.CortanaTelegram, telegram.Message },
-            { ESubFunctionType.CortanaWeb, web.Message }
+            { ESubFunctionType.CortanaKernel, kernel },
+            { ESubFunctionType.CortanaDiscord, discord },
+            { ESubFunctionType.CortanaTelegram, telegram },
+            { ESubFunctionType.CortanaWeb, web }
         };
     }
 }

@@ -36,7 +36,7 @@ public static class HardwareApi
 			{
 				case ESensor.Temperature:
 					double? temp = SensorsHandler.GetRoomTemperature();
-					if (temp is not null) return StringResult.Success(temp.Value.ToString(CultureInfo.CurrentCulture));
+					if (temp is not null) return StringResult.Success(Math.Round(temp.Value, 1).ToString(CultureInfo.CurrentCulture));
 					break;
 				case ESensor.Light:
 					int? light = SensorsHandler.GetRoomLightLevel();
@@ -44,7 +44,7 @@ public static class HardwareApi
 					break;
 				case ESensor.Motion:
 					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
-					if (motion is not null) return StringResult.Success((motion.Value == EPowerStatus.On).ToString());
+					if (motion is not null) return StringResult.Success((motion.Value == EPowerStatus.On).ToString().ToLower());
 					break;
 			}
 			return StringResult.Failure("Sensor offline");

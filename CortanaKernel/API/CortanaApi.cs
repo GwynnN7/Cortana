@@ -1,4 +1,3 @@
-global using StringOrFail = Microsoft.AspNetCore.Http.HttpResults.Results<Microsoft.AspNetCore.Http.HttpResults.Ok<CortanaLib.MessageResponse>, Microsoft.AspNetCore.Http.HttpResults.BadRequest<CortanaLib.MessageResponse>>;
 using Carter;
 using CortanaLib;
 using Scalar.AspNetCore;

@@ -45,7 +45,7 @@ public static class CortanaDiscordBot
 			}
 
 			await DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
-			DataHandler.Log(ESubFunctionType.CortanaKernel.ToString(), "Discord Bot Online");
+			DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Discord Bot Online");
 		};
 
 		await client.LoginAsync(TokenType.Bot, DataHandler.Env("CORTANA_DISCORD_TOKEN"));
@@ -97,9 +97,13 @@ public static class CortanaDiscordBot
 	{
 		try
 		{
-			MessageResponse messageResponse = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
-			var activity = new Game($"on Raspberry at {messageResponse.Message}");
+			IOption<SensorResponse> messageResponse = await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
+			Game activity =  messageResponse.Match(
+				val => new Game($"on Raspberry at {val.Value}{val.Unit}"), 
+				() => new Game("on Raspberry")
+			);
 			await DiscordUtils.Cortana.SetActivityAsync(activity);
+
 		}
 		catch
 		{

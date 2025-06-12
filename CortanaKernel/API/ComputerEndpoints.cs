@@ -20,10 +20,9 @@ public class ComputerEndpoints : ICarterModule
 	private static IResult Root(HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
-		if (acceptHeader.Contains("text/plain")) {
-			return TypedResults.Text("Computer API", "text/plain");
-		}
-		return TypedResults.Json(new MessageResponse(Message: "Computer API"));
+		return acceptHeader.Contains("text/plain") ? 
+			TypedResults.Text("Computer API", "text/plain") : 
+			TypedResults.Json(new MessageResponse(Message: "Computer API"));
 	}
 
 	private static IResult Command(PostCommand command, HttpRequest request)
@@ -37,19 +36,12 @@ public class ComputerEndpoints : ICarterModule
 		);
 
 		return result.Match<IResult>(
-			val =>
-			{
-				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.Text(val, "text/plain");
-				}
-				return TypedResults.Json(new MessageResponse(Message: val));
-			},
-			err =>
-			{
-				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.Text(err, "text/plain");
-				}
-				return TypedResults.Json(new ErrorResponse(Error: err));
-			});
+			val => acceptHeader.Contains("text/plain") ? 
+				TypedResults.Text(val, "text/plain") :
+				TypedResults.Json(new MessageResponse(Message: val)),
+			err => acceptHeader.Contains("text/plain") ? 
+				TypedResults.BadRequest(err) :
+				TypedResults.BadRequest(new ErrorResponse(Error: err))
+		);
 	}
 }

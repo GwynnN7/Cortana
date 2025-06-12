@@ -22,10 +22,9 @@ public class SensorEndpoints : ICarterModule
     private static IResult Root(HttpRequest request)
     {
         StringValues acceptHeader = request.Headers.Accept;
-        if (acceptHeader.Contains("text/plain")) {
-            return TypedResults.Text("Sensor API", "text/plain");
-        }
-        return TypedResults.Json(new MessageResponse(Message: "Sensor API"));
+        return acceptHeader.Contains("text/plain") ? 
+            TypedResults.Text("Sensor API", "text/plain") : 
+            TypedResults.Json(new MessageResponse(Message: "Sensor API"));
     }
         
     private static IResult GetData(string sensor, HttpRequest request)
@@ -46,24 +45,21 @@ public class SensorEndpoints : ICarterModule
         return result.Match<IResult>(
             val =>
             {
-                if (acceptHeader.Contains("text/plain"))
+                if (!acceptHeader.Contains("text/plain"))
                 {
-                    var text = sensorType switch
-                    {
-                        ESensor.Temperature => Helper.FormatTemperature(val.ToDouble()),
-                        ESensor.Motion => val == true.ToString() ? "Motion Detected" : "Motion Not Detected",
-                        _ => val
-                    };
-                    return TypedResults.Text(text, "text/plain");
+                    return TypedResults.Json(new SensorResponse(Sensor: sensorType.ToString(), Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
                 }
-                return TypedResults.Json(new SensorResponse(Sensor: sensorType.ToString(),  Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
+                var text = sensorType switch
+                {
+                    ESensor.Temperature => Helper.FormatTemperature(val.ToDouble()),
+                    ESensor.Motion => val.Equals(true.ToString(), StringComparison.CurrentCultureIgnoreCase) ? "Motion Detected" : "Motion Not Detected",
+                    _ => val
+                };
+                return TypedResults.Text(text, "text/plain");
             },
-            err =>
-            {
-                if (acceptHeader.Contains("text/plain")) {
-                    return TypedResults.Text(err, "text/plain");
-                }
-                return TypedResults.Json(new ErrorResponse(Error: err));
-            });
+            err => acceptHeader.Contains("text/plain") ? 
+                TypedResults.BadRequest(err) :
+                TypedResults.BadRequest(new ErrorResponse(Error: err))
+        );
     }
 }

@@ -22,10 +22,9 @@ public class DeviceEndpoints: ICarterModule
 	private static IResult Root(HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
-		if (acceptHeader.Contains("text/plain")) {
-			return TypedResults.Text("Device API", "text/plain");
-		}
-		return TypedResults.Json(new MessageResponse(Message: "Device API"));
+		return acceptHeader.Contains("text/plain") ? 
+			TypedResults.Text("Device API", "text/plain") : 
+			TypedResults.Json(new MessageResponse(Message: "Device API"));
 	}
 	
 	private static IResult DeviceStatus(string device, HttpRequest request)
@@ -36,18 +35,13 @@ public class DeviceEndpoints: ICarterModule
 			onSome: deviceVal =>
 			{
 				EPowerStatus status = HardwareApi.Devices.GetPower(deviceVal);
-				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.Text($"{deviceVal} is {status}", "text/plain");
-				}
-				return TypedResults.Json(new DeviceResponse(Device: deviceVal.ToString(), Status: status.ToString()));
+				return acceptHeader.Contains("text/plain")
+					? TypedResults.Text($"{deviceVal} is {status}", "text/plain")
+					: TypedResults.Json(new DeviceResponse(Device: deviceVal.ToString(), Status: status.ToString()));
 			},
-			onNone: () =>
-			{
-				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.BadRequest("Device not found");
-				}
-				return TypedResults.BadRequest(new ErrorResponse(Error: "Device not found"));
-			}
+			onNone: () => acceptHeader.Contains("text/plain") ? 
+				TypedResults.BadRequest("Device not found") :
+				TypedResults.BadRequest(new ErrorResponse(Error: "Device not found"))
 		);
 	}
 	
@@ -83,22 +77,18 @@ public class DeviceEndpoints: ICarterModule
 				}
 				return TypedResults.Json(new DeviceResponse(Device: dev.ToString(), Status: val));
 			},
-			err =>
-			{
-				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.BadRequest(err);
-				}
-				return TypedResults.BadRequest(new ErrorResponse(Error: err));
-			});
+			err => acceptHeader.Contains("text/plain") ? 
+				TypedResults.BadRequest(err) :
+				TypedResults.BadRequest(new ErrorResponse(Error: err))
+		);
 	}
 	
 	private static IResult Sleep(HttpRequest request)
 	{
 		HardwareApi.Devices.EnterSleepMode();
 		StringValues acceptHeader = request.Headers.Accept;
-		if (acceptHeader.Contains("text/plain")) {
-			return TypedResults.Text("Entering sleep mode", "text/plain");
-		}
-		return TypedResults.Json(new MessageResponse(Message: "Entering sleep mode"));
+		return acceptHeader.Contains("text/plain") ? 
+			TypedResults.Text("Entering sleep mode", "text/plain") : 
+			TypedResults.Json(new MessageResponse(Message: "Entering sleep mode"));
 	}
 }

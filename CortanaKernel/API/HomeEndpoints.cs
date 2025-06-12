@@ -14,9 +14,8 @@ public class HomeEndpoints : ICarterModule
 	private static IResult Root(HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
-		if (acceptHeader.Contains("text/plain")) {
-			return TypedResults.Text("Hi, I'm Cortana", "text/plain");
-		}
-		return TypedResults.Json(new MessageResponse(Message: "Hi, I'm Cortana"));
+		return acceptHeader.Contains("text/plain") ? 
+			TypedResults.Text("Hi, I'm Cortana", "text/plain") : 
+			TypedResults.Json(new MessageResponse(Message: "Hi, I'm Cortana"));
 	}
 }

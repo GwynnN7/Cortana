@@ -25,8 +25,8 @@ internal abstract class CommandModule : IModuleInterface
 			case "reboot":
 			case "suspend":
 			case "system":
-				MessageResponse result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command));
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, result.Message);
+				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command));
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
 				break;
 			case "notify":
 				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.Notification, callbackQuery, callbackQuery.Message), callbackQuery))
@@ -41,8 +41,8 @@ internal abstract class CommandModule : IModuleInterface
 					await cortana.EditMessageText(chatId, messageId, "Write the IP of the host you want to ping", replyMarkup: CreateCancelButton());
 				break;
 			case "sleep":
-				MessageResponse sleep = await ApiHandler.Post($"{ERoute.Devices}/sleep");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, sleep.Message);
+				string sleep = await ApiHandler.Post($"{ERoute.Devices}/sleep");
+				await cortana.AnswerCallbackQuery(callbackQuery.Id, sleep);
 				break;
 			case "cancel":
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
@@ -60,17 +60,17 @@ internal abstract class CommandModule : IModuleInterface
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.Notification:
-				MessageResponse result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", messageStats.FullMessage));
+				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", messageStats.FullMessage));
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 				
-				await TelegramUtils.AnswerOrMessage(cortana, result.Message, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
+				await TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 			case ETelegramChatArg.ComputerCommand:
 				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
 				{
-					MessageResponse commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult.Message);
+					string commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
+					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
 					chatArg.Arg.Add(messageStats.MessageId);
 					chatArg.Arg.Add(msg.MessageId);
 					return;

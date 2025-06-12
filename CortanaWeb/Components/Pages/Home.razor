@@ -76,8 +76,7 @@
         {
             InvokeAsync( async ()  =>
             {
-                MessageResponse result = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-                Temperature = result.Message;       
+                Temperature = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
                 StateHasChanged();
             });
         }, null, 0, 2000);
