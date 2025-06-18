@@ -16,7 +16,7 @@ api = os.environ.get("CORTANA_API")
 
 def cortanaGet(route = ""):
     try:
-        req = requests.get(f"{api}/{route}", headers={'Accept': 'text/plain', 'Accept-Charset':  'utf-8'})
+        req = requests.get(f"{api}/{route}", headers={'Accept': 'text/plain'})
         req.encoding = 'utf-8'
         return req.text.replace("'", "\\'")
     except:
@@ -24,7 +24,7 @@ def cortanaGet(route = ""):
     
 def cortanaPost(route, param, argValue, arg = ""):
     try:
-        req = requests.post(f"{api}/{route}", headers={'Accept': 'text/plain', 'Accept-Charset':  'utf-8'}, json={param: argValue, "args": arg})
+        req = requests.post(f"{api}/{route}", headers={'Accept': 'text/plain'}, json={param: argValue, "args": arg})
         req.encoding = 'utf-8'
         return req.text
     except:

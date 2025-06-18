@@ -51,11 +51,16 @@ public class DeviceEndpoints: ICarterModule
 		IOption<EDevice> dev = device.ToEnum<EDevice>();
 		IOption<EPowerAction> action = status is null || status.Action == "" ? new Some<EPowerAction>(EPowerAction.Toggle) : status.Action.ToEnum<EPowerAction>();
 
+		string deviceName = device;
 		StringResult result = dev.Match(
 			onSome: deviceVal =>
 			{
 				return action.Match(
-					onSome: value => HardwareApi.Devices.Switch(deviceVal, value),
+					onSome: value =>
+					{
+						deviceName = deviceVal.ToString();
+						return HardwareApi.Devices.Switch(deviceVal, value);
+					},
 					onNone: () => StringResult.Failure("Action not supported")
 				);
 			},
@@ -63,7 +68,11 @@ public class DeviceEndpoints: ICarterModule
 			{
 				if (device != "room") return StringResult.Failure("Device not supported");
 				return action.Match(
-					onSome: HardwareApi.Devices.SwitchRoom,
+					onSome: value =>
+					{
+						deviceName = "Room";
+						return HardwareApi.Devices.SwitchRoom(value);
+					},
 					onNone: () => StringResult.Failure("Action not supported")
 				);
 			}
@@ -73,9 +82,9 @@ public class DeviceEndpoints: ICarterModule
 			val =>
 			{
 				if (acceptHeader.Contains("text/plain")) {
-					return TypedResults.Text($"{dev} switched {val}", "text/plain");
+					return TypedResults.Text($"{deviceName} switched {val}", "text/plain");
 				}
-				return TypedResults.Json(new DeviceResponse(Device: dev.ToString(), Status: val));
+				return TypedResults.Json(new DeviceResponse(Device: deviceName, Status: val));
 			},
 			err => acceptHeader.Contains("text/plain") ? 
 				TypedResults.BadRequest(err) :

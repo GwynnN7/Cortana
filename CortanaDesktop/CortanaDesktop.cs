@@ -20,10 +20,10 @@ public static class CortanaDesktop
         while (string.IsNullOrEmpty(address))
         {
             await Task.Delay(3000);
-            IOption<string> gatewayOption = await GetCortanaGateway();
+            IOption<SensorResponse> gatewayOption = await GetCortanaGateway();
             
             address = gatewayOption.Match(
-                gateway => gateway[..^1] + DesktopInfo.NetworkAddr,
+                gateway => gateway.Value[..^1] + DesktopInfo.NetworkAddr,
                 () =>
                 {
                     DataHandler.Log(nameof(CortanaDesktop), "Cortana not reachable, can't find correct address");
@@ -44,15 +44,15 @@ public static class CortanaDesktop
         }
     }
 
-    private static async Task<IOption<string>> GetCortanaGateway()
+    private static async Task<IOption<SensorResponse>> GetCortanaGateway()
     {
         try
         {
-            return await ApiHandler.GetOption($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+            return await ApiHandler.GetOption<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
         }
         catch
         {
-            return new None<string>();
+            return new None<SensorResponse>();
         } 
     }
 
