@@ -7,4 +7,5 @@ obj
 out
 
 .idea
+.vscode
 *.DotSettings.user
