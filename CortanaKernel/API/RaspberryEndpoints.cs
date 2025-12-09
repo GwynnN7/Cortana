@@ -14,7 +14,7 @@ public class RaspberryEndpoints : ICarterModule
 	public void AddRoutes(IEndpointRouteBuilder app)
 	{
 		RouteGroupBuilder group = app.MapGroup($"{ERoute.Raspberry}/");
-		
+
 		group.MapGet("", Root);
 		group.MapGet("{info}", GetInfo);
 		group.MapPost("", Command);
@@ -23,8 +23,8 @@ public class RaspberryEndpoints : ICarterModule
 	private static IResult Root(HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
-		return acceptHeader.Contains("text/plain") ? 
-			TypedResults.Text("Raspberry API", "text/plain") : 
+		return acceptHeader.Contains("text/plain") ?
+			TypedResults.Text("Raspberry API", "text/plain") :
 			TypedResults.Json(new MessageResponse(Message: "Raspberry API"));
 	}
 
@@ -48,7 +48,7 @@ public class RaspberryEndpoints : ICarterModule
 			{
 				if (!acceptHeader.Contains("text/plain"))
 				{
-					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo.ToString(), Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
+					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo.ToString()!, Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
 				}
 				var text = raspberryInfo switch
 				{
@@ -57,12 +57,12 @@ public class RaspberryEndpoints : ICarterModule
 				};
 				return TypedResults.Text($"{raspberryInfo}: {text}", "text/plain");
 			},
-			err => acceptHeader.Contains("text/plain") ? 
+			err => acceptHeader.Contains("text/plain") ?
 				TypedResults.BadRequest(err) :
 				TypedResults.BadRequest(new ErrorResponse(Error: err))
 		);
 	}
-	
+
 	private static IResult Command(PostCommand command, HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
@@ -74,10 +74,10 @@ public class RaspberryEndpoints : ICarterModule
 		);
 
 		return result.Match<IResult>(
-			val => acceptHeader.Contains("text/plain") ? 
+			val => acceptHeader.Contains("text/plain") ?
 				TypedResults.Text(val, "text/plain") :
 				TypedResults.Json(new MessageResponse(Message: val)),
-			err => acceptHeader.Contains("text/plain") ? 
+			err => acceptHeader.Contains("text/plain") ?
 				TypedResults.BadRequest(err) :
 				TypedResults.BadRequest(new ErrorResponse(Error: err))
 		);

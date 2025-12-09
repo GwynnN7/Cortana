@@ -13,8 +13,8 @@ public class SensorEndpoints : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {
-    	RouteGroupBuilder group = app.MapGroup($"{ERoute.Sensors}/");
-    	
+        RouteGroupBuilder group = app.MapGroup($"{ERoute.Sensors}/");
+
         group.MapGet("", Root);
         group.MapGet("{sensor}", GetData);
     }
@@ -22,11 +22,11 @@ public class SensorEndpoints : ICarterModule
     private static IResult Root(HttpRequest request)
     {
         StringValues acceptHeader = request.Headers.Accept;
-        return acceptHeader.Contains("text/plain") ? 
-            TypedResults.Text("Sensor API", "text/plain") : 
+        return acceptHeader.Contains("text/plain") ?
+            TypedResults.Text("Sensor API", "text/plain") :
             TypedResults.Json(new MessageResponse(Message: "Sensor API"));
     }
-        
+
     private static IResult GetData(string sensor, HttpRequest request)
     {
         StringValues acceptHeader = request.Headers.Accept;
@@ -47,7 +47,7 @@ public class SensorEndpoints : ICarterModule
             {
                 if (!acceptHeader.Contains("text/plain"))
                 {
-                    return TypedResults.Json(new SensorResponse(Sensor: sensorType.ToString(), Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
+                    return TypedResults.Json(new SensorResponse(Sensor: sensorType.ToString()!, Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
                 }
                 var text = sensorType switch
                 {
@@ -57,7 +57,7 @@ public class SensorEndpoints : ICarterModule
                 };
                 return TypedResults.Text(text, "text/plain");
             },
-            err => acceptHeader.Contains("text/plain") ? 
+            err => acceptHeader.Contains("text/plain") ?
                 TypedResults.BadRequest(err) :
                 TypedResults.BadRequest(new ErrorResponse(Error: err))
         );
