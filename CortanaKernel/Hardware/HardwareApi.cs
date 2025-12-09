@@ -19,7 +19,7 @@ public static class HardwareApi
 		ServerHandler.Initialize();
 		Service.Start();
 	}
-	
+
 	public static void ShutdownService()
 	{
 		ComputerHandler.Interrupt();
@@ -40,7 +40,7 @@ public static class HardwareApi
 					break;
 				case ESensor.Light:
 					int? light = SensorsHandler.GetRoomLightLevel();
-					if (light is not null) return StringResult.Success(light.ToString());
+					if (light.HasValue) return StringResult.Success(light.Value.ToString());
 					break;
 				case ESensor.Motion:
 					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
@@ -62,7 +62,7 @@ public static class HardwareApi
 				_ => StringResult.Failure("Settings not found")
 			};
 		}
-		
+
 		public static StringResult SetSettings(ESettings settings, int value)
 		{
 			switch (settings)
@@ -71,8 +71,8 @@ public static class HardwareApi
 					Service.Settings.LightThreshold = value;
 					break;
 				case ESettings.MotionDetection:
-					if(value != (int) EMotionDetection.On && value != (int) EMotionDetection.Off) value = (int) (Service.Settings.MotionDetection == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);
-					Service.Settings.MotionDetection = (EMotionDetection) value;
+					if (value != (int)EMotionDetection.On && value != (int)EMotionDetection.Off) value = (int)(Service.Settings.MotionDetection == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);
+					Service.Settings.MotionDetection = (EMotionDetection)value;
 					break;
 				case ESettings.MorningHour:
 					Service.Settings.MorningHour = value;
@@ -94,7 +94,7 @@ public static class HardwareApi
 		{
 			lock (RaspberryLock)
 			{
-				switch(option)
+				switch (option)
 				{
 					case ERaspberryCommand.Shutdown:
 						RaspberryHandler.Shutdown();
@@ -107,7 +107,7 @@ public static class HardwareApi
 				}
 				return StringResult.Success("Command executed");
 			}
-		} 
+		}
 		public static StringResult GetHardwareInfo(ERaspberryInfo hardwareInfo)
 		{
 			lock (RaspberryLock)
@@ -125,7 +125,7 @@ public static class HardwareApi
 		}
 	}
 
-	
+
 	public static class Devices
 	{
 		public static void EnterSleepMode() => Service.EnterSleepMode(true);
@@ -146,14 +146,14 @@ public static class HardwareApi
 				};
 
 				if (!result) return StringResult.Failure("Command not found");
-				
+
 				string output = "Command executed";
-				if(command == EComputerCommand.Command) output = (ComputerHandler.GatherMessage(out string? message) ? message : output)!;
+				if (command == EComputerCommand.Command) output = (ComputerHandler.GatherMessage(out string? message) ? message : output)!;
 
 				return StringResult.Success(output);
 			}
 		}
-		
+
 		public static EPowerStatus GetPower(EDevice device)
 		{
 			lock (DeviceLock)
@@ -161,7 +161,7 @@ public static class HardwareApi
 				return DeviceHandler.DeviceStatus[device];
 			}
 		}
-		
+
 		public static StringResult Switch(EDevice device, EPowerAction trigger)
 		{
 			lock (DeviceLock)
@@ -174,10 +174,10 @@ public static class HardwareApi
 					EDevice.Generic => DeviceHandler.PowerGeneric(trigger),
 					_ => null
 				};
-				return result is null ? StringResult.Failure("Device not supported") : StringResult.Success(result.ToString());
+				return !result.HasValue ? StringResult.Failure("Device not supported") : StringResult.Success(result.Value.ToString());
 			}
 		}
-		
+
 		public static StringResult SwitchRoom(EPowerAction action)
 		{
 			lock (DeviceLock)
@@ -195,7 +195,7 @@ public static class HardwareApi
 				return powerResult.IsOk ? StringResult.Success(action.ToString()) : StringResult.Failure("Devices failed to switch");
 			}
 		}
-		
+
 		private static EPowerStatus HandleComputer(EPowerAction action)
 		{
 			switch (action)

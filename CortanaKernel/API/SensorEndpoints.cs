@@ -47,7 +47,7 @@ public class SensorEndpoints : ICarterModule
             {
                 if (!acceptHeader.Contains("text/plain"))
                 {
-                    return TypedResults.Json(new SensorResponse(Sensor: sensorType.ToString()!, Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
+                    return TypedResults.Json(new SensorResponse(Sensor: sensorType!.Value.ToString(), Value: val, Unit: sensorType == ESensor.Temperature ? "°C" : ""));
                 }
                 var text = sensorType switch
                 {

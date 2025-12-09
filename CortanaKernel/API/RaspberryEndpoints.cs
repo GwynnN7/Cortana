@@ -48,7 +48,7 @@ public class RaspberryEndpoints : ICarterModule
 			{
 				if (!acceptHeader.Contains("text/plain"))
 				{
-					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo.ToString()!, Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
+					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo!.Value.ToString(), Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
 				}
 				var text = raspberryInfo switch
 				{

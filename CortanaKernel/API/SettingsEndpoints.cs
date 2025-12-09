@@ -44,7 +44,7 @@ public class SettingsEndpoints : ICarterModule
         return result.Match<IResult>(
             val => acceptHeader.Contains("text/plain") ?
                 TypedResults.Text($"{settingType}: {val}", "text/plain") :
-                TypedResults.Json(new SettingsResponse(Setting: settingType.ToString()!, Value: val)),
+                TypedResults.Json(new SettingsResponse(Setting: settingType!.Value.ToString(), Value: val)),
             err => acceptHeader.Contains("text/plain") ?
                 TypedResults.BadRequest(err) :
                 TypedResults.BadRequest(new ErrorResponse(Error: err))
@@ -69,7 +69,7 @@ public class SettingsEndpoints : ICarterModule
         return result.Match<IResult>(
             val => acceptHeader.Contains("text/plain") ?
                 TypedResults.Text($"{settingType}: {val}", "text/plain") :
-                TypedResults.Json(new SettingsResponse(Setting: settingType.ToString()!, Value: val)),
+                TypedResults.Json(new SettingsResponse(Setting: settingType!.Value.ToString(), Value: val)),
             err => acceptHeader.Contains("text/plain") ?
                 TypedResults.BadRequest(err) :
                 TypedResults.BadRequest(new ErrorResponse(Error: err))
