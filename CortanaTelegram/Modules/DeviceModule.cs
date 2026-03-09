@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CortanaLib;
 using CortanaLib.Structures;
 using CortanaTelegram.Utility;
@@ -9,9 +10,9 @@ using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
-internal abstract class DeviceModule : IModuleInterface
+internal sealed class DeviceModule : IModuleInterface
 {
-	private static readonly Dictionary<long, string> HardwareAction = new();
+	private static readonly ConcurrentDictionary<long, string> HardwareAction = new();
 
 	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
 	{
@@ -27,10 +28,10 @@ internal abstract class DeviceModule : IModuleInterface
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
-		HardwareAction.Remove(message.Id);
+		HardwareAction.TryRemove(message.Id, out _);
 		await cortana.EditMessageText(message.Chat.Id, message.Id, "Device Menu", replyMarkup: CreateButtons());
 	}
-	
+
 	public static async Task<bool> HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
@@ -56,8 +57,8 @@ internal abstract class DeviceModule : IModuleInterface
 	{
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
-		
-	
+
+
 		if (!HardwareAction.TryAdd(messageId, command))
 		{
 			switch (command)
@@ -73,7 +74,7 @@ internal abstract class DeviceModule : IModuleInterface
 					break;
 				case "cancel":
 					await CreateMenu(cortana, TelegramUtils.ChatArgs[chatId].InteractionMessage);
-					TelegramUtils.ChatArgs.Remove(chatId);
+					TelegramUtils.ChatArgs.TryRemove(chatId, out _);
 					break;
 				default:
 					string result = await ApiHandler.Post($"{ERoute.Devices}/{HardwareAction[messageId]}", new PostAction(command));
@@ -90,7 +91,7 @@ internal abstract class DeviceModule : IModuleInterface
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-		
+
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.HardwareTimer:
@@ -104,20 +105,20 @@ internal abstract class DeviceModule : IModuleInterface
 					await TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
 					return;
 				}
-		
+
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-				
+
 				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<string>)!.Arg);
-				var timer = new Timer($"{messageStats.UserId}:{DateTime.UnixEpoch.Second}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
+				var timer = new Timer($"{messageStats.UserId}:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
 				timer.Set((times.s, times.m, times.h));
-				
+
 				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 		}
-		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
 	}
-	
+
 	private static async Task HardwareTimerFinished(object? sender)
 	{
 		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
@@ -162,7 +163,7 @@ internal abstract class DeviceModule : IModuleInterface
 			.AddNewRow()
 			.AddButton("<<", "device");
 	}
-	
+
 	private static InlineKeyboardMarkup CreateOnOffTimerButtons()
 	{
 		return new InlineKeyboardMarkup()

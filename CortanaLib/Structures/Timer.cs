@@ -8,6 +8,7 @@ public record DiscordTimerPayload<T>(object User, object? TextChannel, T? Arg) :
 
 public class Timer : System.Timers.Timer
 {
+	private static readonly Lock TimerLock = new();
 	private static readonly Dictionary<ETimerType, List<Timer>> TotalTimers = new();
 	public DateTime NextTargetTime { get; private set; }
 	public ETimerType TimerType { get; }
@@ -15,8 +16,8 @@ public class Timer : System.Timers.Timer
 	private string Tag { get; }
 	private ETimerLoop LoopType { get; }
 	private Func<object?, Task> Callback { get; }
-	
-	
+
+
 	public Timer(string tag, object? payload, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No)
 	{
 		Tag = tag;
@@ -25,26 +26,26 @@ public class Timer : System.Timers.Timer
 		TimerType = timerType;
 		LoopType = loop;
 		AutoReset = false;
-		
+
 		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
 		SaveTimer();
 	}
-	
+
 	public void Set(Times times)
 	{
 		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
 		Interval = interval > 0 ? interval : 1000;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-		
+
 		Start();
 	}
-	
+
 	public void Set(DateTime targetTime)
 	{
-		if(targetTime <= DateTime.Now) targetTime = targetTime.AddDays(1);
+		if (targetTime <= DateTime.Now) targetTime = targetTime.AddDays(1);
 		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
-		
+
 		Start();
 	}
 
@@ -75,40 +76,51 @@ public class Timer : System.Timers.Timer
 	{
 		Stop();
 		Close();
+		lock (TimerLock)
+		{
+			foreach ((_, List<Timer>? timerList) in TotalTimers)
+			{
+				if (timerList.Remove(this)) break;
+			}
+		}
 	}
 
 	private void SaveTimer()
 	{
-		if (!TotalTimers.TryAdd(TimerType, [this])) TotalTimers[TimerType].Add(this);
+		lock (TimerLock)
+		{
+			if (!TotalTimers.TryAdd(TimerType, [this])) TotalTimers[TimerType].Add(this);
+		}
 	}
 
 	public static void RemoveTimer(Timer timer)
 	{
-		foreach ((ETimerType timerType, List<Timer>? timerList) in TotalTimers)
-		{
-			if (!timerList.Contains(timer)) continue;
-			TotalTimers[timerType].Remove(timer);
-			timer.Destroy();
-			break;
-		}
+		timer.Destroy();
 	}
 
 	public static void RemoveTimers(ETimerType timerType)
 	{
-		foreach ((ETimerType type, List<Timer>? timerHandlers) in TotalTimers)
+		lock (TimerLock)
 		{
-			if (type != timerType) continue;
-			foreach (Timer listTimer in timerHandlers) RemoveTimer(listTimer);
+			if (!TotalTimers.TryGetValue(timerType, out List<Timer>? timers)) return;
+			foreach (Timer timer in timers.ToList())
+			{
+				timer.Destroy();
+			}
+			timers.Clear();
 		}
 	}
 
 	public static void RemoveTimerByTag(string tag)
 	{
-		foreach ((_, List<Timer>? timerHandlers) in TotalTimers)
+		lock (TimerLock)
 		{
-			foreach (Timer listTimer in timerHandlers.Where(listTimer => listTimer.Tag == tag))
+			foreach ((_, List<Timer>? timerHandlers) in TotalTimers)
 			{
-				RemoveTimer(listTimer);
+				Timer? found = timerHandlers.FirstOrDefault(t => t.Tag == tag);
+				if (found == null) continue;
+				timerHandlers.Remove(found);
+				found.Destroy();
 				return;
 			}
 		}
@@ -116,16 +128,25 @@ public class Timer : System.Timers.Timer
 
 	public static List<Timer> GetDiscordTimers()
 	{
-		return TotalTimers[ETimerType.Discord];
+		lock (TimerLock)
+		{
+			return TotalTimers.TryGetValue(ETimerType.Discord, out List<Timer>? timers) ? new List<Timer>(timers) : [];
+		}
 	}
 
 	public static List<Timer> GetTelegramTimers()
 	{
-		return TotalTimers[ETimerType.Telegram];
+		lock (TimerLock)
+		{
+			return TotalTimers.TryGetValue(ETimerType.Telegram, out List<Timer>? timers) ? new List<Timer>(timers) : [];
+		}
 	}
 
 	public static List<Timer> GetUtilityTimers()
 	{
-		return TotalTimers[ETimerType.Utility];
+		lock (TimerLock)
+		{
+			return TotalTimers.TryGetValue(ETimerType.Utility, out List<Timer>? timers) ? new List<Timer>(timers) : [];
+		}
 	}
 }

@@ -27,7 +27,6 @@ public static class CortanaDiscordBot
 		client.JoinedGuild += OnServerJoin;
 		client.LeftGuild += OnServerLeave;
 		client.UserJoined += OnUserJoin;
-		client.UserLeft += OnUserLeft;
 
 		commands.Log += LogAsync;
 
@@ -53,9 +52,11 @@ public static class CortanaDiscordBot
 
 		await SignalHandler.WaitForInterrupt();
 		await StopDiscordBot();
+		DiscordUtils.Shutdown();
+		await services.DisposeAsync();
 		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Discord Bot Offline");
 	}
-	
+
 	private static async Task StopDiscordBot()
 	{
 		foreach ((ulong clientId, _) in AudioHandler.MediaQueue)
@@ -123,8 +124,7 @@ public static class CortanaDiscordBot
 
 			if (DiscordUtils.GuildSettings[guild.Id].Greetings) await guild.GetTextChannel(DiscordUtils.GuildSettings[guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
-			DiscordUtils.TimeConnected.Remove(user.Id);
-			DiscordUtils.TimeConnected.Add(user.Id, DateTime.Now);
+			DiscordUtils.TimeConnected[user.Id] = DateTime.UtcNow;
 
 			if (newState.VoiceChannel != AudioHandler.GetCurrentCortanaChannel(guild)) return;
 
@@ -138,7 +138,7 @@ public static class CortanaDiscordBot
 			Embed embed = DiscordUtils.CreateEmbed(title, withoutAuthor: true, footer: new EmbedFooterBuilder { IconUrl = user.GetAvatarUrl(), Text = "Left at:" });
 			if (DiscordUtils.GuildSettings[guild.Id].Greetings) await guild.GetTextChannel(DiscordUtils.GuildSettings[guild.Id].GreetingsChannel).SendMessageAsync(embed: embed);
 
-			DiscordUtils.TimeConnected.Remove(user.Id);
+			DiscordUtils.TimeConnected.TryRemove(user.Id, out _);
 		}
 	}
 
@@ -161,11 +161,6 @@ public static class CortanaDiscordBot
 		if (user.IsBot) return;
 
 		await user.Guild.GetTextChannel(DiscordUtils.GuildSettings[user.Guild.Id].GreetingsChannel).SendMessageAsync(embed: DiscordUtils.CreateEmbed($"Benvenuto {user.DisplayName}"));
-	}
-
-	private static Task OnUserLeft(SocketGuild guild, SocketUser user)
-	{
-		return Task.CompletedTask;
 	}
 
 	private static Task LogAsync(LogMessage message)

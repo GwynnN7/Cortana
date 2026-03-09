@@ -5,7 +5,6 @@ using CortanaLib;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using YoutubeExplode.Videos;
 
 namespace CortanaDiscord.Modules;
 
@@ -48,7 +47,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		string result = AudioHandler.Clear(Context.Guild.Id);
 		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
 	}
-	
+
 	[SlashCommand("stop", "Stop track and clear queue")]
 	public async Task Stop([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
@@ -81,7 +80,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 	public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
 		await DeferAsync(ephemeral == EAnswer.Si);
-		
+
 		AudioTrack? track = await MediaHandler.GetAudioTrack(text);
 		if (track == null)
 		{
@@ -149,16 +148,16 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
 		await RespondAsync(embed: tempEmbed.Build(), ephemeral: ephemeral == EAnswer.Si);
 	}
-	
+
 	[SlashCommand("meme-fix", "Rimuovi meme non più disponibili")]
 	public async Task FixMemes()
 	{
 		await DeferAsync(ephemeral: true);
-		
+
 		Embed embed = DiscordUtils.CreateEmbed("Memes fixed!");
 		var embedBuilder = embed.ToEmbedBuilder();
-		
-		HttpClient client = new();
+
+		using HttpClient client = new();
 
 		ConcurrentDictionary<string, MemeJsonStructure> memes = new();
 		IEnumerable<Task> tasks = DiscordUtils.Memes.Select(async pair =>
@@ -167,14 +166,14 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 			string content = await response.Content.ReadAsStringAsync();
 			if (content.Contains("video non è più disponibile") || content.Contains("video unavailable"))
 			{
-				lock(embedBuilder) embedBuilder.AddField(pair.Key, "Video unavailable");
+				lock (embedBuilder) embedBuilder.AddField(pair.Key, "Video unavailable");
 				return;
 			}
 			memes.TryAdd(pair.Key, pair.Value);
 		});
 		await Task.WhenAll(tasks);
 		DiscordUtils.UpdateMemes(memes.ToDictionary());
-		
+
 		await FollowupAsync(embed: embedBuilder.Build(), ephemeral: true);
 	}
 }

@@ -4,7 +4,7 @@ public class CortanaException : Exception
 {
 	public CortanaException(string message) : base(message)
 	{
-		DataHandler.Log(nameof(CortanaException), message);
+		Console.Error.WriteLine($"[{nameof(CortanaException)}] {message}");
 	}
 }
 

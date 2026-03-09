@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CortanaDiscord.Utility;
 using CortanaLib;
 using CortanaLib.Structures;
@@ -7,7 +8,7 @@ namespace CortanaDiscord.Handlers;
 
 internal static class AudioHandler
 {
-	public static readonly Dictionary<ulong, DiscordMediaHandler> MediaQueue = new();
+	public static readonly ConcurrentDictionary<ulong, DiscordMediaHandler> MediaQueue = new();
 	public static bool SayHello(ulong guildId)
 	{
 		string url = DataHandler.CortanaPath(EDirType.Storage, "hello.mp3");
@@ -36,14 +37,14 @@ internal static class AudioHandler
 		var result = await handler.MediaPlayer.Skip();
 		return result ? "Audio skippato" : "Non c'è niente da skippare";
 	}
-	
+
 	public static string Clear(ulong guildId)
 	{
 		if (!MediaQueue.TryGetValue(guildId, out DiscordMediaHandler? handler) || handler.MediaPlayer == null) return "Non sono connessa al canale";
 		var result = handler.MediaPlayer.Clear();
 		return result ? "Queue rimossa" : "Non c'è niente in coda";
 	}
-	
+
 	public static async Task<string> Stop(ulong guildId)
 	{
 		if (!MediaQueue.TryGetValue(guildId, out DiscordMediaHandler? handler) || handler.MediaPlayer == null) return "Non sono connessa al canale";
@@ -69,7 +70,7 @@ internal static class AudioHandler
 			ReconnectToChannel(GetCurrentCortanaChannel(guild));
 			return;
 		}
-		
+
 		if (DiscordUtils.GuildSettings[guild.Id].AutoJoin)
 		{
 			SocketVoiceChannel? channel = GetAvailableChannel(guild);
@@ -86,7 +87,7 @@ internal static class AudioHandler
 		if (!MediaQueue.TryGetValue(channel.Guild.Id, out DiscordMediaHandler? joiner))
 		{
 			joiner = new DiscordMediaHandler(channel.Guild);
-			MediaQueue.Add(channel.Guild.Id, joiner);
+			MediaQueue[channel.Guild.Id] = joiner;
 		}
 		joiner.Enqueue(new JoinAction(JoinStatus.Join, channel));
 
@@ -99,7 +100,7 @@ internal static class AudioHandler
 		{
 			if (!MediaQueue.TryGetValue(guildId, out DiscordMediaHandler? joiner))
 				throw new CortanaException("Not connected to channel");
-			
+
 			joiner.Enqueue(new JoinAction(JoinStatus.Leave, null));
 
 			return "Mi sto disconnettendo";
@@ -116,7 +117,7 @@ internal static class AudioHandler
 		if (IsConnected(channel, channel.Guild)) return;
 		Connect(channel);
 	}
-	
+
 	public static SocketVoiceChannel? GetAvailableChannel(SocketGuild guild)
 	{
 		return guild.VoiceChannels.FirstOrDefault(IsChannelAvailable);
@@ -128,14 +129,14 @@ internal static class AudioHandler
 		channels.AddRange(guild.VoiceChannels.Where(IsChannelAvailable));
 		return channels;
 	}
-	
+
 	private static bool IsChannelAvailable(SocketVoiceChannel channel)
 	{
 		if (channel.Id == DiscordUtils.GuildSettings[channel.Guild.Id].AfkChannel) return false;
 		if (channel.ConnectedUsers.Select(user => user.Id).Contains(DiscordUtils.Data.CortanaId)) return channel.ConnectedUsers.Count > 1;
 		return channel.ConnectedUsers.Count > 0;
 	}
-	
+
 	private static bool ShouldTryReconnect(SocketGuild guild)
 	{
 		SocketVoiceChannel? currentChannel = GetCurrentCortanaChannel(guild);

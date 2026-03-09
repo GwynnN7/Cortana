@@ -10,27 +10,32 @@ namespace CortanaLib;
 public static class ApiHandler
 {
     private static readonly HttpClient ApiClient;
+    private static readonly string? ApiKey;
 
     static ApiHandler()
     {
         var apiRoot = DataHandler.Env("CORTANA_API");
         ApiClient = new HttpClient();
         ApiClient.BaseAddress = new Uri(apiRoot);
+        ApiKey = Environment.GetEnvironmentVariable("CORTANA_API_KEY");
     }
 
-    private static void SetContentType(string contentType)
+    private static HttpRequestMessage CreateRequest(HttpMethod method, string route, string accept, HttpContent? content = null)
     {
-        ApiClient.DefaultRequestHeaders.Accept.Clear();
-        ApiClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(contentType));
+        var request = new HttpRequestMessage(method, route);
+        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(accept));
+        if (!string.IsNullOrEmpty(ApiKey)) request.Headers.Add("X-Api-Key", ApiKey);
+        if (content != null) request.Content = content;
+        return request;
     }
 
     public static async Task<string> Get(string route)
     {
-        SetContentType("text/plain");
-        
         try
         {
-            return await ApiClient.GetStringAsync(route);
+            using var request = CreateRequest(HttpMethod.Get, route, "text/plain");
+            using HttpResponseMessage response = await ApiClient.SendAsync(request);
+            return await response.Content.ReadAsStringAsync();
         }
         catch
         {
@@ -40,11 +45,11 @@ public static class ApiHandler
 
     public static async Task<IOption<string>> GetOption(string route)
     {
-        SetContentType("text/plain");
-        
         try
         {
-            var result = await ApiClient.GetStringAsync(route);
+            using var request = CreateRequest(HttpMethod.Get, route, "text/plain");
+            using HttpResponseMessage response = await ApiClient.SendAsync(request);
+            var result = await response.Content.ReadAsStringAsync();
             return result != "" ? new Some<string>(result) : new None<string>();
         }
         catch
@@ -52,15 +57,14 @@ public static class ApiHandler
             return new None<string>();
         }
     }
-    
+
     public static async Task<string> Post(string route, object? body = null)
     {
-        SetContentType("text/plain");
-        
         HttpContent content = new StringContent(body?.Serialize() ?? "{}", Encoding.UTF8, "application/json");
         try
         {
-            using HttpResponseMessage response = await ApiClient.PostAsync(route, content);
+            using var request = CreateRequest(HttpMethod.Post, route, "text/plain", content);
+            using HttpResponseMessage response = await ApiClient.SendAsync(request);
             return await response.Content.ReadAsStringAsync();
         }
         catch
@@ -68,14 +72,14 @@ public static class ApiHandler
             return "Cortana Offline";
         }
     }
-    
+
     public static async Task<IOption<T>> Get<T>(string route) where T : IApiResponse
     {
-        SetContentType("application/json");
-        
         try
         {
-            var result = await ApiClient.GetFromJsonAsync<T>(route);
+            using var request = CreateRequest(HttpMethod.Get, route, "application/json");
+            using HttpResponseMessage response = await ApiClient.SendAsync(request);
+            var result = await response.Content.ReadFromJsonAsync<T>();
             return result != null ? new Some<T>(result) : new None<T>();
         }
         catch
@@ -84,29 +88,13 @@ public static class ApiHandler
         }
     }
 
-    public static async Task<IOption<T>> GetOption<T>(string route) where T : IApiResponse
-    {
-        SetContentType("application/json");
-        
-        try
-        {
-            var result = await ApiClient.GetFromJsonAsync<T>(route);
-            return result != null ? new Some<T>(result) : new None<T>();
-        }
-        catch
-        {
-            return new None<T>();
-        }
-    }
-    
     public static async Task<IOption<T>> Post<T>(string route, object? body = null) where T : IApiResponse
     {
-        SetContentType("application/json");
-        
         HttpContent content = new StringContent(body?.Serialize() ?? "{}", Encoding.UTF8, "application/json");
         try
         {
-            using HttpResponseMessage response = await ApiClient.PostAsync(route, content);
+            using var request = CreateRequest(HttpMethod.Post, route, "application/json", content);
+            using HttpResponseMessage response = await ApiClient.SendAsync(request);
             var result = await response.Content.ReadFromJsonAsync<T>();
             return result != null ? new Some<T>(result) : new None<T>();
         }

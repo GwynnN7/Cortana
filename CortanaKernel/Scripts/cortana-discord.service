@@ -1,0 +1,20 @@
+[Unit]
+Description=Cortana Discord Bot
+After=network.target redis.service cortana-kernel.service
+Requires=cortana-kernel.service
+PartOf=cortana-kernel.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Cortana
+ExecStart=%h/Cortana/CortanaDiscord/out/CortanaDiscord
+ExecStartPre=/usr/bin/dotnet build %h/Cortana/CortanaDiscord -o %h/Cortana/CortanaDiscord/out --artifacts-path %h/Cortana/CortanaDiscord/out/lib
+EnvironmentFile=%h/.config/Cortana/Config/.env
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=CortanaDiscord

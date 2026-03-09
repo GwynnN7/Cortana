@@ -21,7 +21,7 @@ public static class CortanaDesktop
         {
             await Task.Delay(3000);
             IOption<SensorResponse> gatewayOption = await GetCortanaGateway();
-            
+
             address = gatewayOption.Match(
                 gateway => gateway.Value[..^1] + DesktopInfo.NetworkAddr,
                 () =>
@@ -30,16 +30,16 @@ public static class CortanaDesktop
                     return "";
                 });
         }
-        
+
         StartAliveTimer();
 
-        while(true)
+        while (true)
         {
             CreateSocketConnection(address, DesktopInfo.TcpPort);
-            
+
             Write("computer");
             await Read();
-            
+
             await Task.Delay(2000);
         }
     }
@@ -48,12 +48,12 @@ public static class CortanaDesktop
     {
         try
         {
-            return await ApiHandler.GetOption<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+            return await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
         }
         catch
         {
             return new None<SensorResponse>();
-        } 
+        }
     }
 
     private static void CreateSocketConnection(string address, int port)
@@ -61,7 +61,7 @@ public static class CortanaDesktop
         try
         {
             _computerSocket?.Close();
-            
+
             var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
             _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
             _computerSocket.SendTimeout = 2000;
@@ -73,24 +73,24 @@ public static class CortanaDesktop
             DisconnectClient();
         }
     }
-    
+
     private static void StartAliveTimer()
     {
         var timer = new Timer(4000);
         timer.Elapsed += (_, _) => Write("SYN");
         timer.Start();
     }
-    
+
     private static async Task Read()
     {
-        if(_computerSocket == null) return;
+        if (_computerSocket == null) return;
 
         string? textCommand = null;
+        var buffer = new byte[1024];
         try
         {
             while (true)
             {
-                var buffer = new byte[1024];
                 int received = _computerSocket.Receive(buffer);
                 string message = Encoding.UTF8.GetString(buffer, 0, received);
                 if (received == 0) continue;
@@ -104,7 +104,7 @@ public static class CortanaDesktop
                         textCommand = message;
                         break;
                     default:
-                        if(textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
+                        if (textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
                         textCommand = null;
                         break;
                 }
@@ -119,7 +119,7 @@ public static class CortanaDesktop
 
     internal static void Write(string message)
     {
-        if(_computerSocket == null) return;
+        if (_computerSocket == null) return;
 
         try
         {
@@ -139,8 +139,8 @@ public static class CortanaDesktop
     }
 
     private static DesktopInfo GetClientInfo()
-	{
-		string confPath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json");
+    {
+        string confPath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDesktop)}/Settings.json");
         if (!File.Exists(confPath)) throw new CortanaException("Unknown client connection info");
         return DataHandler.DeserializeJson<DesktopInfo>(confPath);
     }

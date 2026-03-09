@@ -1,6 +1,7 @@
 ﻿using System.Device.Gpio;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Utility;
+using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.Devices;
@@ -10,11 +11,11 @@ public static class DeviceHandler
 	private const int Gpio23 = 23; //Computer Power
 	private const int Gpio24 = 24; //Lamp Pisa && Generic
 	private const int Gpio25 = 25; //Lamp Orvieto
-	
+
 	private static int LampPin => Service.NetworkData.Location == ELocation.Orvieto ? Gpio25 : Gpio24;
 	private static int PowerPin => Gpio23;
 	private static int GenericPin => Gpio24;
-	
+
 	public static readonly Dictionary<EDevice, EPowerStatus> DeviceStatus;
 	private static readonly Lock LampLock = new();
 
@@ -22,10 +23,10 @@ public static class DeviceHandler
 	{
 		DeviceStatus = new Dictionary<EDevice, EPowerStatus>();
 	}
-	
+
 	public static void LoadDevices()
 	{
-        foreach (EDevice device in Enum.GetValues<EDevice>()) DeviceStatus.Add(device, EPowerStatus.Off);
+		foreach (EDevice device in Enum.GetValues<EDevice>()) DeviceStatus.Add(device, EPowerStatus.Off);
 	}
 
 	public static EPowerStatus PowerLamp(EPowerAction state)
@@ -42,7 +43,7 @@ public static class DeviceHandler
 							Thread.Sleep(100);
 							UseGpio(LampPin, PinValue.Low);
 						}
-					});
+					}).ContinueWith(t => DataHandler.Log(nameof(DeviceHandler), $"Lamp error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
 				else UseGpio(LampPin, PinValue.High);
 				DeviceStatus[EDevice.Lamp] = EPowerStatus.On;
 				break;
@@ -56,7 +57,7 @@ public static class DeviceHandler
 							Thread.Sleep(100);
 							UseGpio(LampPin, PinValue.Low);
 						}
-					});
+					}).ContinueWith(t => DataHandler.Log(nameof(DeviceHandler), $"Lamp error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
 				else UseGpio(LampPin, PinValue.Low);
 				DeviceStatus[EDevice.Lamp] = EPowerStatus.Off;
 				break;
@@ -103,7 +104,7 @@ public static class DeviceHandler
 				return PowerComputer(Helper.ConvertToggle(EDevice.Computer));
 		}
 	}
-	
+
 	public static EPowerStatus PowerComputerSupply(EPowerAction state)
 	{
 		switch (state)

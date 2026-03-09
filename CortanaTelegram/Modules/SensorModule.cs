@@ -8,7 +8,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Modules;
 
-internal abstract class SensorModule : IModuleInterface
+internal sealed class SensorModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
@@ -19,7 +19,7 @@ internal abstract class SensorModule : IModuleInterface
 	{
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
-		
+
 
 		switch (command)
 		{
@@ -61,10 +61,10 @@ internal abstract class SensorModule : IModuleInterface
 				break;
 			case "cancel":
 				await CreateMenu(cortana, callbackQuery.Message);
-				TelegramUtils.ChatArgs.Remove(chatId);
+				TelegramUtils.ChatArgs.TryRemove(chatId, out _);
 				break;
 		}
-		
+
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
@@ -74,64 +74,64 @@ internal abstract class SensorModule : IModuleInterface
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.SetMotionDetection:
-			{
-				if (int.TryParse(messageStats.FullMessage, out int code))
 				{
-					message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
+					if (int.TryParse(messageStats.FullMessage, out int code))
+					{
+						message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
+					}
+					else
+					{
+						message = "Please enter a valid number";
+					}
+					break;
 				}
-				else
-				{
-					message = "Please enter a valid number";
-				}
-				break;
-			}
 			case ETelegramChatArg.SetLightThreshold:
-			{
-				string lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-				if (int.TryParse(messageStats.FullMessage, out int threshold))
 				{
-					string lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
-					message = $"Light: {lightLevel} / {lightThreshold}";
+					string lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+					if (int.TryParse(messageStats.FullMessage, out int threshold))
+					{
+						string lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
+						message = $"Light: {lightLevel} / {lightThreshold}";
+					}
+					else
+					{
+						message = "Please enter a valid number";
+					}
+					break;
 				}
-				else
-				{
-					message = "Please enter a valid number";
-				}
-				break;
-			}
 			case ETelegramChatArg.SetMorningHour:
-			{
-				if (int.TryParse(messageStats.FullMessage, out int hour))
 				{
-					message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
+					if (int.TryParse(messageStats.FullMessage, out int hour))
+					{
+						message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
+					}
+					else
+					{
+						message = "Please enter a valid number";
+					}
+
+					break;
 				}
-				else
-				{
-					message = "Please enter a valid number";
-				}
-			
-				break;
-			}
 			case ETelegramChatArg.SetMotionOffMax:
 			case ETelegramChatArg.SetMotionOffMin:
-			{
-				ESettings setting = TelegramUtils.ChatArgs[messageStats.ChatId].Type == ETelegramChatArg.SetMotionOffMax ? ESettings.MotionOffMax : ESettings.MotionOffMin;
-				if (int.TryParse(messageStats.FullMessage, out int motion))
 				{
-					message = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
+					ESettings setting = TelegramUtils.ChatArgs[messageStats.ChatId].Type == ETelegramChatArg.SetMotionOffMax ? ESettings.MotionOffMax : ESettings.MotionOffMin;
+					if (int.TryParse(messageStats.FullMessage, out int motion))
+					{
+						message = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
+					}
+					else
+					{
+						message = "Please enter a valid number";
+					}
+
+					break;
 				}
-				else
-				{
-					message = "Please enter a valid number";
-				}
-			
-				break;
-			}
 		}
 		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
 		await TelegramUtils.AnswerOrMessage(cortana, message, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 		await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
-		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -169,5 +169,5 @@ internal abstract class SensorModule : IModuleInterface
 		return new InlineKeyboardMarkup()
 			.AddButton("<<", "sensor-cancel");
 	}
-	
+
 }

@@ -11,6 +11,7 @@ namespace CortanaDiscord.Modules;
 
 public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 {
+	private static readonly IGDBClient Igdb = new(DataHandler.Env("CORTANA_IGDB_CLIENT"), DataHandler.Env("CORTANA_IGDB_SECRET"));
 	[Group("utility", "Comandi di utilità")]
 	public abstract class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
 	{
@@ -62,7 +63,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			user ??= Context.User;
 			if (DiscordUtils.TimeConnected.TryGetValue(user.Id, out DateTime time))
 			{
-				TimeSpan deltaTime = DateTime.Now.Subtract(time);
+				TimeSpan deltaTime = DateTime.UtcNow.Subtract(time);
 				var connectionTime = "Sei connesso da";
 				if (deltaTime.Hours > 0) connectionTime += $" {deltaTime.Hours} ore";
 				if (deltaTime.Minutes > 0) connectionTime += $" {deltaTime.Minutes} minuti";
@@ -176,14 +177,13 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 
 		private static async Task<Embed?> GetGameEmbedAsync(string game, int count)
 		{
-			var igdb = new IGDBClient(DataHandler.Env("CORTANA_IGDB_CLIENT"), DataHandler.Env("CORTANA_IGDB_SECRET"));
 			const string fields =
 				"cover.image_id, game_engines.name, genres.name, involved_companies.company.name, name, platforms.name, rating, total_rating_count, release_dates.human, summary, themes.name, url";
 			var query = $"fields {fields}; search \"{game}\"; where category != (1,2,5,6,7,12); limit 15;";
-			Game[]? games = await igdb.QueryAsync<Game>(IGDBClient.Endpoints.Games, query);
+			Game[]? games = await Igdb.QueryAsync<Game>(IGDBClient.Endpoints.Games, query);
 
 			List<Game> sortedGames = games.ToList();
-			sortedGames.Sort(delegate(Game a, Game b)
+			sortedGames.Sort(delegate (Game a, Game b)
 			{
 				if (a.TotalRatingCount is null or 0 && b.TotalRatingCount is null or 0)
 				{
@@ -270,7 +270,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			[Summary("ephemeral", "Voi vederlo solo tu?")]
 			EAnswer ephemeral = EAnswer.No)
 		{
-			var randomNumber = Convert.ToString(new Random().Next(min, max));
+			var randomNumber = Convert.ToString(Random.Shared.Next(min, max));
 			Embed embed = DiscordUtils.CreateEmbed(randomNumber);
 			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 		}
@@ -279,7 +279,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 		public async Task Dice([Summary("dadi", "Numero di dadi [default 1]")] int dices = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			var dicesResults = "";
-			for (var i = 0; i < dices; i++) dicesResults += Convert.ToString(new Random().Next(1, 7)) + " ";
+			for (var i = 0; i < dices; i++) dicesResults += Convert.ToString(Random.Shared.Next(1, 7)) + " ";
 			Embed embed = DiscordUtils.CreateEmbed(dicesResults);
 			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 		}
@@ -288,7 +288,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 		public async Task Coin([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			var list = new List<string> { "Testa", "Croce" };
-			int index = new Random().Next(list.Count);
+			int index = Random.Shared.Next(list.Count);
 			string result = list[index];
 			Embed embed = DiscordUtils.CreateEmbed(result);
 			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
@@ -298,7 +298,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 		public async Task RandomChoice([Summary("opzioni", "Opzioni separate dallo spazio")] string options, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			string[] separatedList = options.Split(" ");
-			int index = new Random().Next(separatedList.Length);
+			int index = Random.Shared.Next(separatedList.Length);
 			string result = separatedList[index];
 			Embed embed = DiscordUtils.CreateEmbed(result);
 			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
@@ -318,7 +318,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 
 			List<SocketGuildUser> users = availableUsers.Where(user => !user.IsBot || (user.IsBot && user.Id == DiscordUtils.Data.CortanaId && cortana == EAnswer.Si)).ToList();
 
-			SocketGuildUser chosenUser = users[new Random().Next(0, users.Count)];
+			SocketGuildUser chosenUser = users[Random.Shared.Next(0, users.Count)];
 			await RespondAsync($"Ho scelto {chosenUser.Mention}", ephemeral: ephemeral == EAnswer.Si);
 		}
 	}

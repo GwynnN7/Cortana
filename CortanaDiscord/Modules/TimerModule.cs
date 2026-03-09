@@ -11,20 +11,20 @@ namespace CortanaDiscord.Modules;
 public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("timer", "Imposta un timer a cronometro")]
-	public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi?")] [MaxValue(59)] int seconds = 0,
+	public async Task SetTimer([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("secondi", "Quanti secondi?")][MaxValue(59)] int seconds = 0,
 		[Summary("minuti", "Quanti minuti?")] [MaxValue(59)]
-		int minutes = 0, [Summary("ore", "Quante ore?")] [MaxValue(100)] int hours = 0, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
+		int minutes = 0, [Summary("ore", "Quante ore?")][MaxValue(100)] int hours = 0, [Summary("privato", "Vuoi che lo mandi in privato?")] EAnswer inPrivate = EAnswer.No)
 	{
 		var timerArgs = new DiscordTimerPayload<string>(Context.User, inPrivate == EAnswer.No ? Context.Channel : null, text);
-		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
+		var timer = new Timer($"{Context.User.Id}:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
 		timer.Set((seconds, minutes, hours));
-		
+
 		Embed embed = DiscordUtils.CreateEmbed("Timer impostato!", description: $"Per {timer.NextTargetTime:dddd dd MMMM alle HH:mm:ss}");
 		await RespondAsync(embed: embed);
 	}
 
 	[SlashCommand("sveglia", "Imposta una sveglia [Mezzanotte di default]")]
-	public async Task SetAlarm([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("ora", "A che ora?")] [MaxValue(23)] int hours = 0,
+	public async Task SetAlarm([Summary("notifica", "Cosa vuoi che ti ricordi?")] string text, [Summary("ora", "A che ora?")][MaxValue(23)] int hours = 0,
 		[Summary("minuto", "A che minuto?")] [MaxValue(59)]
 		int minutes = 0,
 		[Summary("giorno", "Il giorno della settimana")]
@@ -39,9 +39,9 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 
 		var date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, dayNumber, hours, minutes, 1);
 		var timerArgs = new DiscordTimerPayload<string>(Context.User, inPrivate == EAnswer.No ? Context.Channel : null, text);
-		var timer = new Timer($"{Context.User.Id}:{DateTime.UnixEpoch.Second}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
+		var timer = new Timer($"{Context.User.Id}:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", timerArgs, DiscordTimerFinished, ETimerType.Discord);
 		timer.Set(date);
-		
+
 		Embed? embed = DiscordUtils.CreateEmbed("Timer impostato!");
 		embed = embed.ToEmbedBuilder()
 			.AddField("Notifica", text)
@@ -76,7 +76,7 @@ public class TimerModule : InteractionModuleBase<SocketInteractionContext>
 			if (textChannel == null) await user.SendMessageAsync(embed: embed);
 			else await textChannel.SendMessageAsync(embed: embed);
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			await DiscordUtils.SendToChannel<string>($"C'è stato un problema con un timer:\n```{e.Message}```", ECortanaChannels.Log);
 		}

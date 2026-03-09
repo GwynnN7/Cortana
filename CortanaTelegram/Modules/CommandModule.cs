@@ -8,7 +8,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Modules;
 
-internal abstract class CommandModule : IModuleInterface
+internal sealed class CommandModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
@@ -19,7 +19,7 @@ internal abstract class CommandModule : IModuleInterface
 	{
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
-		
+
 		switch (command)
 		{
 			case "reboot":
@@ -48,7 +48,7 @@ internal abstract class CommandModule : IModuleInterface
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
 					await cortana.DeleteMessages(chatId, chatArg.Arg);
 				await CreateMenu(cortana, callbackQuery.Message);
-				TelegramUtils.ChatArgs.Remove(chatId);
+				TelegramUtils.ChatArgs.TryRemove(chatId, out _);
 				break;
 		}
 	}
@@ -56,13 +56,13 @@ internal abstract class CommandModule : IModuleInterface
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-		
+
 		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case ETelegramChatArg.Notification:
 				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", messageStats.FullMessage));
 				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-				
+
 				await TelegramUtils.AnswerOrMessage(cortana, result, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
@@ -78,7 +78,7 @@ internal abstract class CommandModule : IModuleInterface
 				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 		}
-		TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()

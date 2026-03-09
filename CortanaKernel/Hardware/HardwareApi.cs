@@ -3,6 +3,7 @@ using System.Globalization;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Utility;
+using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware;
@@ -84,6 +85,7 @@ public static class HardwareApi
 					Service.Settings.MotionOffMin = value;
 					break;
 			}
+			Service.Settings.Save();
 			return GetSettings(settings);
 		}
 	}
@@ -108,20 +110,26 @@ public static class HardwareApi
 				return StringResult.Success("Command executed");
 			}
 		}
-		public static StringResult GetHardwareInfo(ERaspberryInfo hardwareInfo)
+		public static async Task<StringResult> GetHardwareInfo(ERaspberryInfo hardwareInfo)
 		{
 			lock (RaspberryLock)
 			{
-				string? result = hardwareInfo switch
+				switch (hardwareInfo)
 				{
-					ERaspberryInfo.Location => RaspberryHandler.GetNetworkLocation().ToString(),
-					ERaspberryInfo.Ip => RaspberryHandler.RequestPublicIpv4().Result,
-					ERaspberryInfo.Gateway => RaspberryHandler.GetNetworkGateway(),
-					ERaspberryInfo.Temperature => Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()),
-					_ => null
-				};
-				return result is null ? StringResult.Failure("Raspberry information not supported") : StringResult.Success(result);
+					case ERaspberryInfo.Location:
+						return StringResult.Success(RaspberryHandler.GetNetworkLocation().ToString());
+					case ERaspberryInfo.Gateway:
+						return StringResult.Success(RaspberryHandler.GetNetworkGateway());
+					case ERaspberryInfo.Temperature:
+						return StringResult.Success(Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()));
+					case ERaspberryInfo.Ip:
+						break;
+					default:
+						return StringResult.Failure("Raspberry information not supported");
+				}
 			}
+			string ip = await RaspberryHandler.RequestPublicIpv4();
+			return StringResult.Success(ip);
 		}
 	}
 
@@ -138,7 +146,7 @@ public static class HardwareApi
 				{
 					EComputerCommand.Shutdown => ComputerHandler.Shutdown(),
 					EComputerCommand.Suspend => ComputerHandler.Suspend(),
-					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Raspberry.GetHardwareInfo(ERaspberryInfo.Temperature).Value}"),
+					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature())}"),
 					EComputerCommand.Reboot => ComputerHandler.Reboot(),
 					EComputerCommand.Command => ComputerHandler.Command(args ?? "dir"),
 					EComputerCommand.System => ComputerHandler.SwitchOs(),
@@ -223,7 +231,7 @@ public static class HardwareApi
 						DeviceHandler.PowerComputer(EPowerAction.Off);
 						await ComputerHandler.CheckForConnection();
 						DeviceHandler.PowerComputerSupply(EPowerAction.Off);
-					});
+					}).ContinueWith(t => DataHandler.Log(nameof(HardwareApi), $"Computer supply error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
 					return EPowerStatus.Off;
 				case EPowerAction.Off:
 					return DeviceHandler.PowerComputerSupply(EPowerAction.Off);

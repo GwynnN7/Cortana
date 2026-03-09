@@ -1,14 +1,15 @@
 namespace CortanaLib.Structures;
 
-public readonly struct Result<T, E> {
+public readonly struct Result<T, E>
+{
     private readonly bool _success;
-    public readonly T Value;
-    public readonly E Error;
+    private readonly T _value;
+    private readonly E _error;
 
     private Result(T v, E e, bool success)
     {
-        Value = v;
-        Error = e;
+        _value = v;
+        _error = e;
         _success = success;
     }
 
@@ -27,5 +28,5 @@ public readonly struct Result<T, E> {
     public R Match<R>(
         Func<T, R> success,
         Func<E, R> failure) =>
-        _success ? success(Value) : failure(Error);
+        _success ? success(_value) : failure(_error);
 }

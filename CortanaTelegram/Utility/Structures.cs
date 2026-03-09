@@ -18,26 +18,23 @@ internal class TelegramChatArg<T>(ETelegramChatArg type, CallbackQuery callbackQ
 
 internal struct MessageStats
 {
-	public Message Message;
-	public string FullMessage;
-	public string Command;
-	public string Text;
-	public List<string> TextList;
-	public long ChatId;
-	public long UserId;
-	public int MessageId;
-	public ChatType ChatType;
+	public required Message Message { get; init; }
+	public required string FullMessage { get; set; }
+	public required string Command { get; set; }
+	public required string Text { get; set; }
+	public required List<string> TextList { get; set; }
+	public required long ChatId { get; init; }
+	public required long UserId { get; init; }
+	public required int MessageId { get; init; }
+	public required ChatType ChatType { get; init; }
 }
 
 // Config Data Structure
 
-internal readonly struct DataStruct //: DeserializedObject
+internal readonly struct DataStruct
 {
 	public Dictionary<long, string> Usernames { get; init; }
-	public Dictionary<long, string> Groups { get; init; }
 	public List<long> RootPermissions { get; init; }
-	public List<long> DebtChats { get; init; }
-	public List<long> DebtUsers { get; init; }
 }
 
 // Hardware data structure
@@ -53,24 +50,3 @@ internal readonly struct HardwareEmoji
 	public const string Off = "\ud83e\udeab";
 	public const string Night = "\ud83c\udf19";
 }
-
-internal class Debt //: SerializedObject
-{
-	public double Amount { get; set; }
-	public long Towards { get; init; }
-}
-
-internal class CurrentPurchase
-{
-	public readonly Stack<SubPurchase> History = new();
-	public readonly List<int> MessagesToDelete = [];
-	public readonly Dictionary<long, double> Purchases = new();
-	public long Buyer;
-}
-
-internal class SubPurchase
-{
-	public List<long> Customers = [];
-	public double TotalAmount;
-}
-

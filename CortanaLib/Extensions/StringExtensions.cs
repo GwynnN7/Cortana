@@ -6,9 +6,10 @@ public static class StringExtensions
 {
     public static string Capitalize(this string str)
     {
+        if (str.Length == 0) return str;
         return string.Concat(str[..1].ToUpper(), str.AsSpan(1));
     }
-    
+
     public static IOption<T> ToEnum<T>(this string str) where T : struct
     {
         try
@@ -26,7 +27,7 @@ public static class StringExtensions
     {
         File.WriteAllText(path, str);
     }
-    
+
     public static T Load<T>(this string path) where T : new()
     {
         return DataHandler.DeserializeJson<T>(path) ?? new T();

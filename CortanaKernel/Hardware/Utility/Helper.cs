@@ -21,16 +21,17 @@ public static class Helper
 		process.Start();
 		return process;
 	}
-	
+
 	public static void DelayCommand(string command)
 	{
 		Task.Run(async () =>
 		{
 			await Task.Delay(1000);
-			RunCommand(command);
+			using var process = RunCommand(command);
+			await process.WaitForExitAsync();
 		});
 	}
-	
+
 	public static bool Ping(string ip)
 	{
 		using var pingSender = new Ping();
@@ -44,7 +45,7 @@ public static class Helper
 			return false;
 		}
 	}
-	
+
 	public static string FormatTemperature(double temperature, int round = 1)
 	{
 		var tempFormat = $"{Math.Round(temperature, round).ToString(CultureInfo.InvariantCulture)}°C";

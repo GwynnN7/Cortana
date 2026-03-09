@@ -9,7 +9,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Modules;
 
-internal abstract class RaspberryModule : IModuleInterface
+internal sealed class RaspberryModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
 	{
@@ -20,7 +20,7 @@ internal abstract class RaspberryModule : IModuleInterface
 	{
 		int messageId = callbackQuery.Message!.MessageId;
 		long chatId = callbackQuery.Message.Chat.Id;
-		
+
 		switch (command)
 		{
 			case "ip":
@@ -43,7 +43,7 @@ internal abstract class RaspberryModule : IModuleInterface
 				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
 					await cortana.DeleteMessages(chatId, chatArg.Arg);
 				await CreateMenu(cortana, callbackQuery.Message);
-				TelegramUtils.ChatArgs.Remove(chatId);
+				TelegramUtils.ChatArgs.TryRemove(chatId, out _);
 				break;
 		}
 	}
@@ -51,22 +51,22 @@ internal abstract class RaspberryModule : IModuleInterface
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
 	{
 		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-		   
-		   switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
-		   {
-		   	case ETelegramChatArg.RaspberryCommand:
-		   		if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
-		   		{
-		   			string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-		   			Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
-		   			chatArg.Arg.Add(messageStats.MessageId);
-		   			chatArg.Arg.Add(msg.MessageId);
-		   			return;
-		   		}
-		   		await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
-		   		break;
-		   }
-		   TelegramUtils.ChatArgs.Remove(messageStats.ChatId);
+
+		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
+		{
+			case ETelegramChatArg.RaspberryCommand:
+				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
+				{
+					string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
+					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
+					chatArg.Arg.Add(messageStats.MessageId);
+					chatArg.Arg.Add(msg.MessageId);
+					return;
+				}
+				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				break;
+		}
+		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -85,7 +85,7 @@ internal abstract class RaspberryModule : IModuleInterface
 			.AddNewRow()
 			.AddButton("<<", "home");
 	}
-	
+
 	private static InlineKeyboardMarkup CreateCancelButton()
 	{
 		return new InlineKeyboardMarkup()

@@ -1,6 +1,7 @@
 ﻿global using Memes = System.Collections.Generic.Dictionary<string, CortanaDiscord.Utility.MemeJsonStructure>;
 global using Guilds = System.Collections.Generic.Dictionary<ulong, CortanaDiscord.Utility.GuildSettings>;
 
+using System.Collections.Concurrent;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
@@ -15,23 +16,24 @@ internal static class DiscordUtils
 	public static Memes Memes { get; private set; }
 	public static readonly DataStruct Data;
 	public static readonly Guilds GuildSettings;
-	public static readonly Dictionary<ulong, DateTime> TimeConnected;
+	public static readonly ConcurrentDictionary<ulong, DateTime> TimeConnected;
 	private static ConnectionMultiplexer CommunicationClient { get; }
 	public static DiscordSocketClient Cortana { get; private set; } = null!;
 
 	static DiscordUtils()
 	{
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
-		
+
 		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage => {
-			if(channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage =>
+		{
+			if (channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
 		});
-		
+
 		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Data.json").Load<DataStruct>();
 		Memes = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json").Load<Memes>();
 		GuildSettings = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json").Load<Guilds>();
-		TimeConnected = new Dictionary<ulong, DateTime>();
+		TimeConnected = new ConcurrentDictionary<ulong, DateTime>();
 	}
 
 	public static void InitSettings(DiscordSocketClient client)
@@ -64,6 +66,12 @@ internal static class DiscordUtils
 	{
 		Memes = newMemes;
 		Memes.Serialize().Dump(DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
+	}
+
+	public static void Shutdown()
+	{
+		CommunicationClient.Close();
+		CommunicationClient.Dispose();
 	}
 
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,

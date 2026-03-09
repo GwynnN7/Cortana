@@ -10,7 +10,6 @@ internal enum ETelegramChatArg
 	HardwareTimer,
 	ComputerCommand,
 	RaspberryCommand,
-	Shopping,
 	AudioDownloader,
 	VideoDownloader,
 	SetLightThreshold,

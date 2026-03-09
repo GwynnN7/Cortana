@@ -11,10 +11,11 @@ using YoutubeExplode.Videos.Streams;
 
 namespace CortanaLib;
 
-public class AudioTrack {
+public class AudioTrack
+{
 	public required string OriginalUrl { get; init; }
 	public required string StreamUrl { get; init; }
-	public required string Title { get; init; } 
+	public required string Title { get; init; }
 	public required string ThumbnailUrl { get; init; }
 	public TimeSpan Duration { get; init; }
 }
@@ -22,7 +23,7 @@ public class AudioTrack {
 public static class MediaHandler
 {
 	private static readonly YoutubeClient YoutubeClient = new();
-	
+
 	public static Stream CreateQrCode(string content, bool useNormalColors, bool useBorders)
 	{
 		var qrGenerator = new QRCodeGenerator();
@@ -35,6 +36,7 @@ public static class MediaHandler
 		var imageStream = new MemoryStream();
 		using Image image = Image.Load(qrCodeAsPngByteArr);
 		image.Save(imageStream, new PngEncoder());
+		imageStream.Position = 0;
 		return imageStream;
 	}
 
@@ -45,7 +47,7 @@ public static class MediaHandler
 		IReadOnlyList<VideoSearchResult> videos = await YoutubeClient.Search.GetVideosAsync(video).CollectAsync(1);
 		return videos[0].Id;
 	}
-	
+
 	public static async Task<AudioTrack?> GetAudioTrack(string url)
 	{
 		Video video = await YoutubeClient.Videos.GetAsync(await GetVideoId(url));
@@ -58,7 +60,8 @@ public static class MediaHandler
 
 		if (audioStreamInfo == null) return null;
 
-		return new AudioTrack {
+		return new AudioTrack
+		{
 			Title = video.Title,
 			OriginalUrl = video.Url,
 			StreamUrl = audioStreamInfo.Url,
@@ -71,12 +74,12 @@ public static class MediaHandler
 	{
 		Video video = await YoutubeClient.Videos.GetAsync(await GetVideoId(url));
 		StreamManifest streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(video.Url);
-		
+
 		IStreamInfo audioStreamInfo = GetAudioStreamInfo(streamManifest, 50);
 		Stream stream = await YoutubeClient.Videos.Streams.GetAsync(audioStreamInfo);
 		return stream;
 	}
-	
+
 	public static async Task DownloadVideo(string url, EVideoQuality quality, int maxFileSize, string videoFilePath)
 	{
 		Video video = await YoutubeClient.Videos.GetAsync(await GetVideoId(url));
@@ -100,7 +103,7 @@ public static class MediaHandler
 			default:
 				throw new CortanaException("Unknown Video Quality");
 		}
-		
+
 		await YoutubeClient.Videos.DownloadAsync([videoStreamInfo, audioStreamInfo], new ConversionRequestBuilder(Path.Combine(videoFilePath, "temp_video.mp4")).Build());
 	}
 
@@ -108,7 +111,7 @@ public static class MediaHandler
 	{
 		return File.Exists(path) ? File.OpenRead(path) : null;
 	}
-	
+
 	private static IStreamInfo GetVideoStreamInfo(StreamManifest streamManifest, double maxVideoSize)
 	{
 		IVideoStreamInfo videoStreamInfo = streamManifest

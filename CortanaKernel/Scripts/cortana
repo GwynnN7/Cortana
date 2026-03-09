@@ -1,67 +1,75 @@
 #!/usr/bin/zsh
 
-mkdir -p ~/.config/Cortana
-cd ~/Cortana || exit;
-log_folder=~/.config/Cortana/Log;
+services=(cortana-kernel cortana-discord cortana-telegram cortana-web)
 
 if (($# == 1))
 then
     if [ "$1" = "git" ]
     then
+      cd ~/Cortana || exit;
       git fetch --all && git pull;
-    elif [ "$1" = "run" ]
-    then
-      CortanaKernel/out/CortanaKernel >>"$log_folder"/CortanaKernel.log 2>>"$log_folder"/CortanaKernel.log;
-    elif [ "$1" = "build" ]
-    then
-      rm -rf "$log_folder";
-      mkdir "$log_folder";
-      dotnet build CortanaKernel -o CortanaKernel/out --artifacts-path CortanaKernel/out/lib >>"$log_folder"/CortanaBuild.log 2>>"$log_folder"/CortanaBuild.err;
     elif [ "$1" = "start" ]
     then
-      nohup cortana run &>/dev/null & disown;
+      systemctl --user start cortana-kernel;
       echo "Cortana starting";
-    elif [ "$1" = "boot" ]
-    then
-      nohup sh -c "cortana build && cortana start" &>/dev/null & disown;
-      echo "Cortana building";
-    elif [ "$1" = "restart" ]
-    then
-      cmd="sleep 5 && cortana start";
-      eval "${cmd}" &>/dev/null & disown;
-      cortana stop;
-    elif [ "$1" = "reboot" ]
-    then
-      cmd="sleep 5 && cortana boot";
-      eval "${cmd}" &>/dev/null & disown;
-      cortana stop;
-    elif [ "$1" = "update" ]
-    then
-      cortana git;
-	    cortana reboot;
-    elif [ "$1" = "reset" ]
-    then
-        cortana stop;
-        rm -rf ./*
-	      git fetch --all && git reset --hard origin/main;
-	      cortana boot;
     elif [ "$1" = "stop" ]
     then
-        killall -s SIGUSR1 --quiet --ignore-case --wait CortanaKernel &>/dev/null;
-        echo "Cortana stopped"
-    elif [ "$1" = "kill" ]
+      systemctl --user stop cortana-kernel;
+      echo "Cortana stopped";
+    elif [ "$1" = "restart" ]
     then
-        killall -s SIGKILL --quiet --ignore-case --wait CortanaKernel &>/dev/null;
-        echo "Cortana killed"
-	elif [ "$1" = "help" ]
+      systemctl --user restart cortana-kernel;
+      echo "Cortana restarted";
+    elif [ "$1" = "update" ]
     then
-      echo "cortana git             git fetch and pull";
-      echo "cortana build           build source only";
-      echo "cortana start/restart   start/restart without building";
-      echo "cortana boot/reboot     start/restart after building";
-      echo "cortana update          update source and reboot";
-      echo "cortana reset           force update source";
-      echo "cortana stop            stop safely";
-      echo "cortana kill            kill process";
+      cortana stop;
+      cortana git;
+      cortana start;
+    elif [ "$1" = "status" ]
+    then
+      for svc in "${services[@]}"; do systemctl --user status "$svc" --no-pager; echo ""; done
+    elif [ "$1" = "log" ]
+    then
+      journalctl --user -u "cortana-*" --no-pager -n 50;
+    elif [ "$1" = "install" ]
+    then
+      mkdir -p ~/.config/systemd/user;
+      cd ~/Cortana/CortanaKernel/Scripts || exit;
+      for svc in "${services[@]}"; do cp "$svc.service" ~/.config/systemd/user/; done
+      systemctl --user daemon-reload;
+      systemctl --user enable cortana-kernel;
+      echo "Services installed and enabled";
+    elif [ "$1" = "uninstall" ]
+    then
+      systemctl --user disable --now cortana-kernel;
+      for svc in "${services[@]}"; do rm -f ~/.config/systemd/user/"$svc.service"; done
+      systemctl --user daemon-reload;
+      echo "Services uninstalled";
+    elif [ "$1" = "help" ]
+    then
+      echo "cortana git                  git fetch and pull";
+      echo "cortana start                start cortana (all services)";
+      echo "cortana stop                 stop cortana (all services)";
+      echo "cortana restart              restart cortana (all services)";
+      echo "cortana update               stop, pull, start";
+      echo "cortana status               show all services status";
+      echo "cortana log                  show recent logs";
+      echo "cortana install              install systemd services";
+      echo "cortana uninstall            remove systemd services";
+      echo "";
+      echo "cortana start <service>      start specific service";
+      echo "cortana stop <service>       stop specific service";
+      echo "cortana restart <service>    restart specific service";
+      echo "cortana status <service>     show specific service status";
+      echo "cortana log <service>        show specific service logs";
+    fi
+elif (($# == 2))
+then
+    if [ "$1" = "start" ] || [ "$1" = "stop" ] || [ "$1" = "restart" ] || [ "$1" = "status" ]
+    then
+      systemctl --user "$1" "cortana-$2";
+    elif [ "$1" = "log" ]
+    then
+      journalctl --user -u "cortana-$2" --no-pager -n 50;
     fi
 fi

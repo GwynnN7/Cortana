@@ -8,24 +8,24 @@ namespace CortanaKernel.Hardware.SocketHandler;
 public static class ServerHandler
 {
 	private static readonly Socket Server;
-	
+
 	static ServerHandler()
 	{
 		Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
 	}
-	
+
 	public static void Initialize()
 	{
 		var ipEndPoint = new IPEndPoint(IPAddress.Any, int.Parse(DataHandler.Env("CORTANA_TCP_PORT")));
 		Server.Bind(ipEndPoint);
 	}
-	
+
 	public static async Task StartListening()
 	{
 		Server.Listen();
-		
-		var bListening = true;
-		while (bListening)
+
+		var isListening = true;
+		while (isListening)
 		{
 			try
 			{
@@ -35,7 +35,7 @@ public static class ServerHandler
 			catch
 			{
 				Server.Close();
-				bListening = false;
+				isListening = false;
 			}
 		}
 	}
@@ -52,7 +52,7 @@ public static class ServerHandler
 			case "computer":
 				ComputerHandler.BindNew(new ComputerHandler(socket));
 				break;
-			
+
 			case "esp32":
 				SensorsHandler.BindNew(new SensorsHandler(socket));
 				break;
@@ -61,7 +61,7 @@ public static class ServerHandler
 				break;
 		}
 		socket.Send(Encoding.UTF8.GetBytes(answer));
-		if(answer == "FIN") socket.Close();
+		if (answer == "FIN") socket.Close();
 	}
 
 	public static void ShutdownServer()

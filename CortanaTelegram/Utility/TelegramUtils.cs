@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
@@ -12,22 +13,24 @@ internal static class TelegramUtils
 {
 	private static ConnectionMultiplexer CommunicationClient { get; }
 	private static TelegramBotClient _cortana = null!;
+	private static readonly Regex TimeRegex = new("^([0-9]+)([smhd])$", RegexOptions.Compiled);
 
-	public static readonly Dictionary<long, TelegramChatArg> ChatArgs;
+	public static readonly ConcurrentDictionary<long, TelegramChatArg> ChatArgs;
 	public static readonly DataStruct Data;
 	public static readonly long AuthorId;
 
 	static TelegramUtils()
 	{
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
-		
+
 		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage => {
-			if(channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage =>
+		{
+			if (channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
 		});
 
 		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json").Load<DataStruct>();
-		ChatArgs = new Dictionary<long, TelegramChatArg>();
+		ChatArgs = new ConcurrentDictionary<long, TelegramChatArg>();
 		AuthorId = NameToId("@gwynn7");
 	}
 
@@ -47,23 +50,11 @@ internal static class TelegramUtils
 		return Data.Usernames.GetValueOrDefault(id, "Unknown user");
 	}
 
-	public static string IdToGroupName(long id)
-	{
-		return Data.Groups.GetValueOrDefault(id, "Unknown group");
-	}
-
 	public static long NameToId(string name)
 	{
 		foreach ((long groupId, _) in Data.Usernames.Where(item => item.Value == name))
 			return groupId;
 		throw new CortanaException("User not found");
-	}
-
-	public static long NameToGroupId(string name)
-	{
-		foreach ((long groupId, _) in Data.Groups.Where(item => item.Value == name))
-			return groupId;
-		throw new CortanaException("Group not found");
 	}
 
 	public static bool CheckHardwarePermission(long userId)
@@ -81,10 +72,9 @@ internal static class TelegramUtils
 	public static (int, int, int, int) ParseTime(string text)
 	{
 		(int s, int m, int h, int d) times = (0, 0, 0, 0);
-		var timeRegex = new Regex("^([0-9]+)([s,m,h,d])$");
 		foreach (string time in text.Split())
 		{
-			Match match = timeRegex.Match(time);
+			Match match = TimeRegex.Match(time);
 			if (match.Success)
 			{
 				int value = int.Parse(match.Groups[1].Value);
@@ -100,7 +90,7 @@ internal static class TelegramUtils
 						times.h = value;
 						break;
 					case "d":
-						times.h = value*24;
+						times.h = value * 24;
 						break;
 				}
 			}
@@ -119,5 +109,11 @@ internal static class TelegramUtils
 		{
 			await cortana.SendMessage(chatId, text);
 		}
+	}
+
+	public static void Shutdown()
+	{
+		CommunicationClient.Close();
+		CommunicationClient.Dispose();
 	}
 }

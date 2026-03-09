@@ -1,0 +1,22 @@
+[Unit]
+Description=Cortana Kernel
+After=network.target redis.service
+Wants=redis.service cortana-discord.service cortana-telegram.service cortana-web.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Cortana
+ExecStart=%h/Cortana/CortanaKernel/out/CortanaKernel
+ExecStartPre=/usr/bin/dotnet build %h/Cortana/CortanaKernel -o %h/Cortana/CortanaKernel/out --artifacts-path %h/Cortana/CortanaKernel/out/lib
+EnvironmentFile=%h/.config/Cortana/Config/.env
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=CortanaKernel
+
+[Install]
+WantedBy=default.target

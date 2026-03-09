@@ -1,0 +1,20 @@
+[Unit]
+Description=Cortana Telegram Bot
+After=network.target redis.service cortana-kernel.service
+Requires=cortana-kernel.service
+PartOf=cortana-kernel.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Cortana
+ExecStart=%h/Cortana/CortanaTelegram/out/CortanaTelegram
+ExecStartPre=/usr/bin/dotnet build %h/Cortana/CortanaTelegram -o %h/Cortana/CortanaTelegram/out --artifacts-path %h/Cortana/CortanaTelegram/out/lib
+EnvironmentFile=%h/.config/Cortana/Config/.env
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=CortanaTelegram

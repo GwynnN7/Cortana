@@ -20,11 +20,11 @@ internal struct OsMacro
 	public static string GetPath(Os operatingSystem)
 	{
 		return operatingSystem == Os.Linux ? BashPath : CmdPath;
-        
+
 	}
 	public static string GetArg(Os operatingSystem)
 	{
-		return operatingSystem == Os.Linux ? BashArg : CmdArg; 
+		return operatingSystem == Os.Linux ? BashArg : CmdArg;
 	}
 }
 
@@ -34,8 +34,8 @@ internal static class OsHandler
 
 	static OsHandler()
 	{
-		if(RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) OperatingSystem = Os.Linux;
-		else if(RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) OperatingSystem = Os.Windows;
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) OperatingSystem = Os.Linux;
+		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) OperatingSystem = Os.Windows;
 		else throw new CortanaException("Unsupported Operating System");
 	}
 
@@ -59,8 +59,8 @@ internal static class OsHandler
 		string path = OsMacro.GetPath(OperatingSystem);
 		string param = OsMacro.GetArg(OperatingSystem);
 		string commandArg = DecodeCommand(command, arg);
-		
-		var process = new Process
+
+		using var process = new Process
 		{
 			StartInfo = new ProcessStartInfo
 			{
@@ -73,10 +73,10 @@ internal static class OsHandler
 			}
 		};
 		process.Start();
-		if(!sendResult) return;
-		
-		if(process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) CortanaDesktop.Write("Command executed");
-		if(!process.StandardOutput.EndOfStream) CortanaDesktop.Write(process.StandardOutput.ReadToEnd());
-		if(!process.StandardError.EndOfStream) CortanaDesktop.Write(process.StandardError.ReadToEnd());
+		if (!sendResult) return;
+
+		if (process.StandardOutput.EndOfStream && process.StandardError.EndOfStream) CortanaDesktop.Write("Command executed");
+		if (!process.StandardOutput.EndOfStream) CortanaDesktop.Write(process.StandardOutput.ReadToEnd());
+		if (!process.StandardError.EndOfStream) CortanaDesktop.Write(process.StandardError.ReadToEnd());
 	}
 }

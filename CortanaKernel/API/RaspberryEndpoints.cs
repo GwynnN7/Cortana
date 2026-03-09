@@ -28,19 +28,19 @@ public class RaspberryEndpoints : ICarterModule
 			TypedResults.Json(new MessageResponse(Message: "Raspberry API"));
 	}
 
-	private static IResult GetInfo(string info, HttpRequest request)
+	private static async Task<IResult> GetInfo(string info, HttpRequest request)
 	{
 		StringValues acceptHeader = request.Headers.Accept;
 		IOption<ERaspberryInfo> cmd = info.ToEnum<ERaspberryInfo>();
 
 		ERaspberryInfo? raspberryInfo = null;
-		StringResult result = cmd.Match(
-			onSome: value =>
+		StringResult result = await cmd.Match(
+			onSome: async value =>
 			{
 				raspberryInfo = value;
-				return HardwareApi.Raspberry.GetHardwareInfo(value);
+				return await HardwareApi.Raspberry.GetHardwareInfo(value);
 			},
-			onNone: () => StringResult.Failure("Raspberry information not found")
+			onNone: () => Task.FromResult(StringResult.Failure("Raspberry information not found"))
 		);
 
 		return result.Match<IResult>(

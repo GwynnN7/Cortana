@@ -16,7 +16,6 @@ public class Settings
         set
         {
             field = Math.Clamp(value, 0, MaxAnalogRead);
-            this.Serialize().Dump(FilePath);
         }
     } = 1500;
 
@@ -25,8 +24,7 @@ public class Settings
         get;
         set
         {
-            field = (EMotionDetection) Math.Clamp((int) value, (int) EMotionDetection.Off, (int) EMotionDetection.On);
-            this.Serialize().Dump(FilePath);
+            field = (EMotionDetection)Math.Clamp((int)value, (int)EMotionDetection.Off, (int)EMotionDetection.On);
         }
     } = EMotionDetection.On;
 
@@ -36,30 +34,32 @@ public class Settings
         set
         {
             field = Math.Clamp(value, 0, 23);
-            this.Serialize().Dump(FilePath);
         }
     } = 9;
-    
+
     public int MotionOffMin
     {
         get;
         set
         {
             field = Math.Clamp(value, 0, MotionOffMax);
-            this.Serialize().Dump(FilePath);
         }
     } = 1;
-    
+
     public int MotionOffMax
     {
         get;
         set
         {
             field = Math.Clamp(value, MotionOffMin, 3600);
-            this.Serialize().Dump(FilePath);
         }
     } = 30;
-    
+
+    public void Save()
+    {
+        this.Serialize().Dump(FilePath);
+    }
+
     public static Settings Load()
     {
         return FilePath.Load<Settings>();

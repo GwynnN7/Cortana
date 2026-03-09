@@ -7,9 +7,8 @@ public static class SignalHandler
 {
     private static readonly UnixSignal[] SignalsList =
     [
-        new(Signum.SIGTERM), 
-        new(Signum.SIGINT),
-        new(Signum.SIGUSR1)
+        new(Signum.SIGTERM),
+        new(Signum.SIGINT)
     ];
 
     public static Task WaitForInterrupt()

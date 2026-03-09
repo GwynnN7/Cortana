@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>CortanaLib</RootNamespace>
@@ -11,8 +11,8 @@
       <PackageReference Include="Mono.Unix" Version="7.1.0-final.1.21458.1" />
       <PackageReference Include="QRCoder" Version="1.7.0" />
       <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-      <PackageReference Include="YoutubeExplode" Version="6.5.6" />
-      <PackageReference Include="YoutubeExplode.Converter" Version="6.5.6" />
+      <PackageReference Include="YoutubeExplode" Version="6.5.7" />
+      <PackageReference Include="YoutubeExplode.Converter" Version="6.5.7" />
     </ItemGroup>
 
 </Project>

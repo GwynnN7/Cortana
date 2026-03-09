@@ -23,6 +23,7 @@ public static class CortanaTelegramBot
 		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot Online");
 
 		await SignalHandler.WaitForInterrupt();
+		TelegramUtils.Shutdown();
 		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot  Offline");
 	}
 
@@ -87,9 +88,6 @@ public static class CortanaTelegramBot
 				case ETelegramChatArg.HardwareTimer:
 					await DeviceModule.HandleTextMessage(cortana, messageStats);
 					break;
-				case ETelegramChatArg.Shopping:
-					await ShoppingModule.HandleTextMessage(cortana, messageStats);
-					break;
 				case ETelegramChatArg.SetMotionDetection:
 				case ETelegramChatArg.SetLightThreshold:
 				case ETelegramChatArg.SetMorningHour:
@@ -101,7 +99,7 @@ public static class CortanaTelegramBot
 					await RaspberryModule.HandleTextMessage(cortana, messageStats);
 					break;
 			}
-			
+
 			return;
 		}
 
@@ -115,7 +113,6 @@ public static class CortanaTelegramBot
 			if (messageStats.Command != "menu")
 			{
 				await DeviceModule.ExecCommand(messageStats, cortana);
-				await ShoppingModule.ExecCommand(messageStats, cortana);
 			}
 			else
 			{
@@ -126,7 +123,7 @@ public static class CortanaTelegramBot
 		{
 			bool isCallback = await DeviceModule.HandleKeyboardCallback(cortana, messageStats);
 			if (messageStats.UserId == TelegramUtils.AuthorId || messageStats.ChatType != ChatType.Private) return;
-			if(isCallback) await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
+			if (isCallback) await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
 			else await cortana.ForwardMessage(TelegramUtils.AuthorId, messageStats.ChatId, messageStats.MessageId);
 		}
 	}
@@ -144,19 +141,19 @@ public static class CortanaTelegramBot
 			case "device":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
 					await DeviceModule.CreateMenu(cortana, message);
-				else 
+				else
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access device controls");
 				break;
 			case "raspberry":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
 					await RaspberryModule.CreateMenu(cortana, message);
-				else 
+				else
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry controls");
 				break;
 			case "command":
 				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
 					await CommandModule.CreateMenu(cortana, message);
-				else 
+				else
 					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access commands");
 				break;
 			case "utility":
@@ -169,7 +166,6 @@ public static class CortanaTelegramBot
 				if (command.StartsWith("device-")) await DeviceModule.HandleCallbackQuery(cortana, callbackQuery, command["device-".Length..]);
 				else if (command.StartsWith("raspberry-")) await RaspberryModule.HandleCallbackQuery(cortana, callbackQuery, command["raspberry-".Length..]);
 				else if (command.StartsWith("command-")) await CommandModule.HandleCallbackQuery(cortana, callbackQuery, command["command-".Length..]);
-				else if (command.StartsWith("shopping-")) await ShoppingModule.HandleCallbackQuery(cortana, callbackQuery, command["shopping-".Length..]);
 				else if (command.StartsWith("utility-")) await UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
 				else if (command.StartsWith("sensor-")) await SensorModule.HandleCallbackQuery(cortana, callbackQuery, command["sensor-".Length..]);
 				break;

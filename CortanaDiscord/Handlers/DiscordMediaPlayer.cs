@@ -3,12 +3,14 @@ using CortanaLib;
 using Discord.Audio;
 namespace CortanaDiscord.Handlers;
 
-public class DiscordQueue<T> where T : class{
+public class DiscordQueue<T> where T : class
+{
     private readonly Queue<T> _queue = new();
     private readonly Queue<CancellationTokenSource> _tokens = new();
     private readonly Lock _lock = new();
 
-    public void Enqueue(T track) {
+    public void Enqueue(T track)
+    {
         lock (_lock)
         {
             _queue.Enqueue(track);
@@ -16,19 +18,24 @@ public class DiscordQueue<T> where T : class{
         }
     }
 
-    public T? Dequeue() {
-        lock (_lock) {
+    public T? Dequeue()
+    {
+        lock (_lock)
+        {
             return _queue.Count > 0 ? _queue.Dequeue() : null;
         }
     }
-    
-    public CancellationTokenSource? DequeueToken() {
-        lock (_lock) {
+
+    public CancellationTokenSource? DequeueToken()
+    {
+        lock (_lock)
+        {
             return _tokens.Count > 0 ? _tokens.Dequeue() : null;
         }
     }
 
-    public void Clear() {
+    public void Clear()
+    {
         lock (_lock)
         {
             foreach (CancellationTokenSource token in _tokens)
@@ -39,31 +46,32 @@ public class DiscordQueue<T> where T : class{
             _tokens.Clear();
         }
     }
-    
-    public bool HasNext() {
-        lock (_lock) {
+
+    public bool HasNext()
+    {
+        lock (_lock)
+        {
             return _queue.Count > 0;
         }
     }
 }
 
-public class DiscordMediaPlayer(IAudioClient client)
+public class DiscordMediaPlayer(IAudioClient client) : IDisposable
 {
     private readonly DiscordQueue<AudioTrack> _queue = new();
     private CancellationTokenSource? _currentTrackToken;
-    
-    private volatile bool _isPlaying;
+
+    private int _isPlaying;
 
     public void Enqueue(AudioTrack track)
     {
         _queue.Enqueue(track);
-        if (!_isPlaying)
+        if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
         {
-            _isPlaying = true;
             Task.Run(PlayQueue);
         }
     }
-    
+
     public async Task<bool> Skip()
     {
         if (_currentTrackToken == null) return false;
@@ -80,9 +88,12 @@ public class DiscordMediaPlayer(IAudioClient client)
 
     public void Dispose()
     {
+        _currentTrackToken?.Cancel();
+        _currentTrackToken?.Dispose();
+        _queue.Clear();
         client.Dispose();
     }
-    
+
     private async Task PlayQueue()
     {
         while (_queue.HasNext())
@@ -96,25 +107,33 @@ public class DiscordMediaPlayer(IAudioClient client)
                 continue;
             }
 
-            using Process ffmpeg = CreateStream(track.StreamUrl);
-            await using Stream output = ffmpeg.StandardOutput.BaseStream;
-            await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
-            
+            Process ffmpeg = CreateStream(track.StreamUrl);
             try
             {
-                await output.CopyToAsync(discord, _currentTrackToken.Token);
+                await using Stream output = ffmpeg.StandardOutput.BaseStream;
+                await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
+
+                try
+                {
+                    await output.CopyToAsync(discord, _currentTrackToken.Token);
+                }
+                finally
+                {
+                    await discord.FlushAsync();
+                    _currentTrackToken.Dispose();
+                    _currentTrackToken = null;
+                }
             }
             finally
             {
-                await discord.FlushAsync();
-                _currentTrackToken.Dispose();
-                _currentTrackToken = null;
+                if (!ffmpeg.HasExited) ffmpeg.Kill(true);
+                ffmpeg.Dispose();
             }
         }
 
-        _isPlaying = false;
+        Interlocked.Exchange(ref _isPlaying, 0);
     }
-    
+
     private static Process CreateStream(string path)
     {
         return Process.Start(new ProcessStartInfo

@@ -13,19 +13,19 @@ public static class DataHandler
 	static DataHandler()
 	{
 		if (!Directory.Exists(CortanaFolder)) throw new CortanaException("Could not find .config folder");
-		
+
 		Folders = new Dictionary<EDirType, string>
 		{
 			{ EDirType.Config, Path.Combine(CortanaFolder, "Config/") },
 			{ EDirType.Log, Path.Combine(CortanaFolder, "Log/") },
 			{ EDirType.Storage, Path.Combine(CortanaFolder, "Storage/") }
 		};
-		
+
 		foreach ((EDirType type, string path) in Folders)
 		{
-			if(!Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
+			if (!Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
 		}
-		
+
 		SerializerOptions = new JsonSerializerOptions()
 		{
 			WriteIndented = true,
@@ -33,10 +33,10 @@ public static class DataHandler
 			Converters = { new JsonStringEnumConverter() }
 		};
 	}
-	
+
 	public static string Env(string env) => Environment.GetEnvironmentVariable(env) ?? throw new EnvironmentException(env);
 	public static string CortanaPath(EDirType type, string path = "") => Path.Combine(Folders[type], path);
-	
+
 	public static T? DeserializeJson<T>(string path)
 	{
 		T? dataToLoad = default;
@@ -54,11 +54,9 @@ public static class DataHandler
 		return dataToLoad;
 	}
 
-	public static string Log(string fileName, string log)
+	public static string Log(string source, string log)
 	{
-		string logPath = CortanaPath(EDirType.Log,$"{fileName}.log");
-		using StreamWriter logFile = File.Exists(logPath) ? File.AppendText(logPath) : File.CreateText(logPath);
-		logFile.WriteLine($"{DateTime.Now}\n{log}\n------\n\n");
+		Console.WriteLine($"[{source}] {log}");
 		return log;
 	}
 }

@@ -11,7 +11,7 @@ public class ComputerHandler : ClientHandler
 	private static ComputerHandler? _instance;
 	private readonly Stack<string> _messages = [];
 
-	public ComputerHandler (Socket socket) : base(socket, "Computer")
+	public ComputerHandler(Socket socket) : base(socket, "Computer")
 	{
 		UpdateComputerStatus(EPowerStatus.On);
 		Service.ComputerStatusUpdated(EPowerStatus.On);
@@ -25,14 +25,15 @@ public class ComputerHandler : ClientHandler
 				UpdateComputerStatus(EPowerStatus.On);
 				break;
 			default:
-				Monitor.Enter(_messages);
-				_messages.Push(message);
-				Monitor.Pulse(_messages);
-				Monitor.Exit(_messages);
+				lock (_messages)
+				{
+					_messages.Push(message);
+					Monitor.Pulse(_messages);
+				}
 				break;
 		}
 	}
-	
+
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
@@ -41,7 +42,7 @@ public class ComputerHandler : ClientHandler
 		UpdateComputerStatus(EPowerStatus.Off);
 		Service.ComputerStatusUpdated(EPowerStatus.Off);
 	}
-	
+
 	// Static methods
 
 	public static void Boot()
@@ -54,12 +55,12 @@ public class ComputerHandler : ClientHandler
 	{
 		return _instance?.Write("shutdown") ?? false;
 	}
-	
+
 	public static bool Suspend()
 	{
 		return _instance?.Write("suspend") ?? false;
 	}
-	
+
 	public static bool Reboot()
 	{
 		return _instance?.Write("reboot") ?? false;
@@ -69,12 +70,12 @@ public class ComputerHandler : ClientHandler
 	{
 		return _instance?.Write("system") ?? false;
 	}
-	
+
 	public static bool Notify(string text)
 	{
 		return (_instance?.Write("notify") ?? false) && _instance.Write(text);
 	}
-	
+
 	public static bool Command(string cmd)
 	{
 		return (_instance?.Write("cmd") ?? false) && _instance.Write(cmd);
@@ -83,13 +84,13 @@ public class ComputerHandler : ClientHandler
 	public static bool GatherMessage(out string? message)
 	{
 		message = null;
-		if(_instance == null) return false;
-		
+		if (_instance == null) return false;
+
 		Stack<string> instanceMessage = _instance._messages;
 		Monitor.Enter(instanceMessage);
 		try
 		{
-			if(Monitor.Wait(instanceMessage, 4000)) message = instanceMessage.Pop();
+			if (Monitor.Wait(instanceMessage, 4000)) message = instanceMessage.Pop();
 		}
 		finally
 		{
@@ -97,28 +98,28 @@ public class ComputerHandler : ClientHandler
 		}
 		return message != null;
 	}
-	
+
 	public static async Task CheckForConnection()
 	{
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EPowerStatus.On) && (DateTime.Now - start).Seconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EPowerStatus.On) && (DateTime.Now - start).TotalSeconds <= 100) await Task.Delay(1500);
 
-		if ((DateTime.Now - start).Seconds < 3) await Task.Delay(15000);
+		if ((DateTime.Now - start).TotalSeconds < 3) await Task.Delay(15000);
 		else await Task.Delay(5000);
 	}
-	
+
 	private static void UpdateComputerStatus(EPowerStatus power)
 	{
 		DeviceHandler.DeviceStatus[EDevice.Computer] = power;
 	}
-	
+
 	private static EPowerStatus GetComputerStatus()
 	{
 		return DeviceHandler.DeviceStatus[EDevice.Computer];
 	}
-	
+
 	public static void BindNew(ComputerHandler computerHandler)
 	{
 		lock (InstanceLock)
@@ -127,7 +128,7 @@ public class ComputerHandler : ClientHandler
 			_instance = computerHandler;
 		}
 	}
-    
+
 	public static void Interrupt()
 	{
 		lock (InstanceLock)
