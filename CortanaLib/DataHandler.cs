@@ -17,13 +17,12 @@ public static class DataHandler
 		Folders = new Dictionary<EDirType, string>
 		{
 			{ EDirType.Config, Path.Combine(CortanaFolder, "Config/") },
-			{ EDirType.Log, Path.Combine(CortanaFolder, "Log/") },
 			{ EDirType.Storage, Path.Combine(CortanaFolder, "Storage/") }
 		};
 
-		foreach ((EDirType type, string path) in Folders)
+		foreach ((EDirType _, string path) in Folders)
 		{
-			if (!Path.Exists(path)) throw new CortanaException($"Could not find {type} path");
+			Directory.CreateDirectory(path);
 		}
 
 		SerializerOptions = new JsonSerializerOptions()

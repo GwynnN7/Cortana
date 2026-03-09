@@ -51,8 +51,7 @@ public enum EVideoQuality
 public enum EDirType
 {
 	Config,
-	Storage,
-	Log
+	Storage
 }
 
 public enum EMessageCategory
