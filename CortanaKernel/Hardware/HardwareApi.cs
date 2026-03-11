@@ -123,13 +123,12 @@ public static class HardwareApi
 					case ERaspberryInfo.Temperature:
 						return StringResult.Success(Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()));
 					case ERaspberryInfo.Ip:
-						break;
+						string ip = RaspberryHandler.RequestPublicIpv4().Result;
+						return StringResult.Success(ip);
 					default:
 						return StringResult.Failure("Raspberry information not supported");
 				}
 			}
-			string ip = await RaspberryHandler.RequestPublicIpv4();
-			return StringResult.Success(ip);
 		}
 	}
 

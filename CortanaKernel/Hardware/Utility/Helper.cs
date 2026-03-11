@@ -48,8 +48,7 @@ public static class Helper
 
 	public static string FormatTemperature(double temperature, int round = 1)
 	{
-		var tempFormat = $"{Math.Round(temperature, round).ToString(CultureInfo.InvariantCulture)}°C";
-		return tempFormat;
+		return $"{Math.Round(temperature, round)}°C";
 	}
 
 	public static EPowerAction ConvertToggle(EDevice device)
