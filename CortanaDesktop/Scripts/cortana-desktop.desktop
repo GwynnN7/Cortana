@@ -1,9 +1,0 @@
-[Desktop Entry]
-Exec=cortana start
-Type=Application
-Name=Cortana
-Terminal=false
-NoDisplay=true
-StartupNotify=false
-X-GNOME-Autostart-enabled=true
-X-GNOME-Autostart-Delay=5

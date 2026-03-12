@@ -18,10 +18,9 @@ public static class RaspberryHandler
 	public static double ReadCpuTemperature()
 	{
 		using var cpuTemperature = new CpuTemperature();
-		List<(string Sensor, Temperature Temperature)> temperatures = cpuTemperature.ReadTemperatures();
-		double average = temperatures.Sum(temp => temp.Temperature.DegreesCelsius);
-		average /= temperatures.Count;
-		return average;
+		List<(string Sensor, Temperature Temperature)> temperatures = [.. cpuTemperature.ReadTemperatures().Where(t => t.Temperature.DegreesCelsius > 0)];
+		if (temperatures.Count == 0) return double.NaN;
+		return temperatures.Average(t => t.Temperature.DegreesCelsius);
 	}
 
 	public static string GetNetworkGateway()

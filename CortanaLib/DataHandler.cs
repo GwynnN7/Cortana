@@ -6,25 +6,22 @@ namespace CortanaLib;
 
 public static class DataHandler
 {
-	private static readonly string CortanaFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "Cortana");
+	private static readonly string CortanaFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config", "cortana");
 	private static readonly Dictionary<EDirType, string> Folders;
 	public static readonly JsonSerializerOptions SerializerOptions;
 
 	static DataHandler()
 	{
 		if (!Directory.Exists(CortanaFolder)) throw new CortanaException("Could not find .config folder");
-
 		Folders = new Dictionary<EDirType, string>
 		{
-			{ EDirType.Config, Path.Combine(CortanaFolder, "Config/") },
-			{ EDirType.Storage, Path.Combine(CortanaFolder, "Storage/") }
+			{ EDirType.Config, CortanaFolder },
+			{ EDirType.Storage, Path.Combine(AppContext.BaseDirectory, "Storage") },
+			{ EDirType.Temp, Path.Combine(Path.GetTempPath(), "cortana") }
 		};
 
-		foreach ((EDirType _, string path) in Folders)
-		{
-			Directory.CreateDirectory(path);
-		}
-
+		Directory.CreateDirectory(Folders[EDirType.Temp]);
+		
 		SerializerOptions = new JsonSerializerOptions()
 		{
 			WriteIndented = true,

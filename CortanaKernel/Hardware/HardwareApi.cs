@@ -121,7 +121,9 @@ public static class HardwareApi
 					case ERaspberryInfo.Gateway:
 						return StringResult.Success(RaspberryHandler.GetNetworkGateway());
 					case ERaspberryInfo.Temperature:
-						return StringResult.Success(Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature()));
+						double temp = RaspberryHandler.ReadCpuTemperature();
+						if (double.IsNaN(temp)) return StringResult.Failure("Temperature sensor unavailable");
+						return StringResult.Success(Helper.FormatTemperature(temp));
 					case ERaspberryInfo.Ip:
 						string ip = RaspberryHandler.RequestPublicIpv4().Result;
 						return StringResult.Success(ip);
