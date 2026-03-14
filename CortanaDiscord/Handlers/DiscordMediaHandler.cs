@@ -16,12 +16,12 @@ public class DiscordMediaHandler(SocketGuild guild)
 {
     private readonly DiscordQueue<JoinAction> _queue = new();
     private CancellationTokenSource? _currentJoinToken;
-    
+
     private volatile bool _isPlaying;
-    
+
     public SocketVoiceChannel? CurrentChannel;
     public DiscordMediaPlayer? MediaPlayer;
-    
+
     public void Enqueue(JoinAction joinAction)
     {
         _queue.Enqueue(joinAction);
@@ -39,10 +39,10 @@ public class DiscordMediaHandler(SocketGuild guild)
         {
             joinAction = _queue.Dequeue();
         }
-        if(joinAction == null) return;
+        if (joinAction == null) return;
         Enqueue(joinAction);
     }
-    
+
     private async Task JoinQueue()
     {
         while (_queue.HasNext())
@@ -55,12 +55,12 @@ public class DiscordMediaHandler(SocketGuild guild)
                 _currentJoinToken = null;
                 continue;
             }
-            
+
             await Task.Run(() => JoinTask(action), _currentJoinToken.Token);
 
             EnqueueLast();
         }
-        
+
         _isPlaying = false;
     }
 
@@ -71,45 +71,46 @@ public class DiscordMediaHandler(SocketGuild guild)
             switch (joinAction.Status)
             {
                 case JoinStatus.Join:
-                {
-                    SocketVoiceChannel channel = joinAction.Channel!;
-                    await Task.Delay(1500);
-
-                    if (!AudioHandler.GetAvailableChannels(channel.Guild).Contains(channel)) return;
-                    if (AudioHandler.IsConnected(channel, guild)) return;
-
-                    await AudioHandler.Stop(guild.Id);
-			
-                    IAudioClient? audioClient = await channel.ConnectAsync();
-                    if (audioClient == null) throw new CortanaException("Errore connessione al canale vocale");
-                    
-                    CurrentChannel = channel;
-                    
-                    MediaPlayer?.Dispose();
-                    MediaPlayer = new DiscordMediaPlayer(audioClient);
-            
-                    AudioHandler.SayHello(guild.Id);
-                    break;
-                }
-                case JoinStatus.Leave:
-                {
-                    await AudioHandler.Stop(guild.Id);
-                    MediaPlayer?.Dispose();
-                    if (CurrentChannel == GetActualConnectedChannel(guild) && CurrentChannel != null)
                     {
-                        await CurrentChannel.DisconnectAsync();
+                        SocketVoiceChannel channel = joinAction.Channel!;
+                        await Task.Delay(1500);
+
+                        if (!AudioHandler.GetAvailableChannels(channel.Guild).Contains(channel)) return;
+                        if (AudioHandler.IsConnected(channel, guild)) return;
+
+                        await AudioHandler.Stop(guild.Id);
+
+                        IAudioClient? audioClient = await channel.ConnectAsync();
+                        if (audioClient == null) throw new CortanaException("Errore connessione al canale vocale");
+
+                        CurrentChannel = channel;
+
+                        MediaPlayer?.Dispose();
+                        MediaPlayer = new DiscordMediaPlayer(audioClient);
+
+                        AudioHandler.SayHello(guild.Id);
+                        break;
                     }
-                    CurrentChannel = null;
-                    break;
-                }
+                case JoinStatus.Leave:
+                    {
+                        await AudioHandler.Stop(guild.Id);
+                        MediaPlayer?.Dispose();
+                        if (CurrentChannel == GetActualConnectedChannel(guild) && CurrentChannel != null)
+                        {
+                            await CurrentChannel.DisconnectAsync();
+                        }
+                        CurrentChannel = null;
+                        break;
+                    }
             }
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"Errore nella gestione della coda di join: {ex.Message}");
             await DiscordUtils.SendToChannel<string>("Errore con la gestione della coda di join", ECortanaChannels.Log);
         }
     }
-    
+
     private static SocketVoiceChannel? GetActualConnectedChannel(SocketGuild guild)
     {
         return guild.VoiceChannels.FirstOrDefault(voiceChannel => voiceChannel.ConnectedUsers.Select(x => x.Id).Contains(DiscordUtils.Data.CortanaId));

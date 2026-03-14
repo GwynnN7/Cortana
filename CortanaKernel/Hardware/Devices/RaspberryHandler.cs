@@ -18,9 +18,11 @@ public static class RaspberryHandler
 	public static double ReadCpuTemperature()
 	{
 		using var cpuTemperature = new CpuTemperature();
-		List<(string Sensor, Temperature Temperature)> temperatures = [.. cpuTemperature.ReadTemperatures().Where(t => t.Temperature.DegreesCelsius > 0)];
-		if (temperatures.Count == 0) return double.NaN;
-		return temperatures.Average(t => t.Temperature.DegreesCelsius);
+		if (cpuTemperature.IsAvailable)
+		{
+			return cpuTemperature.Temperature.DegreesCelsius;
+		}
+		return 0.0;
 	}
 
 	public static string GetNetworkGateway()
@@ -37,7 +39,7 @@ public static class RaspberryHandler
 
 	public static void Shutdown() => Helper.DelayCommand(DecodeCommand("shutdown"));
 	public static void Reboot() => Helper.DelayCommand(DecodeCommand("reboot"));
-	
+
 	public static string DecodeCommand(string command, string arg = "")
 	{
 		var sudo = $"echo {DataHandler.Env("CORTANA_PASSWORD")} | sudo -S";

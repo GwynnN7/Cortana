@@ -9,6 +9,7 @@
 
     <ItemGroup>
       <PackageReference Include="Discord.Net" Version="3.19.0" />
+      <PackageReference Include="Discord.Net.Dave" Version="3.19.1" />
       <PackageReference Include="IGDB" Version="6.1.0" />
       <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.3" />
       <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
