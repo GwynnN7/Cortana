@@ -34,13 +34,13 @@ public class RaspberryEndpoints : ICarterModule
 		IOption<ERaspberryInfo> cmd = info.ToEnum<ERaspberryInfo>();
 
 		ERaspberryInfo? raspberryInfo = null;
-		StringResult result = await cmd.Match(
-			onSome: async value =>
+		StringResult result = cmd.Match(
+			onSome: value =>
 			{
 				raspberryInfo = value;
-				return await HardwareApi.Raspberry.GetHardwareInfo(value);
+				return HardwareApi.Raspberry.GetHardwareInfo(value);
 			},
-			onNone: () => Task.FromResult(StringResult.Failure("Raspberry information not found"))
+			onNone: () => StringResult.Failure("Raspberry information not found")
 		);
 
 		return result.Match<IResult>(

@@ -110,7 +110,7 @@ public static class HardwareApi
 				return StringResult.Success("Command executed");
 			}
 		}
-		public static async Task<StringResult> GetHardwareInfo(ERaspberryInfo hardwareInfo)
+		public static StringResult GetHardwareInfo(ERaspberryInfo hardwareInfo)
 		{
 			lock (RaspberryLock)
 			{
@@ -122,7 +122,6 @@ public static class HardwareApi
 						return StringResult.Success(RaspberryHandler.GetNetworkGateway());
 					case ERaspberryInfo.Temperature:
 						double temp = RaspberryHandler.ReadCpuTemperature();
-						if (double.IsNaN(temp)) return StringResult.Failure("Temperature sensor unavailable");
 						return StringResult.Success(Helper.FormatTemperature(temp));
 					case ERaspberryInfo.Ip:
 						string ip = RaspberryHandler.RequestPublicIpv4().Result;
