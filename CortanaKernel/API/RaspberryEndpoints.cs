@@ -40,7 +40,7 @@ public class RaspberryEndpoints : ICarterModule
 				raspberryInfo = value;
 				return HardwareApi.Raspberry.GetHardwareInfo(value);
 			},
-			onNone: () => StringResult.Failure("Raspberry information not found")
+			onNone: () => StringResult.Failure("Raspberry information not found"))
 		);
 
 		return result.Match<IResult>(
@@ -50,7 +50,12 @@ public class RaspberryEndpoints : ICarterModule
 				{
 					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo!.Value.ToString(), Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
 				}
-				return TypedResults.Text($"{raspberryInfo}: {val}", "text/plain");
+				var text = raspberryInfo switch
+				{
+					ERaspberryInfo.Temperature => Helper.FormatTemperature(val.ToDouble()),
+					_ => val
+				};
+				return TypedResults.Text($"{raspberryInfo}: {text}", "text/plain");
 			},
 			err => acceptHeader.Contains("text/plain") ?
 				TypedResults.BadRequest(err) :
