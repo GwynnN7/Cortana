@@ -40,7 +40,7 @@ public class RaspberryEndpoints : ICarterModule
 				raspberryInfo = value;
 				return HardwareApi.Raspberry.GetHardwareInfo(value);
 			},
-			onNone: () => StringResult.Failure("Raspberry information not found"))
+			onNone: () => StringResult.Failure("Raspberry information not found")
 		);
 
 		return result.Match<IResult>(
