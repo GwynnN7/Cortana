@@ -50,12 +50,7 @@ public class RaspberryEndpoints : ICarterModule
 				{
 					return TypedResults.Json(new SensorResponse(Sensor: raspberryInfo!.Value.ToString(), Value: val, Unit: raspberryInfo == ERaspberryInfo.Temperature ? "°C" : ""));
 				}
-				var text = raspberryInfo switch
-				{
-					ERaspberryInfo.Temperature => Helper.FormatTemperature(val.ToDouble()),
-					_ => val
-				};
-				return TypedResults.Text($"{raspberryInfo}: {text}", "text/plain");
+				return TypedResults.Text($"{raspberryInfo}: {val}", "text/plain");
 			},
 			err => acceptHeader.Contains("text/plain") ?
 				TypedResults.BadRequest(err) :
