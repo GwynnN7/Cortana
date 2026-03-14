@@ -2,8 +2,6 @@ using System.Net.NetworkInformation;
 using CortanaKernel.Hardware.Utility;
 using CortanaLib;
 using CortanaLib.Structures;
-using Iot.Device.CpuTemperature;
-using UnitsNet;
 
 namespace CortanaKernel.Hardware.Devices;
 
@@ -17,11 +15,20 @@ public static class RaspberryHandler
 
 	public static double ReadCpuTemperature()
 	{
-		using var cpuTemperature = new CpuTemperature();
-		if (cpuTemperature.IsAvailable)
+		try
 		{
-			return cpuTemperature.Temperature.DegreesCelsius;
+			string tempRaw = File.ReadAllText("/sys/class/thermal/thermal_zone0/temp");
+
+			if (double.TryParse(tempRaw, out double tempMilliCelsius))
+			{
+				return tempMilliCelsius / 1000.0;
+			}
 		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Failed to read temp: {ex.Message}");
+		}
+
 		return 0.0;
 	}
 

@@ -1,5 +1,3 @@
-using CortanaLib.Structures;
-
 namespace CortanaKernel.Hardware.Structures;
 
 public readonly struct SensorData

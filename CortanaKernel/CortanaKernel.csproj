@@ -11,10 +11,10 @@
 
     <ItemGroup>
         <PackageReference Include="Carter" Version="10.0.0" />
-        <PackageReference Include="Iot.Device.Bindings" Version="4.1.0" />
-        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
-        <PackageReference Include="Scalar.AspNetCore" Version="2.13.2" />
-        <PackageReference Include="StackExchange.Redis" Version="2.11.8" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.5" />
+        <PackageReference Include="Scalar.AspNetCore" Version="2.13.8" />
+        <PackageReference Include="StackExchange.Redis" Version="2.12.1" />
+        <PackageReference Include="System.Device.Gpio" Version="4.1.0" />
     </ItemGroup>
 
     <ItemGroup>
