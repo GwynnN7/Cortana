@@ -1,19 +1,17 @@
 namespace CortanaTelegram.Utility;
 
-internal enum ETelegramChatArg
+internal enum EArgsType
 {
 	Qrcode,
 	Chat,
 	Timer,
 	Notification,
-	Ping,
 	HardwareTimer,
 	ComputerCommand,
 	RaspberryCommand,
 	AudioDownloader,
 	VideoDownloader,
 	SetLightThreshold,
-	SetMotionDetection,
 	SetMotionOffMax,
 	SetMotionOffMin,
 	SetMorningHour

@@ -44,7 +44,7 @@ public static class CortanaDiscordBot
 			}
 
 			await DiscordUtils.SendToChannel<string>("I'm Online", ECortanaChannels.Cortana);
-			DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Discord Bot Online");
+			DataHandler.Log("Discord Bot Online");
 		};
 
 		await client.LoginAsync(TokenType.Bot, DataHandler.Env("CORTANA_DISCORD_TOKEN"));
@@ -54,7 +54,7 @@ public static class CortanaDiscordBot
 		await StopDiscordBot();
 		DiscordUtils.Shutdown();
 		await services.DisposeAsync();
-		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Discord Bot Offline");
+		DataHandler.Log("Discord Bot Offline");
 	}
 
 	private static async Task StopDiscordBot()
@@ -104,12 +104,14 @@ public static class CortanaDiscordBot
 		}
 		catch
 		{
-			DataHandler.Log(nameof(CortanaDiscord), "Errore di connessione, impossibile aggiornare l'Activity Status");
+			DataHandler.Log("Errore di connessione, impossibile aggiornare l'Activity Status");
 		}
 	}
 
 	private static async Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
 	{
+		if (oldState.VoiceChannel == newState.VoiceChannel) return;
+
 		SocketGuild? guild = (oldState.VoiceChannel ?? newState.VoiceChannel).Guild;
 
 		AudioHandler.HandleConnection(guild);
@@ -165,7 +167,7 @@ public static class CortanaDiscordBot
 
 	private static Task LogAsync(LogMessage message)
 	{
-		DataHandler.Log(nameof(CortanaDiscord), message.Message);
+		DataHandler.Log(message.Message);
 		return Task.CompletedTask;
 	}
 

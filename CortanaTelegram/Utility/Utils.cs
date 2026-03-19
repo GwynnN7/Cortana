@@ -6,32 +6,36 @@ using CortanaLib.Structures;
 using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Utility;
 
-internal static class TelegramUtils
+internal static class Utils
 {
 	private static ConnectionMultiplexer CommunicationClient { get; }
 	private static TelegramBotClient _cortana = null!;
 	private static readonly Regex TimeRegex = new("^([0-9]+)([smhd])$", RegexOptions.Compiled);
 
-	public static readonly ConcurrentDictionary<long, TelegramChatArg> ChatArgs;
+	public static readonly ConcurrentDictionary<long, ChatArgs> ChatArgs;
 	public static readonly DataStruct Data;
 	public static readonly long AuthorId;
+	public static long HomeId => Data.HomeGroup;
+	public static Topics Topics => Data.Topics;
 
-	static TelegramUtils()
+	static Utils()
 	{
+		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json").Load<DataStruct>();
+		ChatArgs = new ConcurrentDictionary<long, ChatArgs>();
+
+		AuthorId = NameToId("@gwynn7");
+
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 
 		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Urgent.ToString())).OnMessage(async channelMessage =>
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Telegram.ToString())).OnMessage(async channelMessage =>
 		{
-			if (channelMessage.Message.HasValue) await SendToUser(AuthorId, channelMessage.Message.ToString());
+			if (channelMessage.Message.HasValue) await SendToTopic(channelMessage.Message.ToString(), Topics.Log);
 		});
-
-		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json").Load<DataStruct>();
-		ChatArgs = new ConcurrentDictionary<long, TelegramChatArg>();
-		AuthorId = NameToId("@gwynn7");
 	}
 
 	public static void Init(TelegramBotClient newClient)
@@ -39,10 +43,16 @@ internal static class TelegramUtils
 		_cortana = newClient;
 	}
 
-	public static async Task SendToUser(long userId, string message, bool notify = true)
+	public static async Task<Message> SendToTopic(string message, int topicId, ReplyMarkup? replyMarkup = null)
+	{
+		var chat = new ChatId(HomeId);
+		return await _cortana.SendMessage(chat, message, messageThreadId: topicId, replyMarkup: replyMarkup);
+	}
+
+	public static async Task SendToUser(long userId, string message)
 	{
 		var chat = new ChatId(userId);
-		await _cortana.SendMessage(chat, message, disableNotification: !notify);
+		await _cortana.SendMessage(chat, message);
 	}
 
 	public static string IdToName(long id)
@@ -52,20 +62,15 @@ internal static class TelegramUtils
 
 	public static long NameToId(string name)
 	{
-		foreach ((long groupId, _) in Data.Usernames.Where(item => item.Value == name))
-			return groupId;
+		foreach ((long nameId, _) in Data.Usernames.Where(item => item.Value == name))
+			return nameId;
 		throw new CortanaException("User not found");
 	}
 
-	public static bool CheckHardwarePermission(long userId)
-	{
-		return Data.RootPermissions.Contains(userId);
-	}
-
-	public static bool TryAddChatArg(long chatId, TelegramChatArg arg, CallbackQuery callbackQuery)
+	public static bool AddChatArg(long chatId, ChatArgs arg, CallbackQuery query)
 	{
 		if (ChatArgs.TryAdd(chatId, arg)) return true;
-		_cortana.AnswerCallbackQuery(callbackQuery.Id, "You already have an interaction going on! Finish it before continuing", true);
+		_cortana.AnswerCallbackQuery(query.Id, "You already have an interaction going on! Finish it before continuing", true);
 		return false;
 	}
 
@@ -99,7 +104,7 @@ internal static class TelegramUtils
 		return times;
 	}
 
-	public static async Task AnswerOrMessage(ITelegramBotClient cortana, string text, long chatId, CallbackQuery? callbackQuery, bool showAlert = true)
+	public static async Task AnswerMessage(ITelegramBotClient cortana, string text, int topicId, CallbackQuery? callbackQuery, bool showAlert = true)
 	{
 		try
 		{
@@ -107,7 +112,7 @@ internal static class TelegramUtils
 		}
 		catch
 		{
-			await cortana.SendMessage(chatId, text);
+			await cortana.SendMessage(HomeId, text, messageThreadId: topicId);
 		}
 	}
 

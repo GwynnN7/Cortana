@@ -10,164 +10,168 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class SensorModule : IModuleInterface
 {
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
 	{
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Sensor Menu", replyMarkup: CreateButtons());
+		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+
+		string messageText = await GetSensorDashboard();
+
+		if (message != null)
+		{
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+		}
+		else
+		{
+			await Utils.SendToTopic(messageText, Utils.Topics.Sensors, replyMarkup: CreateButtons());
+		}
 	}
 
-	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery query, string command)
 	{
-		int messageId = callbackQuery.Message!.MessageId;
-		long chatId = callbackQuery.Message.Chat.Id;
+		int messageId = query.Message!.MessageId;
+		long chatId = query.Message.Chat.Id;
 
-
-		switch (command)
+		var task = command switch
 		{
-			case "light":
-				string light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-				string threshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Light: {light} / {threshold}");
-				break;
-			case "temperature":
-				string temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, $"Temperature: {temp}");
-				break;
-			case "motion":
-				string motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, motion);
-				break;
-			case "settings":
-				await cortana.EditMessageText(chatId, messageId, "Sensor Settings", replyMarkup: CreateSettingsButtons());
-				break;
-			case "set_lightth":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetLightThreshold, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Light Threshold (0~4096)", replyMarkup: CreateCancelButton());
-				break;
-			case "set_motiondetection":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMotionDetection, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Motion Detection (0:Off/1:On)", replyMarkup: CreateCancelButton());
-				break;
-			case "set_motionoffmax":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMotionOffMax, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Motion-Off Maximum Time", replyMarkup: CreateCancelButton());
-				break;
-			case "set_motionoffmin":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMotionOffMin, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Motion-Off Minimum Time", replyMarkup: CreateCancelButton());
-				break;
-			case "set_morninghour":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg(ETelegramChatArg.SetMorningHour, callbackQuery, callbackQuery.Message), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Set Morning Hour (0~23)", replyMarkup: CreateCancelButton());
-				break;
-			case "cancel":
-				await CreateMenu(cortana, callbackQuery.Message);
-				TelegramUtils.ChatArgs.TryRemove(chatId, out _);
-				break;
+			ActionTag.Refresh => CreateMenu(cortana, query.Message),
+			ActionTag.Settings => cortana.EditMessageText(chatId, messageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons()),
+			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
+			_ => null
+
+		};
+
+		if (task != null)
+		{
+			await task;
+			return;
+		}
+
+		var chatArg = command switch
+		{
+			ActionTag.SetLightThreshold => new ChatArgs(EArgsType.SetLightThreshold, query, query.Message),
+			ActionTag.SetMorningHour => new ChatArgs(EArgsType.SetMorningHour, query, query.Message),
+			ActionTag.SetMotionOffMax => new ChatArgs(EArgsType.SetMotionOffMax, query, query.Message),
+			ActionTag.SetMotionOffMin => new ChatArgs(EArgsType.SetMotionOffMin, query, query.Message),
+			_ => null
+		};
+
+		if (chatArg != null)
+		{
+			if (Utils.AddChatArg(chatId, chatArg, query))
+			{
+				string prompt = command switch
+				{
+					ActionTag.SetLightThreshold => "Set Light Threshold (0~4096)",
+					ActionTag.SetMorningHour => "Set Morning Hour (0~23)",
+					ActionTag.SetMotionOffMax => "Set Motion-Off Maximum Time",
+					ActionTag.SetMotionOffMin => "Set Motion-Off Minimum Time",
+					_ => "Sensors Settings"
+				};
+				await cortana.EditMessageText(chatId, messageId, prompt, replyMarkup: CreateCancelButton());
+			}
+		}
+		else
+		{
+			switch (command)
+			{
+				case ActionTag.EnableMotionDetection:
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.On));
+					break;
+				case ActionTag.DisableMotionDetection:
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.Off));
+					break;
+				case ActionTag.Cancel:
+					Utils.ChatArgs.TryRemove(chatId, out _);
+					break;
+			}
+			await CreateMenu(cortana, query.Message);
 		}
 
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData)
 	{
-		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-		string message = "Unknown Message";
-		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
+		await cortana.SendChatAction(msgData.ChatId, ChatAction.Typing);
+
+		if (int.TryParse(msgData.Message, out int sensorValue))
 		{
-			case ETelegramChatArg.SetMotionDetection:
-				{
-					if (int.TryParse(messageStats.FullMessage, out int code))
-					{
-						message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue(Math.Clamp(code, 0, 1)));
-					}
-					else
-					{
-						message = "Please enter a valid number";
-					}
-					break;
-				}
-			case ETelegramChatArg.SetLightThreshold:
-				{
-					string lightLevel = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-					if (int.TryParse(messageStats.FullMessage, out int threshold))
-					{
-						string lightThreshold = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(threshold));
-						message = $"Light: {lightLevel} / {lightThreshold}";
-					}
-					else
-					{
-						message = "Please enter a valid number";
-					}
-					break;
-				}
-			case ETelegramChatArg.SetMorningHour:
-				{
-					if (int.TryParse(messageStats.FullMessage, out int hour))
-					{
-						message = await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(hour));
-					}
-					else
-					{
-						message = "Please enter a valid number";
-					}
-
-					break;
-				}
-			case ETelegramChatArg.SetMotionOffMax:
-			case ETelegramChatArg.SetMotionOffMin:
-				{
-					ESettings setting = TelegramUtils.ChatArgs[messageStats.ChatId].Type == ETelegramChatArg.SetMotionOffMax ? ESettings.MotionOffMax : ESettings.MotionOffMin;
-					if (int.TryParse(messageStats.FullMessage, out int motion))
-					{
-						message = await ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(motion));
-					}
-					else
-					{
-						message = "Please enter a valid number";
-					}
-
-					break;
-				}
+			_ = Utils.ChatArgs[msgData.ChatId].Type switch
+			{
+				EArgsType.SetLightThreshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(sensorValue)),
+				EArgsType.SetMorningHour => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(sensorValue)),
+				EArgsType.SetMotionOffMax => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMax}", new PostValue(sensorValue)),
+				EArgsType.SetMotionOffMin => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMin}", new PostValue(sensorValue)),
+				_ => null
+			};
 		}
-		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-		await TelegramUtils.AnswerOrMessage(cortana, message, messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-		await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
-		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
+
+		await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+		await cortana.EditMessageText(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons());
+		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
+	}
+
+	private static async Task<string> GetSensorDashboard()
+	{
+		string light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
+		string temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
+		string motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
+		return $"Sensors Dashboard\n\n💡 Light: {light}\n🌡 Temperature: {temp}\n🖲 Motion Detected: {motion}";
+	}
+
+	private static async Task<string> GetSettingsText()
+	{
+		string motionDetection = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
+		string lightThreshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
+		string morningHour = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MorningHour}");
+		string motionOffMax = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMax}");
+		string motionOffMin = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMin}");
+
+		return $"Current Settings:\n\n🖲 {motionDetection}\n💡 {lightThreshold}\n🕒 {morningHour}\n⏳ {motionOffMax}\n⏳ {motionOffMin}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Light", "sensor-light")
+			.AddButton("Refresh 🔄", ActionTag.Refresh)
 			.AddNewRow()
-			.AddButton("Temperature", "sensor-temperature")
+			.AddButton("Settings ⚙️", ActionTag.Settings)
 			.AddNewRow()
-			.AddButton("Motion", "sensor-motion")
-			.AddNewRow()
-			.AddButton("Settings", "sensor-settings")
-			.AddNewRow()
-			.AddButton("<<", "home");
+			.AddButton("❌", ActionTag.Delete);
 	}
 
 	private static InlineKeyboardMarkup CreateSettingsButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Light Threshold", "sensor-set_lightth")
+			.AddButton("Motion On 🟢", ActionTag.EnableMotionDetection)
+			.AddButton("Motion Off 🔴", ActionTag.DisableMotionDetection)
 			.AddNewRow()
-			.AddButton("Motion Detection", "sensor-set_motiondetection")
+			.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
+			.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
 			.AddNewRow()
-			.AddButton("Morning Hour", "sensor-set_morninghour")
+			.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
 			.AddNewRow()
-			.AddButton("MotionOff Max", "sensor-set_motionoffmax")
+			.AddButton("Morning Hour 🕒", ActionTag.SetMorningHour)
 			.AddNewRow()
-			.AddButton("MotionOff Min", "sensor-set_motionoffmin")
-			.AddNewRow()
-			.AddButton("<<", "sensor-cancel");
+			.AddButton("<<", ActionTag.Cancel);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
 	{
-		return new InlineKeyboardMarkup()
-			.AddButton("<<", "sensor-cancel");
+		return new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
+	}
+
+	private struct ActionTag
+	{
+		public const string Refresh = "sensor-refresh";
+		public const string Settings = "sensor-settings";
+		public const string SetLightThreshold = "sensor-set_light";
+		public const string EnableMotionDetection = "sensor-enable_motiondetection";
+		public const string DisableMotionDetection = "sensor-disable_motiondetection";
+		public const string SetMorningHour = "sensor-set_morninghour";
+		public const string SetMotionOffMax = "sensor-set_motionoffmax";
+		public const string SetMotionOffMin = "sensor-set_motionoffmin";
+		public const string Delete = "sensor-delete";
+		public const string Cancel = "sensor-cancel";
 	}
 
 }

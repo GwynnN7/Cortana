@@ -26,7 +26,7 @@ public static class CortanaDesktop
                 gateway => gateway.Value[..^1] + DesktopInfo.NetworkAddr,
                 () =>
                 {
-                    DataHandler.Log(nameof(CortanaDesktop), "Cortana not reachable, can't find correct address");
+                    DataHandler.Log("Cortana not reachable, can't find correct address");
                     return "";
                 });
         }
@@ -63,8 +63,10 @@ public static class CortanaDesktop
             _computerSocket?.Close();
 
             var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
-            _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp);
-            _computerSocket.SendTimeout = 2000;
+            _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp)
+            {
+                SendTimeout = 2000
+            };
             _computerSocket.Connect(ipEndPoint);
             OsHandler.ExecuteCommand("notify", "Cortana connected", false);
         }

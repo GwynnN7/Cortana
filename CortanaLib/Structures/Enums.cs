@@ -57,6 +57,6 @@ public enum EDirType
 
 public enum EMessageCategory
 {
-	Urgent,
-	Update
+	Telegram,
+	Discord
 }

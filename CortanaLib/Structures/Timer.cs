@@ -3,7 +3,7 @@
 namespace CortanaLib.Structures;
 
 public record TimerArg<T>(T? Arg);
-public record TelegramTimerPayload<T>(long ChatId, long UserId, T? Arg) : TimerArg<T>(Arg);
+public record TelegramTimerPayload<T>(long ChatId, T? Arg) : TimerArg<T>(Arg);
 public record DiscordTimerPayload<T>(object User, object? TextChannel, T? Arg) : TimerArg<T>(Arg);
 
 public class Timer : System.Timers.Timer

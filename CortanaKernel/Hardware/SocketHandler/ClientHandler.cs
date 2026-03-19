@@ -12,7 +12,7 @@ public abstract class ClientHandler
 	private Socket? _socket;
 	private Timer? _connectionTimer;
 	private readonly string _deviceName;
-	
+
 	private const int Timeout = 2000;
 	private const int DisconnectTime = 10;
 
@@ -22,75 +22,75 @@ public abstract class ClientHandler
 		_socket = socket;
 		_socket.SendTimeout = Timeout;
 		_socket.ReceiveTimeout = 2 * DisconnectTime * 1000;
-		IpcService.Publish(EMessageCategory.Update, $"{_deviceName} connected ~ {DateTime.Now}");
-		
+		IpcService.Publish(EMessageCategory.Telegram, $"{_deviceName} connected ~ {DateTime.Now}");
+
 		Task.Run(Read);
 		RestartConnectionTimer();
 	}
 
-    private void Read()
-    {
-    	try
-    	{
-    		while (true)
-    		{
-    			var buffer = new byte[1024];
-    			int received = _socket!.Receive(buffer);
-    			string message = Encoding.UTF8.GetString(buffer, 0, received);
-    			if (received == 0) continue;
+	private void Read()
+	{
+		try
+		{
+			while (true)
+			{
+				var buffer = new byte[1024];
+				int received = _socket!.Receive(buffer);
+				string message = Encoding.UTF8.GetString(buffer, 0, received);
+				if (received == 0) continue;
 
-			    RestartConnectionTimer();
-			    HandleRead(message);
-		    }
-    	}
-    	catch
-    	{
-		    DisconnectIfAvailable();
-    	}
-    }
-    protected abstract void HandleRead(string message);
+				RestartConnectionTimer();
+				HandleRead(message);
+			}
+		}
+		catch
+		{
+			DisconnectIfAvailable();
+		}
+	}
+	protected abstract void HandleRead(string message);
 
-    protected bool Write(string message)
-    {
-    	try
-    	{
-    		_socket!.Send(Encoding.UTF8.GetBytes(message));
-    		return true;
-    	}
-    	catch
-    	{
-		    DisconnectIfAvailable();
-    		return false;
-    	}
-    }
+	protected bool Write(string message)
+	{
+		try
+		{
+			_socket!.Send(Encoding.UTF8.GetBytes(message));
+			return true;
+		}
+		catch
+		{
+			DisconnectIfAvailable();
+			return false;
+		}
+	}
 
-    protected void DisconnectIfAvailable()
-    {
-	    lock (_socketLock)
-	    {
-		    if (_socket != null) DisconnectSocket();
-	    }
-    }
-    
-    protected virtual void DisconnectSocket()
-    {
-	    IpcService.Publish(EMessageCategory.Update,$"{_deviceName} disconnected at {DateTime.Now}");
-	    _socket?.Close();
-	    _socket = null;
-    }
-	
-    private Task ResetConnection(object? sender) 
-    {
-	    DisconnectIfAvailable();
-	    _connectionTimer?.Destroy();
+	protected void DisconnectIfAvailable()
+	{
+		lock (_socketLock)
+		{
+			if (_socket != null) DisconnectSocket();
+		}
+	}
 
-	    return Task.CompletedTask;
-    }
+	protected virtual void DisconnectSocket()
+	{
+		IpcService.Publish(EMessageCategory.Telegram, $"{_deviceName} disconnected at {DateTime.Now}");
+		_socket?.Close();
+		_socket = null;
+	}
 
-    private void RestartConnectionTimer()
-    {
-	    _connectionTimer?.Destroy();
-	    _connectionTimer = new Timer("connection-timer", null, ResetConnection, ETimerType.Utility);
-	    _connectionTimer.Set((DisconnectTime, 0, 0));
-    }
+	private Task ResetConnection(object? sender)
+	{
+		DisconnectIfAvailable();
+		_connectionTimer?.Destroy();
+
+		return Task.CompletedTask;
+	}
+
+	private void RestartConnectionTimer()
+	{
+		_connectionTimer?.Destroy();
+		_connectionTimer = new Timer("connection-timer", null, ResetConnection, ETimerType.Utility);
+		_connectionTimer.Set((DisconnectTime, 0, 0));
+	}
 }

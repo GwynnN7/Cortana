@@ -170,15 +170,15 @@ public static class HardwareApi
 			}
 		}
 
-		public static StringResult Switch(EDevice device, EPowerAction trigger)
+		public static StringResult Switch(EDevice device, EPowerAction trigger, bool automatic = false)
 		{
 			lock (DeviceLock)
 			{
 				EPowerStatus? result = device switch
 				{
-					EDevice.Computer => HandleComputer(trigger), //Check if power supply is off before turning on
-					EDevice.Power => HandleComputerSupply(trigger), //Check if computer is off before removing power
-					EDevice.Lamp => DeviceHandler.PowerLamp(trigger),
+					EDevice.Computer => HandleComputer(trigger), // Check if power supply is off before turning on
+					EDevice.Power => HandleComputerSupply(trigger), // Check if computer is off before removing power
+					EDevice.Lamp => HandleLamp(trigger, automatic), // Enable temporary manual mode if lamp is switched on manually
 					EDevice.Generic => DeviceHandler.PowerGeneric(trigger),
 					_ => null
 				};
@@ -202,6 +202,12 @@ public static class HardwareApi
 
 				return powerResult.IsOk ? StringResult.Success(action.ToString()) : StringResult.Failure("Devices failed to switch");
 			}
+		}
+
+		private static EPowerStatus HandleLamp(EPowerAction action, bool automatic)
+		{
+			if (!automatic) Service.TemporaryManualMode();
+			return DeviceHandler.PowerLamp(action);
 		}
 
 		private static EPowerStatus HandleComputer(EPowerAction action)
@@ -231,7 +237,7 @@ public static class HardwareApi
 						DeviceHandler.PowerComputer(EPowerAction.Off);
 						await ComputerHandler.CheckForConnection();
 						DeviceHandler.PowerComputerSupply(EPowerAction.Off);
-					}).ContinueWith(t => DataHandler.Log(nameof(HardwareApi), $"Computer supply error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
+					});
 					return EPowerStatus.Off;
 				case EPowerAction.Off:
 					return DeviceHandler.PowerComputerSupply(EPowerAction.Off);

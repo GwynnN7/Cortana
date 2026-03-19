@@ -56,7 +56,7 @@ public class SubfunctionEndpoints : ICarterModule
 		StringValues acceptHeader = request.Headers.Accept;
 		IOption<ESubFunctionType> settings = subfunction.ToEnum<ESubFunctionType>();
 
-		StringResult result = await settings.Match<Task<StringResult>>(
+		StringResult result = await settings.Match(
 			onSome: async val => StringResult.Success(await Bootloader.IsSubfunctionRunning(val) ? $"{val} is running!" : $"{val} is not running."),
 			onNone: () => Task.FromResult(StringResult.Failure("Subfunction not found"))
 		);
@@ -77,8 +77,8 @@ public class SubfunctionEndpoints : ICarterModule
 		IOption<ESubFunctionType> func = subfunction.ToEnum<ESubFunctionType>();
 		IOption<ESubfunctionAction> action = command.Action.ToEnum<ESubfunctionAction>();
 
-		StringResult result = await func.Match<Task<StringResult>>(
-			onSome: val => action.Match<Task<StringResult>>(
+		StringResult result = await func.Match(
+			onSome: val => action.Match(
 				onSome: act => Bootloader.SubfunctionCall(val, act),
 				onNone: () => Task.FromResult(StringResult.Failure("Action not supported"))
 			),

@@ -43,7 +43,7 @@ public static class DeviceHandler
 							Thread.Sleep(100);
 							UseGpio(LampPin, PinValue.Low);
 						}
-					}).ContinueWith(t => DataHandler.Log(nameof(DeviceHandler), $"Lamp error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
+					});
 				else UseGpio(LampPin, PinValue.High);
 				DeviceStatus[EDevice.Lamp] = EPowerStatus.On;
 				break;
@@ -57,7 +57,7 @@ public static class DeviceHandler
 							Thread.Sleep(100);
 							UseGpio(LampPin, PinValue.Low);
 						}
-					}).ContinueWith(t => DataHandler.Log(nameof(DeviceHandler), $"Lamp error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
+					});
 				else UseGpio(LampPin, PinValue.Low);
 				DeviceStatus[EDevice.Lamp] = EPowerStatus.Off;
 				break;

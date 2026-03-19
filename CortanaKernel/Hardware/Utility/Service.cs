@@ -14,6 +14,7 @@ public static class Service
 	public static readonly Settings Settings;
 
 	private static Timer? _controllerTimer;
+	private static Timer? _temporaryTimer;
 	private static bool _morningMessage;
 
 	static Service()
@@ -28,7 +29,7 @@ public static class Service
 	public static void Start()
 	{
 		Task.Run(ServerHandler.StartListening)
-			.ContinueWith(t => DataHandler.Log(nameof(Service), $"Server listener error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
+			.ContinueWith(t => DataHandler.Log($"Server listener error: {t.Exception}"), TaskContinuationOptions.OnlyOnFaulted);
 		ResetControllerTimer();
 	}
 
@@ -41,6 +42,13 @@ public static class Service
 			DateTime.Today.AddHours(DateTime.Now.Hour).AddMinutes(30);
 		if (time < DateTime.Now) time = time.AddHours(1);
 		_controllerTimer.Set(time);
+	}
+
+	private static void ResetTemporaryTimer()
+	{
+		_temporaryTimer?.Destroy();
+		_temporaryTimer = new Timer("temporary-timer", null, EnableAutomaticMode, ETimerType.Utility);
+		_temporaryTimer.Set(DateTime.Now.AddHours(1));
 	}
 
 	private static Task ControllerCallback(object? sender)
@@ -59,18 +67,34 @@ public static class Service
 
 			if (DateTime.Now.Hour % 2 != 0 && DateTime.Now.Hour < 6)
 			{
-				IpcService.Publish(EMessageCategory.Urgent, "You should go to sleep");
+				IpcService.Publish(EMessageCategory.Telegram, "You should go to sleep");
 			}
 		}
 		else
 		{
 			if (!_morningMessage) return Task.CompletedTask;
-			IpcService.Publish(EMessageCategory.Urgent, "Good morning, enabling Motion Detection");
+			IpcService.Publish(EMessageCategory.Telegram, "Good morning, enabling Automatic mode");
 			Settings.MotionDetection = EMotionDetection.On;
 			_morningMessage = false;
 		}
 
 		return Task.CompletedTask;
+	}
+
+	public static void TemporaryManualMode()
+	{
+		if (Settings.MotionDetection == EMotionDetection.Off) return;
+		Settings.MotionDetection = EMotionDetection.Off;
+		ResetControllerTimer();
+		IpcService.Publish(EMessageCategory.Telegram, "Manual mode temporary enabled");
+	}
+
+	private static void EnableAutomaticMode(object? sender = null)
+	{
+		_temporaryTimer?.Destroy();
+		_temporaryTimer = null;
+		Settings.MotionDetection = EMotionDetection.On;
+		IpcService.Publish(EMessageCategory.Telegram, "Automatic mode re-enabled");
 	}
 
 	public static void EnterSleepMode(bool userAction = false)
@@ -86,7 +110,7 @@ public static class Service
 				return;
 		}
 
-		IpcService.Publish(EMessageCategory.Urgent, "Good night, switching to Night Mode");
+		IpcService.Publish(EMessageCategory.Telegram, "Good night, enabling Manual mode until morning");
 		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
 	}
 

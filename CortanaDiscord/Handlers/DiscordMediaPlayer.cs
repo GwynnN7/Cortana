@@ -90,48 +90,62 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
     {
         _currentTrackToken?.Cancel();
         _currentTrackToken?.Dispose();
+        _currentTrackToken = null;
         _queue.Clear();
         client.Dispose();
     }
 
     private async Task PlayQueue()
     {
-        while (_queue.HasNext())
+        try
         {
-            AudioTrack? track = _queue.Dequeue();
-            _currentTrackToken = _queue.DequeueToken()!;
-            if (track == null || string.IsNullOrWhiteSpace(track.StreamUrl))
+            while (_queue.HasNext())
             {
-                _currentTrackToken.Dispose();
-                _currentTrackToken = null;
-                continue;
-            }
+                AudioTrack? track = _queue.Dequeue();
+                CancellationTokenSource? token = _queue.DequeueToken();
+                _currentTrackToken = token;
 
-            Process ffmpeg = CreateStream(track.StreamUrl);
-            try
-            {
-                await using Stream output = ffmpeg.StandardOutput.BaseStream;
-                await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
+                if (track == null || string.IsNullOrWhiteSpace(track.StreamUrl) || token == null)
+                {
+                    token?.Dispose();
+                    if (ReferenceEquals(_currentTrackToken, token)) _currentTrackToken = null;
+                    continue;
+                }
 
+                Process ffmpeg = CreateStream(track.StreamUrl);
                 try
                 {
-                    await output.CopyToAsync(discord, _currentTrackToken.Token);
+                    await using Stream output = ffmpeg.StandardOutput.BaseStream;
+                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
+
+                    try
+                    {
+                        await output.CopyToAsync(discord, token.Token);
+                    }
+                    catch (OperationCanceledException) { }
+                    finally
+                    {
+                        await discord.FlushAsync();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DataHandler.Log($"[{nameof(DiscordMediaPlayer)}] Playback error: {ex.Message}");
                 }
                 finally
                 {
-                    await discord.FlushAsync();
-                    _currentTrackToken.Dispose();
-                    _currentTrackToken = null;
+                    if (!ffmpeg.HasExited) ffmpeg.Kill(true);
+                    ffmpeg.Dispose();
+
+                    token.Dispose();
+                    if (ReferenceEquals(_currentTrackToken, token)) _currentTrackToken = null;
                 }
             }
-            finally
-            {
-                if (!ffmpeg.HasExited) ffmpeg.Kill(true);
-                ffmpeg.Dispose();
-            }
         }
-
-        Interlocked.Exchange(ref _isPlaying, 0);
+        finally
+        {
+            Interlocked.Exchange(ref _isPlaying, 0);
+        }
     }
 
     private static Process CreateStream(string path)

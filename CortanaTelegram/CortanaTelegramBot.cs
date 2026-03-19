@@ -1,5 +1,4 @@
 ﻿using CortanaLib;
-using CortanaLib.Structures;
 using CortanaTelegram.Modules;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
@@ -18,13 +17,13 @@ public static class CortanaTelegramBot
 		var cortana = new TelegramBotClient(DataHandler.Env("CORTANA_TELEGRAM_TOKEN"));
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
-		TelegramUtils.Init(cortana);
-		await TelegramUtils.SendToUser(TelegramUtils.AuthorId, "I'm Online", false);
-		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot Online");
+		Utils.Init(cortana);
+		await Utils.SendToTopic("I'm Online", Utils.Topics.Home);
+		DataHandler.Log("Telegram Bot Online");
 
 		await SignalHandler.WaitForInterrupt();
-		TelegramUtils.Shutdown();
-		DataHandler.Log(nameof(ESubFunctionType.CortanaKernel), "Telegram Bot  Offline");
+		Utils.Shutdown();
+		DataHandler.Log("Telegram Bot Offline");
 	}
 
 	private static async Task UpdateHandler(ITelegramBotClient cortana, Update update, CancellationToken cancellationToken)
@@ -54,49 +53,47 @@ public static class CortanaTelegramBot
 
 	private static async Task HandleTextMessage(ITelegramBotClient cortana, Message message)
 	{
-		if (message.From == null || message.From.IsBot || message.Text == null) return;
+		if (message.From == null || message.From.IsBot || message.Text == null || message.ForwardOrigin != null) return;
 
-		var messageStats = new MessageStats
+		if (message.Chat.Id != Utils.Data.HomeGroup)
 		{
-			Message = message,
+			if (message.From.Id != Utils.AuthorId) await cortana.ForwardMessage(Utils.Data.HomeGroup, message.Chat.Id, message.MessageId);
+			return;
+		}
+
+		var msgData = new MessageData
+		{
 			ChatId = message.Chat.Id,
-			UserId = message.From?.Id ?? message.Chat.Id,
+			TopicId = message.MessageThreadId ?? 0,
 			MessageId = message.MessageId,
-			ChatType = message.Chat.Type,
-			FullMessage = message.Text,
-			Text = message.Text,
-			TextList = [],
+			Message = message.Text,
 			Command = ""
 		};
 
-		if (TelegramUtils.ChatArgs.TryGetValue(messageStats.ChatId, out TelegramChatArg? chatArg))
+		if (Utils.ChatArgs.TryGetValue(msgData.ChatId, out ChatArgs? chatArg))
 		{
 			switch (chatArg.Type)
 			{
-				case ETelegramChatArg.Qrcode:
-				case ETelegramChatArg.Chat:
-				case ETelegramChatArg.Timer:
-				case ETelegramChatArg.AudioDownloader:
-				case ETelegramChatArg.VideoDownloader:
-					await UtilityModule.HandleTextMessage(cortana, messageStats);
+				case EArgsType.Qrcode:
+				case EArgsType.Chat:
+				case EArgsType.Timer:
+				case EArgsType.AudioDownloader:
+				case EArgsType.VideoDownloader:
+					await UtilityModule.HandleTextMessage(cortana, msgData);
 					break;
-				case ETelegramChatArg.Notification:
-				case ETelegramChatArg.Ping:
-				case ETelegramChatArg.ComputerCommand:
-					await CommandModule.HandleTextMessage(cortana, messageStats);
+				case EArgsType.Notification:
+				case EArgsType.ComputerCommand:
+				case EArgsType.HardwareTimer:
+					await DeviceModule.HandleTextMessage(cortana, msgData);
 					break;
-				case ETelegramChatArg.HardwareTimer:
-					await DeviceModule.HandleTextMessage(cortana, messageStats);
+				case EArgsType.SetLightThreshold:
+				case EArgsType.SetMorningHour:
+				case EArgsType.SetMotionOffMax:
+				case EArgsType.SetMotionOffMin:
+					await SensorModule.HandleTextMessage(cortana, msgData);
 					break;
-				case ETelegramChatArg.SetMotionDetection:
-				case ETelegramChatArg.SetLightThreshold:
-				case ETelegramChatArg.SetMorningHour:
-				case ETelegramChatArg.SetMotionOffMax:
-				case ETelegramChatArg.SetMotionOffMin:
-					await SensorModule.HandleTextMessage(cortana, messageStats);
-					break;
-				case ETelegramChatArg.RaspberryCommand:
-					await RaspberryModule.HandleTextMessage(cortana, messageStats);
+				case EArgsType.RaspberryCommand:
+					await RaspberryModule.HandleTextMessage(cortana, msgData);
 					break;
 			}
 
@@ -105,91 +102,68 @@ public static class CortanaTelegramBot
 
 		if (message.Text.StartsWith('/'))
 		{
-			messageStats.FullMessage = messageStats.FullMessage[1..];
-			messageStats.Command = messageStats.FullMessage.Split(" ").First().Split("@").First();
-			messageStats.TextList = messageStats.FullMessage.Split(" ").Skip(1).ToList();
-			messageStats.Text = string.Join(" ", messageStats.TextList);
+			msgData.Message = msgData.Message[1..];
+			msgData.Command = msgData.Message.Split(" ").First().Split("@").First();
 
-			if (messageStats.Command != "menu")
-			{
-				await DeviceModule.ExecCommand(messageStats, cortana);
-			}
-			else
-			{
-				await CreateHomeMenu(cortana, messageStats.ChatId);
-			}
+			await (msgData.Command == "menu" ? CreateHomeMenu(cortana) : DeviceModule.ExecCommand(msgData, cortana));
 		}
 		else
 		{
-			bool isCallback = await DeviceModule.HandleKeyboardCallback(cortana, messageStats);
-			if (messageStats.UserId == TelegramUtils.AuthorId || messageStats.ChatType != ChatType.Private) return;
-			if (isCallback) await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"{TelegramUtils.IdToName(messageStats.UserId)} used Hardware Keyboard");
-			else await cortana.ForwardMessage(TelegramUtils.AuthorId, messageStats.ChatId, messageStats.MessageId);
+			await DeviceModule.HandleKeyboardCallback(cortana, msgData);
 		}
 	}
 
-	private static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery)
+	private static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery query)
 	{
-		string command = callbackQuery.Data!;
-		Message message = callbackQuery.Message!;
+		string command = query.Data!;
+		Message message = query.Message!;
 
-		switch (command)
+		if (message.Chat.Id != Utils.Data.HomeGroup) return;
+
+		var menuTask = command switch
 		{
-			case "home":
-				await CreateHomeMenu(cortana, message.Chat.Id, message.MessageId);
-				break;
-			case "device":
-				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await DeviceModule.CreateMenu(cortana, message);
-				else
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access device controls");
-				break;
-			case "raspberry":
-				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await RaspberryModule.CreateMenu(cortana, message);
-				else
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access raspberry controls");
-				break;
-			case "command":
-				if (TelegramUtils.CheckHardwarePermission(callbackQuery.From.Id))
-					await CommandModule.CreateMenu(cortana, message);
-				else
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Sorry, you can't access commands");
-				break;
-			case "utility":
-				await UtilityModule.CreateMenu(cortana, message);
-				break;
-			case "sensor":
-				await SensorModule.CreateMenu(cortana, message);
-				break;
-			default:
-				if (command.StartsWith("device-")) await DeviceModule.HandleCallbackQuery(cortana, callbackQuery, command["device-".Length..]);
-				else if (command.StartsWith("raspberry-")) await RaspberryModule.HandleCallbackQuery(cortana, callbackQuery, command["raspberry-".Length..]);
-				else if (command.StartsWith("command-")) await CommandModule.HandleCallbackQuery(cortana, callbackQuery, command["command-".Length..]);
-				else if (command.StartsWith("utility-")) await UtilityModule.HandleCallbackQuery(cortana, callbackQuery, command["utility-".Length..]);
-				else if (command.StartsWith("sensor-")) await SensorModule.HandleCallbackQuery(cortana, callbackQuery, command["sensor-".Length..]);
-				break;
+			ActionTag.Device => DeviceModule.CreateMenu(cortana),
+			ActionTag.Raspberry => RaspberryModule.CreateMenu(cortana),
+			ActionTag.Cortana => CortanaModule.CreateMenu(cortana),
+			ActionTag.Utility => UtilityModule.CreateMenu(cortana),
+			ActionTag.Sensor => SensorModule.CreateMenu(cortana),
+			_ => null
+		};
+
+		if (menuTask == null)
+		{
+			string baseCommand = command.Split("-").First();
+			var callbackTask = baseCommand switch
+			{
+				ActionTag.Device => DeviceModule.HandleCallbackQuery(cortana, query, command),
+				ActionTag.Raspberry => RaspberryModule.HandleCallbackQuery(cortana, query, command),
+				ActionTag.Cortana => CortanaModule.HandleCallbackQuery(cortana, query, command),
+				ActionTag.Utility => UtilityModule.HandleCallbackQuery(cortana, query, command),
+				ActionTag.Sensor => SensorModule.HandleCallbackQuery(cortana, query, command),
+				_ => null
+			};
+			if (callbackTask != null) await callbackTask;
 		}
+		else await menuTask;
 	}
 
-	private static async Task CreateHomeMenu(ITelegramBotClient cortana, long chatId, int? messageId = null)
+	private static async Task CreateHomeMenu(ITelegramBotClient cortana)
 	{
-		if (messageId.HasValue) await cortana.EditMessageText(chatId, messageId.Value, "Cortana Home", replyMarkup: CreateMenuButtons());
-		else await cortana.SendMessage(chatId, "Cortana Home", replyMarkup: CreateMenuButtons());
+		await cortana.SendMessage(Utils.Data.HomeGroup, "Home", replyMarkup: CreateMenuButtons());
 	}
 
 	private static InlineKeyboardMarkup CreateMenuButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Devices", "device")
+			.AddButton("Devices", ActionTag.Device)
 			.AddNewRow()
-			.AddButton("Sensors", "sensor")
+			.AddButton("Sensors", ActionTag.Sensor)
 			.AddNewRow()
-			.AddButton("Raspberry", "raspberry")
+			.AddButton("Raspberry", ActionTag.Raspberry)
 			.AddNewRow()
-			.AddButton("Commands", "command")
+			.AddButton("Cortana", ActionTag.Cortana)
 			.AddNewRow()
-			.AddButton("Utility", "utility")
+			.AddButton("Utility", ActionTag.Utility)
 			.AddNewRow()
 			.AddButton(InlineKeyboardButton.WithUrl("Cortana", "https://github.com/GwynnN7/Cortana"));
 	}
@@ -201,7 +175,16 @@ public static class CortanaTelegramBot
 			ApiRequestException apiRequestException => $"Telegram API Error:\n[{apiRequestException.ErrorCode}]\n{apiRequestException.Message}",
 			_ => exception.ToString()
 		};
-		DataHandler.Log(nameof(CortanaTelegram), errorMessage);
+		DataHandler.Log(errorMessage);
 		return Task.CompletedTask;
+	}
+
+	private struct ActionTag
+	{
+		public const string Device = "device";
+		public const string Raspberry = "raspberry";
+		public const string Cortana = "cortana";
+		public const string Utility = "utility";
+		public const string Sensor = "sensor";
 	}
 }

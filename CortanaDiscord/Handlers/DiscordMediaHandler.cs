@@ -17,7 +17,7 @@ public class DiscordMediaHandler(SocketGuild guild)
     private readonly DiscordQueue<JoinAction> _queue = new();
     private CancellationTokenSource? _currentJoinToken;
 
-    private volatile bool _isPlaying;
+    private int _isPlaying;
 
     public SocketVoiceChannel? CurrentChannel;
     public DiscordMediaPlayer? MediaPlayer;
@@ -25,9 +25,8 @@ public class DiscordMediaHandler(SocketGuild guild)
     public void Enqueue(JoinAction joinAction)
     {
         _queue.Enqueue(joinAction);
-        if (!_isPlaying)
+        if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
         {
-            _isPlaying = true;
             Task.Run(JoinQueue);
         }
     }
@@ -45,23 +44,39 @@ public class DiscordMediaHandler(SocketGuild guild)
 
     private async Task JoinQueue()
     {
-        while (_queue.HasNext())
+        try
         {
-            JoinAction? action = _queue.Dequeue();
-            _currentJoinToken = _queue.DequeueToken()!;
-            if (action == null)
+            while (_queue.HasNext())
             {
-                _currentJoinToken.Dispose();
-                _currentJoinToken = null;
-                continue;
+                JoinAction? action = _queue.Dequeue();
+                CancellationTokenSource? token = _queue.DequeueToken();
+                _currentJoinToken = token;
+
+                if (action == null || token == null)
+                {
+                    token?.Dispose();
+                    if (ReferenceEquals(_currentJoinToken, token)) _currentJoinToken = null;
+                    continue;
+                }
+
+                try
+                {
+                    await Task.Run(() => JoinTask(action), token.Token);
+                }
+                catch (OperationCanceledException) { }
+                finally
+                {
+                    token.Dispose();
+                    if (ReferenceEquals(_currentJoinToken, token)) _currentJoinToken = null;
+                }
+
+                EnqueueLast();
             }
-
-            await Task.Run(() => JoinTask(action), _currentJoinToken.Token);
-
-            EnqueueLast();
         }
-
-        _isPlaying = false;
+        finally
+        {
+            Interlocked.Exchange(ref _isPlaying, 0);
+        }
     }
 
     private async Task JoinTask(JoinAction joinAction)
@@ -107,7 +122,7 @@ public class DiscordMediaHandler(SocketGuild guild)
         catch (Exception ex)
         {
             Console.WriteLine($"Errore nella gestione della coda di join: {ex.Message}");
-            await DiscordUtils.SendToChannel<string>("Errore con la gestione della coda di join", ECortanaChannels.Log);
+            await DiscordUtils.SendToChannel("Errore con la gestione della coda di join", ECortanaChannels.Log);
         }
     }
 

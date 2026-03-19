@@ -2,8 +2,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
-const char WIFI_SSID[] = "Home&Life SuperWiFi-3451";
-const char WIFI_PASSWORD[] = "3YRC8T4GB3X4A4XA";
+const char WIFI_SSID[] = "HomeLifeWiFi";
+const char WIFI_PASSWORD[] = "HomeLifeCheru9";
 const char CORTANA_IP[] = "192.168.1.117";
 const int CORTANA_PORT = 5116;
 
@@ -16,70 +16,74 @@ OneWire oneWire(temp_sensor);
 DallasTemperature DS18B20(&oneWire);
 WiFiClient client;
 
+unsigned long tcpTime;
+
+const int transmissionTime = 5000;
+
 int currentMotion = LOW;
-int lastMotion = LOW;
+int lastSentLedState = LOW;
+
 float temp;
 int light;
 
-unsigned long tcpTime;
-unsigned long valueTime;
-const int transmissionTime = 2000;
-const int updateTime = 1000;
-
-void setup() {
+void setup()
+{
   DS18B20.begin();
+  DS18B20.setWaitForConversion(false);
 
   pinMode(motion_sensor, INPUT);
   pinMode(led, OUTPUT);
 
   connectToWiFi();
-  connectToCortana();
+  checkTCPConnection();
 
   client.print("esp32");
-  readSensors();
+
+  DS18B20.requestTemperatures();
 
   tcpTime = millis();
-  valueTime = millis();
 }
 
-void loop() {
+void loop()
+{
   currentMotion = digitalRead(motion_sensor);
   digitalWrite(led, currentMotion);
- 
-  if((millis() - tcpTime >= transmissionTime) || (currentMotion != lastMotion))
+
+  unsigned long newTime = millis() - tcpTime;
+  if ((newTime >= transmissionTime) || (currentMotion != lastSentLedState))
   {
+    checkTCPConnection();
+    light = analogRead(light_sensor);
+
+    if (newTime >= transmissionTime)
+    {
+      temp = getTemperature();
+      tcpTime = millis();
+    }
+
     char buff[100];
     snprintf(buff, 100, "{ \"motion\": %d, \"light\": %d, \"temperature\": %f }", currentMotion, light, temp);
     client.print(buff);
 
-    lastMotion = currentMotion;
-
-    tcpTime = millis();
+    lastSentLedState = currentMotion;
   }
 
-  if(millis() - valueTime >= updateTime)
-  {
-    connectToCortana();
-    readSensors();
-
-    valueTime = millis();
-  }
-
-  delay(100);
+  delay(50);
 }
 
-void readSensors()
+float getTemperature()
 {
-  DS18B20.requestTemperatures();
   temp = DS18B20.getTempCByIndex(0);
-  light = analogRead(light_sensor);
+  DS18B20.requestTemperatures();
+  return temp;
 }
 
-void connectToCortana()
-{ 
-  if(!client.connected())
+void checkTCPConnection()
+{
+  if (!client.connected())
   {
-    while (!client.connect(CORTANA_IP, CORTANA_PORT)) {
+    while (!client.connect(CORTANA_IP, CORTANA_PORT))
+    {
       delay(1500);
       connectToWiFi();
     }
@@ -97,15 +101,16 @@ void connectToWiFi()
       WiFi.disconnect();
       ESP.restart();
     }
-    
-    if(client.connected()) client.stop();
+
+    if (client.connected())
+    {
+      client.stop();
+    }
     WiFi.disconnect();
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     WiFi.setSleep(false);
+
     tryCount++;
     delay(1500);
   }
-
-  delay(500);
 }
-

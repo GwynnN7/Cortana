@@ -66,6 +66,6 @@ public static class CortanaApi
     {
         await _cortanaWebApi.StopAsync();
         await _cortanaWebApi.DisposeAsync();
-        DataHandler.Log(nameof(CortanaApi), "API service interrupted.");
+        DataHandler.Log("API service interrupted.");
     }
 }

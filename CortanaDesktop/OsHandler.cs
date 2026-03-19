@@ -12,7 +12,7 @@ internal enum Os
 
 internal struct OsMacro
 {
-	private const string BashPath = "/bin/bash";
+	private const string BashPath = "/usr/bin/fish";
 	private const string CmdPath = "cmd.exe";
 	private const string BashArg = "-c";
 	private const string CmdArg = "/C";
@@ -48,7 +48,7 @@ internal static class OsHandler
 			"suspend" => onLinux ? "systemctl suspend -i" : "shutdown /s /f /t 0",
 			"reboot" => onLinux ? "systemctl reboot" : "shutdown /r /f /t 0",
 			"system" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
-			"notify" => onLinux ? $"notify-send -u low -a Cortana \'{arg}\'" : $"notify-send \"Cortana\" \"{arg}\"",
+			"notify" => onLinux ? $"echo \'{arg}\' | cortana notify" : $"notify-send \"Cortana\" \"{arg}\"",
 			"cmd" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S {arg}" : arg,
 			_ => ""
 		};

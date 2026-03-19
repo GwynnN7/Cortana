@@ -47,7 +47,7 @@ internal class CommandHandler(DiscordSocketClient client, InteractionService com
 				break;
 		}
 
-		await DiscordUtils.SendToChannel<string>($"C'è stato un problema:\n```{result.Error}: {result.ErrorReason}```", ECortanaChannels.Log);
+		await DiscordUtils.SendToChannel($"C'è stato un problema:\n```{result.Error}: {result.ErrorReason}```", ECortanaChannels.Log);
 	}
 
 	private async Task HandleInteraction(SocketInteraction arg)
@@ -59,7 +59,7 @@ internal class CommandHandler(DiscordSocketClient client, InteractionService com
 		}
 		catch (Exception ex)
 		{
-			await DiscordUtils.SendToChannel<string>($"C'è stato un problema in HandleInteraction:\n```{ex.Message}```", ECortanaChannels.Log);
+			await DiscordUtils.SendToChannel($"C'è stato un problema in HandleInteraction:\n```{ex.Message}```", ECortanaChannels.Log);
 			if (arg.Type == InteractionType.ApplicationCommand) await arg.GetOriginalResponseAsync().ContinueWith(async msg => await msg.Result.DeleteAsync());
 		}
 	}

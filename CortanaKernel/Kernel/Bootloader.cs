@@ -45,29 +45,29 @@ public static class Bootloader
 			case ESubfunctionAction.Reboot when type == ESubFunctionType.CortanaKernel:
 				Helper.DelayCommand($"systemctl --user restart {serviceName}");
 				return StringResult.Success(
-					DataHandler.Log(nameof(CortanaKernel), "Kernel rebooting..."));
+					DataHandler.Log("Kernel rebooting..."));
 			case ESubfunctionAction.Reboot:
 				{
 					int exitCode = await RunSystemctl("restart", serviceName);
 					return exitCode == 0
-						? StringResult.Success(DataHandler.Log(nameof(CortanaKernel), $"{type} rebooted"))
-						: StringResult.Failure(DataHandler.Log(nameof(CortanaKernel), $"Failed to reboot {type}"));
+						? StringResult.Success(DataHandler.Log("Kernel rebooted"))
+						: StringResult.Failure(DataHandler.Log("Failed to reboot Kernel"));
 				}
 			case ESubfunctionAction.Restart when type == ESubFunctionType.CortanaKernel:
 				Helper.DelayCommand($"systemctl --user restart {serviceName}");
 				return StringResult.Success(
-					DataHandler.Log(nameof(CortanaKernel), "Kernel restarting..."));
+					DataHandler.Log("Kernel restarting..."));
 			case ESubfunctionAction.Restart:
 				{
 					int exitCode = await RunSystemctl("restart", serviceName);
 					return exitCode == 0
-						? StringResult.Success(DataHandler.Log(nameof(CortanaKernel), $"{type} restarted"))
-						: StringResult.Failure(DataHandler.Log(nameof(CortanaKernel), $"Failed to restart {type}"));
+						? StringResult.Success(DataHandler.Log("Kernel restarted"))
+						: StringResult.Failure(DataHandler.Log("Failed to restart Kernel"));
 				}
 			case ESubfunctionAction.Update when type == ESubFunctionType.CortanaKernel:
 				Helper.DelayCommand("cortana update");
 				return StringResult.Success(
-					DataHandler.Log(nameof(CortanaKernel), "Kernel updating..."));
+					DataHandler.Log("Kernel updating..."));
 			case ESubfunctionAction.Update:
 				{
 					await Helper.RunCommand("cortana git").WaitForExitAsync();
@@ -85,14 +85,14 @@ public static class Bootloader
 		if (type == ESubFunctionType.CortanaKernel)
 		{
 			Helper.DelayCommand($"systemctl --user stop {GetServiceName(type)}");
-			return StringResult.Success(DataHandler.Log(nameof(CortanaKernel), "Kernel stopping..."));
+			return StringResult.Success(DataHandler.Log("Kernel stopping..."));
 		}
 
 		string serviceName = GetServiceName(type);
 		int exitCode = await RunSystemctl("stop", serviceName);
 		return exitCode == 0
-			? StringResult.Success(DataHandler.Log(nameof(CortanaKernel), $"{type} stopped"))
-			: StringResult.Failure(DataHandler.Log(nameof(CortanaKernel), $"Failed to stop {type}"));
+			? StringResult.Success(DataHandler.Log("Kernel stopped"))
+			: StringResult.Failure(DataHandler.Log("Failed to stop Kernel"));
 	}
 
 	public static async Task<StringResult> StopSubfunctions()

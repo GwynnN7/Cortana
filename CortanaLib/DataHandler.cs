@@ -50,9 +50,9 @@ public static class DataHandler
 		return dataToLoad;
 	}
 
-	public static string Log(string source, string log)
+	public static string Log(string log)
 	{
-		Console.WriteLine($"[{source}] {log}");
+		Console.WriteLine($"{log}");
 		return log;
 	}
 }

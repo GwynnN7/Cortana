@@ -1,5 +1,4 @@
 using CortanaLib;
-using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
@@ -11,84 +10,131 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class RaspberryModule : IModuleInterface
 {
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
 	{
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Raspberry Menu", replyMarkup: CreateButtons());
-	}
+		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
 
-	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
-	{
-		int messageId = callbackQuery.Message!.MessageId;
-		long chatId = callbackQuery.Message.Chat.Id;
+		string messageText = await GetRaspberryInfo();
 
-		switch (command)
+		if (message != null)
 		{
-			case "ip":
-			case "gateway":
-			case "location":
-			case "temperature":
-				string messageResponse = await ApiHandler.Get($"{ERoute.Raspberry}/{command}");
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, messageResponse);
-				break;
-			case "command":
-				if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<List<int>>(ETelegramChatArg.RaspberryCommand, callbackQuery, callbackQuery.Message, []), callbackQuery))
-					await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
-				break;
-			case "reboot":
-			case "shutdown":
-				string commandMessageResponse = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command));
-				await cortana.AnswerCallbackQuery(callbackQuery.Id, commandMessageResponse, true);
-				break;
-			case "cancel":
-				if (TelegramUtils.ChatArgs.TryGetValue(chatId, out TelegramChatArg? value) && value is TelegramChatArg<List<int>> chatArg)
-					await cortana.DeleteMessages(chatId, chatArg.Arg);
-				await CreateMenu(cortana, callbackQuery.Message);
-				TelegramUtils.ChatArgs.TryRemove(chatId, out _);
-				break;
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+		}
+		else
+		{
+			await Utils.SendToTopic(messageText, Utils.Topics.Raspberry, replyMarkup: CreateButtons());
 		}
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery query, string command)
+	{
+		int messageId = query.Message!.MessageId;
+		long chatId = query.Message.Chat.Id;
+
+		var task = command switch
+		{
+			ActionTag.Refresh => CreateMenu(cortana, query.Message),
+			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
+			_ => null
+
+		};
+
+		if (task != null)
+		{
+			await task;
+			return;
+		}
+
+		string? response = command switch
+		{
+			ActionTag.Shutdown => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand("shutdown")),
+			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand("reboot")),
+			_ => null
+		};
+
+		if (response != null)
+		{
+			await cortana.AnswerCallbackQuery(query.Id, response, true);
+		}
+		else
+		{
+			switch (command)
+			{
+				case ActionTag.Command:
+					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
+					{
+						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
+					}
+					break;
+				case ActionTag.Cancel:
+					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
+					{
+						await cortana.DeleteMessages(chatId, chatArg.Arg);
+					}
+					await CreateMenu(cortana, query.Message);
+					Utils.ChatArgs.TryRemove(chatId, out _);
+					break;
+			}
+		}
+	}
+
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats)
 	{
 		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 
-		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
+		switch (Utils.ChatArgs[messageStats.ChatId].Type)
 		{
-			case ETelegramChatArg.RaspberryCommand:
-				if (TelegramUtils.ChatArgs[messageStats.ChatId] is TelegramChatArg<List<int>> chatArg)
+			case EArgsType.RaspberryCommand:
+				if (Utils.ChatArgs[messageStats.ChatId] is ChatArgs<List<int>> chatArg)
 				{
-					string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", string.Concat(messageStats.FullMessage[..1].ToLower(), messageStats.FullMessage.AsSpan(1))));
-					Message msg = await cortana.SendMessage(messageStats.ChatId, commandResult);
+					string prompt = string.Concat(messageStats.Message[..1].ToLower(), messageStats.Message.AsSpan(1));
+					string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", prompt));
+					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Raspberry);
 					chatArg.Arg.Add(messageStats.MessageId);
 					chatArg.Arg.Add(msg.MessageId);
 					return;
 				}
-				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
 				break;
 		}
-		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
+		await CreateMenu(cortana, Utils.ChatArgs[messageStats.ChatId].Message);
+		Utils.ChatArgs.TryRemove(messageStats.ChatId, out _);
+	}
+
+	private static async Task<string> GetRaspberryInfo()
+	{
+		string ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
+		string temp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
+		string location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
+		string gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+		return $"Raspberry Info\n\n📬 Public IP: {ip}\n🌡 Temperature: {temp}\n📍 Location: {location}\n🌐 Gateway: {gateway}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Shutdown", "raspberry-shutdown")
-			.AddButton("Reboot", "raspberry-reboot")
+			.AddButton("Refresh 🔄", ActionTag.Refresh)
 			.AddNewRow()
-			.AddButton("Temperature", "raspberry-temperature")
-			.AddButton("IP", "raspberry-ip")
+			.AddButton("Shutdown 💻", ActionTag.Shutdown)
+			.AddButton("Reboot 🔁", ActionTag.Reboot)
 			.AddNewRow()
-			.AddButton("Location", "raspberry-location")
-			.AddButton("Gateway", "raspberry-gateway")
+			.AddButton("Command 💻", ActionTag.Command)
 			.AddNewRow()
-			.AddButton("Command", "raspberry-command")
-			.AddNewRow()
-			.AddButton("<<", "home");
+			.AddButton("❌", ActionTag.Delete);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("<<", "raspberry-cancel");
+			.AddButton("<<", ActionTag.Cancel);
+	}
+
+	private struct ActionTag
+	{
+		public const string Shutdown = "raspberry-shutdown";
+		public const string Reboot = "raspberry-reboot";
+		public const string Command = "raspberry-command";
+		public const string Refresh = "raspberry-refresh";
+		public const string Delete = "raspberry-delete";
+		public const string Cancel = "raspberry-cancel";
 	}
 }

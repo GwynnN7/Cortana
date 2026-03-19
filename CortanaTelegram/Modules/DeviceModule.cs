@@ -13,110 +13,198 @@ namespace CortanaTelegram.Modules;
 internal sealed class DeviceModule : IModuleInterface
 {
 	private static readonly ConcurrentDictionary<long, string> HardwareAction = new();
+	private static int TabIndex = 0;
+	private static bool TimerActive = false;
 
-	public static async Task ExecCommand(MessageStats messageStats, ITelegramBotClient cortana)
+	public static async Task ExecCommand(MessageData messageStats, ITelegramBotClient cortana)
 	{
 		switch (messageStats.Command)
 		{
 			case "domotica":
-				if (TelegramUtils.CheckHardwarePermission(messageStats.UserId))
-					await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
-				else await cortana.SendMessage(messageStats.ChatId, "Sorry, you can't use this command");
+				await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
 				break;
 		}
 	}
 
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message message)
+	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
 	{
-		HardwareAction.TryRemove(message.Id, out _);
-		await cortana.EditMessageText(message.Chat.Id, message.Id, "Device Menu", replyMarkup: CreateButtons());
+		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+
+		string messageText = await GetDevicesStatus();
+
+		if (message != null)
+		{
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+		}
+		else
+		{
+			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons());
+		}
 	}
 
-	public static async Task<bool> HandleKeyboardCallback(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleKeyboardCallback(ITelegramBotClient cortana, MessageData messageStats)
 	{
-		if (!TelegramUtils.CheckHardwarePermission(messageStats.UserId) || messageStats.ChatType != ChatType.Private) return false;
-		string arg = messageStats.FullMessage;
-		string? response = arg switch
+		string? response = messageStats.Message switch
 		{
 			HardwareEmoji.Lamp => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}"),
 			HardwareEmoji.Pc => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Computer}"),
 			HardwareEmoji.Generic => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Generic}"),
-			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Devices}/room", new PostAction($"{EPowerAction.On}")),
-			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Devices}/room", new PostAction($"{EPowerAction.Off}")),
+			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.On)),
+			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.Off)),
 			HardwareEmoji.Night => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
 			HardwareEmoji.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
 			HardwareEmoji.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
 			_ => null
 		};
-		if (response == null) return false;
 		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
-		return true;
 	}
 
-	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery callbackQuery, string command)
+	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery query, string command)
 	{
-		int messageId = callbackQuery.Message!.MessageId;
-		long chatId = callbackQuery.Message.Chat.Id;
+		int messageId = query.Message!.MessageId;
+		long chatId = query.Message.Chat.Id;
 
+		var task = command switch
+		{
+			ActionTag.Refresh => CreateMenu(cortana, query.Message),
+			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
+			ActionTag.Tab => new Task(async () =>
+			{
+				TabIndex = (TabIndex + 1) % 2;
+				await CreateMenu(cortana, query.Message);
+			}),
+			ActionTag.Timer => new Task(async () =>
+			{
+				TimerActive = !TimerActive;
+				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateOnOffToggleButtons());
+			}),
+			_ => null
 
-		if (!HardwareAction.TryAdd(messageId, command))
+		};
+
+		if (task != null)
+		{
+			await task;
+			return;
+		}
+
+		string? response = command switch
+		{
+			ActionTag.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("system")),
+			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("reboot")),
+			ActionTag.Suspend => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("suspend")),
+			ActionTag.Sleep => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
+			_ => null
+		};
+
+		if (response != null)
+		{
+			await cortana.AnswerCallbackQuery(query.Id, response, true);
+		}
+		else
 		{
 			switch (command)
 			{
-				case "timer":
-					await cortana.EditMessageText(chatId, messageId, "Select the action of the timer", replyMarkup: CreateOnOffTimerButtons());
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, "Timer pattern: {sec}s {min}m {hours}h {days}d");
+				case ActionTag.Command:
+					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.ComputerCommand, query, query.Message, []), query))
+					{
+						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
+					}
 					break;
-				case var _ when command.StartsWith("timer-"):
-					command = command["timer-".Length..];
-					if (TelegramUtils.TryAddChatArg(chatId, new TelegramChatArg<string>(ETelegramChatArg.HardwareTimer, callbackQuery, callbackQuery.Message, command), callbackQuery))
-						await cortana.EditMessageText(chatId, messageId, "Set the timer for the action", replyMarkup: CreateCancelButton());
+				case ActionTag.Notify:
+					if (Utils.AddChatArg(chatId, new ChatArgs(EArgsType.Notification, query, query.Message), query))
+					{
+						await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton());
+					}
 					break;
-				case "cancel":
-					await CreateMenu(cortana, TelegramUtils.ChatArgs[chatId].InteractionMessage);
-					TelegramUtils.ChatArgs.TryRemove(chatId, out _);
+				case ActionTag.Cancel:
+					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
+					{
+						await cortana.DeleteMessages(chatId, chatArg.Arg);
+					}
+					await CreateMenu(cortana, query.Message);
+					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
-				default:
-					string result = await ApiHandler.Post($"{ERoute.Devices}/{HardwareAction[messageId]}", new PostAction(command));
-					await cortana.AnswerCallbackQuery(callbackQuery.Id, result);
-					await CreateMenu(cortana, callbackQuery.Message);
+				case ActionTag.On:
+				case ActionTag.Off:
+				case ActionTag.Toggle:
+					string action = command.Split('-').Last();
+					if (TimerActive)
+					{
+						if (Utils.AddChatArg(chatId, new ChatArgs<string>(EArgsType.HardwareTimer, query, query.Message, action), query))
+						{
+							await cortana.EditMessageText(chatId, messageId, "Timer pattern: {sec}s {min}m {hours}h {days}d", replyMarkup: CreateCancelButton());
+						}
+					}
+					else
+					{
+						HardwareAction.TryRemove(messageId, out string? device);
+						string result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action));
+						await cortana.AnswerCallbackQuery(query.Id, result, true);
+						await CreateMenu(cortana, query.Message);
+					}
+
 					break;
+				case var _ when command.StartsWith(ActionTag.Type):
+					string deviceType = command.Split('-').Last();
+					HardwareAction[messageId] = deviceType;
+					TimerActive = false;
+					await cortana.EditMessageReplyMarkup(chatId, messageId, CreateOnOffToggleButtons());
+					return;
 			}
-			return;
 		}
-		string devicePower = await ApiHandler.Get($"{ERoute.Devices}/{command}");
-		await cortana.EditMessageText(callbackQuery.Message.Chat.Id, messageId, devicePower, replyMarkup: CreateOnOffToggleButtons());
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageStats messageStats)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData)
 	{
-		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
+		await cortana.SendChatAction(msgData.ChatId, ChatAction.Typing);
 
-		switch (TelegramUtils.ChatArgs[messageStats.ChatId].Type)
+		switch (Utils.ChatArgs[msgData.ChatId].Type)
 		{
-			case ETelegramChatArg.HardwareTimer:
+			case EArgsType.HardwareTimer:
 				(int s, int m, int h, int d) times;
 				try
 				{
-					times = TelegramUtils.ParseTime(messageStats.FullMessage);
+					times = Utils.ParseTime(msgData.Message);
 				}
 				catch
 				{
-					await TelegramUtils.AnswerOrMessage(cortana, "Time pattern is incorrect, try again!", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery);
+					await Utils.AnswerMessage(cortana, "Time pattern is incorrect, try again!", Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
 					return;
 				}
 
-				await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
 
-				(string, string) hardwarePattern = (HardwareAction[TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage.MessageId], (TelegramUtils.ChatArgs[messageStats.ChatId] as TelegramChatArg<string>)!.Arg);
-				var timer = new Timer($"{messageStats.UserId}:{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(messageStats.ChatId, messageStats.UserId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
+				HardwareAction.TryRemove(Utils.ChatArgs[msgData.ChatId].Message.MessageId, out string? device);
+				(string, string) hardwarePattern = (device!, (Utils.ChatArgs[msgData.ChatId] as ChatArgs<string>)!.Arg);
+				var timer = new Timer($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(msgData.ChatId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
 				timer.Set((times.s, times.m, times.h));
 
-				await TelegramUtils.AnswerOrMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", messageStats.ChatId, TelegramUtils.ChatArgs[messageStats.ChatId].CallbackQuery, false);
-				await CreateMenu(cortana, TelegramUtils.ChatArgs[messageStats.ChatId].InteractionMessage);
+				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
+				break;
+
+			case EArgsType.Notification:
+				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", msgData.Message));
+				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+
+				await Utils.AnswerMessage(cortana, result, Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
+				break;
+
+			case EArgsType.ComputerCommand:
+				if (Utils.ChatArgs[msgData.ChatId] is ChatArgs<List<int>> chatArg)
+				{
+					string prompt = string.Concat(msgData.Message[..1].ToLower(), msgData.Message.AsSpan(1));
+					string commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", prompt));
+					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Devices);
+					chatArg.Arg.Add(msgData.MessageId);
+					chatArg.Arg.Add(msg.MessageId);
+					return;
+				}
 				break;
 		}
-		TelegramUtils.ChatArgs.TryRemove(messageStats.ChatId, out _);
+
+		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
+		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Message);
 	}
 
 	private static async Task HardwareTimerFinished(object? sender)
@@ -127,56 +215,73 @@ internal sealed class DeviceModule : IModuleInterface
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
 			string result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
-			await TelegramUtils.SendToUser(payload.UserId, $"Timer elapsed with result: {result}");
+			await Utils.SendToTopic($"Timer elapsed with result: {result}", Utils.Topics.Devices);
 		}
 		catch (Exception e)
 		{
-			await TelegramUtils.SendToUser(TelegramUtils.AuthorId, $"There was an error with a timer:\n```{e.Message}```");
+			await Utils.SendToTopic($"There was an error with a timer:\n```{e.Message}```", Utils.Topics.Devices);
 		}
+	}
+
+	private static async Task<string> GetDevicesStatus()
+	{
+		string lamp = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}")).Contains("On") ? "On 🟢" : "Off 🔴";
+		string computer = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}")).Contains("On") ? "On 🟢" : "Off 🔴";
+		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "On 🟢" : "Off 🔴";
+		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "On 🟢" : "Off 🔴";
+
+		return $"Devices Status\n\n💡 Lamp: {lamp}\n💻 Computer: {computer}\n⚡️ Power: {power}\n🔌 Generic: {generic}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
-		InlineKeyboardMarkup inlineKeyboard = new InlineKeyboardMarkup()
-			.AddButton("Room", "device-room")
-			.AddNewRow();
+		InlineKeyboardMarkup inlineKeyboard = new();
 
-		foreach (string element in Enum.GetNames<EDevice>())
+		switch (TabIndex)
 		{
-			inlineKeyboard.AddButton(element, $"device-{element.ToLower()}");
-			inlineKeyboard.AddNewRow();
+			case 0:
+				foreach (string element in Enum.GetNames<EDevice>())
+				{
+					inlineKeyboard.AddButton($"{DeviceToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}");
+					inlineKeyboard.AddNewRow();
+				}
+
+				break;
+			case 1:
+				inlineKeyboard.AddButton("Reboot 🔄", $"{ActionTag.Reboot}");
+				inlineKeyboard.AddButton("System 🎮", $"{ActionTag.System}");
+				inlineKeyboard.AddNewRow();
+				inlineKeyboard.AddButton("Suspend 🌙", $"{ActionTag.Suspend}");
+				inlineKeyboard.AddButton("Notify 📢", $"{ActionTag.Notify}");
+				inlineKeyboard.AddNewRow();
+				inlineKeyboard.AddButton("Command 💻", $"{ActionTag.Command}");
+				inlineKeyboard.AddNewRow();
+				inlineKeyboard.AddButton("Sleep 🛌", $"{ActionTag.Sleep}");
+				break;
 		}
 
-		inlineKeyboard.AddButton("<<", "home");
+		inlineKeyboard.AddButton("🔄", ActionTag.Refresh);
+		inlineKeyboard.AddButton("❌", ActionTag.Delete);
+		inlineKeyboard.AddButton("↔️", ActionTag.Tab);
 		return inlineKeyboard;
 	}
 
 	private static InlineKeyboardMarkup CreateOnOffToggleButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("On", "device-on")
-			.AddButton("Off", "device-off")
+			.AddButton("On 🟢", ActionTag.On)
+			.AddButton("Off 🔴", ActionTag.Off)
 			.AddNewRow()
-			.AddButton("Toggle", "device-toggle")
+			.AddButton("Toggle 🔄", ActionTag.Toggle)
 			.AddNewRow()
-			.AddButton("Timer", "device-timer")
+			.AddButton(TimerActive ? "Timer ✅" : "Timer ❌", ActionTag.Timer)
 			.AddNewRow()
-			.AddButton("<<", "device");
-	}
-
-	private static InlineKeyboardMarkup CreateOnOffTimerButtons()
-	{
-		return new InlineKeyboardMarkup()
-			.AddButton("On", "device-timer-on")
-			.AddButton("Off", "device-timer-off")
-			.AddNewRow()
-			.AddButton("<<", "device");
+			.AddButton("<<", ActionTag.Cancel);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
 	{
-		return new InlineKeyboardMarkup()
-			.AddButton("<<", "device-cancel");
+		return new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
 	}
 
 	private static ReplyKeyboardMarkup CreateHardwareToggles()
@@ -187,5 +292,34 @@ internal sealed class DeviceModule : IModuleInterface
 			.AddButtons(HardwareEmoji.Pc, HardwareEmoji.Reboot, HardwareEmoji.System)
 			.AddNewRow()
 			.AddButtons(HardwareEmoji.On, HardwareEmoji.Night, HardwareEmoji.Off);
+	}
+
+	private static Dictionary<string, string> DeviceToEmoji = new()
+	{
+		{ EDevice.Lamp.ToString(), "💡" },
+		{ EDevice.Computer.ToString(), "💻" },
+		{ EDevice.Power.ToString(), "⚡️" },
+		{ EDevice.Generic.ToString(), "🔌" }
+	};
+
+	private struct ActionTag
+	{
+		public const string Type = "device-type";
+
+		public const string On = "device-on";
+		public const string Off = "device-off";
+		public const string Toggle = "device-toggle";
+		public const string Timer = "device-timer";
+		public const string Reboot = "device-reboot";
+		public const string System = "device-system";
+		public const string Suspend = "device-suspend";
+		public const string Notify = "device-notify";
+		public const string Command = "device-command";
+		public const string Sleep = "device-sleep";
+
+		public const string Delete = "device-delete";
+		public const string Refresh = "device-refresh";
+		public const string Tab = "device-tab";
+		public const string Cancel = "device-cancel";
 	}
 }

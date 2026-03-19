@@ -25,7 +25,7 @@ internal static class DiscordUtils
 		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
 
 		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Update.ToString())).OnMessage(async channelMessage =>
+		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Discord.ToString())).OnMessage(async channelMessage =>
 		{
 			if (channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
 		});
