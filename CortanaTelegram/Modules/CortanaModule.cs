@@ -12,15 +12,15 @@ internal sealed class CortanaModule : IModuleInterface
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
 
-		string messageText = "";
+		string messageText = "🧠 <b>Cortana Menu</b>\n\nChoose one of the available actions below.";
 
 		if (message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons());
+			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 

@@ -18,11 +18,11 @@ internal sealed class SensorModule : IModuleInterface
 
 		if (message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Sensors, replyMarkup: CreateButtons());
+			await Utils.SendToTopic(messageText, Utils.Topics.Sensors, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 
@@ -34,8 +34,7 @@ internal sealed class SensorModule : IModuleInterface
 		var task = command switch
 		{
 			ActionTag.Refresh => CreateMenu(cortana, query.Message),
-			ActionTag.Settings => cortana.EditMessageText(chatId, messageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons()),
-			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
+			ActionTag.Settings => cortana.EditMessageText(chatId, messageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons(), parseMode: ParseMode.Html),
 			_ => null
 
 		};
@@ -106,16 +105,17 @@ internal sealed class SensorModule : IModuleInterface
 		}
 
 		await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-		await cortana.EditMessageText(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons());
+		await cortana.EditMessageText(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons(), parseMode: ParseMode.Html);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
 	}
 
 	private static async Task<string> GetSensorDashboard()
 	{
-		string light = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
-		string temp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
-		string motion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
-		return $"Sensors Dashboard\n\n💡 Light: {light}\n🌡 Temperature: {temp}\n🖲 Motion Detected: {motion}";
+		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Temperature}")).Match(temp => temp.Value, () => "Unknown");
+		string light = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Light}")).Match(light => light.Value, () => "Unknown");
+		string motion = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Motion}")).Match(motion => motion.Value, () => "Unknown");
+
+		return $"📡 <b>Sensors Dashboard</b>\n\n• 💡 <b>Light</b>: {light}\n• 🌡 <b>Temperature</b>: {temperature}\n• 🖲 <b>Motion Detected</b>: {motion}";
 	}
 
 	private static async Task<string> GetSettingsText()
@@ -126,7 +126,7 @@ internal sealed class SensorModule : IModuleInterface
 		string motionOffMax = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMax}");
 		string motionOffMin = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMin}");
 
-		return $"Current Settings:\n\n🖲 {motionDetection}\n💡 {lightThreshold}\n🕒 {morningHour}\n⏳ {motionOffMax}\n⏳ {motionOffMin}";
+		return $"⚙️ <b>Current Sensor Settings</b>\n\n• 🖲 <b>Motion Detection</b>: {motionDetection}\n• 💡 <b>Light Threshold</b>: {lightThreshold}\n• 🕒 <b>Morning Hour</b>: {morningHour}\n• ⏳ <b>Motion-Off Max</b>: {motionOffMax}\n• ⏳ <b>Motion-Off Min</b>: {motionOffMin}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -135,8 +135,6 @@ internal sealed class SensorModule : IModuleInterface
 			.AddButton("Refresh 🔄", ActionTag.Refresh)
 			.AddNewRow()
 			.AddButton("Settings ⚙️", ActionTag.Settings)
-			.AddNewRow()
-			.AddButton("❌", ActionTag.Delete);
 	}
 
 	private static InlineKeyboardMarkup CreateSettingsButtons()
@@ -170,7 +168,6 @@ internal sealed class SensorModule : IModuleInterface
 		public const string SetMorningHour = "sensor-set_morninghour";
 		public const string SetMotionOffMax = "sensor-set_motionoffmax";
 		public const string SetMotionOffMin = "sensor-set_motionoffmin";
-		public const string Delete = "sensor-delete";
 		public const string Cancel = "sensor-cancel";
 	}
 

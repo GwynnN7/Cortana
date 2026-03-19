@@ -6,6 +6,7 @@ using CortanaLib.Structures;
 using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Utility;
@@ -43,10 +44,10 @@ internal static class Utils
 		_cortana = newClient;
 	}
 
-	public static async Task<Message> SendToTopic(string message, int topicId, ReplyMarkup? replyMarkup = null)
+	public static async Task<Message> SendToTopic(string message, int topicId, ParseMode parseMode = ParseMode.None, ReplyMarkup? replyMarkup = null)
 	{
 		var chat = new ChatId(HomeId);
-		return await _cortana.SendMessage(chat, message, messageThreadId: topicId, replyMarkup: replyMarkup);
+		return await _cortana.SendMessage(chat, message, messageThreadId: topicId, replyMarkup: replyMarkup, parseMode: parseMode);
 	}
 
 	public static async Task SendToUser(long userId, string message)

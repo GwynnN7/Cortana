@@ -18,19 +18,43 @@ public class DiscordQueue<T> where T : class
         }
     }
 
-    public T? Dequeue()
+    public bool TryDequeue(out T? item, out CancellationTokenSource? token)
     {
         lock (_lock)
         {
-            return _queue.Count > 0 ? _queue.Dequeue() : null;
+            if (_queue.Count == 0 || _tokens.Count == 0)
+            {
+                item = null;
+                token = null;
+                return false;
+            }
+
+            item = _queue.Dequeue();
+            token = _tokens.Dequeue();
+            return true;
         }
     }
 
-    public CancellationTokenSource? DequeueToken()
+    public bool TryDequeueLatest(out T? item, out CancellationTokenSource? token)
     {
         lock (_lock)
         {
-            return _tokens.Count > 0 ? _tokens.Dequeue() : null;
+            if (_queue.Count == 0 || _tokens.Count == 0)
+            {
+                item = null;
+                token = null;
+                return false;
+            }
+
+            while (_queue.Count > 1 && _tokens.Count > 1)
+            {
+                _queue.Dequeue();
+                _tokens.Dequeue().Dispose();
+            }
+
+            item = _queue.Dequeue();
+            token = _tokens.Dequeue();
+            return true;
         }
     }
 
@@ -68,7 +92,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         _queue.Enqueue(track);
         if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
         {
-            Task.Run(PlayQueue);
+            _ = Task.Run(PlayQueue);
         }
     }
 
@@ -99,10 +123,9 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
     {
         try
         {
-            while (_queue.HasNext())
+            while (true)
             {
-                AudioTrack? track = _queue.Dequeue();
-                CancellationTokenSource? token = _queue.DequeueToken();
+                if (!_queue.TryDequeue(out AudioTrack? track, out CancellationTokenSource? token)) break;
                 _currentTrackToken = token;
 
                 if (track == null || string.IsNullOrWhiteSpace(track.StreamUrl) || token == null)
@@ -145,6 +168,11 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         finally
         {
             Interlocked.Exchange(ref _isPlaying, 0);
+
+            if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+            {
+                _ = Task.Run(PlayQueue);
+            }
         }
     }
 

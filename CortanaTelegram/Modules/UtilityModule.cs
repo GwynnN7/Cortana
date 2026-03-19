@@ -14,13 +14,15 @@ internal sealed class UtilityModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
 	{
+		const string menuText = "🧰 <b>Utility Menu</b>\n\nPick a tool from the keyboard below.";
+
 		if (message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, "Utility Menu", replyMarkup: CreateButtons());
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, menuText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 		else
 		{
-			await Utils.SendToTopic("Utility Menu", Utils.Topics.Home, replyMarkup: CreateButtons());
+			await Utils.SendToTopic(menuText, Utils.Topics.Home, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 
@@ -86,9 +88,6 @@ internal sealed class UtilityModule : IModuleInterface
 
 					await CreateMenu(cortana);
 					Utils.ChatArgs.TryRemove(chatId, out _);
-					break;
-				case ActionTag.Delete:
-					await cortana.DeleteMessage(chatId, messageId);
 					break;
 			}
 		}
@@ -221,8 +220,6 @@ internal sealed class UtilityModule : IModuleInterface
 			.AddButton("Download Music 🎵", ActionTag.MusicDownloader)
 			.AddNewRow()
 			.AddButton("Download Video 🎥", ActionTag.VideoDownloader)
-			.AddNewRow()
-			.AddButton("❌", ActionTag.Delete);
 	}
 
 	private static InlineKeyboardMarkup CreateVideoDownloadButtons()
@@ -259,7 +256,6 @@ internal sealed class UtilityModule : IModuleInterface
 		public const string AudioPriority = "utility-video-audio_prio";
 		public const string BalancedPriority = "utility-video-balanced";
 		public const string Cancel = "utility-cancel";
-		public const string Delete = "utility-delete";
 
 	}
 }

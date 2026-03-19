@@ -34,11 +34,11 @@ internal sealed class DeviceModule : IModuleInterface
 
 		if (message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons());
+			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 
@@ -67,13 +67,12 @@ internal sealed class DeviceModule : IModuleInterface
 		var task = command switch
 		{
 			ActionTag.Refresh => CreateMenu(cortana, query.Message),
-			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
-			ActionTag.Tab => new Task(async () =>
+			ActionTag.Tab => Task.Run(async () =>
 			{
 				TabIndex = (TabIndex + 1) % 2;
 				await CreateMenu(cortana, query.Message);
 			}),
-			ActionTag.Timer => new Task(async () =>
+			ActionTag.Timer => Task.Run(async () =>
 			{
 				TimerActive = !TimerActive;
 				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateOnOffToggleButtons());
@@ -99,7 +98,7 @@ internal sealed class DeviceModule : IModuleInterface
 
 		if (response != null)
 		{
-			await cortana.AnswerCallbackQuery(query.Id, response, true);
+			await cortana.AnswerCallbackQuery(query.Id, response);
 		}
 		else
 		{
@@ -140,7 +139,7 @@ internal sealed class DeviceModule : IModuleInterface
 					{
 						HardwareAction.TryRemove(messageId, out string? device);
 						string result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action));
-						await cortana.AnswerCallbackQuery(query.Id, result, true);
+						await cortana.AnswerCallbackQuery(query.Id, result);
 						await CreateMenu(cortana, query.Message);
 					}
 
@@ -225,12 +224,12 @@ internal sealed class DeviceModule : IModuleInterface
 
 	private static async Task<string> GetDevicesStatus()
 	{
-		string lamp = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}")).Contains("On") ? "On 🟢" : "Off 🔴";
-		string computer = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}")).Contains("On") ? "On 🟢" : "Off 🔴";
-		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "On 🟢" : "Off 🔴";
-		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "On 🟢" : "Off 🔴";
+		string lamp = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
+		string computer = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
+		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
+		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
 
-		return $"Devices Status\n\n💡 Lamp: {lamp}\n💻 Computer: {computer}\n⚡️ Power: {power}\n🔌 Generic: {generic}";
+		return $"🏠 <b>Devices Status</b>\n\n• 💡 <b>Lamp</b>: {lamp}\n• 💻 <b>Computer</b>: {computer}\n• ⚡ <b>Power</b>: {power}\n• 🔌 <b>Generic</b>: {generic}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -261,7 +260,6 @@ internal sealed class DeviceModule : IModuleInterface
 		}
 
 		inlineKeyboard.AddButton("🔄", ActionTag.Refresh);
-		inlineKeyboard.AddButton("❌", ActionTag.Delete);
 		inlineKeyboard.AddButton("↔️", ActionTag.Tab);
 		return inlineKeyboard;
 	}
@@ -316,8 +314,6 @@ internal sealed class DeviceModule : IModuleInterface
 		public const string Notify = "device-notify";
 		public const string Command = "device-command";
 		public const string Sleep = "device-sleep";
-
-		public const string Delete = "device-delete";
 		public const string Refresh = "device-refresh";
 		public const string Tab = "device-tab";
 		public const string Cancel = "device-cancel";

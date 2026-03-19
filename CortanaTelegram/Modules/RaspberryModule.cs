@@ -18,11 +18,11 @@ internal sealed class RaspberryModule : IModuleInterface
 
 		if (message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons());
+			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Raspberry, replyMarkup: CreateButtons());
+			await Utils.SendToTopic(messageText, Utils.Topics.Raspberry, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 
@@ -34,7 +34,6 @@ internal sealed class RaspberryModule : IModuleInterface
 		var task = command switch
 		{
 			ActionTag.Refresh => CreateMenu(cortana, query.Message),
-			ActionTag.Delete => cortana.DeleteMessage(chatId, messageId),
 			_ => null
 
 		};
@@ -102,11 +101,11 @@ internal sealed class RaspberryModule : IModuleInterface
 
 	private static async Task<string> GetRaspberryInfo()
 	{
-		string ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
-		string temp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
-		string location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
-		string gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
-		return $"Raspberry Info\n\n📬 Public IP: {ip}\n🌡 Temperature: {temp}\n📍 Location: {location}\n🌐 Gateway: {gateway}";
+		string ip = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.ip}")).Match(ip => ip.Value, () => "Unknown");
+		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => temp.Value, () => "Unknown");
+		string location = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Location}")).Match(location => location.Value, () => "Unknown");
+		string gateway = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}")).Match(gateway => gateway.Value, () => "Unknown");
+		return $"🍓 <b>Raspberry Info</b>\n\n• 📬 <b>IP</b>: {ip}\n• 🌡 <b>Temperature</b>: {temperature}\n• 📍 <b>Location</b>: {location}\n• 🌐 <b>Gateway</b>: {gateway}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -114,12 +113,10 @@ internal sealed class RaspberryModule : IModuleInterface
 		return new InlineKeyboardMarkup()
 			.AddButton("Refresh 🔄", ActionTag.Refresh)
 			.AddNewRow()
-			.AddButton("Shutdown 💻", ActionTag.Shutdown)
+			.AddButton("Shutdown ⚡️", ActionTag.Shutdown)
 			.AddButton("Reboot 🔁", ActionTag.Reboot)
 			.AddNewRow()
 			.AddButton("Command 💻", ActionTag.Command)
-			.AddNewRow()
-			.AddButton("❌", ActionTag.Delete);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
@@ -134,7 +131,6 @@ internal sealed class RaspberryModule : IModuleInterface
 		public const string Reboot = "raspberry-reboot";
 		public const string Command = "raspberry-command";
 		public const string Refresh = "raspberry-refresh";
-		public const string Delete = "raspberry-delete";
 		public const string Cancel = "raspberry-cancel";
 	}
 }

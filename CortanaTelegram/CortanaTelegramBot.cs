@@ -18,7 +18,7 @@ public static class CortanaTelegramBot
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
 		Utils.Init(cortana);
-		await Utils.SendToTopic("I'm Online", Utils.Topics.Home);
+		await Utils.SendToTopic("I'm Online", Utils.Topics.Log);
 		DataHandler.Log("Telegram Bot Online");
 
 		await SignalHandler.WaitForInterrupt();
@@ -144,7 +144,11 @@ public static class CortanaTelegramBot
 			};
 			if (callbackTask != null) await callbackTask;
 		}
-		else await menuTask;
+		else
+		{
+			await menuTask;
+			await cortana.AnswerCallbackQuery(query.Id);
+		}
 	}
 
 	private static async Task CreateHomeMenu(ITelegramBotClient cortana)

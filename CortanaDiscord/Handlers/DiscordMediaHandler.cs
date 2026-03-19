@@ -27,29 +27,17 @@ public class DiscordMediaHandler(SocketGuild guild)
         _queue.Enqueue(joinAction);
         if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
         {
-            Task.Run(JoinQueue);
+            _ = Task.Run(JoinQueue);
         }
-    }
-
-    private void EnqueueLast()
-    {
-        JoinAction? joinAction = null;
-        while (_queue.HasNext())
-        {
-            joinAction = _queue.Dequeue();
-        }
-        if (joinAction == null) return;
-        Enqueue(joinAction);
     }
 
     private async Task JoinQueue()
     {
         try
         {
-            while (_queue.HasNext())
+            while (true)
             {
-                JoinAction? action = _queue.Dequeue();
-                CancellationTokenSource? token = _queue.DequeueToken();
+                if (!_queue.TryDequeueLatest(out JoinAction? action, out CancellationTokenSource? token)) break;
                 _currentJoinToken = token;
 
                 if (action == null || token == null)
@@ -69,13 +57,16 @@ public class DiscordMediaHandler(SocketGuild guild)
                     token.Dispose();
                     if (ReferenceEquals(_currentJoinToken, token)) _currentJoinToken = null;
                 }
-
-                EnqueueLast();
             }
         }
         finally
         {
             Interlocked.Exchange(ref _isPlaying, 0);
+
+            if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+            {
+                _ = Task.Run(JoinQueue);
+            }
         }
     }
 
