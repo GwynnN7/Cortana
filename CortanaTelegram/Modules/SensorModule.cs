@@ -134,7 +134,7 @@ internal sealed class SensorModule : IModuleInterface
 		return new InlineKeyboardMarkup()
 			.AddButton("Refresh 🔄", ActionTag.Refresh)
 			.AddNewRow()
-			.AddButton("Settings ⚙️", ActionTag.Settings)
+			.AddButton("Settings ⚙️", ActionTag.Settings);
 	}
 
 	private static InlineKeyboardMarkup CreateSettingsButtons()

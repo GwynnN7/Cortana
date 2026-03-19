@@ -219,7 +219,7 @@ internal sealed class UtilityModule : IModuleInterface
 			.AddNewRow()
 			.AddButton("Download Music 🎵", ActionTag.MusicDownloader)
 			.AddNewRow()
-			.AddButton("Download Video 🎥", ActionTag.VideoDownloader)
+			.AddButton("Download Video 🎥", ActionTag.VideoDownloader);
 	}
 
 	private static InlineKeyboardMarkup CreateVideoDownloadButtons()

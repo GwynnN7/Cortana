@@ -101,7 +101,7 @@ internal sealed class RaspberryModule : IModuleInterface
 
 	private static async Task<string> GetRaspberryInfo()
 	{
-		string ip = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.ip}")).Match(ip => ip.Value, () => "Unknown");
+		string ip = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}")).Match(ip => ip.Value, () => "Unknown");
 		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => temp.Value, () => "Unknown");
 		string location = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Location}")).Match(location => location.Value, () => "Unknown");
 		string gateway = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}")).Match(gateway => gateway.Value, () => "Unknown");
@@ -116,7 +116,7 @@ internal sealed class RaspberryModule : IModuleInterface
 			.AddButton("Shutdown ⚡️", ActionTag.Shutdown)
 			.AddButton("Reboot 🔁", ActionTag.Reboot)
 			.AddNewRow()
-			.AddButton("Command 💻", ActionTag.Command)
+			.AddButton("Command 💻", ActionTag.Command);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
