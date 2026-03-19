@@ -89,12 +89,14 @@ public static class Service
 		IpcService.Publish(EMessageCategory.Telegram, "Manual mode temporary enabled");
 	}
 
-	private static void EnableAutomaticMode(object? sender = null)
+	private static Task EnableAutomaticMode(object? sender = null)
 	{
 		_temporaryTimer?.Destroy();
 		_temporaryTimer = null;
 		Settings.MotionDetection = EMotionDetection.On;
 		IpcService.Publish(EMessageCategory.Telegram, "Automatic mode re-enabled");
+
+		return Task.CompletedTask;
 	}
 
 	public static void EnterSleepMode(bool userAction = false)

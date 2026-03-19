@@ -13,7 +13,6 @@ EnvironmentFile=%h/.config/cortana/.env
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM
-TimeoutStopSec=10
 
 StandardOutput=journal
 StandardError=journal
