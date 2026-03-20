@@ -13,9 +13,9 @@ public enum ERoute
 public enum ESubFunctionType
 {
 	CortanaKernel,
-	CortanaWeb,
+	CortanaTelegram,
 	CortanaDiscord,
-	CortanaTelegram
+	CortanaWeb
 }
 
 public enum ESubfunctionAction

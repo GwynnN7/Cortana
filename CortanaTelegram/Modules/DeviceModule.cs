@@ -236,7 +236,7 @@ internal sealed class DeviceModule : IModuleInterface
 		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "🟢" : "🔴";
 		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "🟢" : "🔴";
 
-		return $"🏠 <b>Devices Status</b>\n\n• {DeviceToEmoji[EDevice.Lamp.ToString()]} <b>Lamp</b>: {lamp}\n• {DeviceToEmoji[EDevice.Computer.ToString()]} <b>Computer</b>: {computer}\n• {DeviceToEmoji[EDevice.Power.ToString()]} <b>Power</b>: {power}\n• {DeviceToEmoji[EDevice.Generic.ToString()]} <b>Generic</b>: {generic}";
+		return $"\n🏠 <b>Devices Status</b>\n\n• {DeviceToEmoji[EDevice.Lamp.ToString()]} <b>Lamp</b>: {lamp}\n• {DeviceToEmoji[EDevice.Computer.ToString()]} <b>Computer</b>: {computer}\n• {DeviceToEmoji[EDevice.Power.ToString()]} <b>Power</b>: {power}\n• {DeviceToEmoji[EDevice.Generic.ToString()]} <b>Generic</b>: {generic}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()

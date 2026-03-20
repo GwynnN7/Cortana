@@ -69,8 +69,8 @@ internal sealed class SensorModule : IModuleInterface
 				{
 					ActionTag.SetLightThreshold => "Set Light Threshold (0~4096)",
 					ActionTag.SetMorningHour => "Set Morning Hour (0~23)",
-					ActionTag.SetMotionOffMax => "Set Motion-Off Maximum Time",
-					ActionTag.SetMotionOffMin => "Set Motion-Off Minimum Time",
+					ActionTag.SetMotionOffMax => "Set Light Off Maximum Time",
+					ActionTag.SetMotionOffMin => "Set Light Off Minimum Time",
 					_ => "Sensors Settings"
 				};
 				await cortana.EditMessageText(chatId, messageId, prompt, replyMarkup: CreateCancelButton());
@@ -112,7 +112,7 @@ internal sealed class SensorModule : IModuleInterface
 		}
 
 		await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-		await cortana.EditMessageReplyMarkup(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, replyMarkup: CreateSettingsButtons());
+		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
 	}
 
@@ -128,7 +128,7 @@ internal sealed class SensorModule : IModuleInterface
 		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
 		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
 
-		return $"📡 <b>Sensors Dashboard</b>\n\n• 💡 <b>Light</b>: {light}\n• 🌡 <b>Temperature</b>: {temperature}\n• 🖲 <b>Motion Detected</b>: {motion}\n\n⚙️ <b>Current Sensor Settings</b>\n\n• 🖲 <b>Automatic Mode</b>: {autoMode}\n• 💡 <b>Light Threshold</b>: {lightThreshold}\n• 🕒 <b>Morning Hour</b>: {morningHour}\n• ⏳ <b>Motion-Off Max/Min</b>: {motionOffMax}/{motionOffMin}";
+		return $"\n📡 <b>Sensors Dashboard</b>\n\n• 💡 <b>Light</b>: {light}\n• 🌡 <b>Temperature</b>: {temperature}\n• 🖲 <b>Motion Detected</b>: {motion}\n\n\n⚙️ <b>Current Sensor Settings</b>\n\n• 🖲 <b>Automatic Mode</b>: {autoMode}\n• 💡 <b>Light Threshold</b>: {lightThreshold}\n• 🕒 <b>Morning Hour</b>: {morningHour}\n• ⏳ <b>Time Off Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()

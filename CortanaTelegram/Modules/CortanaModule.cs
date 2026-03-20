@@ -33,7 +33,7 @@ internal sealed class CortanaModule : IModuleInterface
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Devices, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			await Utils.SendToTopic(messageText, Utils.Topics.Cortana, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
 		}
 	}
 

@@ -2,18 +2,18 @@ namespace CortanaLib.Structures;
 
 public enum EDevice
 {
+	Lamp,
 	Computer,
 	Power,
-	Lamp,
 	Generic
 }
 
 public enum ERaspberryInfo
 {
+	Temperature,
 	Location,
-	Ip,
 	Gateway,
-	Temperature
+	Ip
 }
 
 public enum ERaspberryCommand

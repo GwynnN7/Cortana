@@ -110,7 +110,7 @@ internal sealed class RaspberryModule : IModuleInterface
 		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => $"{Math.Round(double.Parse(temp.Value), 1)}{temp.Unit}", () => "Unknown");
 		string location = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Location}")).Match(location => location.Value, () => "Unknown");
 		string gateway = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}")).Match(gateway => gateway.Value, () => "Unknown");
-		return $"🍓 <b>Raspberry Info</b>\n\n• 📬 <b>IP</b>: {ip}\n• 🌡 <b>Temperature</b>: {temperature}\n• 📍 <b>Location</b>: {location}\n• 🌐 <b>Gateway</b>: {gateway}";
+		return $"\n🍓 <b>Raspberry Info</b>\n\n• 🌡 <b>Temperature</b>: {temperature}\n• 📍 <b>Location</b>: {location}\n• 🌐 <b>Gateway</b>: {gateway}\n• 📬 <b>IP</b>: {ip}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()

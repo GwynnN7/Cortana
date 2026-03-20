@@ -48,7 +48,7 @@ public static class Service
 	{
 		_temporaryTimer?.Destroy();
 		_temporaryTimer = new Timer("temporary-timer", null, EnableAutomaticMode, ETimerType.Utility);
-		_temporaryTimer.Set(DateTime.Now.AddHours(1));
+		_temporaryTimer.Set(DateTime.Now.AddMinutes(15));
 	}
 
 	private static Task ControllerCallback(object? sender)
@@ -85,7 +85,7 @@ public static class Service
 	{
 		if (Settings.AutomaticMode == EMotionDetection.Off) return;
 		Settings.AutomaticMode = EMotionDetection.Off;
-		ResetControllerTimer();
+		ResetTemporaryTimer();
 		IpcService.Publish(EMessageCategory.Telegram, "Manual mode temporary enabled");
 	}
 
