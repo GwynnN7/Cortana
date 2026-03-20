@@ -42,27 +42,25 @@ public static class Bootloader
 
 		switch (action)
 		{
-			case ESubfunctionAction.Reboot when type == ESubFunctionType.CortanaKernel:
-				Helper.DelayCommand($"systemctl --user restart {serviceName}");
-				return StringResult.Success(
-					DataHandler.Log("Kernel rebooting..."));
-			case ESubfunctionAction.Reboot:
+			case ESubfunctionAction.Start when type == ESubFunctionType.CortanaKernel:
+				Helper.DelayCommand($"systemctl --user start {serviceName}");
+				return StringResult.Success(DataHandler.Log("Kernel starting..."));
+			case ESubfunctionAction.Start:
 				{
-					int exitCode = await RunSystemctl("restart", serviceName);
+					int exitCode = await RunSystemctl("start", serviceName);
 					return exitCode == 0
-						? StringResult.Success(DataHandler.Log("Kernel rebooted"))
-						: StringResult.Failure(DataHandler.Log("Failed to reboot Kernel"));
+						? StringResult.Success(DataHandler.Log("Kernel started"))
+						: StringResult.Failure(DataHandler.Log("Failed to start Kernel"));
 				}
 			case ESubfunctionAction.Restart when type == ESubFunctionType.CortanaKernel:
 				Helper.DelayCommand($"systemctl --user restart {serviceName}");
-				return StringResult.Success(
-					DataHandler.Log("Kernel restarting..."));
+				return StringResult.Success(DataHandler.Log($"{serviceName} restarting..."));
 			case ESubfunctionAction.Restart:
 				{
 					int exitCode = await RunSystemctl("restart", serviceName);
 					return exitCode == 0
-						? StringResult.Success(DataHandler.Log("Kernel restarted"))
-						: StringResult.Failure(DataHandler.Log("Failed to restart Kernel"));
+						? StringResult.Success(DataHandler.Log($"{serviceName} restarted"))
+						: StringResult.Failure(DataHandler.Log($"Failed to restart {serviceName}"));
 				}
 			case ESubfunctionAction.Update when type == ESubFunctionType.CortanaKernel:
 				Helper.DelayCommand("cortana update");
@@ -71,7 +69,7 @@ public static class Bootloader
 			case ESubfunctionAction.Update:
 				{
 					await Helper.RunCommand("cortana git").WaitForExitAsync();
-					return await SubfunctionCall(type, ESubfunctionAction.Reboot);
+					return await SubfunctionCall(type, ESubfunctionAction.Restart);
 				}
 			case ESubfunctionAction.Stop:
 				return await StopSubfunction(type);

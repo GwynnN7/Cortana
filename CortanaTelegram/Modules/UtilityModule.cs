@@ -12,13 +12,21 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class UtilityModule : IModuleInterface
 {
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
+	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		const string menuText = "🧰 <b>Utility Menu</b>\n\nPick a tool from the keyboard below.";
 
-		if (message != null)
+		if (query != null && query.Message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, menuText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			try
+			{
+				await cortana.EditMessageText(query.Message.Chat.Id, query.Message.MessageId, menuText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			}
+			catch
+			{
+				await cortana.AnswerCallbackQuery(query.Id);
+			}
+
 		}
 		else
 		{
@@ -47,27 +55,15 @@ internal sealed class UtilityModule : IModuleInterface
 		{
 			if (Utils.AddChatArg(chatId, chatArg, query))
 			{
-				switch (command)
+				_ = command switch
 				{
-					case ActionTag.QrCode:
-						await cortana.EditMessageText(chatId, messageId, "Write the content of the Qrcode", replyMarkup: CreateCancelButton());
-						break;
-					case ActionTag.JoinChat:
-						await cortana.EditMessageText(chatId, messageId, "Tag of the user you want to start the chat with", replyMarkup: CreateLeaveButton());
-						break;
-					case ActionTag.Timer:
-						await cortana.AnswerCallbackQuery(query.Id, "Timer pattern: {sec}s {min}m {hours}h {days}d");
-						await cortana.EditMessageText(chatId, messageId, "Set the timer countdown", replyMarkup: CreateCancelButton());
-						break;
-					case ActionTag.MusicDownloader:
-						await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the audio", replyMarkup: CreateCancelButton());
-						break;
-					case ActionTag.VideoPriority:
-					case ActionTag.AudioPriority:
-					case ActionTag.BalancedPriority:
-						await cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton());
-						break;
-				}
+					ActionTag.QrCode => cortana.EditMessageText(chatId, messageId, "Write the content of the Qrcode", replyMarkup: CreateCancelButton()),
+					ActionTag.JoinChat => cortana.EditMessageText(chatId, messageId, "Tag of the user you want to start the chat with", replyMarkup: CreateLeaveButton()),
+					ActionTag.Timer => cortana.EditMessageText(chatId, messageId, "Timer pattern: {sec}s {min}m {hours}h {days}d", replyMarkup: CreateCancelButton()),
+					ActionTag.MusicDownloader => cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the audio", replyMarkup: CreateCancelButton()),
+					ActionTag.VideoPriority or ActionTag.AudioPriority or ActionTag.BalancedPriority => cortana.EditMessageText(chatId, messageId, "Write the YouTube url of the video", replyMarkup: CreateCancelButton()),
+					_ => Task.CompletedTask
+				};
 			}
 		}
 		else
@@ -78,7 +74,7 @@ internal sealed class UtilityModule : IModuleInterface
 					await cortana.EditMessageText(chatId, messageId, "Choose the download priority", replyMarkup: CreateVideoDownloadButtons());
 					break;
 				case ActionTag.Cancel:
-					await CreateMenu(cortana);
+					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 				case ActionTag.LeaveChat:
@@ -86,7 +82,7 @@ internal sealed class UtilityModule : IModuleInterface
 					if (genericChatArg is not ChatArgs<long> { Type: EArgsType.Chat } leaveChatArg) return;
 					await cortana.AnswerCallbackQuery(query.Id, $"Chat with {Utils.IdToName(leaveChatArg.Arg)} ended");
 
-					await CreateMenu(cortana);
+					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 			}
@@ -189,7 +185,7 @@ internal sealed class UtilityModule : IModuleInterface
 				return;
 		}
 
-		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Message);
+		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
 	}
 
@@ -202,9 +198,9 @@ internal sealed class UtilityModule : IModuleInterface
 			if (timer.Payload is not TelegramTimerPayload<string> payload) return;
 			await Utils.SendToTopic("Timer elapsed!", Utils.Topics.Home);
 		}
-		catch (Exception e)
+		catch
 		{
-			await Utils.SendToTopic($"There was an error with a timer:\n```{e.Message}```", Utils.Topics.Home);
+			await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Home);
 		}
 	}
 

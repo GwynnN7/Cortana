@@ -43,7 +43,7 @@ public enum ESensor
 public enum ESettings
 {
 	LightThreshold,
-	MotionDetection,
+	AutomaticMode,
 	MorningHour,
 	MotionOffMax,
 	MotionOffMin

@@ -10,10 +10,14 @@
             <h2>Cortana Kernel</h2>
             <div class="button-group">
                 <p>@_subfunctionStatus?[ESubFunctionType.CortanaKernel]</p>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Restart)">Restart</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Reboot)">Reboot</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Update)">Update</button>
-                <button class="stop" @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Stop)">Stop</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Start)">Start</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Restart)">Restart</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Update)">Update</button>
+                <button class="stop"
+                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Stop)">Stop</button>
             </div>
         </div>
 
@@ -21,10 +25,14 @@
             <h2>Cortana Discord</h2>
             <div class="button-group">
                 <p>@_subfunctionStatus?[ESubFunctionType.CortanaDiscord]</p>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Restart)">Restart</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Reboot)">Reboot</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Update)">Update</button>
-                <button class="stop" @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Stop)">Stop</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Start)">Start</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Restart)">Restart</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Update)">Update</button>
+                <button class="stop"
+                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Stop)">Stop</button>
             </div>
         </div>
 
@@ -32,10 +40,14 @@
             <h2>Cortana Telegram</h2>
             <div class="button-group">
                 <p>@_subfunctionStatus?[ESubFunctionType.CortanaTelegram]</p>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Restart)">Restart</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Reboot)">Reboot</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Update)">Update</button>
-                <button class="stop" @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Stop)">Stop</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Start)">Start</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Restart)">Restart</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Update)">Update</button>
+                <button class="stop"
+                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Stop)">Stop</button>
             </div>
         </div>
 
@@ -43,10 +55,14 @@
             <h2>Cortana Web</h2>
             <div class="button-group">
                 <p>@_subfunctionStatus?[ESubFunctionType.CortanaWeb]</p>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Restart)">Restart</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Reboot)">Reboot</button>
-                <button @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Update)">Update</button>
-                <button class="stop" @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Stop)">Stop</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Start)">Start</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Restart)">Restart</button>
+                <button
+                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Update)">Update</button>
+                <button class="stop"
+                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Stop)">Stop</button>
             </div>
         </div>
     </div>
@@ -55,12 +71,12 @@
 @code {
     private System.Threading.Timer? _timer;
     private Dictionary<ESubFunctionType, string>? _subfunctionStatus;
-    
+
     protected override async Task OnInitializedAsync()
     {
         _timer = new System.Threading.Timer(_ =>
         {
-            InvokeAsync( async ()  =>
+            InvokeAsync(async () =>
             {
                 await UpdateStatus();
                 StateHasChanged();
@@ -69,7 +85,7 @@
 
         await base.OnInitializedAsync();
     }
-    
+
     private async Task HandleSubfunction(ESubFunctionType type, ESubfunctionAction action)
     {
         string result = await ApiHandler.Post($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));

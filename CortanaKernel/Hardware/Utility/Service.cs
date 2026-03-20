@@ -74,7 +74,7 @@ public static class Service
 		{
 			if (!_morningMessage) return Task.CompletedTask;
 			IpcService.Publish(EMessageCategory.Telegram, "Good morning, enabling Automatic mode");
-			Settings.MotionDetection = EMotionDetection.On;
+			Settings.AutomaticMode = EMotionDetection.On;
 			_morningMessage = false;
 		}
 
@@ -83,8 +83,8 @@ public static class Service
 
 	public static void TemporaryManualMode()
 	{
-		if (Settings.MotionDetection == EMotionDetection.Off) return;
-		Settings.MotionDetection = EMotionDetection.Off;
+		if (Settings.AutomaticMode == EMotionDetection.Off) return;
+		Settings.AutomaticMode = EMotionDetection.Off;
 		ResetControllerTimer();
 		IpcService.Publish(EMessageCategory.Telegram, "Manual mode temporary enabled");
 	}
@@ -93,7 +93,7 @@ public static class Service
 	{
 		_temporaryTimer?.Destroy();
 		_temporaryTimer = null;
-		Settings.MotionDetection = EMotionDetection.On;
+		Settings.AutomaticMode = EMotionDetection.On;
 		IpcService.Publish(EMessageCategory.Telegram, "Automatic mode re-enabled");
 
 		return Task.CompletedTask;
@@ -101,7 +101,7 @@ public static class Service
 
 	public static void EnterSleepMode(bool userAction = false)
 	{
-		Settings.MotionDetection = EMotionDetection.Off;
+		Settings.AutomaticMode = EMotionDetection.Off;
 
 		switch (userAction)
 		{
@@ -123,7 +123,7 @@ public static class Service
 
 	public static void ComputerStatusUpdated(EPowerStatus status)
 	{
-		Settings.MotionDetection = EMotionDetection.On;
+		Settings.AutomaticMode = EMotionDetection.On;
 		ResetControllerTimer();
 	}
 }

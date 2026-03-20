@@ -21,7 +21,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		var newData = JsonSerializer.Deserialize<SensorData>(message, DataHandler.SerializerOptions);
 
-		if (Service.Settings.MotionDetection == EMotionDetection.On)
+		if (Service.Settings.AutomaticMode == EMotionDetection.On)
 		{
 			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.On)
 			{
@@ -46,7 +46,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 			{
 				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 				{
-					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On);
+					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On, automatic: true);
 					IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
 				}
 			}
@@ -59,9 +59,9 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
-		if (Service.Settings.MotionDetection == EMotionDetection.Off) return Task.CompletedTask;
+		if (Service.Settings.AutomaticMode == EMotionDetection.Off) return Task.CompletedTask;
 
-		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
+		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off, automatic: true);
 		IpcService.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
 
 		return Task.CompletedTask;

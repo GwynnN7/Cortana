@@ -20,10 +20,10 @@ public enum ESubFunctionType
 
 public enum ESubfunctionAction
 {
+	Start,
 	Restart,
-	Reboot,
-	Update,
-	Stop
+	Stop,
+	Update
 }
 
 public enum ETimerType

@@ -168,7 +168,6 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         finally
         {
             Interlocked.Exchange(ref _isPlaying, 0);
-
             if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
             {
                 _ = Task.Run(PlayQueue);

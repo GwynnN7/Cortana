@@ -49,7 +49,7 @@ public class DiscordMediaHandler(SocketGuild guild)
 
                 try
                 {
-                    await Task.Run(() => JoinTask(action), token.Token);
+                    await JoinTask(action, token.Token);
                 }
                 catch (OperationCanceledException) { }
                 finally
@@ -62,7 +62,6 @@ public class DiscordMediaHandler(SocketGuild guild)
         finally
         {
             Interlocked.Exchange(ref _isPlaying, 0);
-
             if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
             {
                 _ = Task.Run(JoinQueue);
@@ -70,7 +69,7 @@ public class DiscordMediaHandler(SocketGuild guild)
         }
     }
 
-    private async Task JoinTask(JoinAction joinAction)
+    private async Task JoinTask(JoinAction joinAction, CancellationToken cancellationToken)
     {
         try
         {
@@ -79,12 +78,14 @@ public class DiscordMediaHandler(SocketGuild guild)
                 case JoinStatus.Join:
                     {
                         SocketVoiceChannel channel = joinAction.Channel!;
-                        await Task.Delay(1500);
+                        await Task.Delay(1500, cancellationToken);
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         if (!AudioHandler.GetAvailableChannels(channel.Guild).Contains(channel)) return;
                         if (AudioHandler.IsConnected(channel, guild)) return;
 
                         await AudioHandler.Stop(guild.Id);
+                        cancellationToken.ThrowIfCancellationRequested();
 
                         IAudioClient? audioClient = await channel.ConnectAsync();
                         if (audioClient == null) throw new CortanaException("Errore connessione al canale vocale");
@@ -99,6 +100,7 @@ public class DiscordMediaHandler(SocketGuild guild)
                     }
                 case JoinStatus.Leave:
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         await AudioHandler.Stop(guild.Id);
                         MediaPlayer?.Dispose();
                         if (CurrentChannel == GetActualConnectedChannel(guild) && CurrentChannel != null)

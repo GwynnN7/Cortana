@@ -21,20 +21,27 @@ internal sealed class DeviceModule : IModuleInterface
 		switch (messageStats.Command)
 		{
 			case "domotica":
-				await cortana.SendMessage(messageStats.ChatId, "Keyboard Domotica", replyMarkup: CreateHardwareToggles());
+				await Utils.SendToTopic("Keyboard Domotica", Utils.Topics.Devices, replyMarkup: CreateHardwareToggles());
 				break;
 		}
 	}
 
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
+	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
 
 		string messageText = await GetDevicesStatus();
 
-		if (message != null)
+		if (query != null && query.Message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			try
+			{
+				await cortana.EditMessageText(query.Message.Chat.Id, query.Message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			}
+			catch
+			{
+				await cortana.AnswerCallbackQuery(query.Id);
+			}
 		}
 		else
 		{
@@ -44,13 +51,13 @@ internal sealed class DeviceModule : IModuleInterface
 
 	public static async Task HandleKeyboardCallback(ITelegramBotClient cortana, MessageData messageStats)
 	{
-		string? response = messageStats.Message switch
+		_ = messageStats.Message switch
 		{
 			HardwareEmoji.Lamp => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}"),
 			HardwareEmoji.Pc => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Computer}"),
 			HardwareEmoji.Generic => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Generic}"),
-			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.On)),
-			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.Off)),
+			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.On)),
+			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.Off)),
 			HardwareEmoji.Night => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
 			HardwareEmoji.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
 			HardwareEmoji.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
@@ -66,11 +73,11 @@ internal sealed class DeviceModule : IModuleInterface
 
 		var task = command switch
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query.Message),
+			ActionTag.Refresh => CreateMenu(cortana, query),
 			ActionTag.Tab => Task.Run(async () =>
 			{
 				TabIndex = (TabIndex + 1) % 2;
-				await CreateMenu(cortana, query.Message);
+				await CreateMenu(cortana, query);
 			}),
 			ActionTag.Timer => Task.Run(async () =>
 			{
@@ -89,9 +96,9 @@ internal sealed class DeviceModule : IModuleInterface
 
 		string? response = command switch
 		{
-			ActionTag.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("system")),
-			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("reboot")),
-			ActionTag.Suspend => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand("suspend")),
+			ActionTag.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
+			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
+			ActionTag.Suspend => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Suspend}")),
 			ActionTag.Sleep => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
 			_ => null
 		};
@@ -113,7 +120,7 @@ internal sealed class DeviceModule : IModuleInterface
 				case ActionTag.Notify:
 					if (Utils.AddChatArg(chatId, new ChatArgs(EArgsType.Notification, query, query.Message), query))
 					{
-						await cortana.EditMessageText(chatId, messageId, "Write the content of the message", replyMarkup: CreateCancelButton());
+						await cortana.EditMessageText(chatId, messageId, "Write the content of the notification", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Cancel:
@@ -121,7 +128,7 @@ internal sealed class DeviceModule : IModuleInterface
 					{
 						await cortana.DeleteMessages(chatId, chatArg.Arg);
 					}
-					await CreateMenu(cortana, query.Message);
+					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 				case ActionTag.On:
@@ -140,7 +147,7 @@ internal sealed class DeviceModule : IModuleInterface
 						HardwareAction.TryRemove(messageId, out string? device);
 						string result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action));
 						await cortana.AnswerCallbackQuery(query.Id, result);
-						await CreateMenu(cortana, query.Message);
+						await CreateMenu(cortana, query);
 					}
 
 					break;
@@ -202,8 +209,8 @@ internal sealed class DeviceModule : IModuleInterface
 				break;
 		}
 
+		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
-		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Message);
 	}
 
 	private static async Task HardwareTimerFinished(object? sender)
@@ -214,22 +221,22 @@ internal sealed class DeviceModule : IModuleInterface
 		{
 			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
 			string result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
-			await Utils.SendToTopic($"Timer elapsed with result: {result}", Utils.Topics.Devices);
+			await Utils.SendToTopic($"{result} with timer", Utils.Topics.Log);
 		}
-		catch (Exception e)
+		catch
 		{
-			await Utils.SendToTopic($"There was an error with a timer:\n```{e.Message}```", Utils.Topics.Devices);
+			await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Log);
 		}
 	}
 
 	private static async Task<string> GetDevicesStatus()
 	{
-		string lamp = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
-		string computer = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
-		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
-		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "<b>ON</b> 🟢" : "<b>OFF</b> 🔴";
+		string lamp = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}")).Contains("On") ? "🟢" : "🔴";
+		string computer = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}")).Contains("On") ? "🟢" : "🔴";
+		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "🟢" : "🔴";
+		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "🟢" : "🔴";
 
-		return $"🏠 <b>Devices Status</b>\n\n• 💡 <b>Lamp</b>: {lamp}\n• 💻 <b>Computer</b>: {computer}\n• ⚡ <b>Power</b>: {power}\n• 🔌 <b>Generic</b>: {generic}";
+		return $"🏠 <b>Devices Status</b>\n\n• {DeviceToEmoji[EDevice.Lamp.ToString()]} <b>Lamp</b>: {lamp}\n• {DeviceToEmoji[EDevice.Computer.ToString()]} <b>Computer</b>: {computer}\n• {DeviceToEmoji[EDevice.Power.ToString()]} <b>Power</b>: {power}\n• {DeviceToEmoji[EDevice.Generic.ToString()]} <b>Generic</b>: {generic}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -256,11 +263,12 @@ internal sealed class DeviceModule : IModuleInterface
 				inlineKeyboard.AddButton("Command 💻", $"{ActionTag.Command}");
 				inlineKeyboard.AddNewRow();
 				inlineKeyboard.AddButton("Sleep 🛌", $"{ActionTag.Sleep}");
+				inlineKeyboard.AddNewRow();
 				break;
 		}
 
-		inlineKeyboard.AddButton("🔄", ActionTag.Refresh);
-		inlineKeyboard.AddButton("↔️", ActionTag.Tab);
+		inlineKeyboard.AddButton("Refresh 🔄", ActionTag.Refresh);
+		inlineKeyboard.AddButton("Tab ↔️", ActionTag.Tab);
 		return inlineKeyboard;
 	}
 
@@ -272,7 +280,7 @@ internal sealed class DeviceModule : IModuleInterface
 			.AddNewRow()
 			.AddButton("Toggle 🔄", ActionTag.Toggle)
 			.AddNewRow()
-			.AddButton(TimerActive ? "Timer ✅" : "Timer ❌", ActionTag.Timer)
+			.AddButton(TimerActive ? "Set Timer ✅" : "No Timer ❌", ActionTag.Timer)
 			.AddNewRow()
 			.AddButton("<<", ActionTag.Cancel);
 	}

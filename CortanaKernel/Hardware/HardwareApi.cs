@@ -56,7 +56,7 @@ public static class HardwareApi
 			return settings switch
 			{
 				ESettings.LightThreshold => StringResult.Success(Service.Settings.LightThreshold.ToString()),
-				ESettings.MotionDetection => StringResult.Success(Service.Settings.MotionDetection.ToString()),
+				ESettings.AutomaticMode => StringResult.Success(Service.Settings.AutomaticMode.ToString()),
 				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
 				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
 				ESettings.MotionOffMin => StringResult.Success(Service.Settings.MotionOffMin.ToString()),
@@ -71,9 +71,9 @@ public static class HardwareApi
 				case ESettings.LightThreshold:
 					Service.Settings.LightThreshold = value;
 					break;
-				case ESettings.MotionDetection:
-					if (value != (int)EMotionDetection.On && value != (int)EMotionDetection.Off) value = (int)(Service.Settings.MotionDetection == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);
-					Service.Settings.MotionDetection = (EMotionDetection)value;
+				case ESettings.AutomaticMode:
+					if (value != (int)EMotionDetection.On && value != (int)EMotionDetection.Off) value = (int)(Service.Settings.AutomaticMode == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);
+					Service.Settings.AutomaticMode = (EMotionDetection)value;
 					break;
 				case ESettings.MorningHour:
 					Service.Settings.MorningHour = value;

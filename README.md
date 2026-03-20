@@ -154,16 +154,16 @@ Note: "**cortana.net**" is a placeholder for the actual address, which is privat
 | Parameter           | Type     | Description                      | Values                                                                     |
 | :------------------ | :------- | :------------------------------- | :------------------------------------------------------------------------- |
 | `subfunction`       | `string` | **Subfunction** to interact with | **CortanaKernel**, **CortanaTelegram**, **CortanaDiscord**, **CortanaWeb** |
-| `PostAction.action` | `string` | **Action** to execute            | **Restart**, **Reboot**, **Update**, **Stop**                              |
+| `PostAction.action` | `string` | **Action** to execute            | **Start**, **Restart**, **Update**, **Stop**                               |
 
 ```http
   POST http://cortana.net/SubFunctions/
 ```
 
-| Parameter             | Type     | Description                    | Values                 |
-| :-------------------- | :------- | :----------------------------- | :--------------------- |
-| `PostCommand.command` | `string` | **Type of Message** to publish | **Urgent**, **Update** |
-| `PostCommand.args`    | `string` | **Message Text** to publish    |                        |
+| Parameter             | Type     | Description                    | Values                    |
+| :-------------------- | :------- | :----------------------------- | :------------------------ |
+| `PostCommand.command` | `string` | **Type of Message** to publish | **Telegram**, **Discord** |
+| `PostCommand.args`    | `string` | **Message Text** to publish    |                           |
 
 #### Settings
 
@@ -171,18 +171,18 @@ Note: "**cortana.net**" is a placeholder for the actual address, which is privat
   GET http://cortana.net/Settings/{setting}
 ```
 
-| Parameter | Type     | Description         | Values                                                                                       |
-| :-------- | :------- | :------------------ | :------------------------------------------------------------------------------------------- |
-| `setting` | `string` | **Settings** to get | **LightThreshold**, **MotionDetection**, **MorningHour**, **MotionOffMax**, **MotionOffMin** |
+| Parameter | Type     | Description         | Values                                                                                     |
+| :-------- | :------- | :------------------ | :----------------------------------------------------------------------------------------- |
+| `setting` | `string` | **Settings** to get | **LightThreshold**, **AutomaticMode**, **MorningHour**, **MotionOffMax**, **MotionOffMin** |
 
 ```http
   POST http://cortana.net/Settings/{setting}
 ```
 
-| Parameter         | Type     | Description         | Values                                                                                       |
-| :---------------- | :------- | :------------------ | :------------------------------------------------------------------------------------------- |
-| `setting`         | `string` | **Settings** to set | **LightThreshold**, **MotionDetection**, **MorningHour**, **MotionOffMax**, **MotionOffMin** |
-| `PostValue.value` | `number` | **Value** to update |                                                                                              |
+| Parameter         | Type     | Description         | Values                                                                                     |
+| :---------------- | :------- | :------------------ | :----------------------------------------------------------------------------------------- |
+| `setting`         | `string` | **Settings** to set | **LightThreshold**, **AutomaticMode**, **MorningHour**, **MotionOffMax**, **MotionOffMin** |
+| `PostValue.value` | `number` | **Value** to update |                                                                                            |
 
 ---
 

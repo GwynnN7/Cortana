@@ -10,15 +10,23 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class RaspberryModule : IModuleInterface
 {
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
+	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
 
 		string messageText = await GetRaspberryInfo();
 
-		if (message != null)
+		if (query != null && query.Message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			try
+			{
+				await cortana.EditMessageText(query.Message.Chat.Id, query.Message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			}
+			catch
+			{
+				await cortana.AnswerCallbackQuery(query.Id);
+			}
+
 		}
 		else
 		{
@@ -33,7 +41,7 @@ internal sealed class RaspberryModule : IModuleInterface
 
 		var task = command switch
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query.Message),
+			ActionTag.Refresh => CreateMenu(cortana, query),
 			_ => null
 
 		};
@@ -70,7 +78,7 @@ internal sealed class RaspberryModule : IModuleInterface
 					{
 						await cortana.DeleteMessages(chatId, chatArg.Arg);
 					}
-					await CreateMenu(cortana, query.Message);
+					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 			}
@@ -79,11 +87,10 @@ internal sealed class RaspberryModule : IModuleInterface
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats)
 	{
-		await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-
 		switch (Utils.ChatArgs[messageStats.ChatId].Type)
 		{
 			case EArgsType.RaspberryCommand:
+				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
 				if (Utils.ChatArgs[messageStats.ChatId] is ChatArgs<List<int>> chatArg)
 				{
 					string prompt = string.Concat(messageStats.Message[..1].ToLower(), messageStats.Message.AsSpan(1));
@@ -95,14 +102,12 @@ internal sealed class RaspberryModule : IModuleInterface
 				}
 				break;
 		}
-		await CreateMenu(cortana, Utils.ChatArgs[messageStats.ChatId].Message);
-		Utils.ChatArgs.TryRemove(messageStats.ChatId, out _);
 	}
 
 	private static async Task<string> GetRaspberryInfo()
 	{
 		string ip = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}")).Match(ip => ip.Value, () => "Unknown");
-		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => temp.Value, () => "Unknown");
+		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => $"{Math.Round(double.Parse(temp.Value), 1)}{temp.Unit}", () => "Unknown");
 		string location = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Location}")).Match(location => location.Value, () => "Unknown");
 		string gateway = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}")).Match(gateway => gateway.Value, () => "Unknown");
 		return $"🍓 <b>Raspberry Info</b>\n\n• 📬 <b>IP</b>: {ip}\n• 🌡 <b>Temperature</b>: {temperature}\n• 📍 <b>Location</b>: {location}\n• 🌐 <b>Gateway</b>: {gateway}";

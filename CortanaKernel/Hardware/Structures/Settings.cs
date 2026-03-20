@@ -19,7 +19,7 @@ public class Settings
         }
     } = 1500;
 
-    public EMotionDetection MotionDetection
+    public EMotionDetection AutomaticMode
     {
         get;
         set

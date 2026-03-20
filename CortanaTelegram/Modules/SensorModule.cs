@@ -10,15 +10,22 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class SensorModule : IModuleInterface
 {
-	public static async Task CreateMenu(ITelegramBotClient cortana, Message? message = null)
+	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
 
 		string messageText = await GetSensorDashboard();
 
-		if (message != null)
+		if (query != null && query.Message != null)
 		{
-			await cortana.EditMessageText(message.Chat.Id, message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			try
+			{
+				await cortana.EditMessageText(query.Message.Chat.Id, query.Message.MessageId, messageText, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			}
+			catch
+			{
+				await cortana.AnswerCallbackQuery(query.Id);
+			}
 		}
 		else
 		{
@@ -33,8 +40,8 @@ internal sealed class SensorModule : IModuleInterface
 
 		var task = command switch
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query.Message),
-			ActionTag.Settings => cortana.EditMessageText(chatId, messageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons(), parseMode: ParseMode.Html),
+			ActionTag.Refresh => CreateMenu(cortana, query),
+			ActionTag.Settings => cortana.EditMessageReplyMarkup(chatId, messageId, replyMarkup: CreateSettingsButtons()),
 			_ => null
 
 		};
@@ -74,16 +81,16 @@ internal sealed class SensorModule : IModuleInterface
 			switch (command)
 			{
 				case ActionTag.EnableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.On));
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.On));
 					break;
 				case ActionTag.DisableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionDetection}", new PostValue((int)EMotionDetection.Off));
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.Off));
 					break;
 				case ActionTag.Cancel:
 					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 			}
-			await CreateMenu(cortana, query.Message);
+			await CreateMenu(cortana, query);
 		}
 
 	}
@@ -105,28 +112,23 @@ internal sealed class SensorModule : IModuleInterface
 		}
 
 		await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-		await cortana.EditMessageText(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, await GetSettingsText(), replyMarkup: CreateSettingsButtons(), parseMode: ParseMode.Html);
+		await cortana.EditMessageReplyMarkup(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, replyMarkup: CreateSettingsButtons());
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
 	}
 
 	private static async Task<string> GetSensorDashboard()
 	{
-		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Temperature}")).Match(temp => temp.Value, () => "Unknown");
+		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Temperature}")).Match(temp => $"{temp.Value}{temp.Unit}", () => "Unknown");
 		string light = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Light}")).Match(light => light.Value, () => "Unknown");
-		string motion = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Motion}")).Match(motion => motion.Value, () => "Unknown");
+		string motion = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Motion}")).Match(motion => bool.Parse(motion.Value) ? "🟢" : "🔴", () => "Unknown");
 
-		return $"📡 <b>Sensors Dashboard</b>\n\n• 💡 <b>Light</b>: {light}\n• 🌡 <b>Temperature</b>: {temperature}\n• 🖲 <b>Motion Detected</b>: {motion}";
-	}
+		string autoMode = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.AutomaticMode}")).Match(autoMode => autoMode.Value.Contains("On") ? "🟢" : "🔴", () => "Unknown");
+		string lightThreshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.LightThreshold}")).Match(light => light.Value, () => "Unknown");
+		string morningHour = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MorningHour}")).Match(morningHour => morningHour.Value, () => "Unknown");
+		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
+		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
 
-	private static async Task<string> GetSettingsText()
-	{
-		string motionDetection = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionDetection}");
-		string lightThreshold = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.LightThreshold}");
-		string morningHour = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MorningHour}");
-		string motionOffMax = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMax}");
-		string motionOffMin = await ApiHandler.Get($"{ERoute.Settings}/{ESettings.MotionOffMin}");
-
-		return $"⚙️ <b>Current Sensor Settings</b>\n\n• 🖲 <b>Motion Detection</b>: {motionDetection}\n• 💡 <b>Light Threshold</b>: {lightThreshold}\n• 🕒 <b>Morning Hour</b>: {morningHour}\n• ⏳ <b>Motion-Off Max</b>: {motionOffMax}\n• ⏳ <b>Motion-Off Min</b>: {motionOffMin}";
+		return $"📡 <b>Sensors Dashboard</b>\n\n• 💡 <b>Light</b>: {light}\n• 🌡 <b>Temperature</b>: {temperature}\n• 🖲 <b>Motion Detected</b>: {motion}\n\n⚙️ <b>Current Sensor Settings</b>\n\n• 🖲 <b>Automatic Mode</b>: {autoMode}\n• 💡 <b>Light Threshold</b>: {lightThreshold}\n• 🕒 <b>Morning Hour</b>: {morningHour}\n• ⏳ <b>Motion-Off Max/Min</b>: {motionOffMax}/{motionOffMin}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -140,8 +142,8 @@ internal sealed class SensorModule : IModuleInterface
 	private static InlineKeyboardMarkup CreateSettingsButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Motion On 🟢", ActionTag.EnableMotionDetection)
-			.AddButton("Motion Off 🔴", ActionTag.DisableMotionDetection)
+			.AddButton("Automatic Mode 🟢", ActionTag.EnableMotionDetection)
+			.AddButton("Manual Mode 🔴", ActionTag.DisableMotionDetection)
 			.AddNewRow()
 			.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
 			.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
@@ -163,8 +165,8 @@ internal sealed class SensorModule : IModuleInterface
 		public const string Refresh = "sensor-refresh";
 		public const string Settings = "sensor-settings";
 		public const string SetLightThreshold = "sensor-set_light";
-		public const string EnableMotionDetection = "sensor-enable_motiondetection";
-		public const string DisableMotionDetection = "sensor-disable_motiondetection";
+		public const string EnableMotionDetection = "sensor-enable_automaticmode";
+		public const string DisableMotionDetection = "sensor-disable_automaticmode";
 		public const string SetMorningHour = "sensor-set_morninghour";
 		public const string SetMotionOffMax = "sensor-set_motionoffmax";
 		public const string SetMotionOffMin = "sensor-set_motionoffmin";
