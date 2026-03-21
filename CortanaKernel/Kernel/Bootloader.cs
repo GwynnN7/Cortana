@@ -63,12 +63,12 @@ public static class Bootloader
 						: StringResult.Failure(DataHandler.Log($"Failed to restart {serviceName}"));
 				}
 			case ESubfunctionAction.Update when type == ESubFunctionType.CortanaKernel:
-				Helper.DelayCommand("cortana update");
+				Helper.DelayCommand("/home/cortana/.local/bin/cortana update");
 				return StringResult.Success(
 					DataHandler.Log("Kernel updating..."));
 			case ESubfunctionAction.Update:
 				{
-					await Helper.RunCommand("cortana git").WaitForExitAsync();
+					await Helper.RunCommand("/home/cortana/.local/bin/cortana git").WaitForExitAsync();
 					return await SubfunctionCall(type, ESubfunctionAction.Restart);
 				}
 			case ESubfunctionAction.Stop:
