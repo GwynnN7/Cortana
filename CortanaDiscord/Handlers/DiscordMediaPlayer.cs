@@ -174,8 +174,14 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
                 }
                 finally
                 {
+                    string ffmpegError = await ffmpeg.StandardError.ReadToEndAsync();
                     if (!ffmpeg.HasExited) ffmpeg.Kill(true);
                     ffmpeg.Dispose();
+
+                    if (!string.IsNullOrWhiteSpace(ffmpegError))
+                    {
+                        DataHandler.Log($"ffmpeg stderr: {ffmpegError.Trim()}");
+                    }
 
                     DataHandler.Log($"Track finished: {track.Title}");
 
@@ -202,6 +208,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
             Arguments = $"-hide_banner -loglevel panic -nostdin -rw_timeout 15000000 -i \"{path}\" -vn -ac 2 -f s16le -ar 48000 pipe:1",
             UseShellExecute = false,
             RedirectStandardOutput = true,
+            RedirectStandardError = true,
         })!;
     }
 }
