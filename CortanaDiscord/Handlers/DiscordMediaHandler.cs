@@ -112,6 +112,10 @@ public class DiscordMediaHandler(SocketGuild guild)
                     }
             }
         }
+        catch (OperationCanceledException)
+        {
+            
+        }
         catch (Exception ex)
         {
             Console.WriteLine($"Errore nella gestione della coda di join: {ex.Message}");

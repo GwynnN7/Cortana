@@ -8,14 +8,16 @@ public static class Helper
 {
 	public static Process RunCommand(string command, bool stdRedirect = false)
 	{
-		var process = new Process();
-		process.StartInfo = new ProcessStartInfo
+		var process = new Process
 		{
-			FileName = "zsh",
-			Arguments = $"-c \"{command}\"",
-			RedirectStandardOutput = stdRedirect,
-			UseShellExecute = false,
-			CreateNoWindow = true
+			StartInfo = new ProcessStartInfo
+			{
+				FileName = "zsh",
+				Arguments = $"-c \"{command}\"",
+				RedirectStandardOutput = stdRedirect,
+				UseShellExecute = false,
+				CreateNoWindow = true
+			}
 		};
 		process.Start();
 		return process;

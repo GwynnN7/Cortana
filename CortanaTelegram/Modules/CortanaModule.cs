@@ -99,11 +99,11 @@ internal sealed class CortanaModule : IModuleInterface
 		foreach (string element in Enum.GetNames<ESubFunctionType>())
 		{
 			inlineKeyboard
-				.AddButton($"{SubfunctionToEmoji[element]} • {element} • {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
+				.AddButton($"{SubfunctionToEmoji[element]} - {element} - {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
 				.AddNewRow();
 		}
 
-		inlineKeyboard.AddButton("🔄 • Refresh • 🔄", ActionTag.Refresh);
+		inlineKeyboard.AddButton("🔄 - Refresh - 🔄", ActionTag.Refresh);
 		return inlineKeyboard;
 	}
 

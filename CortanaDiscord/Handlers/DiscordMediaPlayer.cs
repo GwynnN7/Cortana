@@ -96,11 +96,20 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         }
     }
 
-    public async Task<bool> Skip()
+    public Task<bool> Skip()
     {
-        if (_currentTrackToken == null) return false;
-        await _currentTrackToken.CancelAsync();
-        return true;
+        CancellationTokenSource? token = _currentTrackToken;
+        if (token == null) return Task.FromResult(false);
+
+        try
+        {
+            token.Cancel();
+            return Task.FromResult(true);
+        }
+        catch (ObjectDisposedException)
+        {
+            return Task.FromResult(false);
+        }
     }
 
     public bool Clear()
@@ -180,7 +189,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         return Process.Start(new ProcessStartInfo
         {
             FileName = "ffmpeg",
-            Arguments = $"-hide_banner -loglevel panic -i \"{path}\" -ac 2 -f s16le -ar 48000 pipe:1",
+            Arguments = $"-hide_banner -loglevel panic -nostdin -rw_timeout 15000000 -i \"{path}\" -vn -ac 2 -f s16le -ar 48000 pipe:1",
             UseShellExecute = false,
             RedirectStandardOutput = true,
         })!;

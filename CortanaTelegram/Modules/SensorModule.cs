@@ -127,7 +127,7 @@ internal sealed class SensorModule : IModuleInterface
 	private static async Task<string> GetSensorDashboard()
 	{
 		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Temperature}")).Match(temp => $"{temp.Value}{temp.Unit}", () => "Unknown");
-		string light = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Light}")).Match(light => light.Value, () => "Unknown");
+		string light = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Light}")).Match(light => $"{light.Value}{light.Unit}", () => "Unknown");
 		string motion = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Motion}")).Match(motion => bool.Parse(motion.Value) ? "🟢" : "🔴", () => "Unknown");
 
 		string autoMode = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.AutomaticMode}")).Match(autoMode => autoMode.Value.Contains("On") ? "🟢" : "🔴", () => "Unknown");
@@ -152,8 +152,8 @@ internal sealed class SensorModule : IModuleInterface
 				break;
 			case 1:
 				inlineKeyboard
-					.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
 					.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
+					.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
 					.AddNewRow()
 					.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
 					.AddNewRow()
