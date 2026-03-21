@@ -89,7 +89,7 @@ internal sealed class CortanaModule : IModuleInterface
 		string discord = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}")).Contains("not") ? "🔴" : "🟢";
 		string web = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}")).Contains("not") ? "🔴" : "🟢";
 
-		return $"🖲 <b>Subfunctions Status</b>\n\n• {SubfunctionToEmoji[ESubFunctionType.CortanaKernel.ToString()]} <b>Kernel</b>: {kernel}\n• {SubfunctionToEmoji[ESubFunctionType.CortanaTelegram.ToString()]} <b>Telegram</b>: {telegram}\n• {SubfunctionToEmoji[ESubFunctionType.CortanaDiscord.ToString()]} <b>Discord</b>: {discord}\n• {SubfunctionToEmoji[ESubFunctionType.CortanaWeb.ToString()]} <b>Web</b>: {web}";
+		return $"🖲 <b>Subfunctions Status</b>\n====================\n{kernel} • <b>Kernel</b> {SubfunctionToEmoji[ESubFunctionType.CortanaKernel.ToString()]}\n{telegram} • <b>Telegram</b> {SubfunctionToEmoji[ESubFunctionType.CortanaTelegram.ToString()]}\n{discord} • <b>Discord</b> {SubfunctionToEmoji[ESubFunctionType.CortanaDiscord.ToString()]}\n{web} • <b>Web</b> {SubfunctionToEmoji[ESubFunctionType.CortanaWeb.ToString()]}";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -99,11 +99,11 @@ internal sealed class CortanaModule : IModuleInterface
 		foreach (string element in Enum.GetNames<ESubFunctionType>())
 		{
 			inlineKeyboard
-				.AddButton($"{SubfunctionToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}")
+				.AddButton($"{SubfunctionToEmoji[element]} • {element} • {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
 				.AddNewRow();
 		}
 
-		inlineKeyboard.AddButton("Refresh 🔄", ActionTag.Refresh);
+		inlineKeyboard.AddButton("🔄 • Refresh • 🔄", ActionTag.Refresh);
 		return inlineKeyboard;
 	}
 

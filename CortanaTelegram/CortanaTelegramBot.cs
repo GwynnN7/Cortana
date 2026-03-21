@@ -153,7 +153,7 @@ public static class CortanaTelegramBot
 	private static async Task CreateHomeMenu(ITelegramBotClient cortana)
 	{
 		const string menuText = "🏠 <b>Home Menu</b>\n\nSelect an option from the keyboard below.";
-		await cortana.SendMessage(Utils.Data.HomeGroup, menuText, replyMarkup: CreateMenuButtons());
+		await cortana.SendMessage(Utils.Data.HomeGroup, menuText, replyMarkup: CreateMenuButtons(), parseMode: ParseMode.Html);
 	}
 
 	private static InlineKeyboardMarkup CreateMenuButtons()

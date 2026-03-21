@@ -242,7 +242,7 @@ internal sealed class DeviceModule : IModuleInterface
 		string power = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}")).Contains("On") ? "🟢" : "🔴";
 		string generic = (await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}")).Contains("On") ? "🟢" : "🔴";
 
-		return $"\n🏠 <b>Devices Status</b>\n\n• {DeviceToEmoji[EDevice.Lamp.ToString()]} <b>Lamp</b>: {lamp}\n• {DeviceToEmoji[EDevice.Computer.ToString()]} <b>Computer</b>: {computer}\n• {DeviceToEmoji[EDevice.Power.ToString()]} <b>Power</b>: {power}\n• {DeviceToEmoji[EDevice.Generic.ToString()]} <b>Generic</b>: {generic}\n";
+		return $"\n🏠 <b>Devices Status</b>\n================\n{lamp} • <b>Lamp</b> {DeviceToEmoji[EDevice.Lamp.ToString()]}\n{computer} • <b>Computer</b> {DeviceToEmoji[EDevice.Computer.ToString()]}\n{power} • <b>Power</b> {DeviceToEmoji[EDevice.Power.ToString()]}\n{generic} • <b>Generic</b> {DeviceToEmoji[EDevice.Generic.ToString()]}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -255,7 +255,7 @@ internal sealed class DeviceModule : IModuleInterface
 				foreach (string element in Enum.GetNames<EDevice>())
 				{
 					inlineKeyboard
-						.AddButton($"{DeviceToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}")
+						.AddButton($"{DeviceToEmoji[element]} • {element} • {DeviceToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
 						.AddNewRow();
 				}
 
