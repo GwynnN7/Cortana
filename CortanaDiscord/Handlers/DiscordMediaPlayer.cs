@@ -144,6 +144,8 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
                     continue;
                 }
 
+                DataHandler.Log($"Starting track: {track.Title}");
+
                 Process ffmpeg = CreateStream(track.StreamUrl);
                 try
                 {
@@ -162,12 +164,14 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
                 }
                 catch (Exception ex)
                 {
-                    DataHandler.Log($"[{nameof(DiscordMediaPlayer)}] Playback error: {ex.Message}");
+                    DataHandler.Log($"Playback error: {ex.Message}");
                 }
                 finally
                 {
                     if (!ffmpeg.HasExited) ffmpeg.Kill(true);
                     ffmpeg.Dispose();
+
+                    DataHandler.Log($"Track finished: {track.Title}");
 
                     token.Dispose();
                     if (ReferenceEquals(_currentTrackToken, token)) _currentTrackToken = null;

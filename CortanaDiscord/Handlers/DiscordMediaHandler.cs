@@ -1,4 +1,5 @@
 using CortanaDiscord.Utility;
+using CortanaLib;
 using CortanaLib.Structures;
 using Discord.Audio;
 using Discord.WebSocket;
@@ -78,10 +79,11 @@ public class DiscordMediaHandler(SocketGuild guild)
                 case JoinStatus.Join:
                     {
                         SocketVoiceChannel channel = joinAction.Channel!;
+                        DataHandler.Log($"Join requested for channel {channel.Name} ({channel.Id})");
                         await Task.Delay(1500, cancellationToken);
                         cancellationToken.ThrowIfCancellationRequested();
 
-                        if (!AudioHandler.GetAvailableChannels(channel.Guild).Contains(channel)) return;
+                        if (!AudioHandler.GetAvailableChannels(channel.Guild).Any(availableChannel => availableChannel.Id == channel.Id)) return;
                         if (AudioHandler.IsConnected(channel, guild)) return;
 
                         await AudioHandler.Stop(guild.Id);
@@ -89,6 +91,7 @@ public class DiscordMediaHandler(SocketGuild guild)
 
                         IAudioClient? audioClient = await channel.ConnectAsync();
                         if (audioClient == null) throw new CortanaException("Errore connessione al canale vocale");
+                        DataHandler.Log($"Connected to channel {channel.Name} ({channel.Id})");
 
                         CurrentChannel = channel;
 
@@ -100,21 +103,24 @@ public class DiscordMediaHandler(SocketGuild guild)
                     }
                 case JoinStatus.Leave:
                     {
+                        DataHandler.Log($"Leave requested");
                         cancellationToken.ThrowIfCancellationRequested();
                         await AudioHandler.Stop(guild.Id);
                         MediaPlayer?.Dispose();
-                        if (CurrentChannel == GetActualConnectedChannel(guild) && CurrentChannel != null)
+                        SocketVoiceChannel? actualChannel = GetActualConnectedChannel(guild);
+                        if (CurrentChannel != null && actualChannel != null && CurrentChannel.Id == actualChannel.Id)
                         {
                             await CurrentChannel.DisconnectAsync();
                         }
                         CurrentChannel = null;
+                        DataHandler.Log($"Leave completed");
                         break;
                     }
             }
         }
         catch (OperationCanceledException)
         {
-            
+
         }
         catch (Exception ex)
         {

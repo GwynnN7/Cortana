@@ -60,7 +60,9 @@ internal static class AudioHandler
 
 	public static bool IsConnected(SocketVoiceChannel voiceChannel, SocketGuild guild)
 	{
-		return MediaQueue.TryGetValue(guild.Id, out DiscordMediaHandler? player) && player.CurrentChannel == voiceChannel && GetCurrentCortanaChannel(guild) == voiceChannel;
+		if (!MediaQueue.TryGetValue(guild.Id, out DiscordMediaHandler? player) || player.CurrentChannel == null) return false;
+		SocketVoiceChannel? actualChannel = GetCurrentCortanaChannel(guild);
+		return player.CurrentChannel.Id == voiceChannel.Id && actualChannel?.Id == voiceChannel.Id;
 	}
 
 	public static void HandleConnection(SocketGuild guild)
@@ -82,7 +84,8 @@ internal static class AudioHandler
 
 	public static string Connect(SocketVoiceChannel channel)
 	{
-		if (GetCurrentCortanaChannel(channel.Guild) == channel) return "Sono già qui";
+		SocketVoiceChannel? currentChannel = GetCurrentCortanaChannel(channel.Guild);
+		if (currentChannel?.Id == channel.Id) return "Sono già qui";
 
 		if (!MediaQueue.TryGetValue(channel.Guild.Id, out DiscordMediaHandler? joiner))
 		{
@@ -143,6 +146,6 @@ internal static class AudioHandler
 		List<SocketVoiceChannel> availableChannels = GetAvailableChannels(guild);
 
 		if (availableChannels.Count == 0) return currentChannel == null;
-		return currentChannel != null && availableChannels.Contains(currentChannel);
+		return currentChannel != null && availableChannels.Any(channel => channel.Id == currentChannel.Id);
 	}
 }

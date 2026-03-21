@@ -255,7 +255,7 @@ internal sealed class DeviceModule : IModuleInterface
 				foreach (string element in Enum.GetNames<EDevice>())
 				{
 					inlineKeyboard
-						.AddButton($"{DeviceToEmoji[element]} - {element} - {DeviceToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
+						.AddButton($"{element} {DeviceToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
 						.AddNewRow();
 				}
 
