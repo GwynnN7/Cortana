@@ -98,7 +98,11 @@ public class DiscordMediaHandler(SocketGuild guild)
                         MediaPlayer?.Dispose();
                         MediaPlayer = new DiscordMediaPlayer(audioClient);
 
-                        AudioHandler.SayHello(guild.Id);
+                        await Task.Delay(1800, cancellationToken);
+                        if (GetActualConnectedChannel(guild)?.Id == channel.Id)
+                        {
+                            AudioHandler.SayHello(guild.Id);
+                        }
                         break;
                     }
                 case JoinStatus.Leave:

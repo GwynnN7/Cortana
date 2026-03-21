@@ -111,12 +111,11 @@ public static class CortanaDiscordBot
 	private static async Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
 	{
 		if (oldState.VoiceChannel == newState.VoiceChannel) return;
+		if (user.Id == DiscordUtils.Data.CortanaId) return;
 
 		SocketGuild? guild = (oldState.VoiceChannel ?? newState.VoiceChannel).Guild;
 
 		AudioHandler.HandleConnection(guild);
-
-		if (user.Id == DiscordUtils.Data.CortanaId) return;
 
 		if (oldState.VoiceChannel == null && newState.VoiceChannel != null)
 		{
@@ -128,7 +127,7 @@ public static class CortanaDiscordBot
 
 			DiscordUtils.TimeConnected[user.Id] = DateTime.UtcNow;
 
-			if (newState.VoiceChannel != AudioHandler.GetCurrentCortanaChannel(guild)) return;
+			if (AudioHandler.GetCurrentCortanaChannel(guild)?.Id != newState.VoiceChannel.Id) return;
 
 			await Task.Delay(1000);
 			AudioHandler.SayHello(newState.VoiceChannel.Guild.Id);

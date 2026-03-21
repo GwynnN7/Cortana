@@ -125,12 +125,13 @@ internal sealed class RaspberryModule : IModuleInterface
 	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
-			.AddButton("Refresh 🔄", ActionTag.Refresh)
-			.AddNewRow()
+
 			.AddButton("Shutdown ⚡️", ActionTag.Shutdown)
 			.AddButton("Reboot 🔁", ActionTag.Reboot)
 			.AddNewRow()
-			.AddButton("Command 💻", ActionTag.Command);
+			.AddButton("Command 💻", ActionTag.Command)
+			.AddNewRow()
+			.AddButton("Refresh 🔄", ActionTag.Refresh);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()

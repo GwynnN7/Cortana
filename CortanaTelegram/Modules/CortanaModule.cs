@@ -99,7 +99,7 @@ internal sealed class CortanaModule : IModuleInterface
 		foreach (string element in Enum.GetNames<ESubFunctionType>())
 		{
 			inlineKeyboard
-				.AddButton($"{element} {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
+				.AddButton($"{element.ToString().Replace("Cortana", "")} {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
 				.AddNewRow();
 		}
 
