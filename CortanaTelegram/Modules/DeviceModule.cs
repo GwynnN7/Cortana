@@ -159,7 +159,7 @@ internal sealed class DeviceModule : IModuleInterface
 
 					break;
 				case var _ when command.StartsWith(ActionTag.Type):
-					IModuleInterface.DestroyUpdateTimer();
+					IModuleInterface.ResetUpdateTimer<DeviceModule>("device-updater", cortana, query);
 					string deviceType = command.Split('-').Last();
 					HardwareAction[messageId] = deviceType;
 					TimerActive = false;

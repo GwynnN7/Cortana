@@ -44,7 +44,11 @@ internal sealed class SensorModule : IModuleInterface
 		var task = command switch
 		{
 			ActionTag.Refresh => CreateMenu(cortana, query),
-			ActionTag.Settings => cortana.EditMessageReplyMarkup(chatId, messageId, replyMarkup: CreateSettingsButtons()),
+			ActionTag.Settings => Task.Run(async () =>
+			{
+				IModuleInterface.ResetUpdateTimer<SensorModule>("sensor-updater", cortana, query);
+				await cortana.EditMessageReplyMarkup(chatId, messageId, replyMarkup: CreateSettingsButtons());
+			}),
 			_ => null
 
 		};

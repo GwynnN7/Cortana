@@ -44,7 +44,7 @@ internal sealed class CortanaModule : IModuleInterface
 
 		var task = command switch
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query),
+			ActionTag.Refresh or ActionTag.Cancel => CreateMenu(cortana, query),
 			_ => null
 
 		};
@@ -57,17 +57,6 @@ internal sealed class CortanaModule : IModuleInterface
 
 		switch (command)
 		{
-			case ActionTag.Cancel:
-				if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
-				{
-					if (chatArg.Arg.Count > 0)
-					{
-						await cortana.DeleteMessages(chatId, chatArg.Arg);
-					}
-				}
-				Utils.ChatArgs.TryRemove(chatId, out _);
-				await CreateMenu(cortana, query);
-				break;
 			case ActionTag.Start:
 			case ActionTag.Stop:
 			case ActionTag.Restart:
@@ -80,7 +69,7 @@ internal sealed class CortanaModule : IModuleInterface
 
 				break;
 			case var _ when command.StartsWith(ActionTag.Type):
-				IModuleInterface.DestroyUpdateTimer();
+				IModuleInterface.ResetUpdateTimer<CortanaModule>("cortana-updater", cortana, query);
 				string subfunctionType = command.Split('-').Last();
 				SubfunctionAction[messageId] = subfunctionType;
 				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateSubfunctionActionButtons());
