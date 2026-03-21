@@ -11,10 +11,13 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class SensorModule : IModuleInterface
 {
+	private static int TabIndex = 0;
+	private static Timer? UpdateTimer = null;
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
-		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		Utils.ChatArgs.TryRemove(Utils.Topics.Sensors, out _);
 
 		string messageText = await GetSensorDashboard();
 
@@ -28,7 +31,7 @@ internal sealed class SensorModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			IModuleInterface.ResetUpdateTimer<SensorModule>("sensor-updater", cortana, query);
+			ResetUpdateTimer(cortana, query);
 		}
 		else
 		{
@@ -44,10 +47,10 @@ internal sealed class SensorModule : IModuleInterface
 		var task = command switch
 		{
 			ActionTag.Refresh => CreateMenu(cortana, query),
-			ActionTag.Settings => Task.Run(async () =>
+			ActionTag.Tab => Task.Run(async () =>
 			{
-				IModuleInterface.ResetUpdateTimer<SensorModule>("sensor-updater", cortana, query);
-				await cortana.EditMessageReplyMarkup(chatId, messageId, replyMarkup: CreateSettingsButtons());
+				TabIndex = (TabIndex + 1) % 2;
+				await CreateMenu(cortana, query);
 			}),
 			_ => null
 
@@ -70,9 +73,9 @@ internal sealed class SensorModule : IModuleInterface
 
 		if (chatArg != null)
 		{
-			if (Utils.AddChatArg(chatId, chatArg, query))
+			if (Utils.AddChatArg(Utils.Topics.Sensors, chatArg, query))
 			{
-				IModuleInterface.DestroyUpdateTimer();
+				ResetUpdateTimer(cortana, query);
 				string prompt = command switch
 				{
 					ActionTag.SetLightThreshold => "Set Light Threshold (0~4096)",
@@ -95,21 +98,19 @@ internal sealed class SensorModule : IModuleInterface
 					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.Off));
 					break;
 				case ActionTag.Cancel:
-					Utils.ChatArgs.TryRemove(chatId, out _);
 					break;
 			}
 			await CreateMenu(cortana, query);
 		}
-
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData, ChatArgs chatArg)
 	{
-		await cortana.SendChatAction(msgData.ChatId, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
 
 		if (int.TryParse(msgData.Message, out int sensorValue))
 		{
-			_ = Utils.ChatArgs[msgData.ChatId].Type switch
+			_ = chatArg.Type switch
 			{
 				EArgsType.SetLightThreshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(sensorValue)),
 				EArgsType.SetMorningHour => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(sensorValue)),
@@ -119,9 +120,8 @@ internal sealed class SensorModule : IModuleInterface
 			};
 		}
 
-		await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
-		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
+		await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
+		await CreateMenu(cortana, chatArg.Query);
 	}
 
 	private static async Task<string> GetSensorDashboard()
@@ -141,26 +141,30 @@ internal sealed class SensorModule : IModuleInterface
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
-		return new InlineKeyboardMarkup()
-			.AddButton("Refresh 🔄", ActionTag.Refresh)
-			.AddNewRow()
-			.AddButton("Settings ⚙️", ActionTag.Settings);
-	}
+		InlineKeyboardMarkup inlineKeyboard = new();
 
-	private static InlineKeyboardMarkup CreateSettingsButtons()
-	{
-		return new InlineKeyboardMarkup()
-			.AddButton("Automatic Mode 🟢", ActionTag.EnableMotionDetection)
-			.AddButton("Manual Mode 🔴", ActionTag.DisableMotionDetection)
+		switch (TabIndex)
+		{
+			case 0:
+				inlineKeyboard
+					.AddButton("Automatic Mode 🟢", ActionTag.EnableMotionDetection)
+					.AddButton("Manual Mode 🔴", ActionTag.DisableMotionDetection);
+				break;
+			case 1:
+				inlineKeyboard
+					.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
+					.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
+					.AddNewRow()
+					.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
+					.AddNewRow()
+					.AddButton("Morning Hour 🕒", ActionTag.SetMorningHour);
+				break;
+		}
+
+		return inlineKeyboard
 			.AddNewRow()
-			.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
-			.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
-			.AddNewRow()
-			.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
-			.AddNewRow()
-			.AddButton("Morning Hour 🕒", ActionTag.SetMorningHour)
-			.AddNewRow()
-			.AddButton("<<", ActionTag.Cancel);
+			.AddButton("Refresh 🔄", ActionTag.Refresh)
+			.AddButton("Tab ↔️", ActionTag.Tab);
 	}
 
 	private static InlineKeyboardMarkup CreateCancelButton()
@@ -178,7 +182,23 @@ internal sealed class SensorModule : IModuleInterface
 		public const string SetMorningHour = "sensor-set_morninghour";
 		public const string SetMotionOffMax = "sensor-set_motionoffmax";
 		public const string SetMotionOffMin = "sensor-set_motionoffmin";
+		public const string Tab = "sensor-tab";
 		public const string Cancel = "sensor-cancel";
 	}
 
+	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
+	{
+		UpdateTimer?.Destroy();
+		UpdateTimer = new Timer("sensor-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
+		{
+			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+			try
+			{
+				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
+				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
+			}
+			catch { }
+		}, ETimerType.Telegram).Set((10, 0, 0));
+	}
 }

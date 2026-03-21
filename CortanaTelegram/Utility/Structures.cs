@@ -19,7 +19,6 @@ internal struct MessageData
 {
 	public required string Message { get; set; }
 	public required string Command { get; set; }
-	public required long ChatId { get; init; }
 	public required int MessageId { get; init; }
 	public required int TopicId { get; init; }
 }

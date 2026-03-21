@@ -17,8 +17,9 @@ internal static class Utils
 	private static TelegramBotClient _cortana = null!;
 	private static readonly Regex TimeRegex = new("^([0-9]+)([smhd])$", RegexOptions.Compiled);
 
-	public static readonly ConcurrentDictionary<long, ChatArgs> ChatArgs;
+	public static readonly ConcurrentDictionary<int, ChatArgs> ChatArgs;
 	public static readonly DataStruct Data;
+
 	public static readonly long AuthorId;
 	public static long HomeId => Data.HomeGroup;
 	public static Topics Topics => Data.Topics;
@@ -26,7 +27,7 @@ internal static class Utils
 	static Utils()
 	{
 		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaTelegram)}/Data.json").Load<DataStruct>();
-		ChatArgs = new ConcurrentDictionary<long, ChatArgs>();
+		ChatArgs = new ConcurrentDictionary<int, ChatArgs>();
 
 		AuthorId = NameToId("@gwynn7");
 
@@ -68,9 +69,9 @@ internal static class Utils
 		throw new CortanaException("User not found");
 	}
 
-	public static bool AddChatArg(long chatId, ChatArgs arg, CallbackQuery query)
+	public static bool AddChatArg(int topicId, ChatArgs arg, CallbackQuery query)
 	{
-		if (ChatArgs.TryAdd(chatId, arg)) return true;
+		if (ChatArgs.TryAdd(topicId, arg)) return true;
 		_cortana.AnswerCallbackQuery(query.Id, "You already have an interaction going on! Finish it before continuing", true);
 		return false;
 	}

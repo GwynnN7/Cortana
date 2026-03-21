@@ -63,14 +63,13 @@ public static class CortanaTelegramBot
 
 		var msgData = new MessageData
 		{
-			ChatId = message.Chat.Id,
 			TopicId = message.MessageThreadId ?? 0,
 			MessageId = message.MessageId,
 			Message = message.Text,
 			Command = ""
 		};
 
-		if (Utils.ChatArgs.TryGetValue(msgData.ChatId, out ChatArgs? chatArg))
+		if (Utils.ChatArgs.TryGetValue(msgData.TopicId, out ChatArgs? chatArg))
 		{
 			switch (chatArg.Type)
 			{
@@ -79,21 +78,21 @@ public static class CortanaTelegramBot
 				case EArgsType.Timer:
 				case EArgsType.AudioDownloader:
 				case EArgsType.VideoDownloader:
-					await UtilityModule.HandleTextMessage(cortana, msgData);
+					await UtilityModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.Notification:
 				case EArgsType.ComputerCommand:
 				case EArgsType.HardwareTimer:
-					await DeviceModule.HandleTextMessage(cortana, msgData);
+					await DeviceModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.SetLightThreshold:
 				case EArgsType.SetMorningHour:
 				case EArgsType.SetMotionOffMax:
 				case EArgsType.SetMotionOffMin:
-					await SensorModule.HandleTextMessage(cortana, msgData);
+					await SensorModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.RaspberryCommand:
-					await RaspberryModule.HandleTextMessage(cortana, msgData);
+					await RaspberryModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 			}
 

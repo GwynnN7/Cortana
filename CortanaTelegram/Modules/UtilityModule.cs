@@ -14,6 +14,7 @@ internal sealed class UtilityModule : IModuleInterface
 {
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
+		Utils.ChatArgs.TryRemove(Utils.Topics.Home, out _);
 		const string menuText = "🧰 <b>Utility Menu</b>\n\nPick a tool from the keyboard below.";
 
 		if (query != null && query.Message != null)
@@ -53,7 +54,7 @@ internal sealed class UtilityModule : IModuleInterface
 
 		if (chatArg != null)
 		{
-			if (Utils.AddChatArg(chatId, chatArg, query))
+			if (Utils.AddChatArg(Utils.Topics.Home, chatArg, query))
 			{
 				_ = command switch
 				{
@@ -74,32 +75,33 @@ internal sealed class UtilityModule : IModuleInterface
 					await cortana.EditMessageText(chatId, messageId, "Choose the download priority", replyMarkup: CreateVideoDownloadButtons());
 					break;
 				case ActionTag.Cancel:
-					Utils.ChatArgs.TryRemove(chatId, out _);
+
 					await CreateMenu(cortana, query);
 					break;
 				case ActionTag.LeaveChat:
-					Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? genericChatArg);
+					Utils.ChatArgs.TryGetValue(Utils.Topics.Home, out ChatArgs? genericChatArg);
 					if (genericChatArg is not ChatArgs<long> { Type: EArgsType.Chat } leaveChatArg) return;
 					await cortana.AnswerCallbackQuery(query.Id, $"Chat with {Utils.IdToName(leaveChatArg.Arg)} ended");
 
-					Utils.ChatArgs.TryRemove(chatId, out _);
 					await CreateMenu(cortana, query);
 					break;
 			}
 		}
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData, ChatArgs chatArg)
 	{
-		switch (Utils.ChatArgs[msgData.ChatId].Type)
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+
+		switch (chatArg.Type)
 		{
 			case EArgsType.Qrcode:
-				await cortana.SendChatAction(msgData.ChatId, ChatAction.UploadPhoto);
+				await cortana.SendChatAction(Utils.HomeId, ChatAction.UploadPhoto);
 				Stream imageStream = MediaHandler.CreateQrCode(msgData.Message, false, true);
 				imageStream.Position = 0;
 
-				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-				await cortana.SendPhoto(msgData.ChatId, new InputFileStream(imageStream, "QRCODE.png"));
+				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
+				await cortana.SendPhoto(Utils.HomeId, new InputFileStream(imageStream, "QRCODE.png"), messageThreadId: msgData.TopicId);
 				break;
 
 			case EArgsType.Timer:
@@ -110,95 +112,94 @@ internal sealed class UtilityModule : IModuleInterface
 				}
 				catch
 				{
-					await Utils.AnswerMessage(cortana, "Time pattern is incorrect, try again!", Utils.Topics.Home, Utils.ChatArgs[msgData.ChatId].Query);
+					await Utils.AnswerMessage(cortana, "Time pattern is incorrect, try again!", Utils.Topics.Home, chatArg.Query);
 					return;
 				}
 
-				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 
-				var timer = new Timer($":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<string>(msgData.ChatId, null), async Task (object? sender) =>
+				var timer = new Timer($":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<string>(Utils.HomeId, null), async Task (object? sender) =>
 				{
 					if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
 
 					try
 					{
 						if (timer.Payload is not TelegramTimerPayload<string> payload) return;
-						await Utils.SendToTopic("Timer elapsed!", Utils.Topics.Home);
+						await Utils.SendToTopic("Timer elapsed!", msgData.TopicId);
 					}
 					catch
 					{
-						await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Home);
+						await Utils.SendToTopic($"There was an error with a timer", msgData.TopicId);
 					}
 				}, ETimerType.Telegram).Set((times.s, times.m, times.h));
 
-				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Home, Utils.ChatArgs[msgData.ChatId].Query, false);
+				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Home, chatArg.Query, false);
 				break;
 
 			case EArgsType.AudioDownloader:
 			case EArgsType.VideoDownloader:
-				await cortana.SendChatAction(msgData.ChatId, ChatAction.UploadVideo);
+				await cortana.SendChatAction(Utils.HomeId, ChatAction.UploadVideo);
 				try
 				{
 					AudioTrack? track = await MediaHandler.GetAudioTrack(msgData.Message) ?? throw new CortanaException("Video not available");
-					switch (Utils.ChatArgs[msgData.ChatId].Type)
+					switch (chatArg.Type)
 					{
 						case EArgsType.VideoDownloader:
 							{
-								await MediaHandler.DownloadVideo(track.OriginalUrl, (Utils.ChatArgs[msgData.ChatId] as ChatArgs<EVideoQuality>)!.Arg, 50, DataHandler.CortanaPath(EDirType.Temp));
+								await MediaHandler.DownloadVideo(track.OriginalUrl, (chatArg as ChatArgs<EVideoQuality>)!.Arg, 50, DataHandler.CortanaPath(EDirType.Temp));
 								Stream? videoStream = MediaHandler.GetStreamFromFile(DataHandler.CortanaPath(EDirType.Temp, "temp_video.mp4"));
-								if (videoStream != null) await cortana.SendVideo(msgData.ChatId, InputFile.FromStream(videoStream, track.Title), track.Title);
+								if (videoStream != null) await cortana.SendVideo(Utils.HomeId, InputFile.FromStream(videoStream, track.Title), track.Title, messageThreadId: msgData.TopicId);
 								else throw new CortanaException("Video file downloaded not found");
 								break;
 							}
 						case EArgsType.AudioDownloader:
 							{
 								Stream stream = await MediaHandler.GetAudioStream(track.OriginalUrl);
-								await cortana.SendAudio(msgData.ChatId, InputFile.FromStream(stream, track.Title));
+								await cortana.SendAudio(Utils.HomeId, InputFile.FromStream(stream, track.Title), messageThreadId: msgData.TopicId);
 								break;
 							}
 					}
 				}
 				catch
 				{
-					await Utils.AnswerMessage(cortana, "Sorry, either I can't find that video on YouTube or its size is greater than 50MB", Utils.Topics.Home, Utils.ChatArgs[msgData.ChatId].Query);
+					await Utils.AnswerMessage(cortana, "Sorry, either I can't find that video on YouTube or its size is greater than 50MB", Utils.Topics.Home, chatArg.Query);
 				}
 				finally
 				{
 					string path = DataHandler.CortanaPath(EDirType.Temp, "temp_video.mp4");
 					if (File.Exists(path)) File.Delete(path);
 
-					await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+					await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 				}
 				break;
 
 			case EArgsType.Chat:
-				await cortana.SendChatAction(msgData.ChatId, ChatAction.Typing);
-				if (Utils.ChatArgs[msgData.ChatId] is ChatArgs<long> chatArg)
+				await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+				if (chatArg is ChatArgs<long> arg)
 				{
-					await Utils.SendToUser(chatArg.Arg, msgData.Message);
-					await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+					await Utils.SendToUser(arg.Arg, msgData.Message);
+					await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 					return;
 				}
 
 				try
 				{
 					string user = msgData.Message.Trim();
-					Utils.ChatArgs[msgData.ChatId] = new ChatArgs<long>(EArgsType.Chat, Utils.ChatArgs[msgData.ChatId].Query, Utils.ChatArgs[msgData.ChatId].Message, Utils.NameToId(user));
-					await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-					await cortana.EditMessageText(msgData.ChatId, Utils.ChatArgs[msgData.ChatId].Message.MessageId, $"Currently chatting with {user}", replyMarkup: CreateLeaveButton());
+					Utils.ChatArgs[msgData.TopicId] = new ChatArgs<long>(EArgsType.Chat, chatArg.Query, chatArg.Message, Utils.NameToId(user));
+					await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
+					await cortana.EditMessageText(Utils.HomeId, chatArg.Message.MessageId, $"Currently chatting with {user}", replyMarkup: CreateLeaveButton());
 				}
 				catch (CortanaException)
 				{
-					await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
-					await Utils.AnswerMessage(cortana, "Sorry, I can't find that username. Please try again", Utils.Topics.Home, Utils.ChatArgs[msgData.ChatId].Query);
+					await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
+					await Utils.AnswerMessage(cortana, "Sorry, I can't find that username. Please try again", Utils.Topics.Home, chatArg.Query);
 				}
 				return;
 			default:
 				return;
 		}
 
-		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
-		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
+		await CreateMenu(cortana, chatArg.Query);
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()

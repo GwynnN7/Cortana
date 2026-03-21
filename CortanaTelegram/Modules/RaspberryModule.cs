@@ -6,14 +6,17 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class RaspberryModule : IModuleInterface
 {
+	private static Timer? UpdateTimer = null;
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
-		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		Utils.ChatArgs.TryRemove(Utils.Topics.Raspberry, out _);
 
 		string messageText = await GetRaspberryInfo();
 
@@ -27,7 +30,7 @@ internal sealed class RaspberryModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			IModuleInterface.ResetUpdateTimer<RaspberryModule>("raspberry-updater", cortana, query);
+			ResetUpdateTimer(cortana, query);
 		}
 		else
 		{
@@ -69,40 +72,41 @@ internal sealed class RaspberryModule : IModuleInterface
 			switch (command)
 			{
 				case ActionTag.Command:
-					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
+					if (Utils.AddChatArg(Utils.Topics.Raspberry, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
 					{
-						IModuleInterface.DestroyUpdateTimer();
+						ResetUpdateTimer(cortana, query);
 						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Cancel:
-					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
+					if (Utils.ChatArgs.TryGetValue(Utils.Topics.Raspberry, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
 					{
 						if (chatArg.Arg.Count > 0)
 						{
 							await cortana.DeleteMessages(chatId, chatArg.Arg);
 						}
 					}
-					Utils.ChatArgs.TryRemove(chatId, out _);
 					await CreateMenu(cortana, query);
 					break;
 			}
 		}
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats, ChatArgs chatArg)
 	{
-		switch (Utils.ChatArgs[messageStats.ChatId].Type)
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		ResetUpdateTimer(cortana, chatArg.Query);
+		switch (chatArg.Type)
 		{
 			case EArgsType.RaspberryCommand:
-				await cortana.SendChatAction(messageStats.ChatId, ChatAction.Typing);
-				if (Utils.ChatArgs[messageStats.ChatId] is ChatArgs<List<int>> chatArg)
+
+				if (chatArg is ChatArgs<List<int>> arg)
 				{
 					string prompt = string.Concat(messageStats.Message[..1].ToLower(), messageStats.Message.AsSpan(1));
 					string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", prompt));
 					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Raspberry);
-					chatArg.Arg.Add(messageStats.MessageId);
-					chatArg.Arg.Add(msg.MessageId);
+					arg.Arg.Add(messageStats.MessageId);
+					arg.Arg.Add(msg.MessageId);
 					return;
 				}
 				break;
@@ -142,5 +146,21 @@ internal sealed class RaspberryModule : IModuleInterface
 		public const string Command = "raspberry-command";
 		public const string Refresh = "raspberry-refresh";
 		public const string Cancel = "raspberry-cancel";
+	}
+
+	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
+	{
+		UpdateTimer?.Destroy();
+		UpdateTimer = new Timer("raspberry-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
+		{
+			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+			try
+			{
+				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
+				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
+			}
+			catch { }
+		}, ETimerType.Telegram).Set((20, 0, 0));
 	}
 }

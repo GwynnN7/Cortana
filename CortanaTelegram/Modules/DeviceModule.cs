@@ -12,9 +12,10 @@ namespace CortanaTelegram.Modules;
 
 internal sealed class DeviceModule : IModuleInterface
 {
-	private static readonly ConcurrentDictionary<long, string> HardwareAction = new();
+	private static readonly ConcurrentDictionary<int, string> HardwareAction = new();
 	private static int TabIndex = 0;
 	private static bool TimerActive = false;
+	private static Timer? UpdateTimer = null;
 
 	public static async Task ExecCommand(MessageData messageStats, ITelegramBotClient cortana)
 	{
@@ -28,7 +29,8 @@ internal sealed class DeviceModule : IModuleInterface
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
-		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		Utils.ChatArgs.TryRemove(Utils.Topics.Devices, out _);
 
 		string messageText = await GetDevicesStatus();
 
@@ -42,7 +44,7 @@ internal sealed class DeviceModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			IModuleInterface.ResetUpdateTimer<DeviceModule>("device-updater", cortana, query);
+			ResetUpdateTimer(cortana, query);
 		}
 		else
 		{
@@ -64,7 +66,7 @@ internal sealed class DeviceModule : IModuleInterface
 			HardwareEmoji.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
 			_ => null
 		};
-		await cortana.DeleteMessage(messageStats.ChatId, messageStats.MessageId);
+		await cortana.DeleteMessage(Utils.HomeId, messageStats.MessageId);
 	}
 
 	public static async Task HandleCallbackQuery(ITelegramBotClient cortana, CallbackQuery query, string command)
@@ -113,28 +115,27 @@ internal sealed class DeviceModule : IModuleInterface
 			switch (command)
 			{
 				case ActionTag.Command:
-					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.ComputerCommand, query, query.Message, []), query))
+					if (Utils.AddChatArg(Utils.Topics.Devices, new ChatArgs<List<int>>(EArgsType.ComputerCommand, query, query.Message, []), query))
 					{
-						IModuleInterface.DestroyUpdateTimer();
+						ResetUpdateTimer(cortana, query);
 						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Notify:
-					if (Utils.AddChatArg(chatId, new ChatArgs(EArgsType.Notification, query, query.Message), query))
+					if (Utils.AddChatArg(Utils.Topics.Devices, new ChatArgs(EArgsType.Notification, query, query.Message), query))
 					{
-						IModuleInterface.DestroyUpdateTimer();
+						ResetUpdateTimer(cortana, query);
 						await cortana.EditMessageText(chatId, messageId, "Write the content of the notification", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Cancel:
-					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
+					if (Utils.ChatArgs.TryGetValue(Utils.Topics.Devices, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
 					{
 						if (chatArg.Arg.Count > 0)
 						{
 							await cortana.DeleteMessages(chatId, chatArg.Arg);
 						}
 					}
-					Utils.ChatArgs.TryRemove(chatId, out _);
 					await CreateMenu(cortana, query);
 					break;
 				case ActionTag.On:
@@ -143,9 +144,9 @@ internal sealed class DeviceModule : IModuleInterface
 					string action = command.Split('-').Last();
 					if (TimerActive)
 					{
-						if (Utils.AddChatArg(chatId, new ChatArgs<string>(EArgsType.HardwareTimer, query, query.Message, action), query))
+						if (Utils.AddChatArg(Utils.Topics.Devices, new ChatArgs<string>(EArgsType.HardwareTimer, query, query.Message, action), query))
 						{
-							IModuleInterface.DestroyUpdateTimer();
+							ResetUpdateTimer(cortana, query);
 							await cortana.EditMessageText(chatId, messageId, "Timer pattern: {sec}s {min}m {hours}h {days}d", replyMarkup: CreateCancelButton());
 						}
 					}
@@ -156,24 +157,24 @@ internal sealed class DeviceModule : IModuleInterface
 						await cortana.AnswerCallbackQuery(query.Id, result);
 						await CreateMenu(cortana, query);
 					}
-
 					break;
 				case var _ when command.StartsWith(ActionTag.Type):
-					IModuleInterface.ResetUpdateTimer<DeviceModule>("device-updater", cortana, query);
+					ResetUpdateTimer(cortana, query);
 					string deviceType = command.Split('-').Last();
 					HardwareAction[messageId] = deviceType;
 					TimerActive = false;
 					await cortana.EditMessageReplyMarkup(chatId, messageId, CreateOnOffToggleButtons());
-					return;
+					break;
 			}
 		}
 	}
 
-	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData)
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData, ChatArgs chatArg)
 	{
-		await cortana.SendChatAction(msgData.ChatId, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		ResetUpdateTimer(cortana, chatArg.Query);
 
-		switch (Utils.ChatArgs[msgData.ChatId].Type)
+		switch (chatArg.Type)
 		{
 			case EArgsType.HardwareTimer:
 				(int s, int m, int h, int d) times;
@@ -183,16 +184,16 @@ internal sealed class DeviceModule : IModuleInterface
 				}
 				catch
 				{
-					await Utils.AnswerMessage(cortana, "Time pattern is incorrect, try again!", Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
+					await Utils.AnswerMessage(cortana, "Time pattern is incorrect, try again!", Utils.Topics.Devices, chatArg.Query, false);
 					return;
 				}
 
-				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 
-				HardwareAction.TryRemove(Utils.ChatArgs[msgData.ChatId].Message.MessageId, out string? device);
-				(string, string) hardwarePattern = (device!, (Utils.ChatArgs[msgData.ChatId] as ChatArgs<string>)!.Arg);
+				HardwareAction.TryRemove(chatArg.Message.MessageId, out string? device);
+				(string, string) hardwarePattern = (device!, (chatArg as ChatArgs<string>)!.Arg);
 
-				var timer = new Timer($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(msgData.ChatId, hardwarePattern), async Task (object? sender) =>
+				var timer = new Timer($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(Utils.HomeId, hardwarePattern), async Task (object? sender) =>
 				{
 					if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
 
@@ -208,31 +209,30 @@ internal sealed class DeviceModule : IModuleInterface
 					}
 				}, ETimerType.Telegram).Set((times.s, times.m, times.h));
 
-				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
+				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Devices, chatArg.Query, false);
 				break;
 
 			case EArgsType.Notification:
 				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", msgData.Message));
-				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
+				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 
-				await Utils.AnswerMessage(cortana, result, Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
+				await Utils.AnswerMessage(cortana, result, Utils.Topics.Devices, chatArg.Query, false);
 				break;
 
 			case EArgsType.ComputerCommand:
-				if (Utils.ChatArgs[msgData.ChatId] is ChatArgs<List<int>> chatArg)
+				if (chatArg is ChatArgs<List<int>> arg)
 				{
 					string prompt = string.Concat(msgData.Message[..1].ToLower(), msgData.Message.AsSpan(1));
 					string commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", prompt));
 					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Devices);
-					chatArg.Arg.Add(msgData.MessageId);
-					chatArg.Arg.Add(msg.MessageId);
+					arg.Arg.Add(msgData.MessageId);
+					arg.Arg.Add(msg.MessageId);
 					return;
 				}
 				break;
 		}
 
-		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
-		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
+		await CreateMenu(cortana, chatArg.Query);
 	}
 
 	private static async Task<string> GetDevicesStatus()
@@ -254,22 +254,24 @@ internal sealed class DeviceModule : IModuleInterface
 			case 0:
 				foreach (string element in Enum.GetNames<EDevice>())
 				{
-					inlineKeyboard.AddButton($"{DeviceToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}");
-					inlineKeyboard.AddNewRow();
+					inlineKeyboard
+						.AddButton($"{DeviceToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}")
+						.AddNewRow();
 				}
 
 				break;
 			case 1:
-				inlineKeyboard.AddButton("Reboot 🔄", $"{ActionTag.Reboot}");
-				inlineKeyboard.AddButton("System 🎮", $"{ActionTag.System}");
-				inlineKeyboard.AddNewRow();
-				inlineKeyboard.AddButton("Suspend 🌙", $"{ActionTag.Suspend}");
-				inlineKeyboard.AddButton("Notify 📢", $"{ActionTag.Notify}");
-				inlineKeyboard.AddNewRow();
-				inlineKeyboard.AddButton("Command 💻", $"{ActionTag.Command}");
-				inlineKeyboard.AddNewRow();
-				inlineKeyboard.AddButton("Sleep 🛌", $"{ActionTag.Sleep}");
-				inlineKeyboard.AddNewRow();
+				inlineKeyboard
+					.AddButton("Reboot 🔄", $"{ActionTag.Reboot}")
+					.AddButton("System 🎮", $"{ActionTag.System}")
+					.AddNewRow()
+					.AddButton("Suspend 🌙", $"{ActionTag.Suspend}")
+					.AddButton("Notify 📢", $"{ActionTag.Notify}")
+					.AddNewRow()
+					.AddButton("Command 💻", $"{ActionTag.Command}")
+					.AddNewRow()
+					.AddButton("Sleep 🛌", $"{ActionTag.Sleep}")
+					.AddNewRow();
 				break;
 		}
 
@@ -331,5 +333,21 @@ internal sealed class DeviceModule : IModuleInterface
 		public const string Refresh = "device-refresh";
 		public const string Tab = "device-tab";
 		public const string Cancel = "device-cancel";
+	}
+
+	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
+	{
+		UpdateTimer?.Destroy();
+		UpdateTimer = new Timer("device-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
+		{
+			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+			try
+			{
+				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
+				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
+			}
+			catch { }
+		}, ETimerType.Telegram).Set((15, 0, 0));
 	}
 }

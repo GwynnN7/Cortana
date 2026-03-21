@@ -6,16 +6,19 @@ using Telegram.Bot.Types.ReplyMarkups;
 using System.Collections.Concurrent;
 using CortanaLib;
 using CortanaLib.Structures;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class CortanaModule : IModuleInterface
 {
-	private static readonly ConcurrentDictionary<long, string> SubfunctionAction = new();
+	private static readonly ConcurrentDictionary<int, string> SubfunctionAction = new();
+
+	private static Timer? UpdateTimer = null;
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
-		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
+		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
 
 		string messageText = await GetSubfunctionStatus();
 
@@ -29,7 +32,7 @@ internal sealed class CortanaModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			IModuleInterface.ResetUpdateTimer<CortanaModule>("cortana-updater", cortana, query);
+			ResetUpdateTimer(cortana, query);
 		}
 		else
 		{
@@ -69,7 +72,7 @@ internal sealed class CortanaModule : IModuleInterface
 
 				break;
 			case var _ when command.StartsWith(ActionTag.Type):
-				IModuleInterface.ResetUpdateTimer<CortanaModule>("cortana-updater", cortana, query);
+				ResetUpdateTimer(cortana, query);
 				string subfunctionType = command.Split('-').Last();
 				SubfunctionAction[messageId] = subfunctionType;
 				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateSubfunctionActionButtons());
@@ -95,8 +98,9 @@ internal sealed class CortanaModule : IModuleInterface
 
 		foreach (string element in Enum.GetNames<ESubFunctionType>())
 		{
-			inlineKeyboard.AddButton($"{SubfunctionToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}");
-			inlineKeyboard.AddNewRow();
+			inlineKeyboard
+				.AddButton($"{SubfunctionToEmoji[element]} {element}", $"{ActionTag.Type}-{element.ToLower()}")
+				.AddNewRow();
 		}
 
 		inlineKeyboard.AddButton("Refresh 🔄", ActionTag.Refresh);
@@ -113,11 +117,6 @@ internal sealed class CortanaModule : IModuleInterface
 			.AddButton("Update ⏫", ActionTag.Update)
 			.AddNewRow()
 			.AddButton("<<", ActionTag.Cancel);
-	}
-
-	public static Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats)
-	{
-		return Task.CompletedTask;
 	}
 
 	private static Dictionary<string, string> SubfunctionToEmoji = new()
@@ -137,5 +136,26 @@ internal sealed class CortanaModule : IModuleInterface
 		public const string Update = "cortana-update";
 		public const string Refresh = "cortana-refresh";
 		public const string Cancel = "cortana-cancel";
+	}
+
+	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
+	{
+		UpdateTimer?.Destroy();
+		UpdateTimer = new Timer("cortana-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
+		{
+			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+			try
+			{
+				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
+				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
+			}
+			catch { }
+		}, ETimerType.Telegram).Set((30, 0, 0));
+	}
+
+	public static Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats, ChatArgs chatArg)
+	{
+		return Task.CompletedTask;
 	}
 }
