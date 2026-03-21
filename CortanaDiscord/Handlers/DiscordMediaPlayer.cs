@@ -84,6 +84,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
 {
     private readonly DiscordQueue<AudioTrack> _queue = new();
     private CancellationTokenSource? _currentTrackToken;
+    private int _connectionWarmupDone;
 
     private int _isPlaying;
 
@@ -144,13 +145,18 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
                     continue;
                 }
 
+                if (Interlocked.CompareExchange(ref _connectionWarmupDone, 1, 0) == 0)
+                {
+                    await Task.Delay(1200, token.Token);
+                }
+
                 DataHandler.Log($"Starting track: {track.Title}");
 
                 Process ffmpeg = CreateStream(track.StreamUrl);
                 try
                 {
                     await using Stream output = ffmpeg.StandardOutput.BaseStream;
-                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
+                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Music);
 
                     try
                     {

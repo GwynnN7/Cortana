@@ -12,11 +12,12 @@ public static class Helper
 		{
 			StartInfo = new ProcessStartInfo
 			{
-				FileName = "zsh",
+				FileName = "/usr/bin/zsh",
 				Arguments = $"-c \"{command}\"",
 				RedirectStandardOutput = stdRedirect,
+				RedirectStandardError = true,
 				UseShellExecute = false,
-				CreateNoWindow = true
+				CreateNoWindow = true,
 			}
 		};
 		process.Start();
