@@ -8,12 +8,18 @@ public static class Helper
 {
 	public static Process RunCommand(string command, bool stdRedirect = false)
 	{
+		string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+		string localBin = Path.Combine(home, ".local", "bin");
+		string currentPath = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
+		string processPath = currentPath.Split(':').Contains(localBin) ? currentPath : $"{localBin}:{currentPath}";
+
 		var process = new Process
 		{
 			StartInfo = new ProcessStartInfo
 			{
 				FileName = "/usr/bin/zsh",
 				Arguments = $"-c \"{command}\"",
+				Environment = { ["PATH"] = processPath },
 				RedirectStandardOutput = stdRedirect,
 				RedirectStandardError = true,
 				UseShellExecute = false,

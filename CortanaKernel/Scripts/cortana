@@ -1,6 +1,7 @@
 #!/usr/bin/zsh
 
 services=(cortana-kernel cortana-discord cortana-telegram cortana-web)
+script_path="$0"
 
 if (($# == 1))
 then
@@ -22,9 +23,9 @@ then
       echo "Cortana restarted";
     elif [ "$1" = "update" ]
     then
-      cortana stop;
-      cortana git;
-      cortana start;
+      "$script_path" stop;
+      "$script_path" git;
+      "$script_path" start;
     elif [ "$1" = "status" ]
     then
       for svc in "${services[@]}"; do systemctl --user status "$svc" --no-pager; echo ""; done
