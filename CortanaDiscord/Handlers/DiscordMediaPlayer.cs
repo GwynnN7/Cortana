@@ -156,7 +156,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
                 try
                 {
                     await using Stream output = ffmpeg.StandardOutput.BaseStream;
-                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Music);
+                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
 
                     try
                     {

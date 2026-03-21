@@ -98,10 +98,24 @@ public class DiscordMediaHandler(SocketGuild guild)
                         MediaPlayer?.Dispose();
                         MediaPlayer = new DiscordMediaPlayer(audioClient);
 
-                        await Task.Delay(1800, cancellationToken);
+                        int connectedUsers = channel.ConnectedUsers.Count;
+                        int helloDelay = connectedUsers > 2 ? 5000 : 1800;
+                        await Task.Delay(helloDelay, cancellationToken);
                         if (GetActualConnectedChannel(guild)?.Id == channel.Id)
                         {
                             AudioHandler.SayHello(guild.Id);
+
+                            // In multi-user channels, voice encryption transitions can still settle late.
+                            // Queue one fallback hello after a short delay to avoid silent first playback.
+                            if (connectedUsers > 2)
+                            {
+                                await Task.Delay(2500, cancellationToken);
+                                if (GetActualConnectedChannel(guild)?.Id == channel.Id)
+                                {
+                                    DataHandler.Log("Playing fallback hello for multi-user channel");
+                                    AudioHandler.SayHello(guild.Id);
+                                }
+                            }
                         }
                         break;
                     }
