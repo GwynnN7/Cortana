@@ -31,22 +31,24 @@ public class Timer : System.Timers.Timer
 		SaveTimer();
 	}
 
-	public void Set(Times times)
+	public Timer Set(Times times)
 	{
 		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
 		Interval = interval > 0 ? interval : 1000;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
 		Start();
+		return this;
 	}
 
-	public void Set(DateTime targetTime)
+	public Timer Set(DateTime targetTime)
 	{
 		if (targetTime <= DateTime.Now) targetTime = targetTime.AddDays(1);
 		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
 		Start();
+		return this;
 	}
 
 	private async Task TimerElapsed(object? sender)

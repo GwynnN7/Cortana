@@ -5,11 +5,13 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class SensorModule : IModuleInterface
 {
+
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
@@ -26,6 +28,7 @@ internal sealed class SensorModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
+			IModuleInterface.ResetUpdateTimer<SensorModule>("sensor-updater", cortana, query);
 		}
 		else
 		{

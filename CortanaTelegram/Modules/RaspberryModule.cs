@@ -1,3 +1,4 @@
+using System.Numerics;
 using CortanaLib;
 using CortanaLib.Structures;
 using CortanaTelegram.Utility;
@@ -26,7 +27,7 @@ internal sealed class RaspberryModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-
+			IModuleInterface.ResetUpdateTimer<RaspberryModule>("raspberry-updater", cortana, query);
 		}
 		else
 		{
@@ -70,6 +71,7 @@ internal sealed class RaspberryModule : IModuleInterface
 				case ActionTag.Command:
 					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
 					{
+						IModuleInterface.DestroyUpdateTimer();
 						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
 					}
 					break;

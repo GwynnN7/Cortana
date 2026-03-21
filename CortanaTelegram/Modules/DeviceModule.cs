@@ -42,6 +42,7 @@ internal sealed class DeviceModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
+			IModuleInterface.ResetUpdateTimer<DeviceModule>("device-updater", cortana, query);
 		}
 		else
 		{
@@ -183,8 +184,22 @@ internal sealed class DeviceModule : IModuleInterface
 
 				HardwareAction.TryRemove(Utils.ChatArgs[msgData.ChatId].Message.MessageId, out string? device);
 				(string, string) hardwarePattern = (device!, (Utils.ChatArgs[msgData.ChatId] as ChatArgs<string>)!.Arg);
-				var timer = new Timer($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(msgData.ChatId, hardwarePattern), HardwareTimerFinished, ETimerType.Telegram);
-				timer.Set((times.s, times.m, times.h));
+
+				var timer = new Timer($"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<(string, string)>(msgData.ChatId, hardwarePattern), async Task (object? sender) =>
+				{
+					if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+					try
+					{
+						if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
+						string result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
+						await Utils.SendToTopic($"{result} with timer", Utils.Topics.Log);
+					}
+					catch
+					{
+						await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Log);
+					}
+				}, ETimerType.Telegram).Set((times.s, times.m, times.h));
 
 				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Devices, Utils.ChatArgs[msgData.ChatId].Query, false);
 				break;
@@ -211,22 +226,6 @@ internal sealed class DeviceModule : IModuleInterface
 
 		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
-	}
-
-	private static async Task HardwareTimerFinished(object? sender)
-	{
-		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
-
-		try
-		{
-			if (timer.Payload is not TelegramTimerPayload<(string device, string action)> payload) return;
-			string result = await ApiHandler.Post($"{ERoute.Devices}/{payload.Arg.device}", new PostAction(payload.Arg.action));
-			await Utils.SendToTopic($"{result} with timer", Utils.Topics.Log);
-		}
-		catch
-		{
-			await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Log);
-		}
 	}
 
 	private static async Task<string> GetDevicesStatus()

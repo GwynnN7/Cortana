@@ -13,7 +13,6 @@ internal sealed class CortanaModule : IModuleInterface
 {
 	private static readonly ConcurrentDictionary<long, string> SubfunctionAction = new();
 
-
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.Data.HomeGroup, ChatAction.Typing);
@@ -30,6 +29,7 @@ internal sealed class CortanaModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
+			IModuleInterface.ResetUpdateTimer<CortanaModule>("cortana-updater", cortana, query);
 		}
 		else
 		{

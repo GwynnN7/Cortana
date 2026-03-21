@@ -116,8 +116,20 @@ internal sealed class UtilityModule : IModuleInterface
 
 				await cortana.DeleteMessage(msgData.ChatId, msgData.MessageId);
 
-				var timer = new Timer($":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<string>(msgData.ChatId, null), TelegramTimerFinished, ETimerType.Telegram);
-				timer.Set((times.s, times.m, times.h));
+				var timer = new Timer($":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<string>(msgData.ChatId, null), async Task (object? sender) =>
+				{
+					if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+
+					try
+					{
+						if (timer.Payload is not TelegramTimerPayload<string> payload) return;
+						await Utils.SendToTopic("Timer elapsed!", Utils.Topics.Home);
+					}
+					catch
+					{
+						await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Home);
+					}
+				}, ETimerType.Telegram).Set((times.s, times.m, times.h));
 
 				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Home, Utils.ChatArgs[msgData.ChatId].Query, false);
 				break;
@@ -187,21 +199,6 @@ internal sealed class UtilityModule : IModuleInterface
 
 		await CreateMenu(cortana, Utils.ChatArgs[msgData.ChatId].Query);
 		Utils.ChatArgs.TryRemove(msgData.ChatId, out _);
-	}
-
-	private static async Task TelegramTimerFinished(object? sender)
-	{
-		if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
-
-		try
-		{
-			if (timer.Payload is not TelegramTimerPayload<string> payload) return;
-			await Utils.SendToTopic("Timer elapsed!", Utils.Topics.Home);
-		}
-		catch
-		{
-			await Utils.SendToTopic($"There was an error with a timer", Utils.Topics.Home);
-		}
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
