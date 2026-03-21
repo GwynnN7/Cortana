@@ -67,9 +67,15 @@ internal static class AudioHandler
 
 	public static void HandleConnection(SocketGuild guild)
 	{
-		if (ShouldTryReconnect(guild))
+		SocketVoiceChannel? currentChannel = GetCurrentCortanaChannel(guild);
+
+		// If we are already in a valid channel, keep the current voice session stable.
+		if (currentChannel != null)
 		{
-			ReconnectToChannel(GetCurrentCortanaChannel(guild));
+			if (!IsChannelAvailable(currentChannel))
+			{
+				Disconnect(guild.Id);
+			}
 			return;
 		}
 
@@ -114,13 +120,6 @@ internal static class AudioHandler
 		}
 	}
 
-	private static void ReconnectToChannel(SocketVoiceChannel? channel)
-	{
-		if (channel == null) return;
-		if (IsConnected(channel, channel.Guild)) return;
-		Connect(channel);
-	}
-
 	public static SocketVoiceChannel? GetAvailableChannel(SocketGuild guild)
 	{
 		return guild.VoiceChannels.FirstOrDefault(IsChannelAvailable);
@@ -140,12 +139,4 @@ internal static class AudioHandler
 		return channel.ConnectedUsers.Count > 0;
 	}
 
-	private static bool ShouldTryReconnect(SocketGuild guild)
-	{
-		SocketVoiceChannel? currentChannel = GetCurrentCortanaChannel(guild);
-		List<SocketVoiceChannel> availableChannels = GetAvailableChannels(guild);
-
-		if (availableChannels.Count == 0) return currentChannel == null;
-		return currentChannel != null && availableChannels.Any(channel => channel.Id == currentChannel.Id);
-	}
 }
