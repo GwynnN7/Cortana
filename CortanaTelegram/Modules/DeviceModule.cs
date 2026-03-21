@@ -115,22 +115,27 @@ internal sealed class DeviceModule : IModuleInterface
 				case ActionTag.Command:
 					if (Utils.AddChatArg(chatId, new ChatArgs<List<int>>(EArgsType.ComputerCommand, query, query.Message, []), query))
 					{
+						IModuleInterface.DestroyUpdateTimer();
 						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Notify:
 					if (Utils.AddChatArg(chatId, new ChatArgs(EArgsType.Notification, query, query.Message), query))
 					{
+						IModuleInterface.DestroyUpdateTimer();
 						await cortana.EditMessageText(chatId, messageId, "Write the content of the notification", replyMarkup: CreateCancelButton());
 					}
 					break;
 				case ActionTag.Cancel:
 					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
 					{
-						await cortana.DeleteMessages(chatId, chatArg.Arg);
+						if (chatArg.Arg.Count > 0)
+						{
+							await cortana.DeleteMessages(chatId, chatArg.Arg);
+						}
 					}
-					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
+					await CreateMenu(cortana, query);
 					break;
 				case ActionTag.On:
 				case ActionTag.Off:
@@ -140,6 +145,7 @@ internal sealed class DeviceModule : IModuleInterface
 					{
 						if (Utils.AddChatArg(chatId, new ChatArgs<string>(EArgsType.HardwareTimer, query, query.Message, action), query))
 						{
+							IModuleInterface.DestroyUpdateTimer();
 							await cortana.EditMessageText(chatId, messageId, "Timer pattern: {sec}s {min}m {hours}h {days}d", replyMarkup: CreateCancelButton());
 						}
 					}
@@ -153,6 +159,7 @@ internal sealed class DeviceModule : IModuleInterface
 
 					break;
 				case var _ when command.StartsWith(ActionTag.Type):
+					IModuleInterface.DestroyUpdateTimer();
 					string deviceType = command.Split('-').Last();
 					HardwareAction[messageId] = deviceType;
 					TimerActive = false;

@@ -60,10 +60,13 @@ internal sealed class CortanaModule : IModuleInterface
 			case ActionTag.Cancel:
 				if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
 				{
-					await cortana.DeleteMessages(chatId, chatArg.Arg);
+					if (chatArg.Arg.Count > 0)
+					{
+						await cortana.DeleteMessages(chatId, chatArg.Arg);
+					}
 				}
-				await CreateMenu(cortana, query);
 				Utils.ChatArgs.TryRemove(chatId, out _);
+				await CreateMenu(cortana, query);
 				break;
 			case ActionTag.Start:
 			case ActionTag.Stop:
@@ -77,6 +80,7 @@ internal sealed class CortanaModule : IModuleInterface
 
 				break;
 			case var _ when command.StartsWith(ActionTag.Type):
+				IModuleInterface.DestroyUpdateTimer();
 				string subfunctionType = command.Split('-').Last();
 				SubfunctionAction[messageId] = subfunctionType;
 				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateSubfunctionActionButtons());

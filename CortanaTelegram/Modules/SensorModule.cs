@@ -68,6 +68,7 @@ internal sealed class SensorModule : IModuleInterface
 		{
 			if (Utils.AddChatArg(chatId, chatArg, query))
 			{
+				IModuleInterface.DestroyUpdateTimer();
 				string prompt = command switch
 				{
 					ActionTag.SetLightThreshold => "Set Light Threshold (0~4096)",

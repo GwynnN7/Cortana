@@ -78,10 +78,13 @@ internal sealed class RaspberryModule : IModuleInterface
 				case ActionTag.Cancel:
 					if (Utils.ChatArgs.TryGetValue(chatId, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
 					{
-						await cortana.DeleteMessages(chatId, chatArg.Arg);
+						if (chatArg.Arg.Count > 0)
+						{
+							await cortana.DeleteMessages(chatId, chatArg.Arg);
+						}
 					}
-					await CreateMenu(cortana, query);
 					Utils.ChatArgs.TryRemove(chatId, out _);
+					await CreateMenu(cortana, query);
 					break;
 			}
 		}
