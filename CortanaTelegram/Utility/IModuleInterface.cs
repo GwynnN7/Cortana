@@ -32,6 +32,6 @@ internal interface IModuleInterface
                 await TModule.CreateMenu(payload.Arg.cortana, payload.Arg.query);
             }
             catch { }
-        }, ETimerType.Telegram).Set((0, 15, 0));
+        }, ETimerType.Telegram).Set((20, 0, 0));
     }
 }
