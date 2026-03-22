@@ -7,18 +7,6 @@ namespace CortanaKernel.Kernel;
 
 public static class Bootloader
 {
-	// private static string GetCortanaScriptCommand(string subcommand)
-	// {
-	// 	string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-	// 	string path = Path.Combine(Directory.GetCurrentDirectory(), ".local", "bin", "cortana");
-	// 	if (File.Exists(path))
-	// 	{
-	// 		return $"\"{path}\" {subcommand}";
-	// 	}
-
-	// 	return $"cortana {subcommand}";
-	// }
-
 	private static string GetServiceName(ESubFunctionType type)
 	{
 		return type switch
@@ -75,7 +63,7 @@ public static class Bootloader
 						: StringResult.Failure(DataHandler.Log($"Failed to restart {serviceName}"));
 				}
 			case ESubfunctionAction.Update when type == ESubFunctionType.CortanaKernel:
-				Helper.DelayCommand("cortana update");
+				Helper.DelayCommand("nohup cortana update &>/dev/null &");
 				return StringResult.Success(
 					DataHandler.Log("Kernel updating..."));
 			case ESubfunctionAction.Update:
