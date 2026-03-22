@@ -1,110 +1,49 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using CortanaLib;
+using CortanaLib.Structures;
 using Discord.Audio;
+
 namespace CortanaDiscord.Handlers;
-
-public class DiscordQueue<T> where T : class
-{
-    private readonly Queue<T> _queue = new();
-    private readonly Queue<CancellationTokenSource> _tokens = new();
-    private readonly Lock _lock = new();
-
-    public void Enqueue(T track)
-    {
-        lock (_lock)
-        {
-            _queue.Enqueue(track);
-            _tokens.Enqueue(new CancellationTokenSource());
-        }
-    }
-
-    public bool TryDequeue(out T? item, out CancellationTokenSource? token)
-    {
-        lock (_lock)
-        {
-            if (_queue.Count == 0 || _tokens.Count == 0)
-            {
-                item = null;
-                token = null;
-                return false;
-            }
-
-            item = _queue.Dequeue();
-            token = _tokens.Dequeue();
-            return true;
-        }
-    }
-
-    public bool TryDequeueLatest(out T? item, out CancellationTokenSource? token)
-    {
-        lock (_lock)
-        {
-            if (_queue.Count == 0 || _tokens.Count == 0)
-            {
-                item = null;
-                token = null;
-                return false;
-            }
-
-            while (_queue.Count > 1 && _tokens.Count > 1)
-            {
-                _queue.Dequeue();
-                _tokens.Dequeue().Dispose();
-            }
-
-            item = _queue.Dequeue();
-            token = _tokens.Dequeue();
-            return true;
-        }
-    }
-
-    public void Clear()
-    {
-        lock (_lock)
-        {
-            foreach (CancellationTokenSource token in _tokens)
-            {
-                token.Dispose();
-            }
-            _queue.Clear();
-            _tokens.Clear();
-        }
-    }
-
-    public bool HasNext()
-    {
-        lock (_lock)
-        {
-            return _queue.Count > 0;
-        }
-    }
-}
 
 public class DiscordMediaPlayer(IAudioClient client) : IDisposable
 {
-    private readonly DiscordQueue<AudioTrack> _queue = new();
+    private readonly ConcurrentQueue<AudioTrack> _queue = new();
+    private readonly SemaphoreSlim _queueSignal = new(0);
+    private readonly object _stateLock = new();
+    private readonly CancellationTokenSource _disposeToken = new();
     private CancellationTokenSource? _currentTrackToken;
+    private Task? _workerTask;
     private int _connectionWarmupDone;
-
-    private int _isPlaying;
+    private bool _disposed;
 
     public void Enqueue(AudioTrack track)
     {
-        _queue.Enqueue(track);
-        if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+        if (string.IsNullOrWhiteSpace(track.StreamUrl)) return;
+
+        lock (_stateLock)
         {
-            _ = Task.Run(PlayQueue);
+            if (_disposed) return;
+            _queue.Enqueue(track);
+            _queueSignal.Release();
+            EnsureWorkerLocked();
         }
     }
 
     public Task<bool> Skip()
     {
-        CancellationTokenSource? token = _currentTrackToken;
-        if (token == null) return Task.FromResult(false);
+        CancellationTokenSource? trackToken;
+        lock (_stateLock)
+        {
+            if (_disposed) return Task.FromResult(false);
+            trackToken = _currentTrackToken;
+        }
+
+        if (trackToken == null) return Task.FromResult(false);
 
         try
         {
-            token.Cancel();
+            trackToken.Cancel();
             return Task.FromResult(true);
         }
         catch (ObjectDisposedException)
@@ -115,100 +54,171 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
 
     public bool Clear()
     {
-        if (!_queue.HasNext()) return false;
-        _queue.Clear();
-        return true;
+        if (_disposed) return false;
+
+        var removed = false;
+        while (_queue.TryDequeue(out _))
+        {
+            removed = true;
+        }
+        return removed;
     }
 
     public void Dispose()
     {
-        _currentTrackToken?.Cancel();
-        _currentTrackToken?.Dispose();
-        _currentTrackToken = null;
-        _queue.Clear();
+        lock (_stateLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+        }
+
+        _disposeToken.Cancel();
+
+        CancellationTokenSource? currentToken;
+        lock (_stateLock)
+        {
+            currentToken = _currentTrackToken;
+            _currentTrackToken = null;
+        }
+
+        try
+        {
+            currentToken?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        currentToken?.Dispose();
+        while (_queue.TryDequeue(out _)) { }
+
+        _queueSignal.Dispose();
+        _disposeToken.Dispose();
         client.Dispose();
     }
 
-    private async Task PlayQueue()
+    private void EnsureWorkerLocked()
     {
-        try
+        if (_workerTask is { IsCompleted: false }) return;
+        _workerTask = Task.Run(ProcessQueueAsync);
+    }
+
+    private async Task ProcessQueueAsync()
+    {
+        while (!_disposeToken.Token.IsCancellationRequested)
         {
-            while (true)
+            try
             {
-                if (!_queue.TryDequeue(out AudioTrack? track, out CancellationTokenSource? token)) break;
-                _currentTrackToken = token;
+                await _queueSignal.WaitAsync(_disposeToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
 
-                if (track == null || string.IsNullOrWhiteSpace(track.StreamUrl) || token == null)
-                {
-                    token?.Dispose();
-                    if (ReferenceEquals(_currentTrackToken, token)) _currentTrackToken = null;
-                    continue;
-                }
+            if (!_queue.TryDequeue(out AudioTrack? track)) continue;
+            if (track == null || string.IsNullOrWhiteSpace(track.StreamUrl)) continue;
 
+            using var trackToken = CancellationTokenSource.CreateLinkedTokenSource(_disposeToken.Token);
+            lock (_stateLock)
+            {
+                if (_disposed) return;
+                _currentTrackToken = trackToken;
+            }
+
+            try
+            {
                 if (Interlocked.CompareExchange(ref _connectionWarmupDone, 1, 0) == 0)
                 {
-                    await Task.Delay(1200, token.Token);
+                    await Task.Delay(1200, trackToken.Token);
                 }
 
-                DataHandler.Log($"Starting track: {track.Title}");
+                await PlayTrackAsync(track, trackToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                DataHandler.Log($"Playback error: {ex.Message}");
+            }
+            finally
+            {
+                lock (_stateLock)
+                {
+                    if (ReferenceEquals(_currentTrackToken, trackToken)) _currentTrackToken = null;
+                }
+            }
+        }
+    }
 
-                Process ffmpeg = CreateStream(track.StreamUrl);
+    private async Task PlayTrackAsync(AudioTrack track, CancellationToken cancellationToken)
+    {
+        DataHandler.Log($"Starting track: {track.Title}");
+
+        using Process ffmpeg = CreateStream(track.StreamUrl);
+
+        try
+        {
+            await using Stream ffmpegStream = ffmpeg.StandardOutput.BaseStream;
+            await using AudioOutStream discord = client.CreatePCMStream(AudioApplication.Mixed);
+
+            try
+            {
+                await ffmpegStream.CopyToAsync(discord, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
                 try
                 {
-                    await using Stream output = ffmpeg.StandardOutput.BaseStream;
-                    await using AudioOutStream? discord = client.CreatePCMStream(AudioApplication.Mixed);
-
-                    try
-                    {
-                        await output.CopyToAsync(discord, token.Token);
-                    }
-                    catch (OperationCanceledException) { }
-                    finally
-                    {
-                        await discord.FlushAsync();
-                    }
+                    await discord.FlushAsync(cancellationToken);
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    DataHandler.Log($"Playback error: {ex.Message}");
-                }
-                finally
-                {
-                    string ffmpegError = await ffmpeg.StandardError.ReadToEndAsync();
-                    if (!ffmpeg.HasExited) ffmpeg.Kill(true);
-                    ffmpeg.Dispose();
-
-                    if (!string.IsNullOrWhiteSpace(ffmpegError))
-                    {
-                        DataHandler.Log($"ffmpeg stderr: {ffmpegError.Trim()}");
-                    }
-
-                    DataHandler.Log($"Track finished: {track.Title}");
-
-                    token.Dispose();
-                    if (ReferenceEquals(_currentTrackToken, token)) _currentTrackToken = null;
                 }
             }
         }
         finally
         {
-            Interlocked.Exchange(ref _isPlaying, 0);
-            if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+            string ffmpegError = await ffmpeg.StandardError.ReadToEndAsync();
+
+            if (!ffmpeg.HasExited)
             {
-                _ = Task.Run(PlayQueue);
+                try
+                {
+                    ffmpeg.Kill(true);
+                }
+                catch (Exception)
+                {
+                }
             }
+
+            if (!string.IsNullOrWhiteSpace(ffmpegError))
+            {
+                DataHandler.Log($"ffmpeg stderr: {ffmpegError.Trim()}");
+            }
+
+            DataHandler.Log($"Track finished: {track.Title}");
         }
     }
 
     private static Process CreateStream(string path)
     {
-        return Process.Start(new ProcessStartInfo
+        Process? ffmpeg = Process.Start(new ProcessStartInfo
         {
             FileName = "ffmpeg",
             Arguments = $"-hide_banner -loglevel panic -nostdin -rw_timeout 15000000 -i \"{path}\" -vn -ac 2 -f s16le -ar 48000 pipe:1",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-        })!;
+        });
+
+        if (ffmpeg == null)
+            throw new CortanaException("Unable to start ffmpeg process");
+
+        return ffmpeg;
     }
 }

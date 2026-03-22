@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CortanaDiscord.Utility;
 using CortanaLib;
 using CortanaLib.Structures;
@@ -11,61 +12,90 @@ public enum JoinStatus
     Join,
     Leave
 }
+
 public record JoinAction(JoinStatus Status, SocketVoiceChannel? Channel);
 
-public class DiscordMediaHandler(SocketGuild guild)
+public class DiscordMediaHandler(SocketGuild guild) : IDisposable
 {
-    private readonly DiscordQueue<JoinAction> _queue = new();
-    private CancellationTokenSource? _currentJoinToken;
-
-    private int _isPlaying;
+    private readonly ConcurrentQueue<JoinAction> _queue = new();
+    private readonly SemaphoreSlim _queueSignal = new(0);
+    private readonly object _stateLock = new();
+    private readonly CancellationTokenSource _disposeToken = new();
+    private Task? _workerTask;
+    private bool _disposed;
 
     public SocketVoiceChannel? CurrentChannel;
     public DiscordMediaPlayer? MediaPlayer;
 
     public void Enqueue(JoinAction joinAction)
     {
-        _queue.Enqueue(joinAction);
-        if (Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+        lock (_stateLock)
         {
-            _ = Task.Run(JoinQueue);
+            if (_disposed) return;
+
+            _queue.Enqueue(joinAction);
+            _queueSignal.Release();
+            EnsureWorkerLocked();
         }
     }
 
-    private async Task JoinQueue()
+    public void Dispose()
     {
-        try
+        lock (_stateLock)
         {
-            while (true)
-            {
-                if (!_queue.TryDequeueLatest(out JoinAction? action, out CancellationTokenSource? token)) break;
-                _currentJoinToken = token;
-
-                if (action == null || token == null)
-                {
-                    token?.Dispose();
-                    if (ReferenceEquals(_currentJoinToken, token)) _currentJoinToken = null;
-                    continue;
-                }
-
-                try
-                {
-                    await JoinTask(action, token.Token);
-                }
-                catch (OperationCanceledException) { }
-                finally
-                {
-                    token.Dispose();
-                    if (ReferenceEquals(_currentJoinToken, token)) _currentJoinToken = null;
-                }
-            }
+            if (_disposed) return;
+            _disposed = true;
         }
-        finally
+
+        _disposeToken.Cancel();
+
+        MediaPlayer?.Dispose();
+        MediaPlayer = null;
+        CurrentChannel = null;
+
+        while (_queue.TryDequeue(out _)) { }
+
+        _queueSignal.Dispose();
+        _disposeToken.Dispose();
+    }
+
+    private void EnsureWorkerLocked()
+    {
+        if (_workerTask is { IsCompleted: false }) return;
+        _workerTask = Task.Run(JoinQueueAsync);
+    }
+
+    private async Task JoinQueueAsync()
+    {
+        while (!_disposeToken.Token.IsCancellationRequested)
         {
-            Interlocked.Exchange(ref _isPlaying, 0);
-            if (_queue.HasNext() && Interlocked.CompareExchange(ref _isPlaying, 1, 0) == 0)
+            try
             {
-                _ = Task.Run(JoinQueue);
+                await _queueSignal.WaitAsync(_disposeToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+
+            if (!_queue.TryDequeue(out JoinAction? action) || action == null) continue;
+
+            // Collapse bursts of stale actions and apply only the most recent intent.
+            while (_queue.TryDequeue(out JoinAction? latestAction))
+            {
+                if (latestAction != null) action = latestAction;
+            }
+
+            try
+            {
+                await JoinTask(action, _disposeToken.Token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                DataHandler.Log($"JoinQueue error: {ex.Message}");
             }
         }
     }
@@ -78,73 +108,81 @@ public class DiscordMediaHandler(SocketGuild guild)
             {
                 case JoinStatus.Join:
                     {
-                        SocketVoiceChannel channel = joinAction.Channel!;
+                        if (joinAction.Channel == null) return;
+
+                        SocketVoiceChannel channel = joinAction.Channel;
                         DataHandler.Log($"Join requested for channel {channel.Name} ({channel.Id})");
-                        await Task.Delay(1500, cancellationToken);
-                        cancellationToken.ThrowIfCancellationRequested();
 
                         if (!AudioHandler.GetAvailableChannels(channel.Guild).Any(availableChannel => availableChannel.Id == channel.Id)) return;
-                        if (AudioHandler.IsConnected(channel, guild)) return;
+                        if (AudioHandler.IsConnected(channel, guild) && MediaPlayer != null)
+                        {
+                            CurrentChannel = channel;
+                            return;
+                        }
 
-                        await AudioHandler.Stop(guild.Id);
+                        await DisconnectInternal(cancellationToken);
                         cancellationToken.ThrowIfCancellationRequested();
 
                         IAudioClient? audioClient = await channel.ConnectAsync();
-                        if (audioClient == null) throw new CortanaException("Errore connessione al canale vocale");
+                        if (audioClient == null)
+                            throw new CortanaException("Errore connessione al canale vocale");
+
                         DataHandler.Log($"Connected to channel {channel.Name} ({channel.Id})");
 
                         CurrentChannel = channel;
-
                         MediaPlayer?.Dispose();
                         MediaPlayer = new DiscordMediaPlayer(audioClient);
 
-                        int connectedUsers = channel.ConnectedUsers.Count;
-                        int helloDelay = connectedUsers > 2 ? 5000 : 1800;
-                        await Task.Delay(helloDelay, cancellationToken);
+                        await Task.Delay(1300, cancellationToken);
                         if (GetActualConnectedChannel(guild)?.Id == channel.Id)
                         {
                             AudioHandler.SayHello(guild.Id);
-
-                            // In multi-user channels, voice encryption transitions can still settle late.
-                            // Queue one fallback hello after a short delay to avoid silent first playback.
-                            if (connectedUsers > 2)
-                            {
-                                await Task.Delay(2500, cancellationToken);
-                                if (GetActualConnectedChannel(guild)?.Id == channel.Id)
-                                {
-                                    DataHandler.Log("Playing fallback hello for multi-user channel");
-                                    AudioHandler.SayHello(guild.Id);
-                                }
-                            }
                         }
+
                         break;
                     }
                 case JoinStatus.Leave:
                     {
-                        DataHandler.Log($"Leave requested");
-                        cancellationToken.ThrowIfCancellationRequested();
-                        await AudioHandler.Stop(guild.Id);
-                        MediaPlayer?.Dispose();
-                        SocketVoiceChannel? actualChannel = GetActualConnectedChannel(guild);
-                        if (CurrentChannel != null && actualChannel != null && CurrentChannel.Id == actualChannel.Id)
-                        {
-                            await CurrentChannel.DisconnectAsync();
-                        }
-                        CurrentChannel = null;
-                        DataHandler.Log($"Leave completed");
+                        DataHandler.Log("Leave requested");
+                        await DisconnectInternal(cancellationToken);
+                        DataHandler.Log("Leave completed");
                         break;
                     }
             }
         }
         catch (OperationCanceledException)
         {
-
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Errore nella gestione della coda di join: {ex.Message}");
             await DiscordUtils.SendToChannel("Errore con la gestione della coda di join", ECortanaChannels.Log);
         }
+    }
+
+    private async Task DisconnectInternal(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        DiscordMediaPlayer? player = MediaPlayer;
+        MediaPlayer = null;
+
+        if (player != null)
+        {
+            player.Clear();
+            await player.Skip();
+            player.Dispose();
+        }
+
+        SocketVoiceChannel? actualChannel = GetActualConnectedChannel(guild);
+        SocketVoiceChannel? previousChannel = CurrentChannel;
+        CurrentChannel = null;
+
+        SocketVoiceChannel? channelToLeave = actualChannel ?? previousChannel;
+        if (channelToLeave == null) return;
+
+        cancellationToken.ThrowIfCancellationRequested();
+        await channelToLeave.DisconnectAsync();
     }
 
     private static SocketVoiceChannel? GetActualConnectedChannel(SocketGuild guild)
