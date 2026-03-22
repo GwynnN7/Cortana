@@ -60,7 +60,9 @@ internal static class AudioHandler
 
 	public static bool IsConnected(SocketVoiceChannel voiceChannel, SocketGuild guild)
 	{
-		if (!MediaQueue.TryGetValue(guild.Id, out DiscordMediaHandler? player) || player.CurrentChannel == null) return false;
+		if (!MediaQueue.TryGetValue(guild.Id, out DiscordMediaHandler? player)) return false;
+		if (player.PendingChannelId == voiceChannel.Id) return true;
+		if (player.CurrentChannel == null) return false;
 		SocketVoiceChannel? actualChannel = GetCurrentCortanaChannel(guild);
 		return player.CurrentChannel.Id == voiceChannel.Id && actualChannel?.Id == voiceChannel.Id;
 	}
@@ -68,6 +70,12 @@ internal static class AudioHandler
 	public static void HandleConnection(SocketGuild guild)
 	{
 		SocketVoiceChannel? currentChannel = GetCurrentCortanaChannel(guild);
+
+		if (currentChannel == null && MediaQueue.TryGetValue(guild.Id, out DiscordMediaHandler? pendingHandler) && pendingHandler.PendingChannelId != null)
+		{
+			SocketVoiceChannel? pendingChannel = guild.GetVoiceChannel(pendingHandler.PendingChannelId.Value);
+			if (pendingChannel != null && IsChannelAvailable(pendingChannel)) return;
+		}
 
 		// If we are already in a valid channel, keep the current voice session stable.
 		if (currentChannel != null)
@@ -98,6 +106,7 @@ internal static class AudioHandler
 			joiner = new DiscordMediaHandler(channel.Guild);
 			MediaQueue[channel.Guild.Id] = joiner;
 		}
+		if (joiner.PendingChannelId == channel.Id) return "Arrivo";
 		joiner.Enqueue(new JoinAction(JoinStatus.Join, channel));
 
 		return "Arrivo";

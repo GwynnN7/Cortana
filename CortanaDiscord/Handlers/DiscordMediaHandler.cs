@@ -26,6 +26,7 @@ public class DiscordMediaHandler(SocketGuild guild) : IDisposable
 
     public SocketVoiceChannel? CurrentChannel;
     public DiscordMediaPlayer? MediaPlayer;
+    public ulong? PendingChannelId;
 
     public void Enqueue(JoinAction joinAction)
     {
@@ -111,6 +112,7 @@ public class DiscordMediaHandler(SocketGuild guild) : IDisposable
                         if (joinAction.Channel == null) return;
 
                         SocketVoiceChannel channel = joinAction.Channel;
+                        PendingChannelId = channel.Id;
                         DataHandler.Log($"Join requested for channel {channel.Name} ({channel.Id})");
 
                         if (!AudioHandler.GetAvailableChannels(channel.Guild).Any(availableChannel => availableChannel.Id == channel.Id)) return;
@@ -133,16 +135,30 @@ public class DiscordMediaHandler(SocketGuild guild) : IDisposable
                         MediaPlayer?.Dispose();
                         MediaPlayer = new DiscordMediaPlayer(audioClient);
 
-                        await Task.Delay(1300, cancellationToken);
+                        int connectedUsers = channel.ConnectedUsers.Count;
+                        int settleDelay = connectedUsers > 2 ? 5000 : 2200;
+                        await Task.Delay(settleDelay, cancellationToken);
                         if (GetActualConnectedChannel(guild)?.Id == channel.Id)
                         {
                             AudioHandler.SayHello(guild.Id);
+
+                            // Multi-user channels may require an extra warm-up track after encryption settles.
+                            if (connectedUsers > 1)
+                            {
+                                await Task.Delay(1800, cancellationToken);
+                                if (GetActualConnectedChannel(guild)?.Id == channel.Id)
+                                {
+                                    AudioHandler.SayHello(guild.Id);
+                                }
+                            }
                         }
 
+                        PendingChannelId = null;
                         break;
                     }
                 case JoinStatus.Leave:
                     {
+                        PendingChannelId = null;
                         DataHandler.Log("Leave requested");
                         await DisconnectInternal(cancellationToken);
                         DataHandler.Log("Leave completed");
@@ -152,9 +168,11 @@ public class DiscordMediaHandler(SocketGuild guild) : IDisposable
         }
         catch (OperationCanceledException)
         {
+            PendingChannelId = null;
         }
         catch (Exception ex)
         {
+            PendingChannelId = null;
             Console.WriteLine($"Errore nella gestione della coda di join: {ex.Message}");
             await DiscordUtils.SendToChannel("Errore con la gestione della coda di join", ECortanaChannels.Log);
         }
