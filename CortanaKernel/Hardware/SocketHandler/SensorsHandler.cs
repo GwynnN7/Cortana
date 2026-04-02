@@ -50,7 +50,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On, automatic: true);
 					IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
 				}
-				if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.CO2Threshold)
+				if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.Eco2Threshold)
 				{
 					if (_airQualityTimer == null)
 					{
@@ -62,6 +62,11 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 						}, ETimerType.Utility);
 						_airQualityTimer.Set((0, 30, 0));
 					}
+				}
+				else
+				{
+					_airQualityTimer?.Destroy();
+					_airQualityTimer = null;
 				}
 			}
 		}

@@ -72,7 +72,7 @@ public static class HardwareApi
 				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
 				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
 				ESettings.MotionOffMin => StringResult.Success(Service.Settings.MotionOffMin.ToString()),
-				ESettings.CO2Threshold => StringResult.Success(Service.Settings.CO2Threshold.ToString()),
+				ESettings.CO2Threshold => StringResult.Success(Service.Settings.Eco2Threshold.ToString()),
 				ESettings.TvocThreshold => StringResult.Success(Service.Settings.TvocThreshold.ToString()),
 				_ => StringResult.Failure("Settings not found")
 			};
@@ -86,7 +86,7 @@ public static class HardwareApi
 					Service.Settings.LightThreshold = value;
 					break;
 				case ESettings.CO2Threshold:
-					Service.Settings.CO2Threshold = value;
+					Service.Settings.Eco2Threshold = value;
 					break;
 				case ESettings.TvocThreshold:
 					Service.Settings.TvocThreshold = value;

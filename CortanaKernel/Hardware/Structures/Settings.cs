@@ -9,9 +9,9 @@ public class Settings
 
     private static readonly string FilePath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaKernel)}/Settings.json");
 
-    public int LightThreshold = 50;
-    public int CO2Threshold = 1000;
-    public int TvocThreshold = 600;
+    public int LightThreshold { get; set; } = 50;
+    public int Eco2Threshold { get; set; } = 1000;
+    public int TvocThreshold { get; set; } = 600;
 
     public EMotionDetection AutomaticMode
     {
