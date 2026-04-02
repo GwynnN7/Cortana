@@ -37,12 +37,17 @@ public enum ESensor
 {
 	Temperature,
 	Light,
-	Motion
+	Motion,
+	Humidity,
+	CO2,
+	Tvoc
 }
 
 public enum ESettings
 {
 	LightThreshold,
+	CO2Threshold,
+	TvocThreshold,
 	AutomaticMode,
 	MorningHour,
 	MotionOffMax,

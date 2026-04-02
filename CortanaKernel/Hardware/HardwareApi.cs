@@ -43,6 +43,18 @@ public static class HardwareApi
 					int? light = SensorsHandler.GetRoomLightLevel();
 					if (light.HasValue) return StringResult.Success(light.Value.ToString());
 					break;
+				case ESensor.Humidity:
+					double? humidity = SensorsHandler.GetRoomHumidity();
+					if (humidity.HasValue) return StringResult.Success(Math.Round(humidity.Value, 1).ToString(CultureInfo.CurrentCulture));
+					break;
+				case ESensor.CO2:
+					int? co2 = SensorsHandler.GetRoomEco2();
+					if (co2.HasValue) return StringResult.Success(co2.Value.ToString());
+					break;
+				case ESensor.Tvoc:
+					int? tvoc = SensorsHandler.GetRoomTvoc();
+					if (tvoc.HasValue) return StringResult.Success(tvoc.Value.ToString());
+					break;
 				case ESensor.Motion:
 					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
 					if (motion is not null) return StringResult.Success((motion.Value == EPowerStatus.On).ToString().ToLower());
@@ -60,6 +72,8 @@ public static class HardwareApi
 				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
 				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
 				ESettings.MotionOffMin => StringResult.Success(Service.Settings.MotionOffMin.ToString()),
+				ESettings.CO2Threshold => StringResult.Success(Service.Settings.CO2Threshold.ToString()),
+				ESettings.TvocThreshold => StringResult.Success(Service.Settings.TvocThreshold.ToString()),
 				_ => StringResult.Failure("Settings not found")
 			};
 		}
@@ -70,6 +84,12 @@ public static class HardwareApi
 			{
 				case ESettings.LightThreshold:
 					Service.Settings.LightThreshold = value;
+					break;
+				case ESettings.CO2Threshold:
+					Service.Settings.CO2Threshold = value;
+					break;
+				case ESettings.TvocThreshold:
+					Service.Settings.TvocThreshold = value;
 					break;
 				case ESettings.AutomaticMode:
 					if (value != (int)EMotionDetection.On && value != (int)EMotionDetection.Off) value = (int)(Service.Settings.AutomaticMode == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);

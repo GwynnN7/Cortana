@@ -8,24 +8,36 @@
     <div class="table-container">
         <table class="raspberry-table">
             <thead>
-            <tr>
-                <th>Sensor</th>
-                <th>Data</th>
-            </tr>
+                <tr>
+                    <th>Sensor</th>
+                    <th>Data</th>
+                </tr>
             </thead>
             <tbody>
-            <tr>
-                <td>Room Temperature</td>
-                <td>@_data?.Temperature</td>
-            </tr>
-            <tr>
-                <td>Light Level</td>
-                <td>@_data?.Light</td>
-            </tr>
-            <tr>
-                <td>Movement</td>
-                <td>@_data?.Motion</td>
-            </tr>
+                <tr>
+                    <td>Room Temperature</td>
+                    <td>@_data?.Temperature</td>
+                </tr>
+                <tr>
+                    <td>Humidity</td>
+                    <td>@_data?.Humidity</td>
+                </tr>
+                <tr>
+                    <td>Light Level</td>
+                    <td>@_data?.Light</td>
+                </tr>
+                <tr>
+                    <td>Movement</td>
+                    <td>@_data?.Motion</td>
+                </tr>
+                <tr>
+                    <td>CO2 Level</td>
+                    <td>@_data?.CO2</td>
+                </tr>
+                <tr>
+                    <td>TVOC Level</td>
+                    <td>@_data?.Tvoc</td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -40,17 +52,23 @@
     {
         _timer = new System.Threading.Timer(_ =>
         {
-            InvokeAsync( async ()  =>
+            InvokeAsync(async () =>
             {
                 string newTemp = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Temperature}");
+                string newHumidity = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Humidity}");
                 string newLight = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Light}");
                 string newMotion = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Motion}");
+                string newCO2 = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.CO2}");
+                string newTvoc = await ApiHandler.Get($"{ERoute.Sensors}/{ESensor.Tvoc}");
                 
                 _data = new SensorData
                 {
                     Temperature = newTemp,
+                    Humidity = newHumidity,
                     Light = newLight,
-                    Motion = newMotion
+                    Motion = newMotion,
+                    CO2 = newCO2,
+                    Tvoc = newTvoc
                 };
 
                 StateHasChanged();
@@ -63,7 +81,10 @@
     private class SensorData
     {
         public string Temperature { get; init; } = "Loading...";
+        public string Humidity { get; init; } = "Loading...";
         public string Light { get; init; } = "Loading...";
         public string Motion { get; init; } = "Loading...";
+        public string CO2 { get; init; } = "Loading...";
+        public string Tvoc { get; init; } = "Loading...";
     }
 }

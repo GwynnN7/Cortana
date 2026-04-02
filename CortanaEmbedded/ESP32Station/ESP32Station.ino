@@ -1,45 +1,50 @@
 #include <WiFi.h>
-#include <OneWire.h>
-#include <DallasTemperature.h>
+#include <Wire.h>
+#include <Adafruit_AHTX0.h>
+#include "SparkFun_ENS160.h"
+#include <BH1750.h>
 
 const char WIFI_SSID[] = "HomeLifeWiFi";
 const char WIFI_PASSWORD[] = "HomeLifeCheru9";
 const char CORTANA_IP[] = "192.168.1.117";
 const int CORTANA_PORT = 5116;
 
-const int led = 21;
-const int light_sensor = 35;
+const int led = 19;
 const int motion_sensor = 23;
-const int temp_sensor = 22;
 
-OneWire oneWire(temp_sensor);
-DallasTemperature DS18B20(&oneWire);
 WiFiClient client;
 
-unsigned long tcpTime;
+Adafruit_AHTX0 aht;
+SparkFun_ENS160 myENS;
+BH1750 lightMeter;
 
+unsigned long tcpTime;
 const int transmissionTime = 5000;
 
 int currentMotion = LOW;
 int lastSentLedState = LOW;
 
-float temp;
-int light;
+float temp = 0.0;
+float humidity = 0.0;
+int luxLight = 0;
+uint16_t eco2 = 0;
+uint16_t tvoc = 0;
 
 void setup()
 {
-  DS18B20.begin();
-  DS18B20.setWaitForConversion(false);
+  Wire.begin(); 
 
   pinMode(motion_sensor, INPUT);
   pinMode(led, OUTPUT);
 
+  aht.begin();
+  myENS.begin(); 
+  myENS.setOperatingMode(SFE_ENS160_STANDARD);
+  lightMeter.begin();
+
   connectToWiFi();
   checkTCPConnection();
-
   client.print("esp32");
-
-  DS18B20.requestTemperatures();
 
   tcpTime = millis();
 }
@@ -50,32 +55,44 @@ void loop()
   digitalWrite(led, currentMotion);
 
   unsigned long newTime = millis() - tcpTime;
+
   if ((newTime >= transmissionTime) || (currentMotion != lastSentLedState))
   {
     checkTCPConnection();
-    light = analogRead(light_sensor);
 
-    if (newTime >= transmissionTime)
+    if (newTime >= transmissionTime) 
     {
-      temp = getTemperature();
-      tcpTime = millis();
+      readSensors();
+      tcpTime = millis(); 
     }
 
-    char buff[100];
-    snprintf(buff, 100, "{ \"motion\": %d, \"light\": %d, \"temperature\": %f }", currentMotion, light, temp);
+    char buff[200]; 
+    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u }", currentMotion, luxLight, temp, humidity, eco2, tvoc);
+    
     client.print(buff);
-
     lastSentLedState = currentMotion;
   }
 
-  delay(50);
+  delay(50); 
 }
 
-float getTemperature()
+void readSensors()
 {
-  temp = DS18B20.getTempCByIndex(0);
-  DS18B20.requestTemperatures();
-  return temp;
+  sensors_event_t humidityEvent, tempEvent;
+  aht.getEvent(&humidityEvent, &tempEvent);
+  temp = tempEvent.temperature; // Degrees Celsius
+  humidity = humidityEvent.relative_humidity; // Percent Relative Humidity
+
+  myENS.setTempCompensationCelsius(temp);
+  myENS.setRHCompensationFloat(humidity);
+
+  if (myENS.checkDataStatus()) 
+  {
+    eco2 = myENS.getECO2(); // PPM of equivalent CO2 in the air
+    tvoc = myENS.getTVOC(); // PPB of Total Volatile Organic Compounds (TVOC) in the air
+  }
+
+  luxLight = lightMeter.readLightLevel(); // Lux value
 }
 
 void checkTCPConnection()

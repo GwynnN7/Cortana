@@ -51,6 +51,9 @@ public class SensorEndpoints : ICarterModule
                     {
                         ESensor.Temperature => "°C",
                         ESensor.Light => " lux",
+                        ESensor.Humidity => " %",
+                        ESensor.CO2 => " ppm",
+                        ESensor.Tvoc => " ppb",
                         _ => ""
                     };
                     return TypedResults.Json(new SensorResponse(Sensor: sensorType!.Value.ToString(), Value: val, Unit: unit));

@@ -49,6 +49,10 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On, automatic: true);
 					IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
 				}
+				if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.CO2Threshold)
+				{
+					IpcService.Publish(EMessageCategory.Telegram, $"Air quality warning! You should open the window");
+				}
 			}
 		}
 
@@ -85,6 +89,24 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		lock (InstanceLock)
 			return _instance?._lastSensorData?.Temperature;
+	}
+
+	public static double? GetRoomHumidity()
+	{
+		lock (InstanceLock)
+			return _instance?._lastSensorData?.Humidity;
+	}
+
+	public static int? GetRoomEco2()
+	{
+		lock (InstanceLock)
+			return _instance?._lastSensorData?.Eco2;
+	}
+
+	public static int? GetRoomTvoc()
+	{
+		lock (InstanceLock)
+			return _instance?._lastSensorData?.Tvoc;
 	}
 
 	public static EPowerStatus? GetMotionDetected()

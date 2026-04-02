@@ -15,6 +15,7 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
     private CancellationTokenSource? _currentTrackToken;
     private Task? _workerTask;
     private int _connectionWarmupDone;
+    private int _voicePipelinePrimed;
     private bool _disposed;
 
     public void Enqueue(AudioTrack track)
@@ -156,10 +157,17 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
     {
         DataHandler.Log($"Starting track: {track.Title}");
 
+        if (Interlocked.CompareExchange(ref _voicePipelinePrimed, 1, 0) == 0)
+        {
+            await PrimeVoicePipelineAsync(cancellationToken);
+        }
+
         using Process ffmpeg = CreateStream(track.StreamUrl);
 
         try
         {
+            await client.SetSpeakingAsync(true);
+
             await using Stream ffmpegStream = ffmpeg.StandardOutput.BaseStream;
             await using AudioOutStream discord = client.CreatePCMStream(AudioApplication.Mixed);
 
@@ -183,6 +191,14 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
         }
         finally
         {
+            try
+            {
+                await client.SetSpeakingAsync(false);
+            }
+            catch (Exception)
+            {
+            }
+
             string ffmpegError = await ffmpeg.StandardError.ReadToEndAsync();
 
             if (!ffmpeg.HasExited)
@@ -202,6 +218,45 @@ public class DiscordMediaPlayer(IAudioClient client) : IDisposable
             }
 
             DataHandler.Log($"Track finished: {track.Title}");
+        }
+    }
+
+    private async Task PrimeVoicePipelineAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.SetSpeakingAsync(true);
+
+            await using AudioOutStream discord = client.CreatePCMStream(AudioApplication.Mixed);
+
+            // 20 ms of stereo 16-bit PCM at 48 kHz is 3840 bytes.
+            byte[] silenceFrame = new byte[3840];
+            for (var i = 0; i < 120; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await discord.WriteAsync(silenceFrame, cancellationToken);
+                await Task.Delay(20, cancellationToken);
+            }
+
+            await discord.FlushAsync(cancellationToken);
+            DataHandler.Log("Voice pipeline primed");
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            DataHandler.Log($"Voice warmup error: {ex.Message}");
+        }
+        finally
+        {
+            try
+            {
+                await client.SetSpeakingAsync(false);
+            }
+            catch (Exception)
+            {
+            }
         }
     }
 
