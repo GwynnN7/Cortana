@@ -86,6 +86,8 @@ public static class CortanaTelegramBot
 					await DeviceModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.SetLightThreshold:
+				case EArgsType.SetCO2Threshold:
+				case EArgsType.SetTvocThreshold:
 				case EArgsType.SetMorningHour:
 				case EArgsType.SetMotionOffMax:
 				case EArgsType.SetMotionOffMin:

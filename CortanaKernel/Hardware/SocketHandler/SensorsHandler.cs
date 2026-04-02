@@ -14,7 +14,8 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
 
-	private Timer? _motionTimer;
+	private Timer? _motionTimer = null;
+	private Timer? _airQualityTimer = null;
 	private SensorData? _lastSensorData;
 
 	protected override void HandleRead(string message)
@@ -51,7 +52,16 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 				}
 				if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.CO2Threshold)
 				{
-					IpcService.Publish(EMessageCategory.Telegram, $"Air quality warning! You should open the window");
+					if (_airQualityTimer == null)
+					{
+						IpcService.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
+						_airQualityTimer = new Timer("air-quality-timer", null, async sender =>
+						{
+							_airQualityTimer?.Destroy();
+							_airQualityTimer = null;
+						}, ETimerType.Utility);
+						_airQualityTimer.Set((0, 30, 0));
+					}
 				}
 			}
 		}
