@@ -16,24 +16,24 @@ public static class DeviceHandler
 	private static int PowerPin => Gpio23;
 	private static int GenericPin => Gpio24;
 
-	public static readonly Dictionary<EDevice, EPowerStatus> DeviceStatus;
+	public static readonly Dictionary<EDevice, EStatus> DeviceStatus;
 	private static readonly Lock LampLock = new();
 
 	static DeviceHandler()
 	{
-		DeviceStatus = new Dictionary<EDevice, EPowerStatus>();
+		DeviceStatus = new Dictionary<EDevice, EStatus>();
 	}
 
 	public static void LoadDevices()
 	{
-		foreach (EDevice device in Enum.GetValues<EDevice>()) DeviceStatus.Add(device, EPowerStatus.Off);
+		foreach (EDevice device in Enum.GetValues<EDevice>()) DeviceStatus.Add(device, EStatus.Off);
 	}
 
-	public static EPowerStatus PowerLamp(EPowerAction state)
+	public static EStatus PowerLamp(ESwitchAction action)
 	{
-		switch (state)
+		switch (action)
 		{
-			case EPowerAction.On when DeviceStatus[EDevice.Lamp] == EPowerStatus.Off:
+			case ESwitchAction.On when DeviceStatus[EDevice.Lamp] == EStatus.Off:
 				if (Service.NetworkData.Location == ELocation.Orvieto)
 					Task.Run(() =>
 					{
@@ -45,9 +45,9 @@ public static class DeviceHandler
 						}
 					});
 				else UseGpio(LampPin, PinValue.High);
-				DeviceStatus[EDevice.Lamp] = EPowerStatus.On;
+				DeviceStatus[EDevice.Lamp] = EStatus.On;
 				break;
-			case EPowerAction.Off when DeviceStatus[EDevice.Lamp] == EPowerStatus.On:
+			case ESwitchAction.Off when DeviceStatus[EDevice.Lamp] == EStatus.On:
 				if (Service.NetworkData.Location == ELocation.Orvieto)
 					Task.Run(() =>
 					{
@@ -59,65 +59,65 @@ public static class DeviceHandler
 						}
 					});
 				else UseGpio(LampPin, PinValue.Low);
-				DeviceStatus[EDevice.Lamp] = EPowerStatus.Off;
+				DeviceStatus[EDevice.Lamp] = EStatus.Off;
 				break;
-			case EPowerAction.Toggle:
+			case ESwitchAction.Toggle:
 				return PowerLamp(Helper.ConvertToggle(EDevice.Lamp));
 		}
 		if (LampPin == GenericPin) DeviceStatus[EDevice.Generic] = DeviceStatus[EDevice.Lamp];
 		return DeviceStatus[EDevice.Lamp];
 	}
 
-	public static EPowerStatus PowerGeneric(EPowerAction state)
+	public static EStatus PowerGeneric(ESwitchAction state)
 	{
 		if (LampPin == GenericPin) return PowerLamp(state);
 
 		switch (state)
 		{
-			case EPowerAction.On:
+			case ESwitchAction.On:
 				UseGpio(GenericPin, PinValue.High);
-				DeviceStatus[EDevice.Generic] = EPowerStatus.On;
+				DeviceStatus[EDevice.Generic] = EStatus.On;
 				break;
-			case EPowerAction.Off:
+			case ESwitchAction.Off:
 				UseGpio(GenericPin, PinValue.Low);
-				DeviceStatus[EDevice.Generic] = EPowerStatus.Off;
+				DeviceStatus[EDevice.Generic] = EStatus.Off;
 				break;
-			case EPowerAction.Toggle:
+			case ESwitchAction.Toggle:
 			default:
 				return PowerGeneric(Helper.ConvertToggle(EDevice.Generic));
 		}
 		return DeviceStatus[EDevice.Generic];
 	}
 
-	public static EPowerStatus PowerComputer(EPowerAction state)
+	public static EStatus PowerComputer(ESwitchAction state)
 	{
 		switch (state)
 		{
-			case EPowerAction.On:
+			case ESwitchAction.On:
 				ComputerHandler.Boot();
-				return EPowerStatus.On;
-			case EPowerAction.Off:
+				return EStatus.On;
+			case ESwitchAction.Off:
 				ComputerHandler.Shutdown();
-				return EPowerStatus.Off;
-			case EPowerAction.Toggle:
+				return EStatus.Off;
+			case ESwitchAction.Toggle:
 			default:
 				return PowerComputer(Helper.ConvertToggle(EDevice.Computer));
 		}
 	}
 
-	public static EPowerStatus PowerComputerSupply(EPowerAction state)
+	public static EStatus PowerComputerSupply(ESwitchAction state)
 	{
 		switch (state)
 		{
-			case EPowerAction.On:
+			case ESwitchAction.On:
 				UseGpio(PowerPin, PinValue.High);
-				DeviceStatus[EDevice.Power] = EPowerStatus.On;
+				DeviceStatus[EDevice.Power] = EStatus.On;
 				break;
-			case EPowerAction.Off:
+			case ESwitchAction.Off:
 				UseGpio(PowerPin, PinValue.Low);
-				DeviceStatus[EDevice.Power] = EPowerStatus.Off;
+				DeviceStatus[EDevice.Power] = EStatus.Off;
 				break;
-			case EPowerAction.Toggle:
+			case ESwitchAction.Toggle:
 			default:
 				return PowerComputerSupply(Helper.ConvertToggle(EDevice.Power));
 		}

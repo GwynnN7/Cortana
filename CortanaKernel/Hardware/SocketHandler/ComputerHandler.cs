@@ -13,8 +13,8 @@ public class ComputerHandler : ClientHandler
 
 	public ComputerHandler(Socket socket) : base(socket, "Computer")
 	{
-		UpdateComputerStatus(EPowerStatus.On);
-		Service.ComputerStatusUpdated(EPowerStatus.On);
+		UpdateComputerStatus(EStatus.On);
+		Service.ComputerStatusUpdated();
 	}
 
 	protected override void HandleRead(string message)
@@ -22,7 +22,7 @@ public class ComputerHandler : ClientHandler
 		switch (message)
 		{
 			case "SYN":
-				UpdateComputerStatus(EPowerStatus.On);
+				UpdateComputerStatus(EStatus.On);
 				break;
 			default:
 				lock (_messages)
@@ -39,8 +39,8 @@ public class ComputerHandler : ClientHandler
 		base.DisconnectSocket();
 		_messages.Clear();
 		_instance = null;
-		UpdateComputerStatus(EPowerStatus.Off);
-		Service.ComputerStatusUpdated(EPowerStatus.Off);
+		UpdateComputerStatus(EStatus.Off);
+		Service.ComputerStatusUpdated();
 	}
 
 	// Static methods
@@ -104,18 +104,18 @@ public class ComputerHandler : ClientHandler
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EPowerStatus.On) && (DateTime.Now - start).TotalSeconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EStatus.On) && (DateTime.Now - start).TotalSeconds <= 100) await Task.Delay(1500);
 
 		if ((DateTime.Now - start).TotalSeconds < 3) await Task.Delay(15000);
 		else await Task.Delay(5000);
 	}
 
-	private static void UpdateComputerStatus(EPowerStatus power)
+	private static void UpdateComputerStatus(EStatus power)
 	{
 		DeviceHandler.DeviceStatus[EDevice.Computer] = power;
 	}
 
-	private static EPowerStatus GetComputerStatus()
+	private static EStatus GetComputerStatus()
 	{
 		return DeviceHandler.DeviceStatus[EDevice.Computer];
 	}

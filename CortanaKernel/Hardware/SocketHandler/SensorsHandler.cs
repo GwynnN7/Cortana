@@ -22,52 +22,56 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		var newData = JsonSerializer.Deserialize<SensorData>(message, DataHandler.SerializerOptions);
 
-		if (Service.Settings.AutomaticMode == EMotionDetection.On)
+		if (Service.Settings.AutomaticMode == EStatus.On)
 		{
-			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.On)
+			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.On)
 			{
 				switch (newData)
 				{
-					case { Motion: (int)EPowerStatus.Off } when _motionTimer == null:
+					case { Motion: (int)EStatus.Off } when _motionTimer == null:
 						{
-							int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EPowerStatus.On
+							int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.On
 								? Service.Settings.MotionOffMax
 								: Service.Settings.MotionOffMin;
 							_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
 							_motionTimer.Set((seconds, 0, 0));
 							break;
 						}
-					case { Motion: (int)EPowerStatus.On }:
+					case { Motion: (int)EStatus.On }:
 						_motionTimer?.Destroy();
 						_motionTimer = null;
 						break;
 				}
 			}
-			else if (newData.Motion == (int)EPowerStatus.On)
+			else if (newData.Motion == (int)EStatus.On)
 			{
-				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off && newData.Light <= Service.Settings.LightThreshold)
+				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 				{
-					HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.On, automatic: true);
+					HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.On, automatic: true);
 					IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
 				}
-				if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.Eco2Threshold)
+			}
+		}
+
+		if (newData.Motion == (int)EStatus.On)
+		{
+			if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.Eco2Threshold)
+			{
+				if (_airQualityTimer == null)
 				{
-					if (_airQualityTimer == null)
+					IpcService.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
+					_airQualityTimer = new Timer("air-quality-timer", null, async sender =>
 					{
-						IpcService.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
-						_airQualityTimer = new Timer("air-quality-timer", null, async sender =>
-						{
-							_airQualityTimer?.Destroy();
-							_airQualityTimer = null;
-						}, ETimerType.Utility);
-						_airQualityTimer.Set((0, 30, 0));
-					}
+						_airQualityTimer?.Destroy();
+						_airQualityTimer = null;
+					}, ETimerType.Utility);
+					_airQualityTimer.Set((0, 30, 0));
 				}
-				else
-				{
-					_airQualityTimer?.Destroy();
-					_airQualityTimer = null;
-				}
+			}
+			else
+			{
+				_airQualityTimer?.Destroy();
+				_airQualityTimer = null;
 			}
 		}
 
@@ -78,9 +82,9 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	{
 		_motionTimer?.Destroy();
 		_motionTimer = null;
-		if (Service.Settings.AutomaticMode == EMotionDetection.Off) return Task.CompletedTask;
+		if (Service.Settings.AutomaticMode == EStatus.Off) return Task.CompletedTask;
 
-		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off, automatic: true);
+		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
 		IpcService.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
 
 		return Task.CompletedTask;
@@ -124,12 +128,12 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 			return _instance?._lastSensorData?.Tvoc;
 	}
 
-	public static EPowerStatus? GetMotionDetected()
+	public static EStatus? GetMotionDetected()
 	{
 		lock (InstanceLock)
 		{
 			if (_instance?._lastSensorData == null) return null;
-			return _instance._lastSensorData.Value.Motion == (int)EPowerStatus.On ? EPowerStatus.On : EPowerStatus.Off;
+			return _instance._lastSensorData.Value.Motion == (int)EStatus.On ? EStatus.On : EStatus.Off;
 		}
 	}
 

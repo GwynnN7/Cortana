@@ -13,14 +13,14 @@ public class Settings
     public int Eco2Threshold { get; set; } = 1000;
     public int TvocThreshold { get; set; } = 600;
 
-    public EMotionDetection AutomaticMode
+    public EStatus AutomaticMode
     {
         get;
         set
         {
-            field = (EMotionDetection)Math.Clamp((int)value, (int)EMotionDetection.Off, (int)EMotionDetection.On);
+            field = (EStatus)Math.Clamp((int)value, (int)EStatus.Off, (int)EStatus.On);
         }
-    } = EMotionDetection.On;
+    } = EStatus.On;
 
     public int MorningHour
     {

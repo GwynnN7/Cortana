@@ -56,8 +56,8 @@ public static class HardwareApi
 					if (tvoc.HasValue) return StringResult.Success(tvoc.Value.ToString());
 					break;
 				case ESensor.Motion:
-					EPowerStatus? motion = SensorsHandler.GetMotionDetected();
-					if (motion is not null) return StringResult.Success((motion.Value == EPowerStatus.On).ToString().ToLower());
+					EStatus? motion = SensorsHandler.GetMotionDetected();
+					if (motion is not null) return StringResult.Success((motion.Value == EStatus.On).ToString().ToLower());
 					break;
 			}
 			return StringResult.Failure("Sensor offline");
@@ -92,8 +92,8 @@ public static class HardwareApi
 					Service.Settings.TvocThreshold = value;
 					break;
 				case ESettings.AutomaticMode:
-					if (value != (int)EMotionDetection.On && value != (int)EMotionDetection.Off) value = (int)(Service.Settings.AutomaticMode == EMotionDetection.On ? EMotionDetection.Off : EMotionDetection.On);
-					Service.Settings.AutomaticMode = (EMotionDetection)value;
+					if (value != (int)EStatus.On && value != (int)EStatus.Off) value = (int)(Service.Settings.AutomaticMode == EStatus.On ? EStatus.Off : EStatus.On);
+					Service.Settings.AutomaticMode = (EStatus)value;
 					break;
 				case ESettings.MorningHour:
 					Service.Settings.MorningHour = value;
@@ -161,7 +161,7 @@ public static class HardwareApi
 		{
 			lock (ComputerLock)
 			{
-				if (GetPower(EDevice.Computer) == EPowerStatus.Off) return StringResult.Failure("Computer is off");
+				if (GetPower(EDevice.Computer) == EStatus.Off) return StringResult.Failure("Computer is off");
 				bool result = command switch
 				{
 					EComputerCommand.Shutdown => ComputerHandler.Shutdown(),
@@ -182,7 +182,7 @@ public static class HardwareApi
 			}
 		}
 
-		public static EPowerStatus GetPower(EDevice device)
+		public static EStatus GetPower(EDevice device)
 		{
 			lock (DeviceLock)
 			{
@@ -190,11 +190,11 @@ public static class HardwareApi
 			}
 		}
 
-		public static StringResult Switch(EDevice device, EPowerAction trigger, bool automatic = false)
+		public static StringResult Switch(EDevice device, ESwitchAction trigger, bool automatic = false)
 		{
 			lock (DeviceLock)
 			{
-				EPowerStatus? result = device switch
+				EStatus? result = device switch
 				{
 					EDevice.Computer => HandleComputer(trigger), // Check if power supply is off before turning on
 					EDevice.Power => HandleComputerSupply(trigger), // Check if computer is off before removing power
@@ -206,11 +206,11 @@ public static class HardwareApi
 			}
 		}
 
-		public static StringResult SwitchRoom(EPowerAction action)
+		public static StringResult SwitchRoom(ESwitchAction action)
 		{
 			lock (DeviceLock)
 			{
-				if (action == EPowerAction.On)
+				if (action == ESwitchAction.On)
 				{
 					if (SensorsHandler.GetRoomLightLevel().GetValueOrDefault(0) <= Service.Settings.LightThreshold)
 					{
@@ -224,44 +224,44 @@ public static class HardwareApi
 			}
 		}
 
-		private static EPowerStatus HandleLamp(EPowerAction action, bool automatic)
+		private static EStatus HandleLamp(ESwitchAction action, bool automatic)
 		{
 			if (!automatic) Service.TemporaryManualMode();
 			return DeviceHandler.PowerLamp(action);
 		}
 
-		private static EPowerStatus HandleComputer(EPowerAction action)
+		private static EStatus HandleComputer(ESwitchAction action)
 		{
 			switch (action)
 			{
-				case EPowerAction.On:
-					if (GetPower(EDevice.Power) == EPowerStatus.Off) DeviceHandler.PowerComputerSupply(EPowerAction.On);
-					return DeviceHandler.PowerComputer(EPowerAction.On);
-				case EPowerAction.Off:
-					return DeviceHandler.PowerComputer(EPowerAction.Off);
-				case EPowerAction.Toggle:
+				case ESwitchAction.On:
+					if (GetPower(EDevice.Power) == EStatus.Off) DeviceHandler.PowerComputerSupply(ESwitchAction.On);
+					return DeviceHandler.PowerComputer(ESwitchAction.On);
+				case ESwitchAction.Off:
+					return DeviceHandler.PowerComputer(ESwitchAction.Off);
+				case ESwitchAction.Toggle:
 				default:
 					return HandleComputer(Helper.ConvertToggle(EDevice.Computer));
 			}
 		}
 
-		private static EPowerStatus HandleComputerSupply(EPowerAction action)
+		private static EStatus HandleComputerSupply(ESwitchAction action)
 		{
 			switch (action)
 			{
-				case EPowerAction.On:
-					return HandleComputer(EPowerAction.On);
-				case EPowerAction.Off when GetPower(EDevice.Computer) == EPowerStatus.On:
+				case ESwitchAction.On:
+					return HandleComputer(ESwitchAction.On);
+				case ESwitchAction.Off when GetPower(EDevice.Computer) == EStatus.On:
 					Task.Run(async () =>
 					{
-						DeviceHandler.PowerComputer(EPowerAction.Off);
+						DeviceHandler.PowerComputer(ESwitchAction.Off);
 						await ComputerHandler.CheckForConnection();
-						DeviceHandler.PowerComputerSupply(EPowerAction.Off);
+						DeviceHandler.PowerComputerSupply(ESwitchAction.Off);
 					});
-					return EPowerStatus.Off;
-				case EPowerAction.Off:
-					return DeviceHandler.PowerComputerSupply(EPowerAction.Off);
-				case EPowerAction.Toggle:
+					return EStatus.Off;
+				case ESwitchAction.Off:
+					return DeviceHandler.PowerComputerSupply(ESwitchAction.Off);
+				case ESwitchAction.Toggle:
 				default:
 					return HandleComputerSupply(Helper.ConvertToggle(EDevice.Power));
 			}

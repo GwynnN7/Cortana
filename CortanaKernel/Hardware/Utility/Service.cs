@@ -59,7 +59,7 @@ public static class Service
 		{
 			_morningMessage = true;
 
-			if (HardwareApi.Devices.GetPower(EDevice.Computer) == EPowerStatus.Off)
+			if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
 			{
 				EnterSleepMode();
 				return Task.CompletedTask;
@@ -74,7 +74,7 @@ public static class Service
 		{
 			if (!_morningMessage) return Task.CompletedTask;
 			IpcService.Publish(EMessageCategory.Telegram, "Good morning, enabling Automatic mode");
-			Settings.AutomaticMode = EMotionDetection.On;
+			Settings.AutomaticMode = EStatus.On;
 			_morningMessage = false;
 		}
 
@@ -83,8 +83,8 @@ public static class Service
 
 	public static void TemporaryManualMode()
 	{
-		if (Settings.AutomaticMode == EMotionDetection.Off) return;
-		Settings.AutomaticMode = EMotionDetection.Off;
+		if (Settings.AutomaticMode == EStatus.Off) return;
+		Settings.AutomaticMode = EStatus.Off;
 		ResetTemporaryTimer();
 		IpcService.Publish(EMessageCategory.Telegram, "Manual mode temporary enabled");
 	}
@@ -93,7 +93,7 @@ public static class Service
 	{
 		_temporaryTimer?.Destroy();
 		_temporaryTimer = null;
-		Settings.AutomaticMode = EMotionDetection.On;
+		Settings.AutomaticMode = EStatus.On;
 		IpcService.Publish(EMessageCategory.Telegram, "Automatic mode re-enabled");
 
 		return Task.CompletedTask;
@@ -101,19 +101,19 @@ public static class Service
 
 	public static void EnterSleepMode(bool userAction = false)
 	{
-		Settings.AutomaticMode = EMotionDetection.Off;
+		Settings.AutomaticMode = EStatus.Off;
 
 		switch (userAction)
 		{
 			case true:
 				ResetControllerTimer();
 				break;
-			case false when HardwareApi.Devices.GetPower(EDevice.Lamp) == EPowerStatus.Off:
+			case false when HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.Off:
 				return;
 		}
 
 		IpcService.Publish(EMessageCategory.Telegram, "Good night, enabling Manual mode until morning");
-		HardwareApi.Devices.Switch(EDevice.Lamp, EPowerAction.Off);
+		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
 	}
 
 	public static void InterruptController()
@@ -121,9 +121,9 @@ public static class Service
 		_controllerTimer?.Destroy();
 	}
 
-	public static void ComputerStatusUpdated(EPowerStatus status)
+	public static void ComputerStatusUpdated()
 	{
-		Settings.AutomaticMode = EMotionDetection.On;
+		Settings.AutomaticMode = EStatus.On;
 		ResetControllerTimer();
 	}
 }

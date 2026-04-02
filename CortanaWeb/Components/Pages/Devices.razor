@@ -10,37 +10,49 @@
                 <h3>Power</h3>
                 <p>@_deviceStatus?[EDevice.Power]</p>
                 <div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.On)">On</button>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Off)">Off</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.On)">On</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.Off)">Off</button>
                 </div>
-                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Power, EPowerAction.Toggle)">Toggle</button>
+                <button class="device-button"
+                        @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.Toggle)">Toggle</button>
             </div>
             <div class="device-card">
                 <h3>Computer</h3>
                 <p>@_deviceStatus?[EDevice.Computer]</p>
                 <div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.On)">On</button>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Off)">Off</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.On)">On</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.Off)">Off</button>
                 </div>
-                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Computer, EPowerAction.Toggle)">Toggle</button>
+                <button class="device-button"
+                        @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.Toggle)">Toggle</button>
             </div>
             <div class="device-card">
                 <h3>Lamp</h3>
                 <p>@_deviceStatus?[EDevice.Lamp]</p>
                 <div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.On)">On</button>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Off)">Off</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.On)">On</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.Off)">Off</button>
                 </div>
-                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Lamp, EPowerAction.Toggle)">Toggle</button>
+                <button class="device-button"
+                        @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle)">Toggle</button>
             </div>
             <div class="device-card">
                 <h3>Generic</h3>
                 <p>@_deviceStatus?[EDevice.Generic]</p>
                 <div>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.On)">On</button>
-                    <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Off)">Off</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.On)">On</button>
+                    <button class="device-button"
+                            @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.Off)">Off</button>
                 </div>
-                <button class="device-button" @onclick="() => SwitchDevice(EDevice.Generic, EPowerAction.Toggle)">Toggle</button>
+                <button class="device-button"
+                        @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.Toggle)">Toggle</button>
             </div>
         </div>
     </section>
@@ -66,7 +78,7 @@
     {
         _timer = new System.Threading.Timer(_ =>
         {
-            InvokeAsync( async ()  =>
+            InvokeAsync(async () =>
             {
                 await UpdateStatus();
                 StateHasChanged();
@@ -76,7 +88,7 @@
         await base.OnInitializedAsync();
     }
 
-    private async Task SwitchDevice(EDevice device, EPowerAction action)
+    private async Task SwitchDevice(EDevice device, ESwitchAction action)
     {
         await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
         await UpdateStatus();

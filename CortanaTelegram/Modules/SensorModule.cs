@@ -96,10 +96,10 @@ internal sealed class SensorModule : IModuleInterface
 			switch (command)
 			{
 				case ActionTag.EnableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.On));
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On));
 					break;
 				case ActionTag.DisableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EMotionDetection.Off));
+					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off));
 					break;
 				case ActionTag.Cancel:
 					break;

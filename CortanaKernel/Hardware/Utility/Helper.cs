@@ -59,9 +59,9 @@ public static class Helper
 		return $"{Math.Round(temperature, round)}°C";
 	}
 
-	public static EPowerAction ConvertToggle(EDevice device)
+	public static ESwitchAction ConvertToggle(EDevice device)
 	{
-		return HardwareApi.Devices.GetPower(device) == EPowerStatus.On ? EPowerAction.Off : EPowerAction.On;
+		return HardwareApi.Devices.GetPower(device) == EStatus.On ? ESwitchAction.Off : ESwitchAction.On;
 	}
 }
 

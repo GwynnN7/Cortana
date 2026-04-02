@@ -16,6 +16,12 @@ public enum ERaspberryInfo
 	Ip
 }
 
+public enum ELocation
+{
+	Orvieto,
+	Pisa
+}
+
 public enum ERaspberryCommand
 {
 	Shutdown,
@@ -54,27 +60,15 @@ public enum ESettings
 	MotionOffMin
 }
 
-public enum EMotionDetection
+public enum EStatus
 {
 	Off = 0,
 	On = 1
 }
 
-public enum EPowerStatus
-{
-	Off,
-	On
-}
-
-public enum EPowerAction
+public enum ESwitchAction
 {
 	Off,
 	On,
 	Toggle
-}
-
-public enum ELocation
-{
-	Orvieto,
-	Pisa
 }
