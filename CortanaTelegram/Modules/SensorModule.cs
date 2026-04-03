@@ -147,7 +147,7 @@ internal sealed class SensorModule : IModuleInterface
 		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
 		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
 
-		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n🌡 • <b>Humidity:</b> {humidity}\n🖲 • <b>CO2:</b> {co2}\n🖲 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🖲 • <b>CO2 Threshold</b>: {co2Threshold}\n🖲 • <b>TVOC Threshold</b>: {tvocThreshold}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
+		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n🌡 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -166,8 +166,8 @@ internal sealed class SensorModule : IModuleInterface
 					.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
 					.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
 					.AddNewRow()
-					.AddButton("CO2 Threshold 🖲", ActionTag.SetCO2Threshold)
-					.AddButton("TVOC Threshold 🖲", ActionTag.SetTvocThreshold)
+					.AddButton("CO2 Threshold 🧪", ActionTag.SetCO2Threshold)
+					.AddButton("TVOC Threshold 🦠", ActionTag.SetTvocThreshold)
 					.AddNewRow()
 					.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
 					.AddNewRow()
