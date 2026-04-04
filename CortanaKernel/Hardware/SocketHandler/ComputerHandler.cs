@@ -113,6 +113,7 @@ public class ComputerHandler : ClientHandler
 	private static void UpdateComputerStatus(EStatus power)
 	{
 		DeviceHandler.DeviceStatus[EDevice.Computer] = power;
+		if (power == EStatus.On) DeviceHandler.DeviceStatus[EDevice.Power] = EStatus.On;
 	}
 
 	private static EStatus GetComputerStatus()
