@@ -144,13 +144,14 @@ internal sealed class SensorModule : IModuleInterface
 
 		string autoMode = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.AutomaticMode}")).Match(autoMode => autoMode.Value.Contains("On") ? "🟢" : "🔴", () => "Unknown");
 		string lightThreshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.LightThreshold}")).Match(light => light.Value, () => "Unknown");
+		string lampToggle = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.LampToggle}")).Match(lampToggle => lampToggle.Value, () => "Unknown");
 		string co2Threshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.CO2Threshold}")).Match(co2 => co2.Value, () => "Unknown");
 		string tvocThreshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.TvocThreshold}")).Match(tvoc => tvoc.Value, () => "Unknown");
 		string morningHour = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MorningHour}")).Match(morningHour => morningHour.Value, () => "Unknown");
 		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
 		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
 
-		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n💧 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
+		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n💧 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n⚖️ • <b>Lamp Toggle</b>: {lampToggle}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -173,6 +174,7 @@ internal sealed class SensorModule : IModuleInterface
 					.AddButton("TVOC Threshold 🦠", ActionTag.SetTvocThreshold)
 					.AddNewRow()
 					.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
+					.AddButton("Lamp Toggle ⚖️", ActionTag.SetLampToggle)
 					.AddNewRow()
 					.AddButton("Morning Hour 🕒", ActionTag.SetMorningHour);
 				break;
