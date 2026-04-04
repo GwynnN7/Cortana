@@ -9,9 +9,10 @@ public class Settings
 
     private static readonly string FilePath = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaKernel)}/Settings.json");
 
-    public int LightThreshold { get; set; } = 50;
-    public int Eco2Threshold { get; set; } = 1000;
-    public int TvocThreshold { get; set; } = 600;
+    public int LightThreshold { get; set; }
+    public EStatus LampToggle { get; set; }
+    public int Eco2Threshold { get; set; }
+    public int TvocThreshold { get; set; }
 
     public EStatus AutomaticMode
     {

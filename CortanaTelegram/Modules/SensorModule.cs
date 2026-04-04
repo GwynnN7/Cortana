@@ -65,6 +65,7 @@ internal sealed class SensorModule : IModuleInterface
 		var chatArg = command switch
 		{
 			ActionTag.SetLightThreshold => new ChatArgs(EArgsType.SetLightThreshold, query, query.Message),
+			ActionTag.SetLampToggle => new ChatArgs(EArgsType.SetLampToggle, query, query.Message),
 			ActionTag.SetCO2Threshold => new ChatArgs(EArgsType.SetCO2Threshold, query, query.Message),
 			ActionTag.SetTvocThreshold => new ChatArgs(EArgsType.SetTvocThreshold, query, query.Message),
 			ActionTag.SetMorningHour => new ChatArgs(EArgsType.SetMorningHour, query, query.Message),
@@ -81,6 +82,7 @@ internal sealed class SensorModule : IModuleInterface
 				string prompt = command switch
 				{
 					ActionTag.SetLightThreshold => "Set Light Threshold",
+					ActionTag.SetLampToggle => "Set Lamp Toggle",
 					ActionTag.SetCO2Threshold => "Set CO2 Threshold",
 					ActionTag.SetTvocThreshold => "Set TVOC Threshold",
 					ActionTag.SetMorningHour => "Set Morning Hour (0~23)",
@@ -117,6 +119,7 @@ internal sealed class SensorModule : IModuleInterface
 			_ = chatArg.Type switch
 			{
 				EArgsType.SetLightThreshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(sensorValue)),
+				EArgsType.SetLampToggle => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LampToggle}", new PostValue(sensorValue)),
 				EArgsType.SetMorningHour => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(sensorValue)),
 				EArgsType.SetMotionOffMax => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMax}", new PostValue(sensorValue)),
 				EArgsType.SetMotionOffMin => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMin}", new PostValue(sensorValue)),
@@ -147,7 +150,7 @@ internal sealed class SensorModule : IModuleInterface
 		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
 		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
 
-		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n🌡 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
+		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n💧 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -191,6 +194,7 @@ internal sealed class SensorModule : IModuleInterface
 		public const string Refresh = "sensor-refresh";
 		public const string Settings = "sensor-settings";
 		public const string SetLightThreshold = "sensor-set_light";
+		public const string SetLampToggle = "sensor-set_lamp_toggle";
 		public const string SetCO2Threshold = "sensor-set_co2";
 		public const string SetTvocThreshold = "sensor-set_tvoc";
 		public const string EnableMotionDetection = "sensor-enable_automaticmode";

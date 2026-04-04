@@ -12,6 +12,7 @@ internal enum EArgsType
 	AudioDownloader,
 	VideoDownloader,
 	SetLightThreshold,
+	SetLampToggle,
 	SetCO2Threshold,
 	SetTvocThreshold,
 	SetMotionOffMax,

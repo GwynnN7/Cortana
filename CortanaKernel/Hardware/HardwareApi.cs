@@ -3,7 +3,6 @@ using System.Globalization;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Utility;
-using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware;
@@ -68,6 +67,7 @@ public static class HardwareApi
 			return settings switch
 			{
 				ESettings.LightThreshold => StringResult.Success(Service.Settings.LightThreshold.ToString()),
+				ESettings.LampToggle => StringResult.Success(Service.Settings.LampToggle.ToString()),
 				ESettings.AutomaticMode => StringResult.Success(Service.Settings.AutomaticMode.ToString()),
 				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
 				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
@@ -84,6 +84,9 @@ public static class HardwareApi
 			{
 				case ESettings.LightThreshold:
 					Service.Settings.LightThreshold = value;
+					break;
+				case ESettings.LampToggle:
+					Service.Settings.LampToggle = (EStatus)value;
 					break;
 				case ESettings.CO2Threshold:
 					Service.Settings.Eco2Threshold = value;

@@ -34,7 +34,8 @@ public static class DeviceHandler
 		switch (action)
 		{
 			case ESwitchAction.On when DeviceStatus[EDevice.Lamp] == EStatus.Off:
-				if (Service.NetworkData.Location == ELocation.Orvieto)
+				if (Service.Settings.LampToggle == EStatus.On)
+				{
 					Task.Run(() =>
 					{
 						lock (LampLock)
@@ -44,11 +45,13 @@ public static class DeviceHandler
 							UseGpio(LampPin, PinValue.Low);
 						}
 					});
+				}
 				else UseGpio(LampPin, PinValue.High);
 				DeviceStatus[EDevice.Lamp] = EStatus.On;
 				break;
 			case ESwitchAction.Off when DeviceStatus[EDevice.Lamp] == EStatus.On:
-				if (Service.NetworkData.Location == ELocation.Orvieto)
+				if (Service.Settings.LampToggle == EStatus.On)
+				{
 					Task.Run(() =>
 					{
 						lock (LampLock)
@@ -58,6 +61,7 @@ public static class DeviceHandler
 							UseGpio(LampPin, PinValue.Low);
 						}
 					});
+				}
 				else UseGpio(LampPin, PinValue.Low);
 				DeviceStatus[EDevice.Lamp] = EStatus.Off;
 				break;

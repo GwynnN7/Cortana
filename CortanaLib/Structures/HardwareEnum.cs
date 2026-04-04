@@ -52,6 +52,7 @@ public enum ESensor
 public enum ESettings
 {
 	LightThreshold,
+	LampToggle,
 	CO2Threshold,
 	TvocThreshold,
 	AutomaticMode,
