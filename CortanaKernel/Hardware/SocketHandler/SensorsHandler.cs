@@ -56,7 +56,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 
 		if (newData.Motion == (int)EStatus.On)
 		{
-			if (newData.Tvoc >= Service.Settings.TvocThreshold || newData.Eco2 >= Service.Settings.Eco2Threshold)
+			if (newData.Tvoc >= Service.Settings.TvocThreshold * 1.15 || newData.Eco2 >= Service.Settings.Eco2Threshold * 1.15)
 			{
 				if (!_airQualityWarningSent)
 				{
@@ -66,12 +66,12 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 					{
 						_airQualityWarningSent = false;
 						_airQualityTimer?.Destroy();
-					}, ETimerType.Utility).Set((0, 30, 0));
+					}, ETimerType.Utility).Set((0, 45, 0));
 
 					_airQualityWarningSent = true;
 				}
 			}
-			else
+			else if (newData.Tvoc < Service.Settings.TvocThreshold * 0.9 && newData.Eco2 < Service.Settings.Eco2Threshold * 0.9)
 			{
 				if (_airQualityWarningSent)
 				{
