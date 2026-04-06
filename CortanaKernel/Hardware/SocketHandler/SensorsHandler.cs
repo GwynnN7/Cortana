@@ -49,7 +49,10 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.Off && newData.Light <= Service.Settings.LightThreshold)
 				{
 					HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.On, automatic: true);
-					IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
+					if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
+					{
+						IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
+					}
 				}
 			}
 		}
@@ -92,7 +95,10 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 		if (Service.Settings.AutomaticMode == EStatus.Off) return Task.CompletedTask;
 
 		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
-		IpcService.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
+		if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
+		{
+			IpcService.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
+		}
 
 		return Task.CompletedTask;
 	}
