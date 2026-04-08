@@ -120,7 +120,7 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	public static double? GetRoomTemperature()
 	{
 		lock (InstanceLock)
-			return _instance?._lastSensorData?.Temperature;
+			return _instance?._lastSensorData?.Temperature - 5.0; //Calibration
 	}
 
 	public static double? GetRoomHumidity()
