@@ -47,7 +47,7 @@ internal static class OsHandler
 			"shutdown" => onLinux ? "systemctl poweroff" : "shutdown /s /f /t 0",
 			"suspend" => onLinux ? "systemctl suspend -i" : "shutdown /s /f /t 0",
 			"reboot" => onLinux ? "systemctl reboot" : "shutdown /r /f /t 0",
-			"system" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S grub-reboot 1 && reboot" : "shutdown /r /f /t 0",
+			"system" => onLinux ? $"sudo efibootmgr --bootnext 0000 && reboot" : "shutdown /r /f /t 0",
 			"notify" => onLinux ? $"echo \'{arg}\' | cortana notify" : $"notify-send \"Cortana\" \"{arg}\"",
 			"cmd" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S {arg}" : arg,
 			_ => ""
