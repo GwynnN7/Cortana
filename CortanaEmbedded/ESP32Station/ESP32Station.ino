@@ -3,6 +3,7 @@
 #include <Adafruit_AHTX0.h>
 #include "SparkFun_ENS160.h"
 #include <BH1750.h>
+#include "Adafruit_SHT4x.h"
 
 const char WIFI_SSID[] = "HomeLifeWiFi";
 const char WIFI_PASSWORD[] = "HomeLifeCheru9";
@@ -17,6 +18,7 @@ WiFiClient client;
 Adafruit_AHTX0 aht;
 SparkFun_ENS160 myENS;
 BH1750 lightMeter;
+Adafruit_SHT4x sht4 = Adafruit_SHT4x();
 
 unsigned long tcpTime;
 const int transmissionTime = 5000;
@@ -24,6 +26,8 @@ const int transmissionTime = 5000;
 int currentMotion = LOW;
 int lastSentLedState = LOW;
 
+float roomTemp = 0.0;
+float roomHumidity = 0.0;
 float temp = 0.0;
 float humidity = 0.0;
 int luxLight = 0;
@@ -41,6 +45,9 @@ void setup()
   myENS.begin(); 
   myENS.setOperatingMode(SFE_ENS160_STANDARD);
   lightMeter.begin();
+  sht4.begin();
+  sht4.setPrecision(SHT4X_HIGH_PRECISION);
+  sht4.setHeater(SHT4X_NO_HEATER);
 
   connectToWiFi();
   checkTCPConnection();
@@ -67,7 +74,7 @@ void loop()
     }
 
     char buff[200]; 
-    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u }", currentMotion, luxLight, temp, humidity, eco2, tvoc);
+    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc);
     
     client.print(buff);
     lastSentLedState = currentMotion;
@@ -93,6 +100,12 @@ void readSensors()
   }
 
   luxLight = lightMeter.readLightLevel(); // Lux value
+
+  sensors_event_t shtHumidity, shtTemp;
+  sht4.getEvent(&shtHumidity, &shtTemp);
+  
+  roomTemp = shtTemp.temperature; // Degrees Celsius
+  roomHumidity = shtHumidity.relative_humidity; // Percent Relative Humidity
 }
 
 void checkTCPConnection()
