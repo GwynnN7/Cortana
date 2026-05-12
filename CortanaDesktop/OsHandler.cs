@@ -49,7 +49,7 @@ internal static class OsHandler
 			"reboot" => onLinux ? "systemctl reboot" : "shutdown /r /f /t 0",
 			"system" => onLinux ? $"sudo efibootmgr --bootnext 0000 && reboot" : "shutdown /r /f /t 0",
 			"notify" => onLinux ? $"echo \'{arg}\' | cortana notify" : $"notify-send \"Cortana\" \"{arg}\"",
-			"cmd" => onLinux ? $"echo {CortanaDesktop.DesktopInfo.DesktopPassword} | sudo -S {arg}" : arg,
+			"cmd" => arg,
 			_ => ""
 		};
 	}
