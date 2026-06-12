@@ -1,7 +1,5 @@
 using CortanaLib.Structures;
-using QRCoder;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
+// using QRCoder;
 using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
@@ -26,18 +24,19 @@ public static class MediaHandler
 
 	public static Stream CreateQrCode(string content, bool useNormalColors, bool useBorders)
 	{
-		var qrGenerator = new QRCodeGenerator();
-		QRCodeData qrCodeData = qrGenerator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
-		var qrCode = new PngByteQRCode(qrCodeData);
+		throw new NotImplementedException("This method is not implemented yet. It will be implemented in the future.");
+		// var qrGenerator = new QRCodeGenerator();
+		// QRCodeData qrCodeData = qrGenerator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
+		// var qrCode = new PngByteQRCode(qrCodeData);
 
-		byte[] qrCodeAsPngByteArr =
-			useNormalColors ? qrCode.GetGraphic(20, useBorders) : qrCode.GetGraphic(20, lightColorRgba: [81, 209, 246], darkColorRgba: [52, 24, 80], drawQuietZones: useBorders);
+		// byte[] qrCodeAsPngByteArr =
+		// 	useNormalColors ? qrCode.GetGraphic(20, useBorders) : qrCode.GetGraphic(20, lightColorRgba: [81, 209, 246], darkColorRgba: [52, 24, 80], drawQuietZones: useBorders);
 
-		var imageStream = new MemoryStream();
-		using Image image = Image.Load(qrCodeAsPngByteArr);
-		image.Save(imageStream, new PngEncoder());
-		imageStream.Position = 0;
-		return imageStream;
+		// var imageStream = new MemoryStream();
+		// using Image image = Image.Load(qrCodeAsPngByteArr);
+		// image.Save(imageStream, new PngEncoder());
+		// imageStream.Position = 0;
+		// return imageStream;
 	}
 
 	private static async Task<VideoId> GetVideoId(string video)
