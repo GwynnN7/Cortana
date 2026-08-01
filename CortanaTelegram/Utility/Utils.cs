@@ -36,7 +36,7 @@ internal static class Utils
 		ISubscriber ipc = CommunicationClient.GetSubscriber();
 		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Telegram.ToString())).OnMessage(async channelMessage =>
 		{
-			if (channelMessage.Message.HasValue) await SendToTopic(channelMessage.Message.ToString(), Topics.Log);
+			if (channelMessage.Message.HasValue) await SendToTopic(channelMessage.Message.ToString(), Topics.Log, disableNotification: true);
 		});
 	}
 
@@ -45,10 +45,10 @@ internal static class Utils
 		_cortana = newClient;
 	}
 
-	public static async Task<Message> SendToTopic(string message, int topicId, ParseMode parseMode = ParseMode.None, ReplyMarkup? replyMarkup = null)
+	public static async Task<Message> SendToTopic(string message, int topicId, ParseMode parseMode = ParseMode.None, ReplyMarkup? replyMarkup = null, bool disableNotification = false)
 	{
 		var chat = new ChatId(HomeId);
-		return await _cortana.SendMessage(chat, message, messageThreadId: topicId, replyMarkup: replyMarkup, parseMode: parseMode);
+		return await _cortana.SendMessage(chat, message, messageThreadId: topicId, replyMarkup: replyMarkup, parseMode: parseMode, disableNotification: disableNotification);
 	}
 
 	public static async Task SendToUser(long userId, string message)
