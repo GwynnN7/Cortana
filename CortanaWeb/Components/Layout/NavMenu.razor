@@ -1,43 +1,41 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">Cortana</a>
+@inject WebAuth Auth
+
+<nav class="nav">
+    <div class="brand">
+        <img src="favicon.png" alt="Cortana" width="34" height="34"/>
+        <div>
+            <strong>Cortana</strong>
+            <small>Home Assistant</small>
+        </div>
     </div>
-</div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler"/>
+    <div class="nav-links">
+        @foreach ((string href, string label, string icon) in Links)
+        {
+            <NavLink class="nav-link" href="@href" Match="@(href == "" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                <span class="nav-icon" aria-hidden="true">@icon</span>
+                <span class="nav-label">@label</span>
+            </NavLink>
+        }
+    </div>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
+    @if (Auth.Enabled)
+    {
+        <form class="nav-logout" method="post" action="/auth/logout">
+            <button type="submit" class="btn btn-ghost btn-block">Sign out</button>
+        </form>
+    }
+</nav>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="raspberry">
-                <span class="bi bi-mobo" aria-hidden="true"></span> Raspberry
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="devices">
-                <span class="bi bi-light" aria-hidden="true"></span> Devices
-            </NavLink>
-        </div>
-        
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="sensors">
-                <span class="bi bi-temp" aria-hidden="true"></span> Sensors
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="subfunctions">
-                <span class="bi bi-cpu" aria-hidden="true"></span> Subfunctions
-            </NavLink>
-        </div>
-
-        
-    </nav>
-</div>
+@code {
+    private static readonly (string Href, string Label, string Icon)[] Links =
+    [
+        ("", "Dashboard", "◈"),
+        ("devices", "Devices", "⏻"),
+        ("sensors", "Sensors", "◉"),
+        ("raspberry", "Raspberry", "▤"),
+        ("schedules", "Schedules", "⏱"),
+        ("subfunctions", "Subfunctions", "⧉"),
+        ("utility", "Utility", "⚙")
+    ];
+}

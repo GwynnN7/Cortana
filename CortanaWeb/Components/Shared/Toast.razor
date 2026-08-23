@@ -1,0 +1,20 @@
+@if (!string.IsNullOrEmpty(Message))
+{
+    <div class="toast @(IsError ? "toast-bad" : "toast-ok")" role="status">
+        <pre>@Message</pre>
+        <button type="button" class="toast-close" @onclick="Clear" aria-label="Dismiss">🗙</button>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public EventCallback<string?> MessageChanged { get; set; }
+
+    private bool IsError => Message != null &&
+                            (Message.Contains("Offline", StringComparison.OrdinalIgnoreCase) ||
+                             Message.Contains("not found", StringComparison.OrdinalIgnoreCase) ||
+                             Message.Contains("Failed", StringComparison.OrdinalIgnoreCase) ||
+                             Message.Contains("Error", StringComparison.OrdinalIgnoreCase));
+
+    private Task Clear() => MessageChanged.InvokeAsync(null);
+}

@@ -5,10 +5,7 @@
 #include <BH1750.h>
 #include "Adafruit_SHT4x.h"
 
-const char WIFI_SSID[] = "HomeLifeWiFi";
-const char WIFI_PASSWORD[] = "HomeLifeCheru9";
-const char CORTANA_IP[] = "192.168.1.117";
-const int CORTANA_PORT = 5116;
+#include "secrets.h"
 
 const int led = 19;
 const int motion_sensor = 23;

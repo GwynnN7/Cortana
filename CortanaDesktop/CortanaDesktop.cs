@@ -1,149 +1,173 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using CortanaLib;
 using CortanaLib.Structures;
-using Timer = System.Timers.Timer;
 
 namespace CortanaDesktop;
 
 public static class CortanaDesktop
 {
-    internal static DesktopInfo DesktopInfo { get; private set; }
-    private static Socket? _computerSocket;
+	private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(4);
+	private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
 
-    private static async Task Main()
-    {
-        DesktopInfo = GetClientInfo();
+	internal static DesktopInfo DesktopInfo { get; private set; }
 
-        string address = "";
-        while (string.IsNullOrEmpty(address))
-        {
-            await Task.Delay(3000);
-            IOption<SensorResponse> gatewayOption = await GetCortanaGateway();
+	private static readonly Lock SocketLock = new();
+	private static Socket? _computerSocket;
 
-            address = gatewayOption.Match(
-                gateway => gateway.Value[..^1] + DesktopInfo.NetworkAddr,
-                () =>
-                {
-                    DataHandler.Log("Cortana not reachable, can't find correct address");
-                    return "";
-                });
-        }
+	private static async Task Main()
+	{
+		DesktopInfo = GetClientInfo();
 
-        StartAliveTimer();
+		string address = await ResolveCortanaAddress();
+		_ = Task.Run(KeepAliveLoop);
 
-        while (true)
-        {
-            CreateSocketConnection(address, DesktopInfo.TcpPort);
+		while (true)
+		{
+			if (CreateSocketConnection(address, DesktopInfo.TcpPort))
+			{
+				Write("computer");
+				await ReadLoop();
+			}
 
-            Write("computer");
-            await Read();
+			await Task.Delay(ReconnectDelay);
+		}
+	}
 
-            await Task.Delay(2000);
-        }
-    }
+		private static async Task<string> ResolveCortanaAddress()
+	{
+		while (true)
+		{
+			IOption<SensorResponse> gatewayOption = await GetCortanaGateway();
 
-    private static async Task<IOption<SensorResponse>> GetCortanaGateway()
-    {
-        try
-        {
-            return await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
-        }
-        catch
-        {
-            return new None<SensorResponse>();
-        }
-    }
+			string address = gatewayOption.Match(
+				gateway => gateway.Value[..(gateway.Value.LastIndexOf('.') + 1)] + DesktopInfo.NetworkAddr,
+				() => "");
 
-    private static void CreateSocketConnection(string address, int port)
-    {
-        try
-        {
-            _computerSocket?.Close();
+			if (!string.IsNullOrEmpty(address)) return address;
 
-            var ipEndPoint = new IPEndPoint(IPAddress.Parse(address), port);
-            _computerSocket = new Socket(SocketType.Stream, ProtocolType.Tcp)
-            {
-                SendTimeout = 2000
-            };
-            _computerSocket.Connect(ipEndPoint);
-            OsHandler.ExecuteCommand("notify", "Cortana connected", false);
-        }
-        catch
-        {
-            DisconnectClient();
-        }
-    }
+			DataHandler.Log("Cortana not reachable, can't find correct address");
+			await Task.Delay(3000);
+		}
+	}
 
-    private static void StartAliveTimer()
-    {
-        var timer = new Timer(4000);
-        timer.Elapsed += (_, _) => Write("SYN");
-        timer.Start();
-    }
+	private static async Task<IOption<SensorResponse>> GetCortanaGateway()
+	{
+		try
+		{
+			return await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
+		}
+		catch
+		{
+			return new None<SensorResponse>();
+		}
+	}
 
-    private static async Task Read()
-    {
-        if (_computerSocket == null) return;
+	private static bool CreateSocketConnection(string address, int port)
+	{
+		try
+		{
+			DisconnectClient();
 
-        string? textCommand = null;
-        var buffer = new byte[1024];
-        try
-        {
-            while (true)
-            {
-                int received = _computerSocket.Receive(buffer);
-                string message = Encoding.UTF8.GetString(buffer, 0, received);
-                if (received == 0) continue;
+			var socket = new Socket(SocketType.Stream, ProtocolType.Tcp) { SendTimeout = 2000 };
+			socket.Connect(new IPEndPoint(IPAddress.Parse(address), port));
 
-                switch (message)
-                {
-                    case "shutdown" or "suspend" or "reboot" or "system":
-                        OsHandler.ExecuteCommand(message);
-                        break;
-                    case "notify" or "cmd":
-                        textCommand = message;
-                        break;
-                    default:
-                        if (textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
-                        textCommand = null;
-                        break;
-                }
-                await Task.Delay(250);
-            }
-        }
-        catch
-        {
-            DisconnectClient();
-        }
-    }
+			lock (SocketLock) _computerSocket = socket;
 
-    internal static void Write(string message)
-    {
-        if (_computerSocket == null) return;
+			OsHandler.ExecuteCommand("notify", "Cortana connected", false);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			DataHandler.Log($"Could not connect to Cortana: {ex.Message}");
+			DisconnectClient();
+			return false;
+		}
+	}
 
-        try
-        {
-            _computerSocket.Send(Encoding.UTF8.GetBytes(message));
-        }
-        catch
-        {
-            DisconnectClient();
-            OsHandler.ExecuteCommand("notify", "Cortana disconnected");
-        }
-    }
+		private static async Task KeepAliveLoop()
+	{
+		while (true)
+		{
+			await Task.Delay(KeepAliveInterval);
+			Write("SYN");
+		}
+	}
 
-    private static void DisconnectClient()
-    {
-        _computerSocket?.Close();
-        _computerSocket = null;
-    }
+	private static async Task ReadLoop()
+	{
+		Socket? socket;
+		lock (SocketLock) socket = _computerSocket;
+		if (socket == null) return;
 
-    private static DesktopInfo GetClientInfo()
-    {
-        string confPath = DataHandler.CortanaPath(EDirType.Config, "Settings.json");
-        if (!File.Exists(confPath)) throw new CortanaException("Unknown client connection info");
-        return DataHandler.DeserializeJson<DesktopInfo>(confPath);
-    }
+		string? textCommand = null;
+		byte[] buffer = new byte[4096];
+
+		try
+		{
+			while (true)
+			{
+				int received = await socket.ReceiveAsync(buffer, SocketFlags.None);
+				if (received == 0) break;
+
+				string message = Encoding.UTF8.GetString(buffer, 0, received);
+				switch (message)
+				{
+					case "shutdown" or "suspend" or "reboot" or "system":
+						OsHandler.ExecuteCommand(message);
+						break;
+					case "notify" or "cmd":
+						textCommand = message;
+						break;
+					default:
+						if (textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
+						textCommand = null;
+						break;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			DataHandler.Log($"Connection lost: {ex.Message}");
+		}
+		finally
+		{
+			DisconnectClient();
+			OsHandler.ExecuteCommand("notify", "Cortana disconnected", false);
+		}
+	}
+
+	internal static void Write(string message)
+	{
+		Socket? socket;
+		lock (SocketLock) socket = _computerSocket;
+		if (socket == null) return;
+
+		try
+		{
+			socket.Send(Encoding.UTF8.GetBytes(message));
+		}
+		catch
+		{
+			DisconnectClient();
+		}
+	}
+
+	private static void DisconnectClient()
+	{
+		lock (SocketLock)
+		{
+			if (_computerSocket == null) return;
+			try { _computerSocket.Close(); } catch {  }
+			_computerSocket = null;
+		}
+	}
+
+	private static DesktopInfo GetClientInfo()
+	{
+		string confPath = DataHandler.CortanaPath(EDirType.Config, "Settings.json");
+		if (!File.Exists(confPath)) throw new CortanaException("Unknown client connection info");
+		return DataHandler.DeserializeJson<DesktopInfo>(confPath);
+	}
 }

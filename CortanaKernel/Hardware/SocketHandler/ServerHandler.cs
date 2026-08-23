@@ -7,65 +7,91 @@ namespace CortanaKernel.Hardware.SocketHandler;
 
 public static class ServerHandler
 {
-	private static readonly Socket Server;
-
-	static ServerHandler()
-	{
-		Server = new Socket(SocketType.Stream, ProtocolType.Tcp);
-	}
+	private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
+	private static Socket? _server;
 
 	public static void Initialize()
 	{
-		var ipEndPoint = new IPEndPoint(IPAddress.Any, int.Parse(DataHandler.Env("CORTANA_TCP_PORT")));
-		Server.Bind(ipEndPoint);
+		_server = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
+		_server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+		_server.Bind(new IPEndPoint(IPAddress.Any, int.Parse(DataHandler.Env("CORTANA_TCP_PORT"))));
 	}
 
 	public static async Task StartListening()
 	{
-		Server.Listen();
+		Socket? server = _server;
+		if (server == null) return;
 
-		var isListening = true;
-		while (isListening)
+		server.Listen(8);
+
+		while (true)
 		{
+			Socket socket;
 			try
 			{
-				Socket socket = await Server.AcceptAsync();
-				_ = Task.Run(() => HandleConnection(socket));
+				socket = await server.AcceptAsync();
 			}
-			catch
+			catch (Exception ex)
 			{
-				Server.Close();
-				isListening = false;
+				DataHandler.Log($"[Server] Stopped accepting connections: {ex.Message}");
+				return;
+			}
+
+			_ = Task.Run(() => HandleConnection(socket));
+		}
+	}
+
+	private static async Task HandleConnection(Socket socket)
+	{
+		try
+		{
+			byte[] buffer = new byte[1024];
+			using var cts = new CancellationTokenSource(HandshakeTimeout);
+
+			int received = await socket.ReceiveAsync(buffer, SocketFlags.None, cts.Token);
+			if (received == 0)
+			{
+				socket.Close();
+				return;
+			}
+
+			string message = Encoding.UTF8.GetString(buffer, 0, received);
+
+			string? identity = new[] { "computer", "esp32" }.FirstOrDefault(name => message.StartsWith(name, StringComparison.OrdinalIgnoreCase));
+			if (identity == null)
+			{
+				DataHandler.Log($"[Server] Rejected unknown client handshake: '{Truncate(message)}'");
+				await socket.SendAsync(Encoding.UTF8.GetBytes("FIN"), SocketFlags.None);
+				socket.Close();
+				return;
+			}
+
+			string pending = message[identity.Length..];
+			await socket.SendAsync(Encoding.UTF8.GetBytes("ACK"), SocketFlags.None);
+
+			switch (identity)
+			{
+				case "computer":
+					ComputerHandler.BindNew(new ComputerHandler(socket, pending));
+					break;
+				case "esp32":
+					SensorsHandler.BindNew(new SensorsHandler(socket, pending));
+					break;
 			}
 		}
-	}
-
-	private static void HandleConnection(Socket socket)
-	{
-		var buffer = new byte[1024];
-		int received = socket.Receive(buffer);
-		string message = Encoding.UTF8.GetString(buffer, 0, received);
-
-		string answer = "ACK";
-		switch (message)
+		catch (Exception ex)
 		{
-			case "computer":
-				ComputerHandler.BindNew(new ComputerHandler(socket));
-				break;
-
-			case "esp32":
-				SensorsHandler.BindNew(new SensorsHandler(socket));
-				break;
-			default:
-				answer = "FIN";
-				break;
+			DataHandler.Log($"[Server] Handshake failed: {ex.Message}");
+			try { socket.Close(); } catch {  }
 		}
-		socket.Send(Encoding.UTF8.GetBytes(answer));
-		if (answer == "FIN") socket.Close();
 	}
+
+	private static string Truncate(string value) => value.Length <= 40 ? value : string.Concat(value.AsSpan(0, 40), "...");
 
 	public static void ShutdownServer()
 	{
-		Server.Close();
+		_server?.Close();
+		_server = null;
 	}
 }

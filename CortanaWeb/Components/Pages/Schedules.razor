@@ -1,0 +1,267 @@
+@page "/schedules"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Schedules</PageTitle>
+
+<h1>Schedules</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Active</h2>
+        <p class="section-hint">Stored on the Pi, so they survive a restart.</p>
+    </header>
+
+    @if (_schedules.Count == 0)
+    {
+        <p class="section-hint">Nothing scheduled yet.</p>
+    }
+    else
+    {
+        <div class="schedule-list">
+            @foreach (ScheduleResponse entry in _schedules)
+            {
+                <article class="schedule @(entry.Schedule.Enabled ? "" : "is-disabled")">
+                    <div class="schedule-main">
+                        <strong>@entry.Schedule.Name</strong>
+                        <span class="schedule-when">@Describe(entry)</span>
+                        <span class="schedule-action">@ActionText(entry.Schedule.Action)</span>
+                        @if (entry.Schedule.LastRun != null)
+                        {
+                            <span class="schedule-last">Last: @entry.Schedule.LastRun?.ToString("dd MMM HH:mm") — @entry.Schedule.LastResult</span>
+                        }
+                    </div>
+                    <div class="btn-row wrap">
+                        <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, "run")'>Run</button>
+                        <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, entry.Schedule.Enabled ? "disable" : "enable")'>
+                            @(entry.Schedule.Enabled ? "Disable" : "Enable")
+                        </button>
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Delete(entry.Schedule.Id)">Delete</button>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>New schedule</h2>
+    </header>
+
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_draft.Name" @bind:event="oninput" disabled="@_busy"/>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_draft.Trigger" disabled="@_busy">
+            @foreach (EScheduleTrigger trigger in Enum.GetValues<EScheduleTrigger>())
+            {
+                <option value="@trigger">@trigger</option>
+            }
+        </select>
+
+        @switch (_draft.Trigger)
+        {
+            case EScheduleTrigger.Once:
+                <input type="datetime-local" @bind="_draft.At" disabled="@_busy"/>
+                break;
+            case EScheduleTrigger.Interval:
+                <input type="number" min="10" placeholder="Seconds" @bind="_draft.IntervalSeconds" disabled="@_busy"/>
+                break;
+            case EScheduleTrigger.Daily:
+                <input type="time" @bind="_draft.Time" disabled="@_busy"/>
+                break;
+            case EScheduleTrigger.Weekly:
+                <select @bind="_draft.Day" disabled="@_busy">
+                    @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
+                    {
+                        <option value="@day">@day</option>
+                    }
+                </select>
+                <input type="time" @bind="_draft.Time" disabled="@_busy"/>
+                break;
+            case EScheduleTrigger.Event:
+                <select @bind="_draft.Event" disabled="@_busy">
+                    @foreach (EScheduleEvent scheduleEvent in Enum.GetValues<EScheduleEvent>())
+                    {
+                        <option value="@scheduleEvent">@scheduleEvent</option>
+                    }
+                </select>
+                break;
+        }
+    </div>
+
+    <div class="field-row">
+        <select @bind="_draft.ActionType" disabled="@_busy">
+            @foreach (EScheduleAction action in Enum.GetValues<EScheduleAction>())
+            {
+                <option value="@action">@action</option>
+            }
+        </select>
+
+        @if (TargetOptions(_draft.ActionType) is { Count: > 0 } targets)
+        {
+            <select @bind="_draft.Target" disabled="@_busy">
+                @foreach (string target in targets)
+                {
+                    <option value="@target">@target</option>
+                }
+            </select>
+        }
+        else
+        {
+            <input type="text" placeholder="Target" @bind="_draft.Target" @bind:event="oninput" disabled="@_busy"/>
+        }
+
+        @if (ValueOptions(_draft.ActionType) is { Count: > 0 } values)
+        {
+            <select @bind="_draft.Value" disabled="@_busy">
+                @foreach (string value in values)
+                {
+                    <option value="@value">@value</option>
+                }
+            </select>
+        }
+        else
+        {
+            <input type="text" placeholder="Value" @bind="_draft.Value" @bind:event="oninput" disabled="@_busy"/>
+        }
+    </div>
+
+    <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft.Name))" @onclick="Create">Create</button>
+</section>
+
+@code {
+    private IDisposable? _subscription;
+    private IReadOnlyList<ScheduleResponse> _schedules = [];
+    private string? _message;
+    private bool _busy;
+
+    private readonly Draft _draft = new();
+
+    private sealed class Draft
+    {
+        public string Name { get; set; } = "";
+        public EScheduleTrigger Trigger { get; set; } = EScheduleTrigger.Daily;
+        public EScheduleAction ActionType { get; set; } = EScheduleAction.Device;
+        public string Target { get; set; } = nameof(EDevice.Lamp);
+        public string Value { get; set; } = nameof(ESwitchAction.Toggle);
+        public DateTime At { get; set; } = DateTime.Now.AddHours(1);
+        public int IntervalSeconds { get; set; } = 3600;
+        public DateTime Time { get; set; } = DateTime.Today.AddHours(8);
+        public DayOfWeek Day { get; set; } = DayOfWeek.Monday;
+        public EScheduleEvent Event { get; set; } = EScheduleEvent.ComputerOff;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+        await Reload();
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private async Task Reload() => _schedules = await State.GetSchedules();
+
+    private static List<string> TargetOptions(EScheduleAction action) => action switch
+    {
+        EScheduleAction.Device => Enum.GetNames<EDevice>().ToList(),
+        EScheduleAction.Computer => Enum.GetNames<EComputerCommand>().ToList(),
+        EScheduleAction.Raspberry => Enum.GetNames<ERaspberryCommand>().ToList(),
+        EScheduleAction.Setting => Enum.GetNames<ESettings>().ToList(),
+        EScheduleAction.Notify => Enum.GetNames<EMessageCategory>().ToList(),
+        EScheduleAction.Subfunction => Enum.GetNames<ESubFunctionType>().ToList(),
+        _ => []
+    };
+
+    private static List<string> ValueOptions(EScheduleAction action) => action switch
+    {
+        EScheduleAction.Device or EScheduleAction.Room => Enum.GetNames<ESwitchAction>().ToList(),
+        EScheduleAction.Subfunction => Enum.GetNames<ESubfunctionAction>().ToList(),
+        _ => []
+    };
+
+    private async Task Create()
+    {
+        _busy = true;
+        try
+        {
+            var request = new PostSchedule(
+                Name: _draft.Name,
+                Trigger: _draft.Trigger.ToString(),
+                ActionType: _draft.ActionType.ToString(),
+                Target: _draft.Target,
+                Value: _draft.Value,
+                At: _draft.Trigger == EScheduleTrigger.Once ? new DateTimeOffset(_draft.At) : null,
+                IntervalSeconds: _draft.IntervalSeconds,
+                Hour: _draft.Time.Hour,
+                Minute: _draft.Time.Minute,
+                Day: _draft.Trigger == EScheduleTrigger.Weekly ? _draft.Day : null,
+                Event: _draft.Trigger == EScheduleTrigger.Event ? _draft.Event.ToString() : null,
+                Owner: "web");
+
+            _message = await State.CreateSchedule(request);
+            _draft.Name = "";
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Command(string id, string command)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.UpdateSchedule(id, command);
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Delete(string id)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.DeleteSchedule(id);
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Describe(ScheduleResponse entry)
+    {
+        Schedule s = entry.Schedule;
+        string when = s.Trigger switch
+        {
+            EScheduleTrigger.Once => $"Once at {s.At:dd MMM HH:mm}",
+            EScheduleTrigger.Interval => $"Every {s.IntervalSeconds}s",
+            EScheduleTrigger.Daily => $"Daily at {s.Hour:00}:{s.Minute:00}",
+            EScheduleTrigger.Weekly => $"{s.Day} at {s.Hour:00}:{s.Minute:00}",
+            EScheduleTrigger.Event => $"On {s.Event}",
+            _ => "Unknown"
+        };
+
+        return entry.NextRun == null ? when : $"{when} · next {entry.NextRun:dd MMM HH:mm}";
+    }
+
+    private static string ActionText(ScheduleAction action) => action.Type switch
+    {
+        EScheduleAction.Room => $"Room {action.Value}",
+        EScheduleAction.Notify => $"Notify {action.Target}: {action.Value}",
+        _ => string.IsNullOrEmpty(action.Value) ? $"{action.Type} {action.Target}" : $"{action.Type} {action.Target} → {action.Value}"
+    };
+}

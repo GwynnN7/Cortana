@@ -57,8 +57,19 @@ public enum ESettings
 	TvocThreshold,
 	AutomaticMode,
 	MorningHour,
+	NightHour,
 	MotionOffMax,
-	MotionOffMin
+	MotionOffMin,
+	ManualModeMinutes
+}
+
+public enum EAutomationState
+{
+		Automatic,
+
+		Manual,
+
+		Night
 }
 
 public enum EStatus

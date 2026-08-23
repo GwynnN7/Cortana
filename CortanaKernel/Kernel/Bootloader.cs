@@ -7,17 +7,21 @@ namespace CortanaKernel.Kernel;
 
 public static class Bootloader
 {
-	private static string GetServiceName(ESubFunctionType type)
+	private static readonly TimeSpan SystemctlTimeout = TimeSpan.FromSeconds(30);
+
+	private static readonly TimeSpan StatusCacheDuration = TimeSpan.FromSeconds(5);
+	private static readonly SemaphoreSlim StatusGate = new(1, 1);
+	private static IReadOnlyList<SubfunctionResponse>? _cachedStatuses;
+	private static DateTime _cachedStatusesTime = DateTime.MinValue;
+
+	private static string GetServiceName(ESubFunctionType type) => type switch
 	{
-		return type switch
-		{
-			ESubFunctionType.CortanaKernel => "cortana-kernel",
-			ESubFunctionType.CortanaDiscord => "cortana-discord",
-			ESubFunctionType.CortanaTelegram => "cortana-telegram",
-			ESubFunctionType.CortanaWeb => "cortana-web",
-			_ => throw new CortanaException($"Unknown subfunction type: {type}")
-		};
-	}
+		ESubFunctionType.CortanaKernel => "cortana-kernel",
+		ESubFunctionType.CortanaDiscord => "cortana-discord",
+		ESubFunctionType.CortanaTelegram => "cortana-telegram",
+		ESubFunctionType.CortanaWeb => "cortana-web",
+		_ => throw new CortanaException($"Unknown subfunction type: {type}")
+	};
 
 	private static async Task<int> RunSystemctl(string action, string serviceName)
 	{
@@ -25,84 +29,110 @@ public static class Bootloader
 		process.StartInfo = new ProcessStartInfo
 		{
 			FileName = "systemctl",
-			Arguments = $"--user {action} {serviceName}",
 			UseShellExecute = false,
 			RedirectStandardOutput = true,
 			RedirectStandardError = true,
 			CreateNoWindow = true
 		};
+		process.StartInfo.ArgumentList.Add("--user");
+		process.StartInfo.ArgumentList.Add(action);
+		process.StartInfo.ArgumentList.Add(serviceName);
+
 		process.Start();
-		await process.WaitForExitAsync();
-		return process.ExitCode;
+
+		using var cts = new CancellationTokenSource(SystemctlTimeout);
+		try
+		{
+			await process.WaitForExitAsync(cts.Token);
+			return process.ExitCode;
+		}
+		catch (OperationCanceledException)
+		{
+			try { process.Kill(entireProcessTree: true); } catch { }
+			DataHandler.Log($"systemctl {action} {serviceName} timed out");
+			return -1;
+		}
 	}
 
 	public static async Task<StringResult> SubfunctionCall(ESubFunctionType type, ESubfunctionAction action)
 	{
 		string serviceName = GetServiceName(type);
+		InvalidateStatusCache();
 
 		switch (action)
 		{
-			case ESubfunctionAction.Start when type == ESubFunctionType.CortanaKernel:
-				Helper.DelayCommand($"systemctl --user start {serviceName}");
-				return StringResult.Success(DataHandler.Log("Kernel starting..."));
+			case ESubfunctionAction.Start or ESubfunctionAction.Restart or ESubfunctionAction.Stop when type == ESubFunctionType.CortanaKernel:
+				string verb = action.ToString().ToLowerInvariant();
+				Helper.DelayCommand($"systemctl --user {verb} {serviceName}");
+				return StringResult.Success(DataHandler.Log($"{serviceName} {verb}ing..."));
+
 			case ESubfunctionAction.Start:
-				{
-					int exitCode = await RunSystemctl("start", serviceName);
-					return exitCode == 0
-						? StringResult.Success(DataHandler.Log("Kernel started"))
-						: StringResult.Failure(DataHandler.Log("Failed to start Kernel"));
-				}
-			case ESubfunctionAction.Restart when type == ESubFunctionType.CortanaKernel:
-				Helper.DelayCommand($"systemctl --user restart {serviceName}");
-				return StringResult.Success(DataHandler.Log($"{serviceName} restarting..."));
 			case ESubfunctionAction.Restart:
-				{
-					int exitCode = await RunSystemctl("restart", serviceName);
-					return exitCode == 0
-						? StringResult.Success(DataHandler.Log($"{serviceName} restarted"))
-						: StringResult.Failure(DataHandler.Log($"Failed to restart {serviceName}"));
-				}
-			case ESubfunctionAction.Update:
-				await Helper.RunCommand("cortana git").WaitForExitAsync();
-				return await SubfunctionCall(type, ESubfunctionAction.Restart);
 			case ESubfunctionAction.Stop:
-				return await StopSubfunction(type);
+				string command = action.ToString().ToLowerInvariant();
+				int exitCode = await RunSystemctl(command, serviceName);
+				return exitCode == 0
+					? StringResult.Success(DataHandler.Log($"{serviceName} {command} succeeded"))
+					: StringResult.Failure(DataHandler.Log($"Failed to {command} {serviceName}"));
+
+			case ESubfunctionAction.Update:
+				await Helper.RunCommandWithOutput("cortana git", TimeSpan.FromMinutes(2));
+				return await SubfunctionCall(type, ESubfunctionAction.Restart);
+
 			default:
 				return StringResult.Failure("Unknown subfunction action");
 		}
 	}
 
-	private static async Task<StringResult> StopSubfunction(ESubFunctionType type)
-	{
-		if (type == ESubFunctionType.CortanaKernel)
-		{
-			Helper.DelayCommand($"systemctl --user stop {GetServiceName(type)}");
-			return StringResult.Success(DataHandler.Log("Kernel stopping..."));
-		}
-
-		string serviceName = GetServiceName(type);
-		int exitCode = await RunSystemctl("stop", serviceName);
-		return exitCode == 0
-			? StringResult.Success(DataHandler.Log("Kernel stopped"))
-			: StringResult.Failure(DataHandler.Log("Failed to stop Kernel"));
-	}
-
 	public static async Task<StringResult> StopSubfunctions()
 	{
-		bool result = true;
+		var failed = new List<string>();
 		foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
 		{
 			if (type == ESubFunctionType.CortanaKernel) continue;
-			StringResult stopResult = await StopSubfunction(type);
-			result &= stopResult.IsOk;
+			StringResult stopResult = await SubfunctionCall(type, ESubfunctionAction.Stop);
+			if (!stopResult.IsOk) failed.Add(GetServiceName(type));
 		}
-		return result ? StringResult.Success("All subfunctions stopped") : StringResult.Failure("Failed to stop one or more subfunctions");
+
+		return failed.Count == 0
+			? StringResult.Success("All subfunctions stopped")
+			: StringResult.Failure($"Failed to stop: {string.Join(", ", failed)}");
 	}
 
-	public static async Task<bool> IsSubfunctionRunning(ESubFunctionType type)
+	public static async Task<bool> IsSubfunctionRunning(ESubFunctionType type) =>
+		await RunSystemctl("is-active", GetServiceName(type)) == 0;
+
+	public static async Task<IReadOnlyList<SubfunctionResponse>> GetAllStatuses()
 	{
-		string serviceName = GetServiceName(type);
-		int exitCode = await RunSystemctl("is-active", serviceName);
-		return exitCode == 0;
+		if (IsStatusCacheFresh(out IReadOnlyList<SubfunctionResponse>? cached)) return cached!;
+
+		await StatusGate.WaitAsync();
+		try
+		{
+			if (IsStatusCacheFresh(out cached)) return cached!;
+
+			ESubFunctionType[] types = Enum.GetValues<ESubFunctionType>();
+			bool[] running = await Task.WhenAll(types.Select(IsSubfunctionRunning));
+
+			_cachedStatuses = types.Select((type, index) => new SubfunctionResponse(type.ToString(), running[index])).ToList();
+			_cachedStatusesTime = DateTime.UtcNow;
+			return _cachedStatuses;
+		}
+		finally
+		{
+			StatusGate.Release();
+		}
+	}
+
+	private static bool IsStatusCacheFresh(out IReadOnlyList<SubfunctionResponse>? cached)
+	{
+		cached = _cachedStatuses;
+		return cached != null && DateTime.UtcNow - _cachedStatusesTime < StatusCacheDuration;
+	}
+
+		private static void InvalidateStatusCache()
+	{
+		_cachedStatusesTime = DateTime.MinValue;
+		SystemEvents.Notify();
 	}
 }

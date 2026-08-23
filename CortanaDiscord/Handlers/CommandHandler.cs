@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using CortanaDiscord.Utility;
 using Discord;
 using Discord.Interactions;

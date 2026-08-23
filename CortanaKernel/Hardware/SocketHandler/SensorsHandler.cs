@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using CortanaKernel.Hardware.Structures;
 using CortanaKernel.Hardware.Utility;
@@ -9,96 +10,183 @@ using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaKernel.Hardware.SocketHandler;
 
-public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
+public class SensorsHandler : ClientHandler
 {
-	private static SensorsHandler? _instance;
 	private static readonly Lock InstanceLock = new();
+	private static SensorsHandler? _instance;
 
-	private Timer? _motionTimer = null;
-	private Timer? _airQualityTimer = null;
-	private bool _airQualityWarningSent = false;
+	private static readonly TimeSpan AirQualityWarningCooldown = TimeSpan.FromMinutes(45);
+	private const int MaxBufferLength = 8192;
+
+	private readonly Lock _stateLock = new();
+	private readonly StringBuilder _receiveBuffer = new();
+
+	private Timer? _motionTimer;
+	private Timer? _airQualityTimer;
+	private bool _airQualityWarningSent;
 	private SensorData? _lastSensorData;
+	private DateTime _lastUpdate = DateTime.MinValue;
+
+	public SensorsHandler(Socket socket, string? pendingData = null) : base(socket, "ESP32", pendingData) { }
 
 	protected override void HandleRead(string message)
 	{
-		var newData = JsonSerializer.Deserialize<SensorData>(message, DataHandler.SerializerOptions);
+		foreach (SensorData data in ExtractFrames(message)) ProcessSensorData(data);
+	}
 
-		if (Service.Settings.AutomaticMode == EStatus.On)
+	private IEnumerable<SensorData> ExtractFrames(string chunk)
+	{
+		var frames = new List<SensorData>();
+
+		lock (_stateLock)
 		{
-			if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.On)
+			_receiveBuffer.Append(chunk);
+			string buffer = _receiveBuffer.ToString();
+
+			var depth = 0;
+			var start = -1;
+			var consumed = 0;
+
+			for (var i = 0; i < buffer.Length; i++)
 			{
-				switch (newData)
+				switch (buffer[i])
 				{
-					case { Motion: (int)EStatus.Off } when _motionTimer == null:
+					case '{':
+						if (depth++ == 0) start = i;
+						break;
+					case '}':
+						if (depth == 0 || --depth != 0) break;
+
+						string json = buffer[start..(i + 1)];
+						consumed = i + 1;
+						try
 						{
-							int seconds = HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.On
-								? Service.Settings.MotionOffMax
-								: Service.Settings.MotionOffMin;
-							_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
-							_motionTimer.Set((seconds, 0, 0));
-							break;
+							frames.Add(JsonSerializer.Deserialize<SensorData>(json, DataHandler.SerializerOptions));
 						}
-					case { Motion: (int)EStatus.On }:
-						_motionTimer?.Destroy();
-						_motionTimer = null;
+						catch (JsonException ex)
+						{
+							DataHandler.Log($"[ESP32] Dropping malformed frame: {ex.Message}");
+						}
 						break;
 				}
 			}
-			else if (newData.Motion == (int)EStatus.On)
-			{
-				if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.Off && newData.Light <= Service.Settings.LightThreshold)
-				{
-					HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.On, automatic: true);
-					if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
-					{
-						IpcService.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
-					}
-				}
-			}
+
+			_receiveBuffer.Remove(0, consumed);
+			if (_receiveBuffer.Length > MaxBufferLength) _receiveBuffer.Clear();
 		}
 
-		if (newData.Motion == (int)EStatus.On)
+		return frames;
+	}
+
+	private void ProcessSensorData(SensorData newData)
+	{
+		HandleAutomaticLighting(newData);
+		HandleAirQuality(newData);
+
+		lock (_stateLock)
 		{
-			if (newData.Tvoc >= Service.Settings.TvocThreshold * 1.15 || newData.Eco2 >= Service.Settings.Eco2Threshold * 1.15)
-			{
-				if (!_airQualityWarningSent)
-				{
-					IpcService.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
-
-					_airQualityTimer = new Timer("air-quality-timer", null, async sender =>
-					{
-						_airQualityWarningSent = false;
-						_airQualityTimer?.Destroy();
-					}, ETimerType.Utility).Set((0, 45, 0));
-
-					_airQualityWarningSent = true;
-				}
-			}
-			else if (newData.Tvoc < Service.Settings.TvocThreshold * 0.9 && newData.Eco2 < Service.Settings.Eco2Threshold * 0.9)
-			{
-				if (_airQualityWarningSent)
-				{
-					_airQualityWarningSent = false;
-					_airQualityTimer?.Destroy();
-					IpcService.Publish(EMessageCategory.Telegram, "Air quality back to normal");
-				}
-			}
+			_lastSensorData = newData;
+			_lastUpdate = DateTime.UtcNow;
 		}
 
-		lock (InstanceLock) _lastSensorData = newData;
+		SystemEvents.Notify();
+	}
+
+		private void HandleAutomaticLighting(SensorData newData)
+	{
+		bool lampOn = HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.On;
+		bool motion = newData.Motion == (int)EStatus.On;
+
+		if (lampOn)
+		{
+			if (motion)
+			{
+				CancelMotionTimer();
+				return;
+			}
+
+			if (!AutomationService.CanAutoExtinguish) return;
+			ArmMotionTimer(AutomationService.MotionOffSeconds);
+			return;
+		}
+
+		CancelMotionTimer();
+
+		if (!motion || !AutomationService.CanAutoLight) return;
+		if (newData.Light > AutomationService.Settings.LightThreshold) return;
+
+		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.On, automatic: true);
+
+		if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
+			IpcHandler.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
+	}
+
+	private void ArmMotionTimer(int seconds)
+	{
+		lock (_stateLock)
+		{
+			if (_motionTimer != null) return;
+			_motionTimer = new Timer("motion-timer", null, MotionTimeout, ETimerType.Utility);
+			_motionTimer.Set((seconds, 0, 0));
+		}
+	}
+
+	private void CancelMotionTimer()
+	{
+		lock (_stateLock)
+		{
+			_motionTimer?.Destroy();
+			_motionTimer = null;
+		}
+	}
+
+	private void HandleAirQuality(SensorData newData)
+	{
+		if (newData.Motion != (int)EStatus.On) return;
+
+		bool overThreshold = newData.Tvoc >= AutomationService.Settings.TvocThreshold * 1.15 || newData.Eco2 >= AutomationService.Settings.Eco2Threshold * 1.15;
+		bool backToNormal = newData.Tvoc < AutomationService.Settings.TvocThreshold * 0.9 && newData.Eco2 < AutomationService.Settings.Eco2Threshold * 0.9;
+
+		lock (_stateLock)
+		{
+			if (overThreshold && !_airQualityWarningSent)
+			{
+				IpcHandler.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
+				_airQualityWarningSent = true;
+
+				_airQualityTimer?.Destroy();
+				_airQualityTimer = new Timer("air-quality-timer", null, ClearAirQualityWarning, ETimerType.Utility)
+					.Set((0, (int)AirQualityWarningCooldown.TotalMinutes, 0));
+			}
+			else if (backToNormal && _airQualityWarningSent)
+			{
+				_airQualityWarningSent = false;
+				_airQualityTimer?.Destroy();
+				_airQualityTimer = null;
+				IpcHandler.Publish(EMessageCategory.Telegram, "Air quality back to normal");
+			}
+		}
+	}
+
+	private Task ClearAirQualityWarning(object? sender)
+	{
+		lock (_stateLock)
+		{
+			_airQualityWarningSent = false;
+			_airQualityTimer = null;
+		}
+		return Task.CompletedTask;
 	}
 
 	private Task MotionTimeout(object? sender)
 	{
-		_motionTimer?.Destroy();
-		_motionTimer = null;
-		if (Service.Settings.AutomaticMode == EStatus.Off) return Task.CompletedTask;
+		lock (_stateLock) _motionTimer = null;
+
+		if (!AutomationService.CanAutoExtinguish) return Task.CompletedTask;
 
 		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
 		if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
-		{
-			IpcService.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
-		}
+			IpcHandler.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
 
 		return Task.CompletedTask;
 	}
@@ -106,65 +194,86 @@ public class SensorsHandler(Socket socket) : ClientHandler(socket, "ESP32")
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		lock (InstanceLock) _instance = null;
-	}
 
-	// Static methods
+		lock (_stateLock)
+		{
+			_motionTimer?.Destroy();
+			_motionTimer = null;
+			_airQualityTimer?.Destroy();
+			_airQualityTimer = null;
+		}
 
-	public static int? GetRoomLightLevel()
-	{
 		lock (InstanceLock)
-			return _instance?._lastSensorData?.Light;
+		{
+			if (ReferenceEquals(_instance, this)) _instance = null;
+		}
 	}
 
-	public static double? GetRoomTemperature()
+	private static SensorData? Snapshot()
 	{
-		lock (InstanceLock)
-			return _instance?._lastSensorData?.Temperature;
+		SensorsHandler? instance;
+		lock (InstanceLock) instance = _instance;
+		if (instance == null) return null;
+
+		lock (instance._stateLock) return instance._lastSensorData;
 	}
 
-	public static double? GetRoomHumidity()
+	public static bool IsOnline
 	{
-		lock (InstanceLock)
-			return _instance?._lastSensorData?.Humidity;
+		get
+		{
+			SensorsHandler? instance;
+			lock (InstanceLock) instance = _instance;
+			if (instance == null) return false;
+
+			lock (instance._stateLock) return instance._lastUpdate != DateTime.MinValue;
+		}
 	}
 
-	public static int? GetRoomEco2()
+	public static DateTime? LastUpdate
 	{
-		lock (InstanceLock)
-			return _instance?._lastSensorData?.Eco2;
+		get
+		{
+			SensorsHandler? instance;
+			lock (InstanceLock) instance = _instance;
+			if (instance == null) return null;
+
+			lock (instance._stateLock) return instance._lastUpdate == DateTime.MinValue ? null : instance._lastUpdate;
+		}
 	}
 
-	public static int? GetRoomTvoc()
-	{
-		lock (InstanceLock)
-			return _instance?._lastSensorData?.Tvoc;
-	}
+	public static int? GetRoomLightLevel() => Snapshot()?.Light;
+	public static double? GetRoomTemperature() => Snapshot()?.Temperature;
+	public static double? GetRoomHumidity() => Snapshot()?.Humidity;
+	public static int? GetRoomEco2() => Snapshot()?.Eco2;
+	public static int? GetRoomTvoc() => Snapshot()?.Tvoc;
 
 	public static EStatus? GetMotionDetected()
 	{
-		lock (InstanceLock)
-		{
-			if (_instance?._lastSensorData == null) return null;
-			return _instance._lastSensorData.Value.Motion == (int)EStatus.On ? EStatus.On : EStatus.Off;
-		}
+		SensorData? data = Snapshot();
+		if (data == null) return null;
+		return data.Value.Motion == (int)EStatus.On ? EStatus.On : EStatus.Off;
 	}
 
 	public static void BindNew(SensorsHandler sensorHandler)
 	{
+		SensorsHandler? previous;
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectIfAvailable();
+			previous = _instance;
 			_instance = sensorHandler;
 		}
+		previous?.DisconnectIfAvailable();
 	}
 
 	public static void Interrupt()
 	{
+		SensorsHandler? previous;
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectIfAvailable();
+			previous = _instance;
 			_instance = null;
 		}
+		previous?.DisconnectIfAvailable();
 	}
 }

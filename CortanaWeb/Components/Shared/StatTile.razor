@@ -1,0 +1,14 @@
+<div class="tile @(Muted ? "tile-muted" : "")">
+    <span class="tile-icon" aria-hidden="true">@Icon</span>
+    <div class="tile-body">
+        <span class="tile-label">@Label</span>
+        <span class="tile-value">@Value</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter, EditorRequired] public string Value { get; set; } = "-";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public bool Muted { get; set; }
+}

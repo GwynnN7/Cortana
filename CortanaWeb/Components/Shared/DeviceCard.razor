@@ -1,0 +1,41 @@
+@inject CortanaState State
+
+<article class="card device-card @(IsOn ? "is-on" : "is-off")">
+    <header>
+        <span class="device-icon" aria-hidden="true">@Icon</span>
+        <div>
+            <h3>@Device</h3>
+            <p class="device-state">@State.DeviceStatus(Device)</p>
+        </div>
+    </header>
+
+    <div class="btn-row">
+        <button class="btn btn-on" disabled="@Busy" @onclick="() => Switch(ESwitchAction.On)">On</button>
+        <button class="btn btn-off" disabled="@Busy" @onclick="() => Switch(ESwitchAction.Off)">Off</button>
+    </div>
+    <button class="btn btn-ghost btn-block" disabled="@Busy" @onclick="() => Switch(ESwitchAction.Toggle)">Toggle</button>
+</article>
+
+@code {
+    [Parameter, EditorRequired] public EDevice Device { get; set; }
+    [Parameter] public string Icon { get; set; } = "⏻";
+    [Parameter] public EventCallback<string> OnResult { get; set; }
+
+    private bool Busy;
+
+    private bool IsOn => State.IsDeviceOn(Device);
+
+    private async Task Switch(ESwitchAction action)
+    {
+        Busy = true;
+        try
+        {
+            string result = await State.SwitchDevice(Device, action);
+            await OnResult.InvokeAsync(result);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}

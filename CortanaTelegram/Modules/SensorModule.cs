@@ -5,14 +5,13 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class SensorModule : IModuleInterface
 {
-	private static int TabIndex = 0;
-	private static Timer? UpdateTimer = null;
+	private static int _tabIndex;
+	private const int TabCount = 2;
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
@@ -21,7 +20,7 @@ internal sealed class SensorModule : IModuleInterface
 
 		string messageText = await GetSensorDashboard();
 
-		if (query != null && query.Message != null)
+		if (query?.Message != null)
 		{
 			try
 			{
@@ -31,11 +30,12 @@ internal sealed class SensorModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			ResetUpdateTimer(cortana, query);
+			LiveMenu.Track(Utils.Topics.Sensors, query.Message.MessageId, GetSensorDashboard, CreateButtons);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Sensors, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			Message sent = await Utils.SendToTopic(messageText, Utils.Topics.Sensors, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			LiveMenu.Track(Utils.Topics.Sensors, sent.MessageId, GetSensorDashboard, CreateButtons);
 		}
 	}
 
@@ -44,90 +44,46 @@ internal sealed class SensorModule : IModuleInterface
 		int messageId = query.Message!.MessageId;
 		long chatId = query.Message.Chat.Id;
 
-		var task = command switch
+		switch (command)
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query),
-			ActionTag.Tab => Task.Run(async () =>
-			{
-				TabIndex = (TabIndex + 1) % 2;
+			case ActionTag.Refresh:
 				await CreateMenu(cortana, query);
-			}),
-			_ => null
+				return;
+			case ActionTag.Tab:
+				_tabIndex = (_tabIndex + 1) % TabCount;
+				await CreateMenu(cortana, query);
+				return;
+		}
 
-		};
-
-		if (task != null)
+		if (SettingPrompts.TryGetValue(command, out (ESettings Setting, string Prompt) entry))
 		{
-			await task;
+			if (Utils.AddChatArg(Utils.Topics.Sensors, new ChatArgs<ESettings>(EArgsType.SetSetting, query, query.Message, entry.Setting), query))
+				await cortana.EditMessageText(chatId, messageId, entry.Prompt, replyMarkup: CreateCancelButton());
 			return;
 		}
 
-		var chatArg = command switch
+		switch (command)
 		{
-			ActionTag.SetLightThreshold => new ChatArgs(EArgsType.SetLightThreshold, query, query.Message),
-			ActionTag.SetLampToggle => new ChatArgs(EArgsType.SetLampToggle, query, query.Message),
-			ActionTag.SetCO2Threshold => new ChatArgs(EArgsType.SetCO2Threshold, query, query.Message),
-			ActionTag.SetTvocThreshold => new ChatArgs(EArgsType.SetTvocThreshold, query, query.Message),
-			ActionTag.SetMorningHour => new ChatArgs(EArgsType.SetMorningHour, query, query.Message),
-			ActionTag.SetMotionOffMax => new ChatArgs(EArgsType.SetMotionOffMax, query, query.Message),
-			ActionTag.SetMotionOffMin => new ChatArgs(EArgsType.SetMotionOffMin, query, query.Message),
-			_ => null
-		};
+			case ActionTag.EnableAutomatic:
+				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On));
+				break;
+			case ActionTag.DisableAutomatic:
+				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off));
+				break;
+			case ActionTag.ToggleLampRelay:
+				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LampToggle}", new PostValue(-1));
+				break;
+		}
 
-		if (chatArg != null)
-		{
-			if (Utils.AddChatArg(Utils.Topics.Sensors, chatArg, query))
-			{
-				ResetUpdateTimer(cortana, query);
-				string prompt = command switch
-				{
-					ActionTag.SetLightThreshold => "Set Light Threshold",
-					ActionTag.SetLampToggle => "Set Lamp Toggle",
-					ActionTag.SetCO2Threshold => "Set CO2 Threshold",
-					ActionTag.SetTvocThreshold => "Set TVOC Threshold",
-					ActionTag.SetMorningHour => "Set Morning Hour (0~23)",
-					ActionTag.SetMotionOffMax => "Set Light Off Maximum Time",
-					ActionTag.SetMotionOffMin => "Set Light Off Minimum Time",
-					_ => "Sensors Settings"
-				};
-				await cortana.EditMessageText(chatId, messageId, prompt, replyMarkup: CreateCancelButton());
-			}
-		}
-		else
-		{
-			switch (command)
-			{
-				case ActionTag.EnableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On));
-					break;
-				case ActionTag.DisableMotionDetection:
-					await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off));
-					break;
-				case ActionTag.Cancel:
-					break;
-			}
-			await CreateMenu(cortana, query);
-		}
+		await CreateMenu(cortana, query);
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData msgData, ChatArgs chatArg)
 	{
 		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
 
-		if (int.TryParse(msgData.Message, out int sensorValue))
-		{
-			_ = chatArg.Type switch
-			{
-				EArgsType.SetLightThreshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LightThreshold}", new PostValue(sensorValue)),
-				EArgsType.SetLampToggle => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LampToggle}", new PostValue(sensorValue)),
-				EArgsType.SetMorningHour => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MorningHour}", new PostValue(sensorValue)),
-				EArgsType.SetMotionOffMax => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMax}", new PostValue(sensorValue)),
-				EArgsType.SetMotionOffMin => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.MotionOffMin}", new PostValue(sensorValue)),
-				EArgsType.SetCO2Threshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.CO2Threshold}", new PostValue(sensorValue)),
-				EArgsType.SetTvocThreshold => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.TvocThreshold}", new PostValue(sensorValue)),
-				_ => null
-			};
-		}
+		if (chatArg is ChatArgs<ESettings> setting && int.TryParse(msgData.Message, out int value))
+			await ApiHandler.Post($"{ERoute.Settings}/{setting.Arg}", new PostValue(value));
 
 		await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 		await CreateMenu(cortana, chatArg.Query);
@@ -135,48 +91,71 @@ internal sealed class SensorModule : IModuleInterface
 
 	private static async Task<string> GetSensorDashboard()
 	{
-		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Temperature}")).Match(temp => $"{temp.Value}{temp.Unit}", () => "Unknown");
-		string light = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Light}")).Match(light => $"{light.Value}{light.Unit}", () => "Unknown");
-		string humidity = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Humidity}")).Match(humidity => $"{humidity.Value}{humidity.Unit}", () => "Unknown");
-		string co2 = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.CO2}")).Match(co2 => $"{co2.Value}{co2.Unit}", () => "Unknown");
-		string tvoc = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Tvoc}")).Match(tvoc => $"{tvoc.Value}{tvoc.Unit}", () => "Unknown");
-		string motion = (await ApiHandler.Get<SensorResponse>($"{ERoute.Sensors}/{ESensor.Motion}")).Match(motion => bool.Parse(motion.Value) ? "🟢" : "🔴", () => "Unknown");
+		IOption<SensorListResponse> sensorsOption = await ApiHandler.Get<SensorListResponse>($"{ERoute.Sensors}");
+		IOption<SettingsListResponse> settingsOption = await ApiHandler.Get<SettingsListResponse>($"{ERoute.Settings}");
 
-		string autoMode = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.AutomaticMode}")).Match(autoMode => autoMode.Value.Contains("On") ? "🟢" : "🔴", () => "Unknown");
-		string lightThreshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.LightThreshold}")).Match(light => light.Value, () => "Unknown");
-		string lampToggle = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.LampToggle}")).Match(lampToggle => lampToggle.Value, () => "Unknown");
-		string co2Threshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.CO2Threshold}")).Match(co2 => co2.Value, () => "Unknown");
-		string tvocThreshold = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.TvocThreshold}")).Match(tvoc => tvoc.Value, () => "Unknown");
-		string morningHour = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MorningHour}")).Match(morningHour => morningHour.Value, () => "Unknown");
-		string motionOffMax = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMax}")).Match(motionOffMax => motionOffMax.Value, () => "Unknown");
-		string motionOffMin = (await ApiHandler.Get<SettingsResponse>($"{ERoute.Settings}/{ESettings.MotionOffMin}")).Match(motionOffMin => motionOffMin.Value, () => "Unknown");
+		string Sensor(ESensor sensor) => sensorsOption.Match(
+			list =>
+			{
+				SensorResponse? found = list.Sensors.FirstOrDefault(s => s.Sensor == sensor.ToString());
+				if (found == null || string.IsNullOrEmpty(found.Value)) return "Unknown";
+				if (sensor != ESensor.Motion) return $"{found.Value}{found.Unit}";
+				return found.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ? "🟢" : "🔴";
+			},
+			() => "Unknown");
 
-		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n💡 • <b>Light:</b> {light}\n🌡 • <b>Temperature:</b> {temperature}\n💧 • <b>Humidity:</b> {humidity}\n🧪 • <b>CO2:</b> {co2}\n🦠 • <b>TVOC:</b> {tvoc}\n🖲 • <b>Motion Detected:</b> {motion}\n\n⚙️ <b>Sensor Settings</b>\n=================\n🖲 • <b>Automatic Mode:</b> {autoMode}\n💡 • <b>Light Threshold</b>: {lightThreshold}\n🧪 • <b>CO2 Threshold</b>: {co2Threshold}\n🦠 • <b>TVOC Threshold</b>: {tvocThreshold}\n⚖️ • <b>Lamp Toggle</b>: {lampToggle}\n🕒 • <b>Morning Hour</b>: {morningHour}\n⏳ • <b>Timer Min/Max</b>: {motionOffMin}/{motionOffMax}\n";
+		string Setting(ESettings setting) => settingsOption.Match(
+			list => list.Settings.FirstOrDefault(s => s.Setting == setting.ToString())?.Value ?? "Unknown",
+			() => "Unknown");
+
+		string autoMode = Setting(ESettings.AutomaticMode) == nameof(EStatus.On) ? "🟢" : "🔴";
+
+		return $"\n📡 <b>Sensors Dashboard</b>\n====================\n" +
+			$"💡 • <b>Light:</b> {Sensor(ESensor.Light)}\n" +
+			$"🌡 • <b>Temperature:</b> {Sensor(ESensor.Temperature)}\n" +
+			$"💧 • <b>Humidity:</b> {Sensor(ESensor.Humidity)}\n" +
+			$"🧪 • <b>CO2:</b> {Sensor(ESensor.CO2)}\n" +
+			$"🦠 • <b>TVOC:</b> {Sensor(ESensor.Tvoc)}\n" +
+			$"🖲 • <b>Motion Detected:</b> {Sensor(ESensor.Motion)}\n\n" +
+			$"⚙️ <b>Sensor Settings</b>\n=================\n" +
+			$"🖲 • <b>Automatic Mode:</b> {autoMode}\n" +
+			$"💡 • <b>Light Threshold</b>: {Setting(ESettings.LightThreshold)}\n" +
+			$"🧪 • <b>CO2 Threshold</b>: {Setting(ESettings.CO2Threshold)}\n" +
+			$"🦠 • <b>TVOC Threshold</b>: {Setting(ESettings.TvocThreshold)}\n" +
+			$"⚖️ • <b>Lamp Toggle</b>: {Setting(ESettings.LampToggle)}\n" +
+			$"🌅 • <b>Morning Hour</b>: {Setting(ESettings.MorningHour)}\n" +
+			$"🌇 • <b>Night Hour</b>: {Setting(ESettings.NightHour)}\n" +
+			$"✋ • <b>Manual Minutes</b>: {Setting(ESettings.ManualModeMinutes)}\n" +
+			$"⏳ • <b>Motion Min/Max</b>: {Setting(ESettings.MotionOffMin)}/{Setting(ESettings.MotionOffMax)}\n";
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
 		InlineKeyboardMarkup inlineKeyboard = new();
 
-		switch (TabIndex)
+		switch (_tabIndex)
 		{
 			case 0:
 				inlineKeyboard
-					.AddButton("Automatic Mode 🟢", ActionTag.EnableMotionDetection)
-					.AddButton("Manual Mode 🔴", ActionTag.DisableMotionDetection);
+					.AddButton("Automatic Mode 🟢", ActionTag.EnableAutomatic)
+					.AddButton("Manual Mode 🔴", ActionTag.DisableAutomatic)
+					.AddNewRow()
+					.AddButton("Lamp Relay ⚖️", ActionTag.ToggleLampRelay);
 				break;
+
 			case 1:
 				inlineKeyboard
 					.AddButton("Motion Min ⏳", ActionTag.SetMotionOffMin)
 					.AddButton("Motion Max ⏳", ActionTag.SetMotionOffMax)
 					.AddNewRow()
-					.AddButton("CO2 Threshold 🧪", ActionTag.SetCO2Threshold)
-					.AddButton("TVOC Threshold 🦠", ActionTag.SetTvocThreshold)
+					.AddButton("CO2 🧪", ActionTag.SetCO2Threshold)
+					.AddButton("TVOC 🦠", ActionTag.SetTvocThreshold)
 					.AddNewRow()
-					.AddButton("Light Threshold 💡", ActionTag.SetLightThreshold)
-					.AddButton("Lamp Toggle ⚖️", ActionTag.SetLampToggle)
+					.AddButton("Light 💡", ActionTag.SetLightThreshold)
+					.AddButton("Manual ✋", ActionTag.SetManualMinutes)
 					.AddNewRow()
-					.AddButton("Morning Hour 🕒", ActionTag.SetMorningHour);
+					.AddButton("Morning 🌅", ActionTag.SetMorningHour)
+					.AddButton("Night 🌇", ActionTag.SetNightHour);
 				break;
 		}
 
@@ -186,41 +165,37 @@ internal sealed class SensorModule : IModuleInterface
 			.AddButton("Tab ↔️", ActionTag.Tab);
 	}
 
-	private static InlineKeyboardMarkup CreateCancelButton()
+	private static InlineKeyboardMarkup CreateCancelButton() => new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
+
+	private static readonly Dictionary<string, (ESettings Setting, string Prompt)> SettingPrompts = new()
 	{
-		return new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
-	}
+		{ ActionTag.SetLightThreshold, (ESettings.LightThreshold, "Set Light Threshold (lux)") },
+		{ ActionTag.SetCO2Threshold, (ESettings.CO2Threshold, "Set CO2 Threshold (ppm)") },
+		{ ActionTag.SetTvocThreshold, (ESettings.TvocThreshold, "Set TVOC Threshold (ppb)") },
+		{ ActionTag.SetMorningHour, (ESettings.MorningHour, "Set Morning Hour (0~23)") },
+		{ ActionTag.SetNightHour, (ESettings.NightHour, "Set Night Hour (0~23)") },
+		{ ActionTag.SetMotionOffMax, (ESettings.MotionOffMax, "Seconds before lamp off, computer on") },
+		{ ActionTag.SetMotionOffMin, (ESettings.MotionOffMin, "Seconds before lamp off, computer off") },
+		{ ActionTag.SetManualMinutes, (ESettings.ManualModeMinutes, "Minutes a manual touch holds automation off") }
+	};
 
 	private struct ActionTag
 	{
 		public const string Refresh = "sensor-refresh";
-		public const string Settings = "sensor-settings";
-		public const string SetLightThreshold = "sensor-set_light";
-		public const string SetLampToggle = "sensor-set_lamp_toggle";
-		public const string SetCO2Threshold = "sensor-set_co2";
-		public const string SetTvocThreshold = "sensor-set_tvoc";
-		public const string EnableMotionDetection = "sensor-enable_automaticmode";
-		public const string DisableMotionDetection = "sensor-disable_automaticmode";
-		public const string SetMorningHour = "sensor-set_morninghour";
-		public const string SetMotionOffMax = "sensor-set_motionoffmax";
-		public const string SetMotionOffMin = "sensor-set_motionoffmin";
 		public const string Tab = "sensor-tab";
 		public const string Cancel = "sensor-cancel";
-	}
 
-	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
-	{
-		UpdateTimer?.Destroy();
-		UpdateTimer = new Timer("sensor-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
-		{
-			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+		public const string EnableAutomatic = "sensor-enable_automaticmode";
+		public const string DisableAutomatic = "sensor-disable_automaticmode";
+		public const string ToggleLampRelay = "sensor-toggle_lamp_relay";
 
-			try
-			{
-				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
-				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
-			}
-			catch { }
-		}, ETimerType.Telegram).Set((10, 0, 0));
+		public const string SetLightThreshold = "sensor-set_light";
+		public const string SetCO2Threshold = "sensor-set_co2";
+		public const string SetTvocThreshold = "sensor-set_tvoc";
+		public const string SetMorningHour = "sensor-set_morninghour";
+		public const string SetNightHour = "sensor-set_nighthour";
+		public const string SetMotionOffMax = "sensor-set_motionoffmax";
+		public const string SetMotionOffMin = "sensor-set_motionoffmin";
+		public const string SetManualMinutes = "sensor-set_manualminutes";
 	}
 }

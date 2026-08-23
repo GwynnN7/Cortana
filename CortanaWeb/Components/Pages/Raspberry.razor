@@ -1,91 +1,109 @@
 @page "/raspberry"
-@using CortanaLib
-@using CortanaLib.Structures
+@attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
 
-<PageTitle>Sensors List</PageTitle>
-<main>
-    <div class="table-container">
-        <table class="raspberry-table">
-            <thead>
-            <tr>
-                <th>Info</th>
-                <th>Data</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>CPU Temperature</td>
-                <td>@_data?.Temperature</td>
-            </tr>
-            <tr>
-                <td>Location</td>
-                <td>@_data?.Location</td>
-            </tr>
-            <tr>
-                <td>Gateway</td>
-                <td>@_data?.Gateway</td>
-            </tr>
-            <tr>
-                <td>IPv4 Address</td>
-                <td>@_data?.Ip</td>
-            </tr>
-            </tbody>
-        </table>
+<PageTitle>Raspberry</PageTitle>
+
+<h1>Raspberry</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <div class="tiles">
+        <StatTile Icon="🌡" Label="CPU temperature" Value="@State.RaspberryInfo(ERaspberryInfo.Temperature)"/>
+        <StatTile Icon="📍" Label="Location" Value="@State.RaspberryInfo(ERaspberryInfo.Location)"/>
+        <StatTile Icon="🌐" Label="Gateway" Value="@State.RaspberryInfo(ERaspberryInfo.Gateway)"/>
+        <StatTile Icon="📬" Label="Public IP" Value="@State.RaspberryInfo(ERaspberryInfo.Ip)"/>
     </div>
-    <div class="container">
-        <div class="card">
-            <h2>Commands</h2>
-            <div class="button-group">
-                <button @onclick="() => CommandRaspberry(ERaspberryCommand.Shutdown)">Shutdown</button>
-                <button @onclick="() => CommandRaspberry(ERaspberryCommand.Reboot)">Reboot</button>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Shell</h2>
+        <p class="section-hint">Runs on the Pi as the cortana user. Output is capped and the command times out after 20s.</p>
+    </header>
+
+    <div class="field-row">
+        <input type="text" placeholder="e.g. df -h" @bind="_command" @bind:event="oninput"
+               disabled="@_busy" @onkeydown="OnEnter"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_command))" @onclick="RunCommand">Run</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_output))
+    {
+        <pre class="console">@_output</pre>
+    }
+</section>
+
+<section class="section section-danger">
+    <header class="section-head">
+        <h2>Power</h2>
+        <p class="section-hint">These take Cortana offline until the Pi comes back.</p>
+    </header>
+
+    @if (_confirming == null)
+    {
+        <div class="btn-row wrap">
+            <button class="btn btn-off" @onclick="@(() => _confirming = ERaspberryCommand.Reboot)">Reboot</button>
+            <button class="btn btn-off" @onclick="@(() => _confirming = ERaspberryCommand.Shutdown)">Shutdown</button>
+        </div>
+    }
+    else
+    {
+        <div class="confirm">
+            <p>Really <strong>@(_confirming.ToString()!.ToLower())</strong> the Raspberry Pi?</p>
+            <div class="btn-row">
+                <button class="btn btn-off" disabled="@_busy" @onclick="ConfirmPower">Yes, @(_confirming.ToString()!.ToLower())</button>
+                <button class="btn btn-ghost" disabled="@_busy" @onclick="@(() => _confirming = null)">Cancel</button>
             </div>
         </div>
-    </div>
-</main>
+    }
+</section>
 
 @code {
-    private SensorData? _data;
-    private System.Threading.Timer? _timer;
+    private IDisposable? _subscription;
+    private string? _message;
+    private string _command = "";
+    private string? _output;
+    private bool _busy;
+    private ERaspberryCommand? _confirming;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private Task OnEnter(KeyboardEventArgs args) => args.Key == "Enter" ? RunCommand() : Task.CompletedTask;
+
+    private async Task RunCommand()
     {
-        string gateway = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}");
-        string ip = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}");
-        string location = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Location}");
-
-        _data = new SensorData
+        string command = _command;
+        _busy = true;
+        try
         {
-            Gateway = gateway,
-            Ip = ip,
-            Location = location
-        };
-        
-        _timer = new System.Threading.Timer(_ =>
+            _output = await State.RaspberryCommand(ERaspberryCommand.Command, command);
+            _command = "";
+        }
+        finally
         {
-            InvokeAsync( async ()  =>
-            {
-                string newTemp = await ApiHandler.Get($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}");
-                _data = _data with { Temperature = newTemp };
-
-                StateHasChanged();
-            });
-        }, null, 0, 2000);
-
-        await base.OnInitializedAsync();
+            _busy = false;
+        }
     }
 
-    private record SensorData
+    private async Task ConfirmPower()
     {
-        public string Temperature { get; init; } = "Loading...";
-        public string Location { get; init; } = "Loading...";
-        public string Gateway { get; init; } = "Loading...";
-        public string Ip { get; init; } = "Loading...";
-    }
+        if (_confirming == null) return;
 
-    private async Task CommandRaspberry(ERaspberryCommand command)
-    {
-        await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString()));
+        _busy = true;
+        try
+        {
+            _message = await State.RaspberryCommand(_confirming.Value);
+            _confirming = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
-
 }

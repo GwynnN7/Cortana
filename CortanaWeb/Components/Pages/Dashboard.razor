@@ -1,0 +1,112 @@
+@page "/"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Cortana</PageTitle>
+
+<h1 class="visually-hidden">Dashboard</h1>
+
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Room</h2>
+        <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
+            @(State.SensorsOnline ? "Station online" : "Station offline")
+        </span>
+    </header>
+
+    <div class="tiles">
+        <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(ESensor.Motion)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(ESensor.CO2)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(ESensor.Tvoc)" Muted="!State.SensorsOnline"/>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Quick actions</h2>
+    </header>
+
+    <div class="quick-grid">
+        <button class="quick @(State.IsDeviceOn(EDevice.Lamp) ? "quick-active" : "")" disabled="@_busy"
+                @onclick="() => Run(() => State.SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle))">
+            <span aria-hidden="true">💡</span> Lamp
+        </button>
+        <button class="quick @(State.IsDeviceOn(EDevice.Computer) ? "quick-active" : "")" disabled="@_busy"
+                @onclick="() => Run(() => State.SwitchDevice(EDevice.Computer, ESwitchAction.Toggle))">
+            <span aria-hidden="true">💻</span> Computer
+        </button>
+        <button class="quick" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">
+            <span aria-hidden="true">🏠</span> Room on
+        </button>
+        <button class="quick" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">
+            <span aria-hidden="true">🌙</span> Room off
+        </button>
+        <button class="quick" disabled="@_busy" @onclick="() => Run(State.Sleep)">
+            <span aria-hidden="true">🛌</span> Sleep mode
+        </button>
+        <button class="quick @(State.SettingEnabled(ESettings.AutomaticMode) ? "quick-active" : "")" disabled="@_busy"
+                @onclick="ToggleAutomatic">
+            <span aria-hidden="true">🤖</span> Automatic
+        </button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>System</h2>
+        <a class="link" href="/subfunctions">Manage</a>
+    </header>
+
+    <div class="tiles">
+        <StatTile Icon="🍓" Label="CPU temperature" Value="@State.RaspberryInfo(ERaspberryInfo.Temperature)"/>
+        <StatTile Icon="📍" Label="Location" Value="@State.RaspberryInfo(ERaspberryInfo.Location)"/>
+        <StatTile Icon="📬" Label="Public IP" Value="@State.RaspberryInfo(ERaspberryInfo.Ip)"/>
+        <StatTile Icon="🌐" Label="Gateway" Value="@State.RaspberryInfo(ERaspberryInfo.Gateway)"/>
+    </div>
+
+    <div class="chips">
+        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+        {
+            <span class="chip @(State.SubfunctionRunning(type) ? "chip-ok" : "chip-bad")">
+                <span class="dot"></span>@type.ToString().Replace("Cortana", "")
+            </span>
+        }
+    </div>
+</section>
+
+@code {
+    private IDisposable? _subscription;
+    private string? _message;
+    private bool _busy;
+
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private Task ToggleAutomatic()
+    {
+        EStatus target = State.SettingEnabled(ESettings.AutomaticMode) ? EStatus.Off : EStatus.On;
+        return Run(() => State.SetSetting(ESettings.AutomaticMode, (int)target));
+    }
+
+    private async Task Run(Func<Task<string>> action)
+    {
+        _busy = true;
+        try
+        {
+            _message = await action();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

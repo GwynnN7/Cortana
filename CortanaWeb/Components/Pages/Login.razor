@@ -1,0 +1,46 @@
+@page "/login"
+@layout EmptyLayout
+@inject WebAuth Auth
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in</PageTitle>
+
+<div class="login">
+    <img src="favicon.png" alt="" width="72" height="72"/>
+    <h1>Cortana</h1>
+
+    @if (!Auth.Enabled)
+    {
+        <p class="login-note">No passcode is configured, the dashboard is open.</p>
+        <a class="btn btn-block" href="/">Continue</a>
+    }
+    else
+    {
+        <form method="post" action="/auth/login">
+            <input type="hidden" name="returnUrl" value="@ReturnUrl"/>
+            <input type="password" name="password" placeholder="Passcode" autocomplete="current-password" autofocus required/>
+            <button type="submit" class="btn btn-block">Sign in</button>
+        </form>
+
+        @if (HasError)
+        {
+            <p class="login-error">Wrong passcode.</p>
+        }
+    }
+</div>
+
+@code {
+    private string ReturnUrl => Query("returnUrl") ?? "/";
+    private bool HasError => Query("error") != null;
+
+    private string? Query(string key)
+    {
+        var uri = new Uri(Navigation.Uri);
+        var parsed = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
+        foreach ((string name, var value) in parsed)
+        {
+            if (string.Equals(name, key, StringComparison.OrdinalIgnoreCase)) return value.ToString();
+        }
+        return null;
+    }
+}

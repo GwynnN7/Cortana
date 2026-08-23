@@ -1,0 +1,57 @@
+@inject CortanaState State
+
+<div class="setting">
+    <label for="@_id">
+        <span class="setting-icon" aria-hidden="true">@Icon</span>
+        <span>
+            <strong>@Label</strong>
+            @if (!string.IsNullOrEmpty(Hint))
+            {
+                <small>@Hint</small>
+            }
+        </span>
+    </label>
+
+    <div class="setting-input">
+        <input id="@_id" type="number" min="@Min" max="@Max" value="@Draft"
+               @onchange="OnDraftChanged" disabled="@Busy"/>
+        <button class="btn btn-small" disabled="@(Busy || Draft == Current)" @onclick="Save">Save</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ESettings Setting { get; set; }
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string Hint { get; set; } = "";
+    [Parameter] public string Icon { get; set; } = "";
+    [Parameter] public int Min { get; set; }
+    [Parameter] public int Max { get; set; } = 100000;
+    [Parameter] public EventCallback<string> OnResult { get; set; }
+
+    private readonly string _id = $"setting-{Guid.NewGuid():N}";
+    private int? _draft;
+    private bool Busy;
+
+    private int Current => State.SettingNumber(Setting);
+    private int Draft => _draft ?? Current;
+
+    private void OnDraftChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out int parsed)) _draft = Math.Clamp(parsed, Min, Max);
+    }
+
+    private async Task Save()
+    {
+        Busy = true;
+        try
+        {
+            string result = await State.SetSetting(Setting, Draft);
+            _draft = null;
+            await OnResult.InvokeAsync(result);
+        }
+        finally
+        {
+            Busy = false;
+        }
+    }
+}

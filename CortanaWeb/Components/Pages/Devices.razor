@@ -1,125 +1,122 @@
 @page "/devices"
-@using CortanaLib
-@using CortanaLib.Structures
+@attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
 
-<main>
-    <section id="devices">
-        <div class="device-grid">
-            <div class="device-card">
-                <h3>Power</h3>
-                <p>@_deviceStatus?[EDevice.Power]</p>
-                <div>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.On)">On</button>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.Off)">Off</button>
-                </div>
-                <button class="device-button"
-                        @onclick="() => SwitchDevice(EDevice.Power, ESwitchAction.Toggle)">Toggle</button>
-            </div>
-            <div class="device-card">
-                <h3>Computer</h3>
-                <p>@_deviceStatus?[EDevice.Computer]</p>
-                <div>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.On)">On</button>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.Off)">Off</button>
-                </div>
-                <button class="device-button"
-                        @onclick="() => SwitchDevice(EDevice.Computer, ESwitchAction.Toggle)">Toggle</button>
-            </div>
-            <div class="device-card">
-                <h3>Lamp</h3>
-                <p>@_deviceStatus?[EDevice.Lamp]</p>
-                <div>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.On)">On</button>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.Off)">Off</button>
-                </div>
-                <button class="device-button"
-                        @onclick="() => SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle)">Toggle</button>
-            </div>
-            <div class="device-card">
-                <h3>Generic</h3>
-                <p>@_deviceStatus?[EDevice.Generic]</p>
-                <div>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.On)">On</button>
-                    <button class="device-button"
-                            @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.Off)">Off</button>
-                </div>
-                <button class="device-button"
-                        @onclick="() => SwitchDevice(EDevice.Generic, ESwitchAction.Toggle)">Toggle</button>
-            </div>
+<PageTitle>Devices</PageTitle>
+
+<h1>Devices</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <div class="card-grid">
+        <DeviceCard Device="EDevice.Lamp" Icon="💡" OnResult="Report"/>
+        <DeviceCard Device="EDevice.Computer" Icon="💻" OnResult="Report"/>
+        <DeviceCard Device="EDevice.Power" Icon="⚡" OnResult="Report"/>
+        <DeviceCard Device="EDevice.Generic" Icon="🔌" OnResult="Report"/>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Room</h2>
+        <p class="section-hint">Lamp and computer power together, respecting the light threshold.</p>
+    </header>
+
+    <div class="btn-row">
+        <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">Room on</button>
+        <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">Room off</button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="() => Run(State.Sleep)">Sleep mode</button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Computer</h2>
+        <span class="badge @(State.IsDeviceOn(EDevice.Computer) ? "badge-ok" : "badge-bad")">
+            @(State.IsDeviceOn(EDevice.Computer) ? "Connected" : "Not connected")
+        </span>
+    </header>
+
+    <div class="btn-row wrap">
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Reboot))">Reboot</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Suspend))">Suspend</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.System))">Switch OS</button>
+        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Shutdown))">Shutdown</button>
+    </div>
+
+    <div class="stack">
+        <div class="field-row">
+            <input type="text" placeholder="Notification text" @bind="_notification" @bind:event="oninput"
+                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, SendNotification))"/>
+            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_notification))" @onclick="SendNotification">Notify</button>
         </div>
-    </section>
 
-    <div class="container">
-        <div class="card">
-            <h2>Commands</h2>
-            <div class="button-group">
-                <button @onclick="() => CommandPc(EComputerCommand.Reboot)">Reboot</button>
-                <button @onclick="() => CommandPc(EComputerCommand.Suspend)">Suspend</button>
-                <button @onclick="() => CommandPc(EComputerCommand.System)">Linux/Windows</button>
-                <button @onclick="Sleep">Sleep</button>
-            </div>
+        <div class="field-row">
+            <input type="text" placeholder="Shell command" @bind="_command" @bind:event="oninput"
+                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, SendCommand))"/>
+            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_command))" @onclick="SendCommand">Run</button>
         </div>
     </div>
-</main>
+
+    @if (!string.IsNullOrEmpty(_commandOutput))
+    {
+        <pre class="console">@_commandOutput</pre>
+    }
+</section>
 
 @code {
-    private System.Threading.Timer? _timer;
-    private Dictionary<EDevice, string>? _deviceStatus;
+    private IDisposable? _subscription;
+    private string? _message;
+    private string _notification = "";
+    private string _command = "";
+    private string? _commandOutput;
+    private bool _busy;
 
-    protected override async Task OnInitializedAsync()
+    private bool ComputerBusy => _busy || !State.IsDeviceOn(EDevice.Computer);
+
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private void Report(string result) => _message = result;
+
+    private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) =>
+        args.Key == "Enter" ? action() : Task.CompletedTask;
+
+    private async Task SendNotification()
     {
-        _timer = new System.Threading.Timer(_ =>
+        await Run(() => State.ComputerCommand(EComputerCommand.Notify, _notification));
+        _notification = "";
+    }
+
+    private async Task SendCommand()
+    {
+        string command = _command;
+        _busy = true;
+        try
         {
-            InvokeAsync(async () =>
-            {
-                await UpdateStatus();
-                StateHasChanged();
-            });
-        }, null, 0, 2000);
-
-        await base.OnInitializedAsync();
-    }
-
-    private async Task SwitchDevice(EDevice device, ESwitchAction action)
-    {
-        await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
-        await UpdateStatus();
-    }
-
-    private async Task UpdateStatus()
-    {
-        string lamp = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Lamp}");
-        string power = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Power}");
-        string computer = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Computer}");
-        string generic = await ApiHandler.Get($"{ERoute.Devices}/{EDevice.Generic}");
-
-        _deviceStatus = new Dictionary<EDevice, string>
+            _commandOutput = await State.ComputerCommand(EComputerCommand.Command, command);
+            _command = "";
+        }
+        finally
         {
-            { EDevice.Lamp, lamp },
-            { EDevice.Power, power },
-            { EDevice.Computer, computer },
-            { EDevice.Generic, generic }
-        };
+            _busy = false;
+        }
     }
 
-    private async Task Sleep()
+    private async Task Run(Func<Task<string>> action)
     {
-        await ApiHandler.Post($"{ERoute.Devices}/sleep");
-        await UpdateStatus();
+        _busy = true;
+        try
+        {
+            _message = await action();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
-
-    private async Task CommandPc(EComputerCommand command)
-    {
-        await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString()));
-        await UpdateStatus();
-    }
-
 }

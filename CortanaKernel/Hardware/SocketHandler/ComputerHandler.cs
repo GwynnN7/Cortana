@@ -1,6 +1,8 @@
 using System.Net.Sockets;
+using System.Threading.Channels;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.Utility;
+using CortanaKernel.Kernel;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware.SocketHandler;
@@ -9,133 +11,129 @@ public class ComputerHandler : ClientHandler
 {
 	private static readonly Lock InstanceLock = new();
 	private static ComputerHandler? _instance;
-	private readonly Stack<string> _messages = [];
 
-	public ComputerHandler(Socket socket) : base(socket, "Computer")
+	private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(8);
+
+		private readonly Channel<string> _messages = Channel.CreateBounded<string>(
+		new BoundedChannelOptions(32) { FullMode = BoundedChannelFullMode.DropOldest });
+
+	public ComputerHandler(Socket socket, string? pendingData = null) : base(socket, "Computer", pendingData)
 	{
 		UpdateComputerStatus(EStatus.On);
-		Service.ComputerStatusUpdated();
+		AutomationService.ComputerStatusUpdated();
 	}
 
 	protected override void HandleRead(string message)
 	{
-		switch (message)
+		if (message == "SYN")
 		{
-			case "SYN":
-				UpdateComputerStatus(EStatus.On);
-				break;
-			default:
-				lock (_messages)
-				{
-					_messages.Push(message);
-					Monitor.Pulse(_messages);
-				}
-				break;
+			UpdateComputerStatus(EStatus.On);
+			return;
 		}
+		_messages.Writer.TryWrite(message);
 	}
 
 	protected override void DisconnectSocket()
 	{
 		base.DisconnectSocket();
-		_messages.Clear();
-		_instance = null;
+		_messages.Writer.TryComplete();
+
+		lock (InstanceLock)
+		{
+			if (ReferenceEquals(_instance, this)) _instance = null;
+		}
+
 		UpdateComputerStatus(EStatus.Off);
-		Service.ComputerStatusUpdated();
+		AutomationService.ComputerStatusUpdated();
 	}
 
-	// Static methods
+	private async Task<string?> AwaitReply()
+	{
+		using var cts = new CancellationTokenSource(ReplyTimeout);
+		try
+		{
+			return await _messages.Reader.ReadAsync(cts.Token);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+	}
+
+	private static ComputerHandler? Instance
+	{
+		get { lock (InstanceLock) return _instance; }
+	}
 
 	public static void Boot()
 	{
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", Service.NetworkData.DesktopMac));
-		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", Service.NetworkData.DesktopMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("wakeonlan", AutomationService.NetworkData.DesktopMac));
+		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", AutomationService.NetworkData.DesktopMac));
 	}
 
-	public static bool Shutdown()
-	{
-		return _instance?.Write("shutdown") ?? false;
-	}
-
-	public static bool Suspend()
-	{
-		return _instance?.Write("suspend") ?? false;
-	}
-
-	public static bool Reboot()
-	{
-		return _instance?.Write("reboot") ?? false;
-	}
-
-	public static bool SwitchOs()
-	{
-		return _instance?.Write("system") ?? false;
-	}
+	public static bool Shutdown() => Instance?.Write("shutdown") ?? false;
+	public static bool Suspend() => Instance?.Write("suspend") ?? false;
+	public static bool Reboot() => Instance?.Write("reboot") ?? false;
+	public static bool SwitchOs() => Instance?.Write("system") ?? false;
 
 	public static bool Notify(string text)
 	{
-		return (_instance?.Write("notify") ?? false) && _instance.Write(text);
+		ComputerHandler? instance = Instance;
+		return instance != null && instance.Write("notify") && instance.Write(text);
 	}
 
-	public static bool Command(string cmd)
+		public static async Task<StringResult> RunCommand(string cmd)
 	{
-		return (_instance?.Write("cmd") ?? false) && _instance.Write(cmd);
+		ComputerHandler? instance = Instance;
+		if (instance == null) return StringResult.Failure("Computer is not connected");
+		if (!instance.Write("cmd") || !instance.Write(cmd)) return StringResult.Failure("Could not reach the computer");
+
+		string? reply = await instance.AwaitReply();
+		return StringResult.Success(reply ?? "Command executed");
 	}
 
-	public static bool GatherMessage(out string? message)
-	{
-		message = null;
-		if (_instance == null) return false;
-
-		Stack<string> instanceMessage = _instance._messages;
-		Monitor.Enter(instanceMessage);
-		try
-		{
-			if (Monitor.Wait(instanceMessage, 4000)) message = instanceMessage.Pop();
-		}
-		finally
-		{
-			Monitor.Exit(instanceMessage);
-		}
-		return message != null;
-	}
-
-	public static async Task CheckForConnection()
+		public static async Task CheckForConnection()
 	{
 		await Task.Delay(1000);
 
 		DateTime start = DateTime.Now;
-		while ((Helper.Ping(Service.NetworkData.DesktopIp) || GetComputerStatus() == EStatus.On) && (DateTime.Now - start).TotalSeconds <= 100) await Task.Delay(1500);
+		while ((Helper.Ping(AutomationService.NetworkData.DesktopIp) || GetComputerStatus() == EStatus.On) && (DateTime.Now - start).TotalSeconds <= 100)
+			await Task.Delay(1500);
 
-		if ((DateTime.Now - start).TotalSeconds < 3) await Task.Delay(15000);
-		else await Task.Delay(5000);
+		await Task.Delay((DateTime.Now - start).TotalSeconds < 3 ? 15000 : 5000);
 	}
 
 	private static void UpdateComputerStatus(EStatus power)
 	{
+		EStatus previous = DeviceHandler.DeviceStatus[EDevice.Computer];
 		DeviceHandler.DeviceStatus[EDevice.Computer] = power;
 		if (power == EStatus.On) DeviceHandler.DeviceStatus[EDevice.Power] = EStatus.On;
+		SystemEvents.Notify();
+
+		if (previous != power) ScheduleService.RaiseEvent(power == EStatus.On ? EScheduleEvent.ComputerOn : EScheduleEvent.ComputerOff);
 	}
 
-	private static EStatus GetComputerStatus()
-	{
-		return DeviceHandler.DeviceStatus[EDevice.Computer];
-	}
+	private static EStatus GetComputerStatus() => DeviceHandler.DeviceStatus[EDevice.Computer];
 
 	public static void BindNew(ComputerHandler computerHandler)
 	{
+		ComputerHandler? previous;
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectIfAvailable();
+			previous = _instance;
 			_instance = computerHandler;
 		}
+		previous?.DisconnectIfAvailable();
 	}
 
 	public static void Interrupt()
 	{
+		ComputerHandler? previous;
 		lock (InstanceLock)
 		{
-			_instance?.DisconnectIfAvailable();
+			previous = _instance;
 			_instance = null;
 		}
+		previous?.DisconnectIfAvailable();
 	}
 }

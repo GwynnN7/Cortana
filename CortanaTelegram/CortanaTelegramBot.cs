@@ -1,4 +1,4 @@
-﻿using CortanaLib;
+using CortanaLib;
 using CortanaTelegram.Modules;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
@@ -14,6 +14,8 @@ public static class CortanaTelegramBot
 {
 	public static async Task Main()
 	{
+		DataHandler.LoadEnvironment(required: false);
+
 		var cortana = new TelegramBotClient(DataHandler.Env("CORTANA_TELEGRAM_TOKEN"));
 		cortana.StartReceiving(UpdateHandler, ErrorHandler, new ReceiverOptions { DropPendingUpdates = true });
 
@@ -22,7 +24,7 @@ public static class CortanaTelegramBot
 		DataHandler.Log("Telegram Bot Online");
 
 		await SignalHandler.WaitForInterrupt();
-		Utils.Shutdown();
+		await Utils.Shutdown();
 		DataHandler.Log("Telegram Bot Offline");
 	}
 
@@ -78,6 +80,7 @@ public static class CortanaTelegramBot
 				case EArgsType.Timer:
 				case EArgsType.AudioDownloader:
 				case EArgsType.VideoDownloader:
+				case EArgsType.DeleteSchedule:
 					await UtilityModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.Notification:
@@ -85,17 +88,14 @@ public static class CortanaTelegramBot
 				case EArgsType.HardwareTimer:
 					await DeviceModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
-				case EArgsType.SetLightThreshold:
-				case EArgsType.SetLampToggle:
-				case EArgsType.SetCO2Threshold:
-				case EArgsType.SetTvocThreshold:
-				case EArgsType.SetMorningHour:
-				case EArgsType.SetMotionOffMax:
-				case EArgsType.SetMotionOffMin:
+				case EArgsType.SetSetting:
 					await SensorModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.RaspberryCommand:
 					await RaspberryModule.HandleTextMessage(cortana, msgData, chatArg);
+					break;
+				case EArgsType.Broadcast:
+					await CortanaModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 			}
 

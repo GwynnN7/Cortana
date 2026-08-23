@@ -1,4 +1,4 @@
-﻿using CortanaDiscord.Utility;
+using CortanaDiscord.Utility;
 using CortanaLib;
 using CortanaLib.Structures;
 using Discord;
@@ -10,88 +10,89 @@ namespace CortanaDiscord.Modules;
 [RequireOwner]
 public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 {
-	[SlashCommand("lamp", "Switch Lamp")]
-	public async Task LightToggle()
-	{
-		string result = await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}");
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await RespondAsync(embed: embed, ephemeral: true);
-	}
+	[SlashCommand("lamp", "Switch Lamp", runMode: RunMode.Async)]
+	public Task LightToggle() => Reply(ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}"));
 
 	[SlashCommand("device", "Switch Device", runMode: RunMode.Async)]
-	public async Task DeviceInteract([Summary("device", "Select Device")] EDevice device, [Summary("azione", "Select Action")] ESwitchAction action)
-	{
-		await DeferAsync(true);
-
-		string result = await ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
-	}
+	public Task DeviceInteract([Summary("device", "Select Device")] EDevice device, [Summary("azione", "Select Action")] ESwitchAction action) =>
+		Reply(ApiHandler.Post($"{ERoute.Devices}/{device}", new PostAction(action.ToString())));
 
 	[SlashCommand("device-info", "Get Device Status", runMode: RunMode.Async)]
-	public async Task DeviceStatus([Summary("device", "Select Device")] EDevice device)
-	{
-		await DeferAsync(true);
+	public Task DeviceStatus([Summary("device", "Select Device")] EDevice device) =>
+		Reply(ApiHandler.Get($"{ERoute.Devices}/{device}"));
 
-		string result = await ApiHandler.Get($"{ERoute.Devices}/{device}");
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
-	}
+	[SlashCommand("room", "Switch the whole room", runMode: RunMode.Async)]
+	public Task Room([Summary("azione", "Select Action")] ESwitchAction action) =>
+		Reply(ApiHandler.Post($"{ERoute.Devices}/room", new PostAction(action.ToString())));
 
 	[SlashCommand("command-raspberry", "Interact with Raspberry", runMode: RunMode.Async)]
-	public async Task CommandRaspberry([Summary("option", "Select Option")] ERaspberryCommand command, [Summary("args", "Insert Argument")] string args = "")
-	{
-		await DeferAsync(true);
-
-		string result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
-	}
+	public Task CommandRaspberry([Summary("option", "Select Option")] ERaspberryCommand command, [Summary("args", "Insert Argument")] string args = "") =>
+		Reply(ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args)));
 
 	[SlashCommand("raspberry-info", "Get Raspberry Info", runMode: RunMode.Async)]
-	public async Task RaspberryInfo([Summary("info", "Select Info")] ERaspberryInfo info)
-	{
-		await DeferAsync(true);
-
-		string result = await ApiHandler.Get($"{ERoute.Raspberry}/{info}");
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
-	}
+	public Task RaspberryInfo([Summary("info", "Select Info")] ERaspberryInfo info) =>
+		Reply(ApiHandler.Get($"{ERoute.Raspberry}/{info}"));
 
 	[SlashCommand("command-pc", "Interact with PC", runMode: RunMode.Async)]
-	public async Task ComputerCommand([Summary("command", "Select Command")] EComputerCommand command, [Summary("args", "Insert Argument")] string args = "")
-	{
-		await DeferAsync(true);
-
-		string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args));
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
-	}
+	public Task ComputerCommand([Summary("command", "Select Command")] EComputerCommand command, [Summary("args", "Insert Argument")] string args = "") =>
+		Reply(ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args)));
 
 	[SlashCommand("sensor", "Get Sensor Data", runMode: RunMode.Async)]
-	public async Task SensorData([Summary("info", "Select Data")] ESensor info)
+	public Task SensorData([Summary("info", "Select Data")] ESensor info) =>
+		Reply(ApiHandler.Get($"{ERoute.Sensors}/{info}"));
+
+	[SlashCommand("sensors", "Get every sensor reading", runMode: RunMode.Async)]
+	public Task AllSensors() => Reply(ApiHandler.Get($"{ERoute.Sensors}"));
+
+	[SlashCommand("sleep", "Enter Sleep Mode", runMode: RunMode.Async)]
+	public Task Sleep() => Reply(ApiHandler.Post($"{ERoute.Devices}/sleep"));
+
+	[SlashCommand("settings", "Show every automation setting", runMode: RunMode.Async)]
+	public Task ShowSettings() => Reply(ApiHandler.Get($"{ERoute.Settings}"));
+
+	[SlashCommand("set", "Change an automation setting", runMode: RunMode.Async)]
+	public Task SetSetting([Summary("setting", "Select Setting")] ESettings setting, [Summary("value", "New value")] int value) =>
+		Reply(ApiHandler.Post($"{ERoute.Settings}/{setting}", new PostValue(value)));
+
+	[SlashCommand("status", "Show which subfunctions are running", runMode: RunMode.Async)]
+	public async Task Subfunctions()
 	{
 		await DeferAsync(true);
 
-		string result = await ApiHandler.Get($"{ERoute.Sensors}/{info}");
+		IOption<SubfunctionListResponse> statuses = await ApiHandler.Get<SubfunctionListResponse>($"{ERoute.SubFunctions}");
 
-		Embed embed = DiscordUtils.CreateEmbed(result);
+		Embed embed = statuses.Match(
+			list =>
+			{
+				EmbedBuilder builder = DiscordUtils.CreateEmbed("Subfunctions").ToEmbedBuilder();
+				foreach (SubfunctionResponse status in list.Subfunctions)
+					builder.AddField(status.Subfunction.Replace("Cortana", ""), status.Running ? "🟢 Running" : "🔴 Stopped", inline: true);
+				return builder.Build();
+			},
+			() => DiscordUtils.CreateEmbed("Cortana is offline"));
+
 		await FollowupAsync(embed: embed, ephemeral: true);
 	}
 
-	[SlashCommand("sleep", "Enter Sleep Mode", runMode: RunMode.Async)]
-	public async Task Sleep()
+	[SlashCommand("schedules", "List the persistent schedules", runMode: RunMode.Async)]
+	public Task Schedules() => Reply(ApiHandler.Get($"{ERoute.Schedules}"));
+
+	[SlashCommand("schedule-run", "Run a schedule now", runMode: RunMode.Async)]
+	public Task RunSchedule([Summary("id", "Schedule id")] string id) =>
+		Reply(ApiHandler.Post($"{ERoute.Schedules}/{id}", new PostScheduleUpdate("run")));
+
+	[SlashCommand("schedule-delete", "Delete a schedule", runMode: RunMode.Async)]
+	public Task DeleteSchedule([Summary("id", "Schedule id")] string id) =>
+		Reply(ApiHandler.Delete($"{ERoute.Schedules}/{id}"));
+
+	[SlashCommand("subfunction", "Start, stop, restart or update a subfunction", runMode: RunMode.Async)]
+	public Task ControlSubfunction([Summary("subfunction", "Which one")] ESubFunctionType subfunction, [Summary("action", "What to do")] ESubfunctionAction action) =>
+		Reply(ApiHandler.Post($"{ERoute.SubFunctions}/{subfunction}", new PostAction(action.ToString())));
+
+	private async Task Reply(Task<string> call)
 	{
 		await DeferAsync(true);
-
-		string result = await ApiHandler.Post($"{ERoute.Devices}/sleep");
-
-		Embed embed = DiscordUtils.CreateEmbed(result);
-		await FollowupAsync(embed: embed, ephemeral: true);
+		string result = await call;
+		await FollowupAsync(embed: DiscordUtils.CreateEmbed(result), ephemeral: true);
 	}
 }

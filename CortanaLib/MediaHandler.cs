@@ -1,5 +1,5 @@
 using CortanaLib.Structures;
-// using QRCoder;
+using QRCoder;
 using YoutubeExplode;
 using YoutubeExplode.Common;
 using YoutubeExplode.Converter;
@@ -22,28 +22,29 @@ public static class MediaHandler
 {
 	private static readonly YoutubeClient YoutubeClient = new();
 
-	public static Stream CreateQrCode(string content, bool useNormalColors, bool useBorders)
+	private static readonly byte[] CortanaLight = [81, 209, 246, 255];
+	private static readonly byte[] CortanaDark = [52, 24, 80, 255];
+
+		public static Stream CreateQrCode(string content, bool useNormalColors, bool useBorders)
 	{
-		throw new NotImplementedException("This method is not implemented yet. It will be implemented in the future.");
-		// var qrGenerator = new QRCodeGenerator();
-		// QRCodeData qrCodeData = qrGenerator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
-		// var qrCode = new PngByteQRCode(qrCodeData);
+		using var generator = new QRCodeGenerator();
+		using QRCodeData data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.Q);
+		var qrCode = new PngByteQRCode(data);
 
-		// byte[] qrCodeAsPngByteArr =
-		// 	useNormalColors ? qrCode.GetGraphic(20, useBorders) : qrCode.GetGraphic(20, lightColorRgba: [81, 209, 246], darkColorRgba: [52, 24, 80], drawQuietZones: useBorders);
+		byte[] png = useNormalColors
+			? qrCode.GetGraphic(20, useBorders)
+			: qrCode.GetGraphic(20, darkColorRgba: CortanaDark, lightColorRgba: CortanaLight, drawQuietZones: useBorders);
 
-		// var imageStream = new MemoryStream();
-		// using Image image = Image.Load(qrCodeAsPngByteArr);
-		// image.Save(imageStream, new PngEncoder());
-		// imageStream.Position = 0;
-		// return imageStream;
+		return new MemoryStream(png, writable: false);
 	}
 
 	private static async Task<VideoId> GetVideoId(string video)
 	{
 		VideoId? result = VideoId.TryParse(video);
 		if (result.HasValue) return result.Value;
+
 		IReadOnlyList<VideoSearchResult> videos = await YoutubeClient.Search.GetVideosAsync(video).CollectAsync(1);
+		if (videos.Count == 0) throw new CortanaException($"No YouTube result for '{video}'");
 		return videos[0].Id;
 	}
 
@@ -65,24 +66,23 @@ public static class MediaHandler
 			OriginalUrl = video.Url,
 			StreamUrl = audioStreamInfo.Url,
 			Duration = video.Duration ?? TimeSpan.Zero,
-			ThumbnailUrl = video.Thumbnails[^1].Url
+			ThumbnailUrl = video.Thumbnails.Count > 0 ? video.Thumbnails[^1].Url : ""
 		};
 	}
 
 	public static async Task<Stream> GetAudioStream(string url)
 	{
 		Video video = await YoutubeClient.Videos.GetAsync(await GetVideoId(url));
-		StreamManifest streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(video.Url);
+		StreamManifest streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(video.Id);
 
 		IStreamInfo audioStreamInfo = GetAudioStreamInfo(streamManifest, 50);
-		Stream stream = await YoutubeClient.Videos.Streams.GetAsync(audioStreamInfo);
-		return stream;
+		return await YoutubeClient.Videos.Streams.GetAsync(audioStreamInfo);
 	}
 
 	public static async Task DownloadVideo(string url, EVideoQuality quality, int maxFileSize, string videoFilePath)
 	{
 		Video video = await YoutubeClient.Videos.GetAsync(await GetVideoId(url));
-		StreamManifest streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(video.Url);
+		StreamManifest streamManifest = await YoutubeClient.Videos.Streams.GetManifestAsync(video.Id);
 
 		IStreamInfo videoStreamInfo, audioStreamInfo;
 		switch (quality)
@@ -113,22 +113,19 @@ public static class MediaHandler
 
 	private static IStreamInfo GetVideoStreamInfo(StreamManifest streamManifest, double maxVideoSize)
 	{
-		IVideoStreamInfo videoStreamInfo = streamManifest
+		return streamManifest
 			.GetVideoStreams()
 			.Where(s => s.Container == Container.Mp4)
 			.Where(s => s.Size.MegaBytes < maxVideoSize)
 			.GetWithHighestVideoQuality();
-		return videoStreamInfo;
 	}
 
 	private static IStreamInfo GetAudioStreamInfo(StreamManifest streamManifest, double maxAudioSize)
 	{
-		IStreamInfo audioStreamInfo = streamManifest
+		return streamManifest
 			.GetAudioStreams()
 			.Where(s => s.Container == Container.Mp4)
 			.Where(s => s.Size.MegaBytes < maxAudioSize)
 			.GetWithHighestBitrate();
-
-		return audioStreamInfo;
 	}
 }

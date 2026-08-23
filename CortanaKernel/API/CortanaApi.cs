@@ -1,71 +1,107 @@
-using Carter;
+using CortanaKernel.API.Endpoints;
 using CortanaLib;
+using Microsoft.Extensions.Primitives;
 using Scalar.AspNetCore;
 
 namespace CortanaKernel.API;
 
 public static class CortanaApi
 {
-    private static WebApplication _cortanaWebApi = null!;
+	private static WebApplication _api = null!;
 
-    public static void Initialize()
-    {
-        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+	public static void Initialize()
+	{
+		WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
-        builder.Services.AddAuthorization();
-        builder.Services.AddCarter();
-        builder.Services.AddOpenApi();
-        builder.Services.AddLogging(c => c.ClearProviders());
-        builder.Services.AddCors(options =>
-        {
-            options.AddPolicy("AllowCors", policy =>
-                policy.AllowAnyOrigin()
-                    .AllowAnyMethod()
-                    .AllowAnyHeader());
-        });
+		builder.Services.AddOpenApi();
 
-        _cortanaWebApi = builder.Build();
+		builder.Services.ConfigureHttpJsonOptions(options =>
+		{
+			options.SerializerOptions.PropertyNamingPolicy = DataHandler.ApiSerializerOptions.PropertyNamingPolicy;
+			options.SerializerOptions.PropertyNameCaseInsensitive = true;
+			foreach (System.Text.Json.Serialization.JsonConverter converter in DataHandler.ApiSerializerOptions.Converters)
+				options.SerializerOptions.Converters.Add(converter);
+		});
+		builder.Services.AddLogging(c => c.ClearProviders());
+		builder.Services.AddCors(options => options.AddPolicy("AllowCors", policy =>
+			policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
-        _cortanaWebApi.Urls.Add($"http://*:{DataHandler.Env("CORTANA_API_PORT")}");
-        _cortanaWebApi.UseRouting();
-        _cortanaWebApi.UseCors("AllowCors");
+		_api = builder.Build();
+		_api.Urls.Add($"http://*:{DataHandler.Env("CORTANA_API_PORT")}");
 
-        string? apiKey = Environment.GetEnvironmentVariable("CORTANA_API_KEY");
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            _cortanaWebApi.Use(async (context, next) =>
-            {
-                string path = context.Request.Path.Value ?? "";
-                if (context.Request.Method == "OPTIONS" || path.StartsWith("/openapi") || path.StartsWith("/scalar"))
-                {
-                    await next();
-                    return;
-                }
-                if (!context.Request.Headers.TryGetValue("X-Api-Key", out var key) || key != apiKey)
-                {
-                    context.Response.StatusCode = 401;
-                    await context.Response.WriteAsync("Unauthorized");
-                    return;
-                }
-                await next();
-            });
-        }
+		_api.UseRouting();
+		_api.UseCors("AllowCors");
+		_api.Use(ApiKeyMiddleware(ApiKeyGate.FromEnvironment()));
 
-        _cortanaWebApi.UseAuthorization();
-        _cortanaWebApi.MapOpenApi();
-        _cortanaWebApi.MapScalarApiReference();
-        _cortanaWebApi.MapCarter();
-    }
+		_api.MapOpenApi();
+		_api.MapScalarApiReference();
 
-    public static async Task RunAsync()
-    {
-        await _cortanaWebApi.RunAsync();
-    }
+		_api.MapHomeEndpoints();
+		_api.MapDeviceEndpoints();
+		_api.MapSensorEndpoints();
+		_api.MapSettingsEndpoints();
+		_api.MapRaspberryEndpoints();
+		_api.MapComputerEndpoints();
+		_api.MapSubfunctionEndpoints();
+		_api.MapScheduleEndpoints();
+	}
 
-    public static async Task ShutdownService()
-    {
-        await _cortanaWebApi.StopAsync();
-        await _cortanaWebApi.DisposeAsync();
-        DataHandler.Log("API service interrupted.");
-    }
+		private static Func<HttpContext, RequestDelegate, Task> ApiKeyMiddleware(ApiKeyGate gate)
+	{
+		return async (context, next) =>
+		{
+			EApiAccess access = context.GetEndpoint()?.Metadata.GetMetadata<ApiAccessMetadata>()?.Access ?? EApiAccess.Public;
+
+			if (access == EApiAccess.Public || HttpMethods.IsOptions(context.Request.Method))
+			{
+				await next(context);
+				return;
+			}
+
+			if (!gate.IsConfigured)
+			{
+				await Deny(context, StatusCodes.Status503ServiceUnavailable,
+					"CORTANA_API_KEY is not configured on the server, so this route is disabled.");
+				return;
+			}
+
+			if (!context.Request.Headers.TryGetValue("X-Api-Key", out StringValues provided) || !gate.Matches(provided))
+			{
+				await Deny(context, StatusCodes.Status401Unauthorized, "A valid X-Api-Key header is required.");
+				return;
+			}
+
+			await next(context);
+		};
+	}
+
+	private static async Task Deny(HttpContext context, int status, string detail)
+	{
+		context.Response.StatusCode = status;
+
+		if (ApiResults.WantsText(context.Request))
+		{
+			context.Response.ContentType = "text/plain";
+			await context.Response.WriteAsync(detail);
+			return;
+		}
+
+		context.Response.ContentType = "application/problem+json";
+		await context.Response.WriteAsJsonAsync(new ProblemDetails
+		{
+			Status = status,
+			Title = status == StatusCodes.Status401Unauthorized ? "Unauthorized" : "Unavailable",
+			Detail = detail,
+			Instance = context.Request.Path
+		}, DataHandler.ApiSerializerOptions);
+	}
+
+	public static Task RunAsync() => _api.RunAsync();
+
+	public static async Task ShutdownService()
+	{
+		await _api.StopAsync();
+		await _api.DisposeAsync();
+		DataHandler.Log("API service interrupted.");
+	}
 }

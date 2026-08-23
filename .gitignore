@@ -1,6 +1,7 @@
 .config
 .log
 .env
+secrets.h
 
 bin
 obj
@@ -9,3 +10,4 @@ out
 .idea
 .vscode
 *.DotSettings.user
+.claude

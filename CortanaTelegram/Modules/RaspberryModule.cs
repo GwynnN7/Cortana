@@ -1,4 +1,3 @@
-using System.Numerics;
 using CortanaLib;
 using CortanaLib.Structures;
 using CortanaTelegram.Utility;
@@ -6,13 +5,11 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class RaspberryModule : IModuleInterface
 {
-	private static Timer? UpdateTimer = null;
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
@@ -20,7 +17,7 @@ internal sealed class RaspberryModule : IModuleInterface
 
 		string messageText = await GetRaspberryInfo();
 
-		if (query != null && query.Message != null)
+		if (query?.Message != null)
 		{
 			try
 			{
@@ -30,11 +27,12 @@ internal sealed class RaspberryModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			ResetUpdateTimer(cortana, query);
+			LiveMenu.Track(Utils.Topics.Raspberry, query.Message.MessageId, GetRaspberryInfo, CreateButtons);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Raspberry, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			Message sent = await Utils.SendToTopic(messageText, Utils.Topics.Raspberry, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			LiveMenu.Track(Utils.Topics.Raspberry, sent.MessageId, GetRaspberryInfo, CreateButtons);
 		}
 	}
 
@@ -43,89 +41,76 @@ internal sealed class RaspberryModule : IModuleInterface
 		int messageId = query.Message!.MessageId;
 		long chatId = query.Message.Chat.Id;
 
-		var task = command switch
+		if (command == ActionTag.Refresh)
 		{
-			ActionTag.Refresh => CreateMenu(cortana, query),
-			_ => null
-
-		};
-
-		if (task != null)
-		{
-			await task;
+			await CreateMenu(cortana, query);
 			return;
 		}
 
 		string? response = command switch
 		{
-			ActionTag.Shutdown => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand("shutdown")),
-			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand("reboot")),
+			ActionTag.Shutdown => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(nameof(ERaspberryCommand.Shutdown))),
+			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(nameof(ERaspberryCommand.Reboot))),
 			_ => null
 		};
 
 		if (response != null)
 		{
 			await cortana.AnswerCallbackQuery(query.Id, response, true);
+			return;
 		}
-		else
+
+		switch (command)
 		{
-			switch (command)
-			{
-				case ActionTag.Command:
-					if (Utils.AddChatArg(Utils.Topics.Raspberry, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
-					{
-						ResetUpdateTimer(cortana, query);
-						await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
-					}
-					break;
-				case ActionTag.Cancel:
-					if (Utils.ChatArgs.TryGetValue(Utils.Topics.Raspberry, out ChatArgs? value) && value is ChatArgs<List<int>> chatArg)
-					{
-						if (chatArg.Arg.Count > 0)
-						{
-							await cortana.DeleteMessages(chatId, chatArg.Arg);
-						}
-					}
-					await CreateMenu(cortana, query);
-					break;
-			}
+			case ActionTag.Command:
+				if (Utils.AddChatArg(Utils.Topics.Raspberry, new ChatArgs<List<int>>(EArgsType.RaspberryCommand, query, query.Message, []), query))
+					await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
+				break;
+
+			case ActionTag.Cancel:
+				if (Utils.ChatArgs.TryGetValue(Utils.Topics.Raspberry, out ChatArgs? value) && value is ChatArgs<List<int>> { Arg.Count: > 0 } chatArg)
+					await cortana.DeleteMessages(chatId, chatArg.Arg);
+				await CreateMenu(cortana, query);
+				break;
 		}
 	}
 
 	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats, ChatArgs chatArg)
 	{
 		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
-		ResetUpdateTimer(cortana, chatArg.Query);
-		switch (chatArg.Type)
-		{
-			case EArgsType.RaspberryCommand:
+		if (chatArg is not ChatArgs<List<int>> arg) return;
 
-				if (chatArg is ChatArgs<List<int>> arg)
-				{
-					string prompt = string.Concat(messageStats.Message[..1].ToLower(), messageStats.Message.AsSpan(1));
-					string commandResult = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand($"{EComputerCommand.Command}", prompt));
-					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Raspberry);
-					arg.Arg.Add(messageStats.MessageId);
-					arg.Arg.Add(msg.MessageId);
-					return;
-				}
-				break;
-		}
+		string result = await ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(nameof(ERaspberryCommand.Command), messageStats.Message));
+		Message msg = await Utils.SendToTopic(result, Utils.Topics.Raspberry);
+		arg.Arg.Add(messageStats.MessageId);
+		arg.Arg.Add(msg.MessageId);
 	}
 
 	private static async Task<string> GetRaspberryInfo()
 	{
-		string ip = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Ip}")).Match(ip => ip.Value, () => "Unknown");
-		string temperature = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Temperature}")).Match(temp => $"{Math.Round(double.Parse(temp.Value), 1)}{temp.Unit}", () => "Unknown");
-		string location = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Location}")).Match(location => location.Value, () => "Unknown");
-		string gateway = (await ApiHandler.Get<SensorResponse>($"{ERoute.Raspberry}/{ERaspberryInfo.Gateway}")).Match(gateway => gateway.Value, () => "Unknown");
-		return $"\n🍓 <b>Raspberry Info</b>\n================\n🌡 • <b>Temperature</b>: {temperature}\n📍 • <b>Location</b>: {location}\n🌐 • <b>Gateway</b>: {gateway}\n📬 • <b>IP</b>: {ip}\n";
+		IOption<RaspberryListResponse> info = await ApiHandler.Get<RaspberryListResponse>($"{ERoute.Raspberry}");
+
+		return info.Match(
+			list =>
+			{
+				string Value(ERaspberryInfo key)
+				{
+					SensorResponse? found = list.Info.FirstOrDefault(i => i.Sensor == key.ToString());
+					return found == null || string.IsNullOrEmpty(found.Value) ? "Unknown" : $"{found.Value}{found.Unit}";
+				}
+
+				return "\n🍓 <b>Raspberry Info</b>\n================\n" +
+					$"🌡 • <b>Temperature</b>: {Value(ERaspberryInfo.Temperature)}\n" +
+					$"📍 • <b>Location</b>: {Value(ERaspberryInfo.Location)}\n" +
+					$"🌐 • <b>Gateway</b>: {Value(ERaspberryInfo.Gateway)}\n" +
+					$"📬 • <b>IP</b>: {Value(ERaspberryInfo.Ip)}\n";
+			},
+			() => "\n🍓 <b>Raspberry Info</b>\n================\nCortana is offline\n");
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
 	{
 		return new InlineKeyboardMarkup()
-
 			.AddButton("Shutdown ⚡️", ActionTag.Shutdown)
 			.AddButton("Reboot 🔁", ActionTag.Reboot)
 			.AddNewRow()
@@ -134,11 +119,7 @@ internal sealed class RaspberryModule : IModuleInterface
 			.AddButton("Refresh 🔄", ActionTag.Refresh);
 	}
 
-	private static InlineKeyboardMarkup CreateCancelButton()
-	{
-		return new InlineKeyboardMarkup()
-			.AddButton("<<", ActionTag.Cancel);
-	}
+	private static InlineKeyboardMarkup CreateCancelButton() => new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
 
 	private struct ActionTag
 	{
@@ -147,21 +128,5 @@ internal sealed class RaspberryModule : IModuleInterface
 		public const string Command = "raspberry-command";
 		public const string Refresh = "raspberry-refresh";
 		public const string Cancel = "raspberry-cancel";
-	}
-
-	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
-	{
-		UpdateTimer?.Destroy();
-		UpdateTimer = new Timer("raspberry-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
-		{
-			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
-
-			try
-			{
-				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
-				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
-			}
-			catch { }
-		}, ETimerType.Telegram).Set((20, 0, 0));
 	}
 }

@@ -1,0 +1,45 @@
+@page "/quick/{Action}"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@inject NavigationManager Navigation
+
+<PageTitle>@Title</PageTitle>
+
+<div class="quick-run">
+    <span class="quick-run-icon" aria-hidden="true">@Icon</span>
+    <h1>@Title</h1>
+    <p class="quick-run-result">@(_result ?? "Working...")</p>
+    <a class="btn" href="/">Back to dashboard</a>
+</div>
+
+@code {
+    [Parameter] public string Action { get; set; } = "";
+
+    private string? _result;
+
+    private static readonly Dictionary<string, (string Title, string Icon)> Known = new(StringComparer.OrdinalIgnoreCase)
+    {
+        { "lamp", ("Toggle lamp", "💡") },
+        { "room-on", ("Room on", "🏠") },
+        { "room-off", ("Room off", "🌑") },
+        { "sleep", ("Sleep mode", "🛌") },
+        { "computer", ("Toggle computer", "💻") }
+    };
+
+    private string Title => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Title : "Unknown shortcut";
+    private string Icon => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Icon : "❔";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _result = Action.ToLowerInvariant() switch
+        {
+            "lamp" => await State.SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle),
+            "computer" => await State.SwitchDevice(EDevice.Computer, ESwitchAction.Toggle),
+            "room-on" => await State.SwitchRoom(ESwitchAction.On),
+            "room-off" => await State.SwitchRoom(ESwitchAction.Off),
+            "sleep" => await State.Sleep(),
+            _ => "That shortcut does not exist."
+        };
+    }
+}

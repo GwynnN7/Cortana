@@ -2,8 +2,6 @@ using Telegram.Bot.Types;
 
 namespace CortanaTelegram.Utility;
 
-// Chat and Message data structures
-
 internal class ChatArgs(EArgsType type, CallbackQuery query, Message message)
 {
 	public readonly CallbackQuery Query = query;
@@ -23,8 +21,6 @@ internal struct MessageData
 	public required int TopicId { get; init; }
 }
 
-// Config Data Structure
-
 internal readonly struct DataStruct
 {
 	public Dictionary<long, string> Usernames { get; init; }
@@ -41,8 +37,6 @@ internal readonly struct Topics
 	public int Cortana { get; init; }
 	public int Log { get; init; }
 }
-
-// Hardware data structure
 
 internal readonly struct HardwareEmoji
 {

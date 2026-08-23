@@ -1,4 +1,4 @@
-﻿global using Memes = System.Collections.Generic.Dictionary<string, CortanaDiscord.Utility.MemeJsonStructure>;
+global using Memes = System.Collections.Generic.Dictionary<string, CortanaDiscord.Utility.MemeJsonStructure>;
 global using Guilds = System.Collections.Generic.Dictionary<ulong, CortanaDiscord.Utility.GuildSettings>;
 
 using System.Collections.Concurrent;
@@ -7,7 +7,6 @@ using CortanaLib.Extensions;
 using CortanaLib.Structures;
 using Discord;
 using Discord.WebSocket;
-using StackExchange.Redis;
 
 namespace CortanaDiscord.Utility;
 
@@ -17,18 +16,11 @@ internal static class DiscordUtils
 	public static readonly DataStruct Data;
 	public static readonly Guilds GuildSettings;
 	public static readonly ConcurrentDictionary<ulong, DateTime> TimeConnected;
-	private static ConnectionMultiplexer CommunicationClient { get; }
 	public static DiscordSocketClient Cortana { get; private set; } = null!;
 
 	static DiscordUtils()
 	{
-		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
-
-		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Discord.ToString())).OnMessage(async channelMessage =>
-		{
-			if (channelMessage.Message.HasValue) await SendToChannel(channelMessage.Message.ToString(), ECortanaChannels.Log);
-		});
+		IpcHandler.Subscribe(EMessageCategory.Discord, message => SendToChannel(message, ECortanaChannels.Log));
 
 		Data = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Data.json").Load<DataStruct>();
 		Memes = DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json").Load<Memes>();
@@ -47,7 +39,29 @@ internal static class DiscordUtils
 		}
 	}
 
-	public static void AddGuildSettings(SocketGuild guild)
+	public static bool TryGetGuildSettings(ulong guildId, out GuildSettings settings)
+	{
+		if (GuildSettings.TryGetValue(guildId, out GuildSettings? found))
+		{
+			settings = found;
+			return true;
+		}
+
+		SocketGuild? guild = Cortana?.GetGuild(guildId);
+		if (guild != null)
+		{
+			settings = AddGuildSettings(guild);
+			return true;
+		}
+
+		settings = null!;
+		return false;
+	}
+
+	public static GuildSettings SettingsFor(SocketGuild guild) =>
+		GuildSettings.TryGetValue(guild.Id, out GuildSettings? found) ? found : AddGuildSettings(guild);
+
+	public static GuildSettings AddGuildSettings(SocketGuild guild)
 	{
 		var defaultGuildSettings = new GuildSettings
 		{
@@ -57,8 +71,9 @@ internal static class DiscordUtils
 			AfkChannel = null,
 			BannedWords = []
 		};
-		GuildSettings.Add(guild.Id, defaultGuildSettings);
+		GuildSettings[guild.Id] = defaultGuildSettings;
 		UpdateSettings();
+		return defaultGuildSettings;
 	}
 
 	public static void UpdateSettings() => GuildSettings.Serialize().Dump(DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Guilds.json"));
@@ -68,11 +83,7 @@ internal static class DiscordUtils
 		Memes.Serialize().Dump(DataHandler.CortanaPath(EDirType.Config, $"{nameof(CortanaDiscord)}/Memes.json"));
 	}
 
-	public static void Shutdown()
-	{
-		CommunicationClient.Close();
-		CommunicationClient.Dispose();
-	}
+	public static Task Shutdown() => IpcHandler.Shutdown();
 
 	public static Embed CreateEmbed(string title, SocketUser? user = null, string description = "", Color? embedColor = null, EmbedFooterBuilder? footer = null, bool withTimeStamp = true,
 		bool withoutAuthor = false)
@@ -123,4 +134,3 @@ internal static class DiscordUtils
 		}
 	}
 }
-

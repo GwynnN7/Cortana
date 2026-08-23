@@ -1,17 +1,36 @@
 ﻿@inherits LayoutComponentBase
+@inject CortanaState State
+@implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu/>
+<div class="shell">
+    <NavMenu/>
+
+    <div class="content">
+        <header class="topbar">
+            <div class="brand-mini">
+                <img src="favicon.png" alt="" width="26" height="26"/>
+                <span>Cortana</span>
+            </div>
+            <StatusPill Online="State.Online" LastUpdate="State.LastUpdate"/>
+        </header>
+
+        <main class="page">
+            @Body
+        </main>
     </div>
-
-    <main>
-        @Body
-    </main>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
-    An unhandled error has occurred.
+    Connection lost.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private IDisposable? _subscription;
+
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+}

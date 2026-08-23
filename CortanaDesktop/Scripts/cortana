@@ -1,0 +1,194 @@
+#!/usr/bin/python3
+import os
+import sys
+import re
+import subprocess
+import requests
+import argparse
+import time
+
+# --- Configuration ---
+BASE_PATH = os.environ.get("CORTANA_PATH")
+API_URL = os.environ.get("CORTANA_API")
+API_KEY = os.environ.get("CORTANA_API_KEY")  # required by every route except / and /health
+SERVICE_NAME = "cortana-desktop"
+
+# ANSI Colors
+BLUE = "\033[1;34m"
+RESET = "\033[0m"
+
+# --- Validation ---
+if not BASE_PATH or not API_URL:
+    print(f"{BLUE}Error: CORTANA_PATH or CORTANA_API not set.{RESET}")
+    print("Set them in ~/.config/environment.d/cortana.conf")
+    sys.exit(1)
+
+# --- Helpers ---
+def print_blue(msg):
+    print(f"{BLUE}{msg}{RESET}")
+
+def run_cmd(command, shell=False):
+    """Runs a command and returns True if successful."""
+    try:
+        if isinstance(command, str) and not shell:
+            command = command.split()
+        subprocess.run(command, shell=shell, check=True, text=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        print_blue(f"Error: {e}")
+        return False
+
+def api_call(method, route="", json_data=None, timeout=15):
+    """Handles API communication."""
+    url = f"{API_URL.rstrip('/')}/{route.strip('/')}".rstrip("/")
+    headers = {'Accept': 'text/plain', 'Accept-Charset': 'utf-8'}
+    if API_KEY:
+        headers['X-Api-Key'] = API_KEY
+
+    try:
+        if method.lower() == 'get':
+            req = requests.get(url, headers=headers, timeout=timeout)
+        else:
+            req = requests.post(url, headers=headers, json=json_data, timeout=timeout)
+        req.encoding = 'utf-8'
+        body = req.text.strip()
+
+        # The API explains refusals in the body; surface that instead of a bare status code.
+        if req.status_code == 401:
+            return body or "Unauthorized: set CORTANA_API_KEY"
+        if req.status_code >= 400:
+            return body or f"HTTP Error: {req.status_code}"
+        return body
+    except requests.exceptions.RequestException:
+        return "Cortana Offline"
+
+# --- Module: Service ---
+def handle_service(args):
+    """Handles systemd user service interactions."""
+    if not args.action:
+        res = run_cmd(f"systemctl --user status {SERVICE_NAME}")
+        exit(0 if res else 1)
+
+    action = args.action
+    
+    if action == "build":
+        print_blue("Building CortanaDesktop...")
+        out = f"{BASE_PATH}/CortanaDesktop/out"
+        if run_cmd(f'dotnet build "{BASE_PATH}/CortanaDesktop" -o "{out}" --artifacts-path "{out}/lib"', shell=True):
+            print_blue("Build complete.")
+        return
+
+    if action in ["start", "stop", "restart"]:
+        action_verb = "Start" if action == "start" else "Stopp" if action == "stop" else "Restart"
+        print_blue(f"Service {action_verb}ing...")
+        if run_cmd(f"systemctl --user {action} {SERVICE_NAME}"):
+            print_blue(f"Service {action_verb}ed.")
+
+# --- Module: Git ---
+def handle_git(args):
+    """Handles Git operations."""
+    action = args.action
+    
+    if action == "update":
+        commit_msg = " ".join(args.extra) if args.extra else "Update"
+        print_blue(f"Git: Committing with message '{commit_msg}'...")
+        
+        # Git commands
+        git_cmd = f'cd "{BASE_PATH}" && git add . && git commit -m "{commit_msg}" && git push'
+        if run_cmd(git_cmd, shell=True):
+            print_blue("Code updated. Notifying Kernel...")
+            time.sleep(1)
+            # Notify API
+            res = api_call("post", "subfunctions/CortanaKernel", json_data={"action": "update", "args": ""})
+            print_blue(res)
+            
+    elif action == "status":
+        run_cmd(f'cd "{BASE_PATH}" && git status', shell=True)
+
+# --- Module: API ---
+def handle_api(args):
+    """Handles API requests."""
+    if not args.route:
+        status = api_call("get", "")
+        if status in ("Cortana Offline",) or status.startswith("HTTP Error"):
+            print("Cortana Offline")
+            sys.exit(1)
+        else:
+            cpu = api_call("get", "raspberry/temperature")
+            print_blue(f"{status} ~ {cpu}")
+        return
+
+    route = "/".join(args.route.split(" "))
+    
+    json_data = {"args": args.arg}
+    if args.action:
+        json_data["action"] = args.action
+        res = api_call("post", route, json_data)
+    elif args.command:
+        json_data["command"] = args.command
+        res = api_call("post", route, json_data)
+    elif args.value:
+        json_data["value"] = args.value
+        res = api_call("post", route, json_data)
+    else:
+        res = api_call("get", route)
+
+    print_blue(res)
+
+# --- Module: Notify ---
+def handle_notify(args):
+    """Reads piped input and sends a desktop notification."""
+    if sys.stdin.isatty():
+        print_blue("Error: 'notify' expects piped input (e.g. cortana api xxx | cortana notify)")
+        sys.exit(1)
+    message = sys.stdin.read().strip()
+    message = re.sub(r'\033\[[0-9;]*m', '', message)
+    if not message:
+        print_blue("Error: No input received.")
+        sys.exit(1)
+    title = args.title or "Cortana Service"
+    run_cmd(["notify-send", "-i", f"{BASE_PATH}/CortanaLib/Storage/cortana.jpg", "-u", "low", "-a", "cortana", title, message])
+
+# --- Main ---
+def main():
+    parser = argparse.ArgumentParser(description="Cortana Control Interface")
+    subparsers = parser.add_subparsers(dest="category", required=True)
+
+    # 1. Service Command
+    # Usage: cortana service [start|stop|restart|build]
+    svc_parser = subparsers.add_parser("service", help="Manage Systemd Service")
+    svc_parser.add_argument("action", nargs="?", choices=["start", "stop", "restart", "build"], help="Action to perform")
+
+    # 2. Git Command
+    # Usage: cortana git update "message"
+    git_parser = subparsers.add_parser("git", help="Manage Version Control")
+    git_parser.add_argument("action", choices=["update", "status"], help="Git action")
+    git_parser.add_argument("extra", nargs="*", help="Commit message or extra args")
+
+    # 3. API Command
+    # Usage: cortana api [route] [-act action] [-val value]
+    api_parser = subparsers.add_parser("api", help="Direct API Interface")
+    api_parser.add_argument("route", nargs="?", default="", help="API Route (leave empty for dashboard)")
+    api_parser.add_argument("-act", dest="action", help="Action param")
+    api_parser.add_argument("-cmd", dest="command", help="Command param")
+    api_parser.add_argument("-val", dest="value", help="Value param")
+    api_parser.add_argument("-arg", dest="arg", default="", help="Extra args")
+
+    # 4. Notify Command
+    # Usage: command | cortana notify [-t "Title"]
+    notify_parser = subparsers.add_parser("notify", help="Send piped output as a desktop notification")
+    notify_parser.add_argument("-t", dest="title", default="Cortana", help="Notification title")
+
+    args = parser.parse_args()
+
+    if args.category == "service":
+        handle_service(args)
+    elif args.category == "git":
+        handle_git(args)
+    elif args.category == "api":
+        handle_api(args)
+    elif args.category == "notify":
+        handle_notify(args)
+
+if __name__ == "__main__":
+    main()

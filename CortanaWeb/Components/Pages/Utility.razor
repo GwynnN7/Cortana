@@ -1,0 +1,78 @@
+@page "/utility"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+
+<PageTitle>Utility</PageTitle>
+
+<h1>Utility</h1>
+
+<section class="section">
+    <header class="section-head">
+        <h2>QR code</h2>
+    </header>
+
+    <div class="field-row">
+        <input type="text" placeholder="Text or URL to encode" @bind="_qrContent" @bind:event="oninput"/>
+        <button class="btn" disabled="@string.IsNullOrWhiteSpace(_qrContent)" @onclick="RenderQr">Generate</button>
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_qrBorder"/> Quiet zone</label>
+        <label><input type="checkbox" @bind="_qrClassic"/> Black &amp; white</label>
+    </div>
+
+    @if (_qrUrl != null)
+    {
+        <div class="qr-result">
+            <img src="@_qrUrl" alt="Generated QR code"/>
+            <a class="btn btn-ghost" href="@_qrUrl" download="qrcode.png">Download</a>
+        </div>
+    }
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>YouTube download</h2>
+        <p class="section-hint">Large videos take a while: the Pi transcodes before the download starts.</p>
+    </header>
+
+    <div class="field-row">
+        <input type="text" placeholder="YouTube URL or search terms" @bind="_mediaQuery" @bind:event="oninput"/>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_quality">
+            @foreach (EVideoQuality quality in Enum.GetValues<EVideoQuality>())
+            {
+                <option value="@quality">@Readable(quality)</option>
+            }
+        </select>
+        <a class="btn @Disabled" href="@AudioUrl" target="_blank" rel="noopener">Audio</a>
+        <a class="btn @Disabled" href="@VideoUrl" target="_blank" rel="noopener">Video</a>
+    </div>
+</section>
+
+@code {
+    private string _qrContent = "";
+    private bool _qrBorder = true;
+    private bool _qrClassic;
+    private string? _qrUrl;
+
+    private string _mediaQuery = "";
+    private EVideoQuality _quality = EVideoQuality.Balanced;
+
+    private string Disabled => string.IsNullOrWhiteSpace(_mediaQuery) ? "btn-disabled" : "";
+
+    private string AudioUrl => $"/media/audio?url={Uri.EscapeDataString(_mediaQuery)}";
+    private string VideoUrl => $"/media/video?url={Uri.EscapeDataString(_mediaQuery)}&quality={_quality}";
+
+    private void RenderQr() =>
+        _qrUrl = $"/media/qr?content={Uri.EscapeDataString(_qrContent)}&border={_qrBorder.ToString().ToLower()}&classic={_qrClassic.ToString().ToLower()}";
+
+    private static string Readable(EVideoQuality quality) => quality switch
+    {
+        EVideoQuality.BestVideo => "Prioritise video quality",
+        EVideoQuality.BestAudio => "Prioritise audio quality",
+        _ => "Balanced"
+    };
+}

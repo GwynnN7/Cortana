@@ -27,7 +27,6 @@ internal sealed class UtilityModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-
 		}
 		else
 		{
@@ -71,6 +70,13 @@ internal sealed class UtilityModule : IModuleInterface
 		{
 			switch (command)
 			{
+				case ActionTag.Timers:
+					await cortana.EditMessageText(chatId, messageId, await RenderSchedules(), replyMarkup: CreateTimerButtons(), parseMode: ParseMode.Html);
+					break;
+				case ActionTag.ClearTimers:
+					if (Utils.AddChatArg(Utils.Topics.Home, new ChatArgs(EArgsType.DeleteSchedule, query, query.Message), query))
+						await cortana.EditMessageText(chatId, messageId, "Send the schedule id to delete", replyMarkup: CreateCancelButton());
+					break;
 				case ActionTag.VideoDownloader:
 					await cortana.EditMessageText(chatId, messageId, "Choose the download priority", replyMarkup: CreateVideoDownloadButtons());
 					break;
@@ -95,6 +101,12 @@ internal sealed class UtilityModule : IModuleInterface
 
 		switch (chatArg.Type)
 		{
+			case EArgsType.DeleteSchedule:
+				string deleted = await ApiHandler.Delete($"{ERoute.Schedules}/{msgData.Message.Trim()}");
+				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
+				await Utils.AnswerMessage(cortana, deleted, Utils.Topics.Home, chatArg.Query, false);
+				break;
+
 			case EArgsType.Qrcode:
 				await cortana.SendChatAction(Utils.HomeId, ChatAction.UploadPhoto);
 				Stream imageStream = MediaHandler.CreateQrCode(msgData.Message, false, true);
@@ -118,22 +130,17 @@ internal sealed class UtilityModule : IModuleInterface
 
 				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 
-				var timer = new Timer($":{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}", new TelegramTimerPayload<string>(Utils.HomeId, null), async Task (object? sender) =>
-				{
-					if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
+				var reminder = new PostSchedule(
+					Name: "Reminder",
+					Trigger: nameof(EScheduleTrigger.Once),
+					ActionType: nameof(EScheduleAction.Notify),
+					Target: nameof(EMessageCategory.Telegram),
+					Value: "Timer elapsed!",
+					At: DateTimeOffset.Now.AddSeconds(times.s).AddMinutes(times.m).AddHours(times.h),
+					Owner: "telegram");
 
-					try
-					{
-						if (timer.Payload is not TelegramTimerPayload<string> payload) return;
-						await Utils.SendToTopic("Timer elapsed!", msgData.TopicId);
-					}
-					catch
-					{
-						await Utils.SendToTopic($"There was an error with a timer", msgData.TopicId);
-					}
-				}, ETimerType.Telegram).Set((times.s, times.m, times.h));
-
-				await Utils.AnswerMessage(cortana, $"Timer set for {timer.NextTargetTime:HH:mm:ss, dddd dd MMMM}", Utils.Topics.Home, chatArg.Query, false);
+				string created = await ApiHandler.Post($"{ERoute.Schedules}", reminder);
+				await Utils.AnswerMessage(cortana, created, Utils.Topics.Home, chatArg.Query, false);
 				break;
 
 			case EArgsType.AudioDownloader:
@@ -213,7 +220,23 @@ internal sealed class UtilityModule : IModuleInterface
 			.AddNewRow()
 			.AddButton("Download Music 🎵", ActionTag.MusicDownloader)
 			.AddNewRow()
-			.AddButton("Download Video 🎥", ActionTag.VideoDownloader);
+			.AddButton("Download Video 🎥", ActionTag.VideoDownloader)
+			.AddNewRow()
+			.AddButton("Active Timers ⏰", ActionTag.Timers);
+	}
+
+	private static async Task<string> RenderSchedules()
+	{
+		string list = await ApiHandler.Get($"{ERoute.Schedules}");
+		return $"⏰ <b>Schedules</b>\n================\n<code>{list}</code>";
+	}
+
+	private static InlineKeyboardMarkup CreateTimerButtons()
+	{
+		return new InlineKeyboardMarkup()
+			.AddButton("Delete 🗑", ActionTag.ClearTimers)
+			.AddNewRow()
+			.AddButton("<<", ActionTag.Cancel);
 	}
 
 	private static InlineKeyboardMarkup CreateVideoDownloadButtons()
@@ -249,7 +272,8 @@ internal sealed class UtilityModule : IModuleInterface
 		public const string VideoPriority = "utility-video-video_prio";
 		public const string AudioPriority = "utility-video-audio_prio";
 		public const string BalancedPriority = "utility-video-balanced";
+		public const string Timers = "utility-timers";
+		public const string ClearTimers = "utility-cleartimers";
 		public const string Cancel = "utility-cancel";
-
 	}
 }

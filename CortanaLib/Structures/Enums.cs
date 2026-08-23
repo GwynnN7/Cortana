@@ -1,4 +1,4 @@
-﻿namespace CortanaLib.Structures;
+namespace CortanaLib.Structures;
 
 public enum ERoute
 {
@@ -7,7 +7,8 @@ public enum ERoute
 	Raspberry,
 	Sensors,
 	SubFunctions,
-	Settings
+	Settings,
+	Schedules
 }
 
 public enum ESubFunctionType

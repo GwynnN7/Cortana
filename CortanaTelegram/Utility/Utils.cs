@@ -1,9 +1,8 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using CortanaLib;
 using CortanaLib.Extensions;
 using CortanaLib.Structures;
-using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -13,7 +12,6 @@ namespace CortanaTelegram.Utility;
 
 internal static class Utils
 {
-	private static ConnectionMultiplexer CommunicationClient { get; }
 	private static TelegramBotClient _cortana = null!;
 	private static readonly Regex TimeRegex = new("^([0-9]+)([smhd])$", RegexOptions.Compiled);
 
@@ -31,14 +29,10 @@ internal static class Utils
 
 		AuthorId = NameToId("@gwynn7");
 
-		CommunicationClient = ConnectionMultiplexer.Connect("localhost");
-
-		ISubscriber ipc = CommunicationClient.GetSubscriber();
-		ipc.Subscribe(RedisChannel.Literal(EMessageCategory.Telegram.ToString())).OnMessage(async channelMessage =>
-		{
-			if (channelMessage.Message.HasValue) await SendToTopic(channelMessage.Message.ToString(), Topics.Log, disableNotification: true);
-		});
+		IpcHandler.Subscribe(EMessageCategory.Telegram, async message => await SendToTopic(message, Topics.Log, disableNotification: true));
 	}
+
+	public static ITelegramBotClient Bot => _cortana;
 
 	public static void Init(TelegramBotClient newClient)
 	{
@@ -72,7 +66,8 @@ internal static class Utils
 	public static bool AddChatArg(int topicId, ChatArgs arg, CallbackQuery query)
 	{
 		if (ChatArgs.TryAdd(topicId, arg)) return true;
-		_cortana.AnswerCallbackQuery(query.Id, "You already have an interaction going on! Finish it before continuing", true);
+
+		_ = _cortana.AnswerCallbackQuery(query.Id, "You already have an interaction going on! Finish it before continuing", true);
 		return false;
 	}
 
@@ -118,9 +113,5 @@ internal static class Utils
 		}
 	}
 
-	public static void Shutdown()
-	{
-		CommunicationClient.Close();
-		CommunicationClient.Dispose();
-	}
+	public static Task Shutdown() => IpcHandler.Shutdown();
 }

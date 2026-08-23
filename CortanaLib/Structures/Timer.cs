@@ -1,4 +1,4 @@
-﻿global using Times = (int Seconds, int Minutes, int Hours);
+global using Times = (int Seconds, int Minutes, int Hours);
 
 namespace CortanaLib.Structures;
 
@@ -10,13 +10,13 @@ public class Timer : System.Timers.Timer
 {
 	private static readonly Lock TimerLock = new();
 	private static readonly Dictionary<ETimerType, List<Timer>> TotalTimers = new();
+
 	public DateTime NextTargetTime { get; private set; }
 	public ETimerType TimerType { get; }
 	public object? Payload { get; }
-	private string Tag { get; }
+	public string Tag { get; }
 	private ETimerLoop LoopType { get; }
 	private Func<object?, Task> Callback { get; }
-
 
 	public Timer(string tag, object? payload, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No)
 	{
@@ -27,7 +27,7 @@ public class Timer : System.Timers.Timer
 		LoopType = loop;
 		AutoReset = false;
 
-		Elapsed += (sender, _) => Task.Run(async () => await TimerElapsed(sender));
+		Elapsed += (sender, args) => Task.Run(() => TimerElapsed(sender));
 		SaveTimer();
 	}
 
@@ -45,7 +45,7 @@ public class Timer : System.Timers.Timer
 	{
 		if (targetTime <= DateTime.Now) targetTime = targetTime.AddDays(1);
 		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
-		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
+		NextTargetTime = targetTime;
 
 		Start();
 		return this;
@@ -53,38 +53,55 @@ public class Timer : System.Timers.Timer
 
 	private async Task TimerElapsed(object? sender)
 	{
-		if (LoopType != ETimerLoop.No)
+		if (LoopType != ETimerLoop.No) Reschedule();
+
+		try
 		{
-			NextTargetTime = LoopType switch
-			{
-				ETimerLoop.Daily => DateTime.Now.AddDays(1),
-				ETimerLoop.Weekly => DateTime.Now.AddDays(7),
-				_ => DateTime.Now.AddMilliseconds(Interval)
-			};
-
-			double newInterval = NextTargetTime.Subtract(DateTime.Now).TotalMilliseconds;
-
-			Interval = newInterval;
-			Enabled = true;
-			Start();
+			await Callback.Invoke(sender);
+		}
+		catch (Exception ex)
+		{
+			Console.Error.WriteLine($"[Timer:{Tag}] callback failed: {ex.Message}");
 		}
 
-		await Callback.Invoke(sender);
+		if (LoopType == ETimerLoop.No) Destroy();
+	}
 
-		if (LoopType == ETimerLoop.No) RemoveTimer(this);
+		private void Reschedule()
+	{
+		DateTime anchor = NextTargetTime == default ? DateTime.Now : NextTargetTime;
+		DateTime next = LoopType switch
+		{
+			ETimerLoop.Daily => anchor.AddDays(1),
+			ETimerLoop.Weekly => anchor.AddDays(7),
+			_ => anchor.AddMilliseconds(Interval)
+		};
+		while (next <= DateTime.Now)
+		{
+			next = LoopType switch
+			{
+				ETimerLoop.Daily => next.AddDays(1),
+				ETimerLoop.Weekly => next.AddDays(7),
+				_ => next.AddMilliseconds(Interval)
+			};
+		}
+
+		NextTargetTime = next;
+		Interval = next.Subtract(DateTime.Now).TotalMilliseconds;
+		Start();
 	}
 
 	public void Destroy()
 	{
 		Stop();
-		Close();
 		lock (TimerLock)
 		{
-			foreach ((_, List<Timer>? timerList) in TotalTimers)
+			foreach ((_, List<Timer> timerList) in TotalTimers)
 			{
 				if (timerList.Remove(this)) break;
 			}
 		}
+		Close();
 	}
 
 	private void SaveTimer()
@@ -95,60 +112,38 @@ public class Timer : System.Timers.Timer
 		}
 	}
 
-	public static void RemoveTimer(Timer timer)
-	{
-		timer.Destroy();
-	}
+	public static void RemoveTimer(Timer timer) => timer.Destroy();
 
 	public static void RemoveTimers(ETimerType timerType)
 	{
+		List<Timer> snapshot;
 		lock (TimerLock)
 		{
 			if (!TotalTimers.TryGetValue(timerType, out List<Timer>? timers)) return;
-			foreach (Timer timer in timers.ToList())
-			{
-				timer.Destroy();
-			}
-			timers.Clear();
+			snapshot = [.. timers];
 		}
+		foreach (Timer timer in snapshot) timer.Destroy();
 	}
 
 	public static void RemoveTimerByTag(string tag)
 	{
+		Timer? found;
 		lock (TimerLock)
 		{
-			foreach ((_, List<Timer>? timerHandlers) in TotalTimers)
-			{
-				Timer? found = timerHandlers.FirstOrDefault(t => t.Tag == tag);
-				if (found == null) continue;
-				timerHandlers.Remove(found);
-				found.Destroy();
-				return;
-			}
+			found = TotalTimers.Values.SelectMany(list => list).FirstOrDefault(t => t.Tag == tag);
 		}
+		found?.Destroy();
 	}
 
-	public static List<Timer> GetDiscordTimers()
+	public static List<Timer> GetTimers(ETimerType timerType)
 	{
 		lock (TimerLock)
 		{
-			return TotalTimers.TryGetValue(ETimerType.Discord, out List<Timer>? timers) ? new List<Timer>(timers) : [];
+			return TotalTimers.TryGetValue(timerType, out List<Timer>? timers) ? [.. timers] : [];
 		}
 	}
 
-	public static List<Timer> GetTelegramTimers()
-	{
-		lock (TimerLock)
-		{
-			return TotalTimers.TryGetValue(ETimerType.Telegram, out List<Timer>? timers) ? new List<Timer>(timers) : [];
-		}
-	}
-
-	public static List<Timer> GetUtilityTimers()
-	{
-		lock (TimerLock)
-		{
-			return TotalTimers.TryGetValue(ETimerType.Utility, out List<Timer>? timers) ? new List<Timer>(timers) : [];
-		}
-	}
+	public static List<Timer> GetDiscordTimers() => GetTimers(ETimerType.Discord);
+	public static List<Timer> GetTelegramTimers() => GetTimers(ETimerType.Telegram);
+	public static List<Timer> GetUtilityTimers() => GetTimers(ETimerType.Utility);
 }

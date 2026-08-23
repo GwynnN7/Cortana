@@ -2,7 +2,7 @@ using CortanaLib;
 
 namespace CortanaDiscord.Utility;
 
-internal class GuildSettings //: SerializedObject
+internal class GuildSettings 
 {
 	public bool AutoJoin { get; set; }
 	public bool Greetings { get; set; }
@@ -11,7 +11,7 @@ internal class GuildSettings //: SerializedObject
 	public List<string> BannedWords { get; init; } = [];
 }
 
-internal readonly struct DataStruct //: DeserializedObject
+internal readonly struct DataStruct 
 {
 	public ulong CortanaId { get; init; }
 	public ulong ChiefId { get; init; }
@@ -21,7 +21,7 @@ internal readonly struct DataStruct //: DeserializedObject
 	public ulong CortanaLogChannelId { get; init; }
 }
 
-public readonly struct MemeJsonStructure //: DeserializedObject
+public readonly struct MemeJsonStructure 
 {
 	public List<string> Alias { get; init; }
 	public string Link { get; init;  }

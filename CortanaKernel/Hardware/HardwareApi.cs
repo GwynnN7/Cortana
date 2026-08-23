@@ -3,21 +3,22 @@ using System.Globalization;
 using CortanaKernel.Hardware.Devices;
 using CortanaKernel.Hardware.SocketHandler;
 using CortanaKernel.Hardware.Utility;
+using CortanaKernel.Kernel;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Hardware;
 
 public static class HardwareApi
 {
-	private static readonly Lock RaspberryLock = new();
-	private static readonly Lock ComputerLock = new();
 	private static readonly Lock DeviceLock = new();
+	private static readonly SemaphoreSlim ComputerGate = new(1, 1);
 
 	public static void InitializeHardware()
 	{
 		DeviceHandler.LoadDevices();
 		ServerHandler.Initialize();
-		Service.Start();
+		AutomationService.Start();
+		ScheduleService.Start();
 	}
 
 	public static void ShutdownService()
@@ -25,57 +26,83 @@ public static class HardwareApi
 		ComputerHandler.Interrupt();
 		SensorsHandler.Interrupt();
 		ServerHandler.ShutdownServer();
-		Service.InterruptController();
+		AutomationService.Interrupt();
+		ScheduleService.Interrupt();
+		DeviceHandler.Shutdown();
 	}
 
 	public static class Sensors
 	{
+		public static bool IsStationOnline => SensorsHandler.IsOnline;
+
+				public static EAutomationState AutomationState => AutomationService.State;
+
 		public static StringResult GetData(ESensor sensor)
 		{
 			switch (sensor)
 			{
 				case ESensor.Temperature:
 					double? temp = SensorsHandler.GetRoomTemperature();
-					if (temp is not null) return StringResult.Success(Math.Round(temp.Value, 1).ToString(CultureInfo.CurrentCulture));
+					if (temp.HasValue) return StringResult.Success(Math.Round(temp.Value, 1).ToString(CultureInfo.InvariantCulture));
 					break;
 				case ESensor.Light:
 					int? light = SensorsHandler.GetRoomLightLevel();
-					if (light.HasValue) return StringResult.Success(light.Value.ToString());
+					if (light.HasValue) return StringResult.Success(light.Value.ToString(CultureInfo.InvariantCulture));
 					break;
 				case ESensor.Humidity:
 					double? humidity = SensorsHandler.GetRoomHumidity();
-					if (humidity.HasValue) return StringResult.Success(Math.Round(humidity.Value, 1).ToString(CultureInfo.CurrentCulture));
+					if (humidity.HasValue) return StringResult.Success(Math.Round(humidity.Value, 1).ToString(CultureInfo.InvariantCulture));
 					break;
 				case ESensor.CO2:
 					int? co2 = SensorsHandler.GetRoomEco2();
-					if (co2.HasValue) return StringResult.Success(co2.Value.ToString());
+					if (co2.HasValue) return StringResult.Success(co2.Value.ToString(CultureInfo.InvariantCulture));
 					break;
 				case ESensor.Tvoc:
 					int? tvoc = SensorsHandler.GetRoomTvoc();
-					if (tvoc.HasValue) return StringResult.Success(tvoc.Value.ToString());
+					if (tvoc.HasValue) return StringResult.Success(tvoc.Value.ToString(CultureInfo.InvariantCulture));
 					break;
 				case ESensor.Motion:
 					EStatus? motion = SensorsHandler.GetMotionDetected();
-					if (motion is not null) return StringResult.Success((motion.Value == EStatus.On).ToString().ToLower());
+					if (motion.HasValue) return StringResult.Success((motion.Value == EStatus.On).ToString().ToLowerInvariant());
 					break;
 			}
 			return StringResult.Failure("Sensor offline");
+		}
+
+		public static IReadOnlyList<SensorResponse> GetAllData()
+		{
+			return Enum.GetValues<ESensor>()
+				.Select(sensor => GetData(sensor).Match(
+					value => new SensorResponse(sensor.ToString(), value, Helper.UnitFor(sensor)),
+					_ => new SensorResponse(sensor.ToString(), "", Helper.UnitFor(sensor))))
+				.ToList();
 		}
 
 		public static StringResult GetSettings(ESettings settings)
 		{
 			return settings switch
 			{
-				ESettings.LightThreshold => StringResult.Success(Service.Settings.LightThreshold.ToString()),
-				ESettings.LampToggle => StringResult.Success(Service.Settings.LampToggle.ToString()),
-				ESettings.AutomaticMode => StringResult.Success(Service.Settings.AutomaticMode.ToString()),
-				ESettings.MorningHour => StringResult.Success(Service.Settings.MorningHour.ToString()),
-				ESettings.MotionOffMax => StringResult.Success(Service.Settings.MotionOffMax.ToString()),
-				ESettings.MotionOffMin => StringResult.Success(Service.Settings.MotionOffMin.ToString()),
-				ESettings.CO2Threshold => StringResult.Success(Service.Settings.Eco2Threshold.ToString()),
-				ESettings.TvocThreshold => StringResult.Success(Service.Settings.TvocThreshold.ToString()),
+				ESettings.LightThreshold => StringResult.Success(AutomationService.Settings.LightThreshold.ToString()),
+				ESettings.LampToggle => StringResult.Success(AutomationService.Settings.LampToggle.ToString()),
+				ESettings.AutomaticMode => StringResult.Success(AutomationService.Settings.AutomaticMode.ToString()),
+				ESettings.MorningHour => StringResult.Success(AutomationService.Settings.MorningHour.ToString()),
+				ESettings.MotionOffMax => StringResult.Success(AutomationService.Settings.MotionOffMax.ToString()),
+				ESettings.MotionOffMin => StringResult.Success(AutomationService.Settings.MotionOffMin.ToString()),
+				ESettings.NightHour => StringResult.Success(AutomationService.Settings.NightHour.ToString()),
+				ESettings.ManualModeMinutes => StringResult.Success(AutomationService.Settings.ManualModeMinutes.ToString()),
+				ESettings.CO2Threshold => StringResult.Success(AutomationService.Settings.Eco2Threshold.ToString()),
+				ESettings.TvocThreshold => StringResult.Success(AutomationService.Settings.TvocThreshold.ToString()),
 				_ => StringResult.Failure("Settings not found")
 			};
+		}
+
+		public static IReadOnlyList<SettingsResponse> GetAllSettings()
+		{
+			return Enum.GetValues<ESettings>()
+				.Select(setting => GetSettings(setting).Match(
+					value => new SettingsResponse(setting.ToString(), value),
+					_ => new SettingsResponse(setting.ToString(), "")))
+				.ToList();
 		}
 
 		public static StringResult SetSettings(ESettings settings, int value)
@@ -83,33 +110,51 @@ public static class HardwareApi
 			switch (settings)
 			{
 				case ESettings.LightThreshold:
-					Service.Settings.LightThreshold = value;
+					AutomationService.Settings.LightThreshold = value;
 					break;
 				case ESettings.LampToggle:
-					Service.Settings.LampToggle = (EStatus)value;
+					AutomationService.Settings.LampToggle = ToStatus(value, AutomationService.Settings.LampToggle);
 					break;
 				case ESettings.CO2Threshold:
-					Service.Settings.Eco2Threshold = value;
+					AutomationService.Settings.Eco2Threshold = value;
 					break;
 				case ESettings.TvocThreshold:
-					Service.Settings.TvocThreshold = value;
+					AutomationService.Settings.TvocThreshold = value;
 					break;
 				case ESettings.AutomaticMode:
-					if (value != (int)EStatus.On && value != (int)EStatus.Off) value = (int)(Service.Settings.AutomaticMode == EStatus.On ? EStatus.Off : EStatus.On);
-					Service.Settings.AutomaticMode = (EStatus)value;
+					AutomationService.Settings.AutomaticMode = ToStatus(value, AutomationService.Settings.AutomaticMode);
+					
+					if (AutomationService.Settings.AutomaticMode == EStatus.On) AutomationService.ClearManualHold();
 					break;
 				case ESettings.MorningHour:
-					Service.Settings.MorningHour = value;
+					AutomationService.Settings.MorningHour = value;
 					break;
 				case ESettings.MotionOffMax:
-					Service.Settings.MotionOffMax = value;
+					AutomationService.Settings.MotionOffMax = value;
 					break;
 				case ESettings.MotionOffMin:
-					Service.Settings.MotionOffMin = value;
+					AutomationService.Settings.MotionOffMin = value;
 					break;
+				case ESettings.NightHour:
+					AutomationService.Settings.NightHour = value;
+					break;
+				case ESettings.ManualModeMinutes:
+					AutomationService.Settings.ManualModeMinutes = value;
+					break;
+				default:
+					return StringResult.Failure("Settings not found");
 			}
-			Service.Settings.Save();
+
+			AutomationService.Settings.Save();
+			SystemEvents.Notify();
 			return GetSettings(settings);
+		}
+
+		private static EStatus ToStatus(int value, EStatus current)
+		{
+			if (value == (int)EStatus.On) return EStatus.On;
+			if (value == (int)EStatus.Off) return EStatus.Off;
+			return current == EStatus.On ? EStatus.Off : EStatus.On;
 		}
 	}
 
@@ -117,79 +162,89 @@ public static class HardwareApi
 	{
 		public static StringResult Command(ERaspberryCommand option)
 		{
-			lock (RaspberryLock)
+			switch (option)
 			{
-				switch (option)
-				{
-					case ERaspberryCommand.Shutdown:
-						RaspberryHandler.Shutdown();
-						break;
-					case ERaspberryCommand.Reboot:
-						RaspberryHandler.Reboot();
-						break;
-					default:
-						return StringResult.Failure("Command not found");
-				}
-				return StringResult.Success("Command executed");
+				case ERaspberryCommand.Shutdown:
+					RaspberryHandler.Shutdown();
+					return StringResult.Success("Shutting down");
+				case ERaspberryCommand.Reboot:
+					RaspberryHandler.Reboot();
+					return StringResult.Success("Rebooting");
+				default:
+					return StringResult.Failure("Command not found");
 			}
 		}
-		public static StringResult GetHardwareInfo(ERaspberryInfo hardwareInfo)
+
+		public static Task<StringResult> RunCommand(string command) => RaspberryHandler.RunShellCommand(command);
+
+		public static async Task<StringResult> GetHardwareInfo(ERaspberryInfo hardwareInfo)
 		{
-			lock (RaspberryLock)
+			return hardwareInfo switch
 			{
-				switch (hardwareInfo)
-				{
-					case ERaspberryInfo.Location:
-						return StringResult.Success(RaspberryHandler.GetNetworkLocation().ToString());
-					case ERaspberryInfo.Gateway:
-						return StringResult.Success(RaspberryHandler.GetNetworkGateway());
-					case ERaspberryInfo.Temperature:
-						double temp = RaspberryHandler.ReadCpuTemperature();
-						return StringResult.Success(temp.ToString());
-					case ERaspberryInfo.Ip:
-						string ip = RaspberryHandler.RequestPublicIpv4().Result;
-						return StringResult.Success(ip);
-					default:
-						return StringResult.Failure("Raspberry information not supported");
-				}
+				ERaspberryInfo.Location => StringResult.Success(RaspberryHandler.GetNetworkLocation().ToString()),
+				ERaspberryInfo.Gateway => StringResult.Success(RaspberryHandler.GetNetworkGateway()),
+				ERaspberryInfo.Temperature => StringResult.Success(Math.Round(RaspberryHandler.ReadCpuTemperature(), 1).ToString(CultureInfo.InvariantCulture)),
+				ERaspberryInfo.Ip => StringResult.Success(await RaspberryHandler.RequestPublicIpv4()),
+				_ => StringResult.Failure("Raspberry information not supported")
+			};
+		}
+
+		public static async Task<IReadOnlyList<SensorResponse>> GetAllHardwareInfo()
+		{
+			var results = new List<SensorResponse>();
+			foreach (ERaspberryInfo info in Enum.GetValues<ERaspberryInfo>())
+			{
+				StringResult result = await GetHardwareInfo(info);
+				results.Add(new SensorResponse(info.ToString(), result.Match(value => value, _ => ""), Helper.UnitFor(info)));
 			}
+			return results;
 		}
 	}
 
-
 	public static class Devices
 	{
-		public static void EnterSleepMode() => Service.EnterSleepMode(true);
-		public static StringResult CommandComputer(EComputerCommand command, string? args = null)
+		public static void EnterSleepMode() => AutomationService.EnterSleepMode();
+
+		public static async Task<StringResult> CommandComputer(EComputerCommand command, string? args = null)
 		{
-			lock (ComputerLock)
+			await ComputerGate.WaitAsync();
+			try
 			{
 				if (GetPower(EDevice.Computer) == EStatus.Off) return StringResult.Failure("Computer is off");
+
+				if (command == EComputerCommand.Command) return await ComputerHandler.RunCommand(args ?? "dir");
+
 				bool result = command switch
 				{
 					EComputerCommand.Shutdown => ComputerHandler.Shutdown(),
 					EComputerCommand.Suspend => ComputerHandler.Suspend(),
 					EComputerCommand.Notify => ComputerHandler.Notify(args ?? $"Still alive at {Helper.FormatTemperature(RaspberryHandler.ReadCpuTemperature())}"),
 					EComputerCommand.Reboot => ComputerHandler.Reboot(),
-					EComputerCommand.Command => ComputerHandler.Command(args ?? "dir"),
 					EComputerCommand.System => ComputerHandler.SwitchOs(),
 					_ => false
 				};
 
-				if (!result) return StringResult.Failure("Command not found");
-
-				string output = "Command executed";
-				if (command == EComputerCommand.Command) output = (ComputerHandler.GatherMessage(out string? message) ? message : output)!;
-
-				return StringResult.Success(output);
+				SystemEvents.Notify();
+				return result ? StringResult.Success("Command executed") : StringResult.Failure("Command not found");
+			}
+			finally
+			{
+				ComputerGate.Release();
 			}
 		}
 
 		public static EStatus GetPower(EDevice device)
 		{
+			lock (DeviceLock) return DeviceHandler.DeviceStatus[device];
+		}
+
+		public static IReadOnlyList<DeviceResponse> GetAllPower()
+		{
 			lock (DeviceLock)
 			{
-				return DeviceHandler.DeviceStatus[device];
+				return Enum.GetValues<EDevice>()
+					.Select(device => new DeviceResponse(device.ToString(), DeviceHandler.DeviceStatus[device].ToString()))
+					.ToList();
 			}
 		}
 
@@ -199,12 +254,13 @@ public static class HardwareApi
 			{
 				EStatus? result = device switch
 				{
-					EDevice.Computer => HandleComputer(trigger), // Check if power supply is off before turning on
-					EDevice.Power => HandleComputerSupply(trigger), // Check if computer is off before removing power
-					EDevice.Lamp => HandleLamp(trigger, automatic), // Enable temporary manual mode if lamp is switched on manually
+					EDevice.Computer => HandleComputer(trigger), 
+					EDevice.Power => HandleComputerSupply(trigger), 
+					EDevice.Lamp => HandleLamp(trigger, automatic), 
 					EDevice.Generic => DeviceHandler.PowerGeneric(trigger),
 					_ => null
 				};
+				if (result.HasValue) SystemEvents.Notify();
 				return !result.HasValue ? StringResult.Failure("Device not supported") : StringResult.Success(result.Value.ToString());
 			}
 		}
@@ -213,23 +269,17 @@ public static class HardwareApi
 		{
 			lock (DeviceLock)
 			{
-				if (action == ESwitchAction.On)
-				{
-					if (SensorsHandler.GetRoomLightLevel().GetValueOrDefault(0) <= Service.Settings.LightThreshold)
-					{
-						Switch(EDevice.Lamp, action);
-					}
-				}
-				else Switch(EDevice.Lamp, action);
-				StringResult powerResult = Switch(EDevice.Power, action);
+				if (action != ESwitchAction.On) Switch(EDevice.Lamp, action);
+				else if (SensorsHandler.GetRoomLightLevel().GetValueOrDefault(0) <= AutomationService.Settings.LightThreshold) Switch(EDevice.Lamp, action);
 
+				StringResult powerResult = Switch(EDevice.Power, action);
 				return powerResult.IsOk ? StringResult.Success(action.ToString()) : StringResult.Failure("Devices failed to switch");
 			}
 		}
 
 		private static EStatus HandleLamp(ESwitchAction action, bool automatic)
 		{
-			if (!automatic) Service.TemporaryManualMode();
+			if (!automatic) AutomationService.TemporaryManualMode();
 			return DeviceHandler.PowerLamp(action);
 		}
 

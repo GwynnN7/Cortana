@@ -1,0 +1,100 @@
+@page "/sensors"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Sensors</PageTitle>
+
+<h1>Sensors</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Readings</h2>
+        <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
+            @(State.SensorsOnline ? "Station online" : "Station offline")
+        </span>
+    </header>
+
+    <div class="tiles">
+        <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(ESensor.Motion)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(ESensor.CO2)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(ESensor.Tvoc)" Muted="!State.SensorsOnline"/>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Automation</h2>
+        <p class="section-hint">Motion turns the lamp on below the light threshold and off after the timeout.</p>
+    </header>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Automatic mode</strong>
+            <small>@(State.SettingEnabled(ESettings.AutomaticMode) ? "Cortana controls the lamp" : "Manual control only")</small>
+        </div>
+        <button class="switch @(State.SettingEnabled(ESettings.AutomaticMode) ? "switch-on" : "")"
+                role="switch" aria-checked="@Aria(ESettings.AutomaticMode)" aria-label="Automatic mode"
+                disabled="@_busy" @onclick="ToggleAutomatic">
+            <span class="knob"></span>
+        </button>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Lamp is a toggle relay</strong>
+            <small>Pulse the pin instead of holding a level</small>
+        </div>
+        <button class="switch @(State.SettingEnabled(ESettings.LampToggle) ? "switch-on" : "")"
+                role="switch" aria-checked="@Aria(ESettings.LampToggle)" aria-label="Lamp is a toggle relay"
+                disabled="@_busy" @onclick="ToggleLampRelay">
+            <span class="knob"></span>
+        </button>
+    </div>
+
+    <div class="settings-grid">
+        <NumberSetting Setting="ESettings.LightThreshold" Label="Light threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
+        <NumberSetting Setting="ESettings.MorningHour" Label="Morning hour" Hint="0-23, when automatic mode resumes" Icon="🕒" Max="23" OnResult="Report"/>
+        <NumberSetting Setting="ESettings.MotionOffMin" Label="Motion timeout (min)" Hint="seconds, computer off" Icon="⏳" Max="3600" OnResult="Report"/>
+        <NumberSetting Setting="ESettings.MotionOffMax" Label="Motion timeout (max)" Hint="seconds, computer on" Icon="⏳" Max="3600" OnResult="Report"/>
+        <NumberSetting Setting="ESettings.CO2Threshold" Label="CO₂ threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
+        <NumberSetting Setting="ESettings.TvocThreshold" Label="TVOC threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>
+    </div>
+</section>
+
+@code {
+    private IDisposable? _subscription;
+    private string? _message;
+    private bool _busy;
+
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private void Report(string result) => _message = result;
+
+    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
+
+    private Task ToggleAutomatic() => Toggle(ESettings.AutomaticMode);
+    private Task ToggleLampRelay() => Toggle(ESettings.LampToggle);
+
+    private async Task Toggle(ESettings setting)
+    {
+        _busy = true;
+        try
+        {
+            EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
+            _message = await State.SetSetting(setting, (int)target);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

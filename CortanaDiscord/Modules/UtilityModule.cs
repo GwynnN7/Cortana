@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using CortanaDiscord.Utility;
 using CortanaLib;
 using Discord;
@@ -32,8 +32,6 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			await RespondAsync(embed: commandsEmbed);
 		}
 
-		// From Kernel
-
 		[SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
 		public async Task CreateQr([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No,
 			[Summary("colore-base", "Vuoi il colore bianco normale?")]
@@ -43,8 +41,6 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 
 			await RespondWithFileAsync(imageStream, "QRCode.png", ephemeral: ephemeral == EAnswer.Si);
 		}
-
-		// Discord-specific
 
 		[SlashCommand("avatar", "Vi mando la vostra immagine profile")]
 		public async Task GetAvatar([Summary("user", "Di chi vuoi vedere l'immagine?")] SocketUser user,
@@ -304,7 +300,6 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
 		}
 
-
 		[SlashCommand("user", "Scelgo uno di voi")]
 		public async Task OneOfYou([Summary("tutti", "Anche chi non è in chat vocale")] EAnswer all = EAnswer.No, [Summary("cortana", "Anche io?")] EAnswer cortana = EAnswer.No,
 			[Summary("ephemeral", "Voi vederlo solo tu?")]
@@ -329,13 +324,13 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 		[SlashCommand("banned-words", "Vi mostro le parole bannate in questo server")]
 		public async Task ShowBannedWords()
 		{
-			if (DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Count == 0)
+			if (DiscordUtils.SettingsFor(Context.Guild).BannedWords.Count == 0)
 			{
 				await RespondAsync("Non ci sono parole vietate in questo server");
 				return;
 			}
 
-			string bannedWordsList = DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Aggregate("Ecco le parole bannate di questo server:\n```\n", (current, word) => current + word + "\n");
+			string bannedWordsList = DiscordUtils.SettingsFor(Context.Guild).BannedWords.Aggregate("Ecco le parole bannate di questo server:\n```\n", (current, word) => current + word + "\n");
 			bannedWordsList += "```";
 			await RespondAsync(bannedWordsList);
 		}
@@ -347,23 +342,23 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			switch (action)
 			{
 				case EListAction.Crea:
-					if (DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+					if (DiscordUtils.SettingsFor(Context.Guild).BannedWords.Contains(word))
 					{
 						await RespondAsync("Questa parola è già presente tra quelle bannate in questo server");
 						return;
 					}
 
-					DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Add(word);
+					DiscordUtils.SettingsFor(Context.Guild).BannedWords.Add(word);
 					await RespondAsync("Parola aggiunta con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
 					break;
 				case EListAction.Elimina:
-					if (!DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Contains(word))
+					if (!DiscordUtils.SettingsFor(Context.Guild).BannedWords.Contains(word))
 					{
 						await RespondAsync("Questa parola non è presente tra quelle bannate in questo server");
 						return;
 					}
 
-					DiscordUtils.GuildSettings[Context.Guild.Id].BannedWords.Remove(word);
+					DiscordUtils.SettingsFor(Context.Guild).BannedWords.Remove(word);
 					await RespondAsync("Parola rimossa con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
 					break;
 			}

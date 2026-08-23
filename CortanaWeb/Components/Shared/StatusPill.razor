@@ -1,0 +1,17 @@
+<span class="pill @(Online ? "pill-ok" : "pill-bad")" title="@Title">
+    <span class="dot"></span>
+    @Label
+</span>
+
+@code {
+    [Parameter] public bool Online { get; set; }
+    [Parameter] public DateTimeOffset? LastUpdate { get; set; }
+
+    private string Label => Online
+        ? "Online"
+        : LastUpdate == null ? "Offline" : $"Offline · {LastUpdate:HH:mm:ss}";
+
+    private string Title => LastUpdate == null
+        ? "Never reached the kernel"
+        : $"Last update {LastUpdate:HH:mm:ss}";
+}

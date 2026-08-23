@@ -1,0 +1,20 @@
+[Unit]
+Description=Cortana Desktop
+After=network.target
+
+[Service]
+ExecStart=/home/gwynn7/Projects/Cortana/CortanaDesktop/out/CortanaDesktop
+ExecStartPre=/usr/bin/dotnet build /home/gwynn7/Projects/Cortana/CortanaDesktop -o /home/gwynn7/Projects/Cortana/CortanaDesktop/out --artifacts-path /home/gwynn7/Projects/Cortana/CortanaDesktop/out/lib
+WorkingDirectory=/home/gwynn7/Projects/Cortana/CortanaDesktop/out/
+Restart=on-failure
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=15
+User=gwynn7
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=CortanaDesktop
+
+[Install]
+WantedBy=default.target

@@ -1,28 +1,26 @@
+using System.Collections.Concurrent;
+using CortanaLib;
+using CortanaLib.Structures;
 using CortanaTelegram.Utility;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using System.Collections.Concurrent;
-using CortanaLib;
-using CortanaLib.Structures;
-using Timer = CortanaLib.Structures.Timer;
 
 namespace CortanaTelegram.Modules;
 
 internal sealed class CortanaModule : IModuleInterface
 {
-	private static readonly ConcurrentDictionary<int, string> SubfunctionAction = new();
-
-	private static Timer? UpdateTimer = null;
+		private static readonly ConcurrentDictionary<int, string> SelectedSubfunction = new();
 
 	public static async Task CreateMenu(ITelegramBotClient cortana, CallbackQuery? query = null)
 	{
 		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
+		Utils.ChatArgs.TryRemove(Utils.Topics.Cortana, out _);
 
 		string messageText = await GetSubfunctionStatus();
 
-		if (query != null && query.Message != null)
+		if (query?.Message != null)
 		{
 			try
 			{
@@ -32,11 +30,12 @@ internal sealed class CortanaModule : IModuleInterface
 			{
 				await cortana.AnswerCallbackQuery(query.Id);
 			}
-			ResetUpdateTimer(cortana, query);
+			LiveMenu.Track(Utils.Topics.Cortana, query.Message.MessageId, GetSubfunctionStatus, CreateButtons);
 		}
 		else
 		{
-			await Utils.SendToTopic(messageText, Utils.Topics.Cortana, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			Message sent = await Utils.SendToTopic(messageText, Utils.Topics.Cortana, replyMarkup: CreateButtons(), parseMode: ParseMode.Html);
+			LiveMenu.Track(Utils.Topics.Cortana, sent.MessageId, GetSubfunctionStatus, CreateButtons);
 		}
 	}
 
@@ -45,51 +44,62 @@ internal sealed class CortanaModule : IModuleInterface
 		int messageId = query.Message!.MessageId;
 		long chatId = query.Message.Chat.Id;
 
-		var task = command switch
-		{
-			ActionTag.Refresh or ActionTag.Cancel => CreateMenu(cortana, query),
-			_ => null
-
-		};
-
-		if (task != null)
-		{
-			await task;
-			return;
-		}
-
 		switch (command)
 		{
+			case ActionTag.Refresh:
+			case ActionTag.Cancel:
+				await CreateMenu(cortana, query);
+				return;
+
+			case ActionTag.Broadcast:
+				if (Utils.AddChatArg(Utils.Topics.Cortana, new ChatArgs(EArgsType.Broadcast, query, query.Message), query))
+					await cortana.EditMessageText(chatId, messageId, "Write the message to broadcast to Discord", replyMarkup: CreateCancelButton());
+				return;
+
 			case ActionTag.Start:
 			case ActionTag.Stop:
 			case ActionTag.Restart:
 			case ActionTag.Update:
 				string action = command.Split('-').Last();
-				SubfunctionAction.TryRemove(messageId, out string? subfuction);
-				string result = await ApiHandler.Post($"{ERoute.SubFunctions}/{subfuction}", new PostAction(action));
+				if (!SelectedSubfunction.TryRemove(messageId, out string? subfunction))
+				{
+					await cortana.AnswerCallbackQuery(query.Id, "Pick a subfunction first", true);
+					await CreateMenu(cortana, query);
+					return;
+				}
+
+				string result = await ApiHandler.Post($"{ERoute.SubFunctions}/{subfunction}", new PostAction(action));
 				await cortana.AnswerCallbackQuery(query.Id, result);
 				await CreateMenu(cortana, query);
+				return;
 
-				break;
 			case var _ when command.StartsWith(ActionTag.Type):
-				ResetUpdateTimer(cortana, query);
-				string subfunctionType = command.Split('-').Last();
-				SubfunctionAction[messageId] = subfunctionType;
+				SelectedSubfunction[messageId] = command.Split('-').Last();
 				await cortana.EditMessageReplyMarkup(chatId, messageId, CreateSubfunctionActionButtons());
 				return;
 		}
-
 	}
 
+	public static async Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats, ChatArgs chatArg)
+	{
+		string result = await ApiHandler.Post($"{ERoute.SubFunctions}", new PostCommand(nameof(EMessageCategory.Discord), messageStats.Message));
+		await cortana.DeleteMessage(Utils.HomeId, messageStats.MessageId);
+		await Utils.AnswerMessage(cortana, result, Utils.Topics.Cortana, chatArg.Query, false);
+		await CreateMenu(cortana, chatArg.Query);
+	}
 
 	private static async Task<string> GetSubfunctionStatus()
 	{
-		string kernel = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaKernel}")).Contains("not") ? "🔴" : "🟢";
-		string telegram = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaTelegram}")).Contains("not") ? "🔴" : "🟢";
-		string discord = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}")).Contains("not") ? "🔴" : "🟢";
-		string web = (await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}")).Contains("not") ? "🔴" : "🟢";
+		IOption<SubfunctionListResponse> statuses = await ApiHandler.Get<SubfunctionListResponse>($"{ERoute.SubFunctions}");
 
-		return $"🖲 <b>Subfunctions Status</b>\n====================\n{kernel} • <b>Kernel</b> {SubfunctionToEmoji[ESubFunctionType.CortanaKernel.ToString()]}\n{telegram} • <b>Telegram</b> {SubfunctionToEmoji[ESubFunctionType.CortanaTelegram.ToString()]}\n{discord} • <b>Discord</b> {SubfunctionToEmoji[ESubFunctionType.CortanaDiscord.ToString()]}\n{web} • <b>Web</b> {SubfunctionToEmoji[ESubFunctionType.CortanaWeb.ToString()]}";
+		return statuses.Match(
+			list =>
+			{
+				string rows = string.Join("\n", list.Subfunctions.Select(s =>
+					$"{(s.Running ? "🟢" : "🔴")} • <b>{s.Subfunction.Replace("Cortana", "")}</b> {SubfunctionToEmoji.GetValueOrDefault(s.Subfunction, "")}"));
+				return $"🖲 <b>Subfunctions Status</b>\n====================\n{rows}";
+			},
+			() => "🖲 <b>Subfunctions Status</b>\n====================\nCortana is offline");
 	}
 
 	public static InlineKeyboardMarkup CreateButtons()
@@ -97,14 +107,11 @@ internal sealed class CortanaModule : IModuleInterface
 		InlineKeyboardMarkup inlineKeyboard = new();
 
 		foreach (string element in Enum.GetNames<ESubFunctionType>())
-		{
-			inlineKeyboard
-				.AddButton($"{element.ToString().Replace("Cortana", "")} {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}")
-				.AddNewRow();
-		}
+			inlineKeyboard.AddButton($"{element.Replace("Cortana", "")} {SubfunctionToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}").AddNewRow();
 
-		inlineKeyboard.AddButton("Refresh 🔄", ActionTag.Refresh);
-		return inlineKeyboard;
+		return inlineKeyboard
+			.AddButton("Broadcast 📢", ActionTag.Broadcast)
+			.AddButton("Refresh 🔄", ActionTag.Refresh);
 	}
 
 	private static InlineKeyboardMarkup CreateSubfunctionActionButtons()
@@ -119,12 +126,14 @@ internal sealed class CortanaModule : IModuleInterface
 			.AddButton("<<", ActionTag.Cancel);
 	}
 
-	private static Dictionary<string, string> SubfunctionToEmoji = new()
+	private static InlineKeyboardMarkup CreateCancelButton() => new InlineKeyboardMarkup().AddButton("<<", ActionTag.Cancel);
+
+	private static readonly Dictionary<string, string> SubfunctionToEmoji = new()
 	{
-		{ ESubFunctionType.CortanaKernel.ToString(), "🧠" },
-		{ ESubFunctionType.CortanaTelegram.ToString(), "💻" },
-		{ ESubFunctionType.CortanaDiscord.ToString(), "💬" },
-		{ ESubFunctionType.CortanaWeb.ToString(), "🌐" }
+		{ nameof(ESubFunctionType.CortanaKernel), "🧠" },
+		{ nameof(ESubFunctionType.CortanaTelegram), "✈️" },
+		{ nameof(ESubFunctionType.CortanaDiscord), "💬" },
+		{ nameof(ESubFunctionType.CortanaWeb), "🌐" }
 	};
 
 	private struct ActionTag
@@ -134,28 +143,8 @@ internal sealed class CortanaModule : IModuleInterface
 		public const string Stop = "cortana-stop";
 		public const string Restart = "cortana-restart";
 		public const string Update = "cortana-update";
+		public const string Broadcast = "cortana-broadcast";
 		public const string Refresh = "cortana-refresh";
 		public const string Cancel = "cortana-cancel";
-	}
-
-	private static void ResetUpdateTimer(ITelegramBotClient cortana, CallbackQuery? query = null)
-	{
-		UpdateTimer?.Destroy();
-		UpdateTimer = new Timer("cortana-updater", new TelegramTimerPayload<(ITelegramBotClient, CallbackQuery?)>(Utils.HomeId, (cortana, query)), async Task (object? sender) =>
-		{
-			if (sender is not Timer { TimerType: ETimerType.Telegram } timer) return;
-
-			try
-			{
-				if (timer.Payload is not TelegramTimerPayload<(ITelegramBotClient cortana, CallbackQuery? query)> payload) return;
-				await CreateMenu(payload.Arg.cortana, payload.Arg.query);
-			}
-			catch { }
-		}, ETimerType.Telegram).Set((30, 0, 0));
-	}
-
-	public static Task HandleTextMessage(ITelegramBotClient cortana, MessageData messageStats, ChatArgs chatArg)
-	{
-		return Task.CompletedTask;
 	}
 }

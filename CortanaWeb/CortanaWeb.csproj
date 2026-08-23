@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <NoDefaultLaunchSettingsFile>True</NoDefaultLaunchSettingsFile>
+        <RootNamespace>CortanaWeb</RootNamespace>
     </PropertyGroup>
 
     <ItemGroup>

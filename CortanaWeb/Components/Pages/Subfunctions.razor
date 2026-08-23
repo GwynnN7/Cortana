@@ -1,111 +1,110 @@
 @page "/subfunctions"
-@using CortanaLib
-@using CortanaLib.Structures
-@inject IJSRuntime JsRuntime
+@attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
 
-<main>
-    <div class="container">
-        <div class="card">
-            <h2>Cortana Kernel</h2>
-            <div class="button-group">
-                <p>@_subfunctionStatus?[ESubFunctionType.CortanaKernel]</p>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Start)">Start</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Restart)">Restart</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Update)">Update</button>
-                <button class="stop"
-                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaKernel, ESubfunctionAction.Stop)">Stop</button>
-            </div>
-        </div>
+<PageTitle>Subfunctions</PageTitle>
 
-        <div class="card">
-            <h2>Cortana Discord</h2>
-            <div class="button-group">
-                <p>@_subfunctionStatus?[ESubFunctionType.CortanaDiscord]</p>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Start)">Start</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Restart)">Restart</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Update)">Update</button>
-                <button class="stop"
-                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaDiscord, ESubfunctionAction.Stop)">Stop</button>
-            </div>
-        </div>
+<h1>Subfunctions</h1>
+<Toast @bind-Message="_message"/>
 
-        <div class="card">
-            <h2>Cortana Telegram</h2>
-            <div class="button-group">
-                <p>@_subfunctionStatus?[ESubFunctionType.CortanaTelegram]</p>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Start)">Start</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Restart)">Restart</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Update)">Update</button>
-                <button class="stop"
-                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaTelegram, ESubfunctionAction.Stop)">Stop</button>
-            </div>
-        </div>
+<section class="section">
+    <div class="card-grid">
+        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+        {
+            bool running = State.SubfunctionRunning(type);
+            <article class="card service-card @(running ? "is-on" : "is-off")">
+                <header>
+                    <span class="device-icon" aria-hidden="true">@Icons[type]</span>
+                    <div>
+                        <h3>@type.ToString().Replace("Cortana", "")</h3>
+                        <p class="device-state">@(running ? "Running" : "Stopped")</p>
+                    </div>
+                </header>
 
-        <div class="card">
-            <h2>Cortana Web</h2>
-            <div class="button-group">
-                <p>@_subfunctionStatus?[ESubFunctionType.CortanaWeb]</p>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Start)">Start</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Restart)">Restart</button>
-                <button
-                @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Update)">Update</button>
-                <button class="stop"
-                        @onclick="() => HandleSubfunction(ESubFunctionType.CortanaWeb, ESubfunctionAction.Stop)">Stop</button>
-            </div>
-        </div>
+                <div class="btn-row wrap">
+                    <button class="btn btn-on btn-small" disabled="@_busy"
+                            @onclick="() => Run(type, ESubfunctionAction.Start)">Start</button>
+                    <button class="btn btn-small" disabled="@_busy"
+                            @onclick="() => Run(type, ESubfunctionAction.Restart)">Restart</button>
+                    <button class="btn btn-small" disabled="@_busy"
+                            @onclick="() => Run(type, ESubfunctionAction.Update)">Update</button>
+                    <button class="btn btn-off btn-small" disabled="@_busy"
+                            @onclick="() => Run(type, ESubfunctionAction.Stop)">Stop</button>
+                </div>
+
+                @if (type == ESubFunctionType.CortanaKernel)
+                {
+                    <p class="note">Stopping the kernel cascades to every other subfunction.</p>
+                }
+            </article>
+        }
     </div>
-</main>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Broadcast</h2>
+        <p class="section-hint">Publishes a message through the kernel to a bot's log channel.</p>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_category" disabled="@_busy">
+            @foreach (EMessageCategory category in Enum.GetValues<EMessageCategory>())
+            {
+                <option value="@category">@category</option>
+            }
+        </select>
+        <input type="text" placeholder="Message" @bind="_broadcast" @bind:event="oninput" disabled="@_busy"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_broadcast))" @onclick="Send">Send</button>
+    </div>
+</section>
 
 @code {
-    private System.Threading.Timer? _timer;
-    private Dictionary<ESubFunctionType, string>? _subfunctionStatus;
+    private IDisposable? _subscription;
+    private string? _message;
+    private string _broadcast = "";
+    private EMessageCategory _category = EMessageCategory.Telegram;
+    private bool _busy;
 
-    protected override async Task OnInitializedAsync()
+    private static readonly Dictionary<ESubFunctionType, string> Icons = new()
     {
-        _timer = new System.Threading.Timer(_ =>
-        {
-            InvokeAsync(async () =>
-            {
-                await UpdateStatus();
-                StateHasChanged();
-            });
-        }, null, 0, 2000);
+        { ESubFunctionType.CortanaKernel, "🧠" },
+        { ESubFunctionType.CortanaTelegram, "✈️" },
+        { ESubFunctionType.CortanaDiscord, "💬" },
+        { ESubFunctionType.CortanaWeb, "🌐" }
+    };
 
-        await base.OnInitializedAsync();
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private async Task Run(ESubFunctionType type, ESubfunctionAction action)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.Subfunction(type, action);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
-    private async Task HandleSubfunction(ESubFunctionType type, ESubfunctionAction action)
+    private async Task Send()
     {
-        string result = await ApiHandler.Post($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
-        await UpdateStatus();
-        await JsRuntime.InvokeVoidAsync("alert", result);
-    }
-
-    private async Task UpdateStatus()
-    {
-        string kernel = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaKernel}");
-        string discord = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaDiscord}");
-        string telegram = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaTelegram}");
-        string web = await ApiHandler.Get($"{ERoute.SubFunctions}/{ESubFunctionType.CortanaWeb}");
-
-        _subfunctionStatus = new Dictionary<ESubFunctionType, string>
+        _busy = true;
+        try
         {
-            { ESubFunctionType.CortanaKernel, kernel },
-            { ESubFunctionType.CortanaDiscord, discord },
-            { ESubFunctionType.CortanaTelegram, telegram },
-            { ESubFunctionType.CortanaWeb, web }
-        };
+            _message = await State.Broadcast(_category, _broadcast);
+            _broadcast = "";
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 }

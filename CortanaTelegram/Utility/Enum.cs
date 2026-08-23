@@ -11,11 +11,8 @@ internal enum EArgsType
 	RaspberryCommand,
 	AudioDownloader,
 	VideoDownloader,
-	SetLightThreshold,
-	SetLampToggle,
-	SetCO2Threshold,
-	SetTvocThreshold,
-	SetMotionOffMax,
-	SetMotionOffMin,
-	SetMorningHour
+	SetSetting,
+	Broadcast,
+	Timers,
+	DeleteSchedule
 }
