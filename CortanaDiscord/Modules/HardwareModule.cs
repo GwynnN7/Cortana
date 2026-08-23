@@ -26,16 +26,38 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 		Reply(ApiHandler.Post($"{ERoute.Devices}/room", new PostAction(action.ToString())));
 
 	[SlashCommand("command-raspberry", "Interact with Raspberry", runMode: RunMode.Async)]
-	public Task CommandRaspberry([Summary("option", "Select Option")] ERaspberryCommand command, [Summary("args", "Insert Argument")] string args = "") =>
-		Reply(ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args)));
+	public async Task CommandRaspberry(
+		[Summary("option", "Select Option")] ERaspberryCommand command,
+		[Summary("args", "Insert Argument")] string args = "",
+		[Summary("conferma", "Required for Shutdown and Reboot")] EAnswer confirm = EAnswer.No)
+	{
+		if (command is ERaspberryCommand.Shutdown or ERaspberryCommand.Reboot && confirm != EAnswer.Si)
+		{
+			await RespondAsync($"`{command}` takes Cortana offline and the Pi has no remote power switch. Re-run with `conferma: Si`.", ephemeral: true);
+			return;
+		}
+
+		await Reply(ApiHandler.Post($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args)));
+	}
 
 	[SlashCommand("raspberry-info", "Get Raspberry Info", runMode: RunMode.Async)]
 	public Task RaspberryInfo([Summary("info", "Select Info")] ERaspberryInfo info) =>
 		Reply(ApiHandler.Get($"{ERoute.Raspberry}/{info}"));
 
 	[SlashCommand("command-pc", "Interact with PC", runMode: RunMode.Async)]
-	public Task ComputerCommand([Summary("command", "Select Command")] EComputerCommand command, [Summary("args", "Insert Argument")] string args = "") =>
-		Reply(ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args)));
+	public async Task ComputerCommand(
+		[Summary("command", "Select Command")] EComputerCommand command,
+		[Summary("args", "Insert Argument")] string args = "",
+		[Summary("conferma", "Required for Shutdown")] EAnswer confirm = EAnswer.No)
+	{
+		if (command == EComputerCommand.Shutdown && confirm != EAnswer.Si)
+		{
+			await RespondAsync("`Shutdown` powers the desktop off. Re-run with `conferma: Si`.", ephemeral: true);
+			return;
+		}
+
+		await Reply(ApiHandler.Post($"{ERoute.Computer}", new PostCommand(command.ToString(), args)));
+	}
 
 	[SlashCommand("sensor", "Get Sensor Data", runMode: RunMode.Async)]
 	public Task SensorData([Summary("info", "Select Data")] ESensor info) =>
@@ -86,8 +108,19 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 		Reply(ApiHandler.Delete($"{ERoute.Schedules}/{id}"));
 
 	[SlashCommand("subfunction", "Start, stop, restart or update a subfunction", runMode: RunMode.Async)]
-	public Task ControlSubfunction([Summary("subfunction", "Which one")] ESubFunctionType subfunction, [Summary("action", "What to do")] ESubfunctionAction action) =>
-		Reply(ApiHandler.Post($"{ERoute.SubFunctions}/{subfunction}", new PostAction(action.ToString())));
+	public async Task ControlSubfunction(
+		[Summary("subfunction", "Which one")] ESubFunctionType subfunction,
+		[Summary("action", "What to do")] ESubfunctionAction action,
+		[Summary("conferma", "Required to stop the Kernel")] EAnswer confirm = EAnswer.No)
+	{
+		if (subfunction == ESubFunctionType.CortanaKernel && action == ESubfunctionAction.Stop && confirm != EAnswer.Si)
+		{
+			await RespondAsync("Stopping the Kernel cascades to every subfunction, including this bot. Re-run with `conferma: Si`.", ephemeral: true);
+			return;
+		}
+
+		await Reply(ApiHandler.Post($"{ERoute.SubFunctions}/{subfunction}", new PostAction(action.ToString())));
+	}
 
 	private async Task Reply(Task<string> call)
 	{

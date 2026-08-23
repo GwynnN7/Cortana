@@ -11,7 +11,11 @@ public static class CortanaWebApp
 	{
 		DataHandler.LoadEnvironment(required: false);
 
-		WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+		WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+		{
+			Args = args,
+			ContentRootPath = AppContext.BaseDirectory
+		});
 		builder.Services.AddLogging(c => c.ClearProviders().AddSimpleConsole(options => options.SingleLine = true));
 
 		builder.Services.AddRazorComponents().AddInteractiveServerComponents();
