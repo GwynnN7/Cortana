@@ -23,7 +23,30 @@ public class ComputerHandler : ClientHandler
 		AutomationService.ComputerStatusUpdated();
 	}
 
-	protected override void HandleRead(string message)
+	private readonly System.Text.StringBuilder _receiveBuffer = new();
+
+	protected override void HandleRead(string chunk)
+	{
+		lock (_receiveBuffer)
+		{
+			_receiveBuffer.Append(chunk);
+			string buffer = _receiveBuffer.ToString();
+
+			int newline;
+			var consumed = 0;
+			while ((newline = buffer.IndexOf('\n', consumed)) >= 0)
+			{
+				string frame = buffer[consumed..newline].Trim('\r');
+				consumed = newline + 1;
+				if (frame.Length > 0) Dispatch(frame);
+			}
+
+			_receiveBuffer.Remove(0, consumed);
+			if (_receiveBuffer.Length > 65536) _receiveBuffer.Clear();
+		}
+	}
+
+	private void Dispatch(string message)
 	{
 		if (message == "SYN")
 		{
@@ -32,6 +55,8 @@ public class ComputerHandler : ClientHandler
 		}
 		_messages.Writer.TryWrite(message);
 	}
+
+	private bool Send(string message) => Write(message + "\n");
 
 	protected override void DisconnectSocket()
 	{
@@ -71,22 +96,22 @@ public class ComputerHandler : ClientHandler
 		Helper.RunCommand(RaspberryHandler.DecodeCommand("etherwake", AutomationService.NetworkData.DesktopMac));
 	}
 
-	public static bool Shutdown() => Instance?.Write("shutdown") ?? false;
-	public static bool Suspend() => Instance?.Write("suspend") ?? false;
-	public static bool Reboot() => Instance?.Write("reboot") ?? false;
-	public static bool SwitchOs() => Instance?.Write("system") ?? false;
+	public static bool Shutdown() => Instance?.Send("shutdown") ?? false;
+	public static bool Suspend() => Instance?.Send("suspend") ?? false;
+	public static bool Reboot() => Instance?.Send("reboot") ?? false;
+	public static bool SwitchOs() => Instance?.Send("system") ?? false;
 
 	public static bool Notify(string text)
 	{
 		ComputerHandler? instance = Instance;
-		return instance != null && instance.Write("notify") && instance.Write(text);
+		return instance != null && instance.Send("notify") && instance.Send(text);
 	}
 
 		public static async Task<StringResult> RunCommand(string cmd)
 	{
 		ComputerHandler? instance = Instance;
 		if (instance == null) return StringResult.Failure("Computer is not connected");
-		if (!instance.Write("cmd") || !instance.Write(cmd)) return StringResult.Failure("Could not reach the computer");
+		if (!instance.Send("cmd") || !instance.Send(cmd)) return StringResult.Failure("Could not reach the computer");
 
 		string? reply = await instance.AwaitReply();
 		return StringResult.Success(reply ?? "Command executed");

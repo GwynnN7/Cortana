@@ -103,6 +103,7 @@ public static class CortanaDesktop
 
 		string? textCommand = null;
 		byte[] buffer = new byte[4096];
+		var pending = new StringBuilder();
 
 		try
 		{
@@ -111,20 +112,34 @@ public static class CortanaDesktop
 				int received = await socket.ReceiveAsync(buffer, SocketFlags.None);
 				if (received == 0) break;
 
-				string message = Encoding.UTF8.GetString(buffer, 0, received);
-				switch (message)
+				pending.Append(Encoding.UTF8.GetString(buffer, 0, received));
+				string stream = pending.ToString();
+
+				int newline;
+				var consumed = 0;
+				while ((newline = stream.IndexOf('\n', consumed)) >= 0)
 				{
-					case "shutdown" or "suspend" or "reboot" or "system":
-						OsHandler.ExecuteCommand(message);
-						break;
-					case "notify" or "cmd":
-						textCommand = message;
-						break;
-					default:
-						if (textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
-						textCommand = null;
-						break;
+					string message = stream[consumed..newline].Trim('\r');
+					consumed = newline + 1;
+					if (message.Length == 0) continue;
+
+					switch (message)
+					{
+						case "shutdown" or "suspend" or "reboot" or "system":
+							OsHandler.ExecuteCommand(message);
+							break;
+						case "notify" or "cmd":
+							textCommand = message;
+							break;
+						default:
+							if (textCommand != null) OsHandler.ExecuteCommand(textCommand, message);
+							textCommand = null;
+							break;
+					}
 				}
+
+				pending.Remove(0, consumed);
+				if (pending.Length > 65536) pending.Clear();
 			}
 		}
 		catch (Exception ex)
@@ -146,7 +161,7 @@ public static class CortanaDesktop
 
 		try
 		{
-			socket.Send(Encoding.UTF8.GetBytes(message));
+			socket.Send(Encoding.UTF8.GetBytes(message + "\n"));
 		}
 		catch
 		{

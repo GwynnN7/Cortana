@@ -43,7 +43,13 @@ public static class CortanaDiscordBot
 		await services.DisposeAsync();
 		DataHandler.Log("Discord Bot Offline");
 
-		async Task OnReady()
+		Task OnReady()
+		{
+			_ = Task.Run(ReadyAsync);
+			return Task.CompletedTask;
+		}
+
+		async Task ReadyAsync()
 		{
 			DiscordUtils.InitSettings(client);
 			await commands.RegisterCommandsGloballyAsync();
@@ -109,7 +115,13 @@ public static class CortanaDiscordBot
 		}
 	}
 
-	private static async Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
+	private static Task OnUserVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
+	{
+		_ = Task.Run(() => HandleVoiceStateUpdate(user, oldState, newState));
+		return Task.CompletedTask;
+	}
+
+	private static async Task HandleVoiceStateUpdate(SocketUser user, SocketVoiceState oldState, SocketVoiceState newState)
 	{
 		if (oldState.VoiceChannel == newState.VoiceChannel) return;
 		if (user.Id == DiscordUtils.Data.CortanaId) return;
@@ -157,7 +169,13 @@ public static class CortanaDiscordBot
 		DiscordUtils.UpdateSettings();
 	}
 
-	private static async Task OnUserJoin(SocketGuildUser user)
+	private static Task OnUserJoin(SocketGuildUser user)
+	{
+		_ = Task.Run(() => HandleUserJoin(user));
+		return Task.CompletedTask;
+	}
+
+	private static async Task HandleUserJoin(SocketGuildUser user)
 	{
 		if (user.IsBot) return;
 		if (!DiscordUtils.TryGetGuildSettings(user.Guild.Id, out GuildSettings? settings)) return;
