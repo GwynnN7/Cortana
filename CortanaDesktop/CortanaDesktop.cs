@@ -119,7 +119,7 @@ public static class CortanaDesktop
 				var consumed = 0;
 				while ((newline = stream.IndexOf('\n', consumed)) >= 0)
 				{
-					string message = stream[consumed..newline].Trim('\r');
+					string message = Unescape(stream[consumed..newline].Trim('\r'));
 					consumed = newline + 1;
 					if (message.Length == 0) continue;
 
@@ -161,12 +161,26 @@ public static class CortanaDesktop
 
 		try
 		{
-			socket.Send(Encoding.UTF8.GetBytes(message + "\n"));
+			socket.Send(Encoding.UTF8.GetBytes(Escape(message) + "\n"));
 		}
 		catch
 		{
 			DisconnectClient();
 		}
+	}
+
+	private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\r", "").Replace("\n", "\\n");
+
+	private static string Unescape(string value)
+	{
+		var builder = new StringBuilder(value.Length);
+		for (var i = 0; i < value.Length; i++)
+		{
+			if (value[i] != '\\' || i + 1 >= value.Length) { builder.Append(value[i]); continue; }
+			i++;
+			builder.Append(value[i] == 'n' ? '\n' : value[i]);
+		}
+		return builder.ToString();
 	}
 
 	private static void DisconnectClient()

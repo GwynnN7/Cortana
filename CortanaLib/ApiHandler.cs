@@ -8,7 +8,7 @@ namespace CortanaLib;
 
 public static class ApiHandler
 {
-	public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+	public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(40);
 	private const string Offline = "Cortana Offline";
 
 	private static readonly HttpClient ApiClient;

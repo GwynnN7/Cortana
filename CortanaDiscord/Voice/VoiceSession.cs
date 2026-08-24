@@ -12,6 +12,7 @@ public sealed class VoiceSession : IAsyncDisposable
 {
 		private const int FrameBytes = 3840;
 	private const int PcmBufferMillis = 1000;
+	private const int PrimeFrames = 30;
 
 	private static readonly TimeSpan ConnectHandshakeTimeout = TimeSpan.FromSeconds(15);
 
@@ -28,6 +29,7 @@ public sealed class VoiceSession : IAsyncDisposable
 	private IAudioClient? _audioClient;
 	private AudioOutStream? _pcmStream;
 	private Task? _worker;
+	private int _primed;
 	private volatile bool _disposed;
 
 	public VoiceSession(SocketGuild guild) => _guild = guild;
@@ -141,6 +143,8 @@ public sealed class VoiceSession : IAsyncDisposable
 		await SkipAsync();
 		
 		await WaitForPlaybackToStop();
+
+		Interlocked.Exchange(ref _primed, 0);
 
 		AudioOutStream? stream = _pcmStream;
 		_pcmStream = null;
@@ -296,6 +300,12 @@ public sealed class VoiceSession : IAsyncDisposable
 
 		CurrentTrack = track;
 		DataHandler.Log($"[Voice] Playing '{track.Title}'");
+
+		if (Interlocked.CompareExchange(ref _primed, 1, 0) == 0)
+		{
+			byte[] silence = new byte[FrameBytes];
+			for (var i = 0; i < PrimeFrames; i++) await destination.WriteAsync(silence, token);
+		}
 		using Process ffmpeg = StartFfmpeg(track.StreamUrl);
 
 		Task<string> stderr = ffmpeg.StandardError.ReadToEndAsync(CancellationToken.None);

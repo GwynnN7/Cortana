@@ -12,7 +12,7 @@ public class ComputerHandler : ClientHandler
 	private static readonly Lock InstanceLock = new();
 	private static ComputerHandler? _instance;
 
-	private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(8);
+	private static readonly TimeSpan ReplyTimeout = TimeSpan.FromSeconds(25);
 
 		private readonly Channel<string> _messages = Channel.CreateBounded<string>(
 		new BoundedChannelOptions(32) { FullMode = BoundedChannelFullMode.DropOldest });
@@ -38,7 +38,7 @@ public class ComputerHandler : ClientHandler
 			{
 				string frame = buffer[consumed..newline].Trim('\r');
 				consumed = newline + 1;
-				if (frame.Length > 0) Dispatch(frame);
+				if (frame.Length > 0) Dispatch(Unescape(frame));
 			}
 
 			_receiveBuffer.Remove(0, consumed);
@@ -56,7 +56,21 @@ public class ComputerHandler : ClientHandler
 		_messages.Writer.TryWrite(message);
 	}
 
-	private bool Send(string message) => Write(message + "\n");
+	private bool Send(string message) => Write(Escape(message) + "\n");
+
+	private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\r", "").Replace("\n", "\\n");
+
+	private static string Unescape(string value)
+	{
+		var builder = new System.Text.StringBuilder(value.Length);
+		for (var i = 0; i < value.Length; i++)
+		{
+			if (value[i] != '\\' || i + 1 >= value.Length) { builder.Append(value[i]); continue; }
+			i++;
+			builder.Append(value[i] == 'n' ? '\n' : value[i]);
+		}
+		return builder.ToString();
+	}
 
 	protected override void DisconnectSocket()
 	{

@@ -17,7 +17,7 @@
         </span>
     </header>
 
-    <div class="tiles">
+    <div class="tiles tiles-6">
         <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>

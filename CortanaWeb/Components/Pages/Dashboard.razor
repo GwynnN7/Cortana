@@ -18,7 +18,7 @@
         </span>
     </header>
 
-    <div class="tiles">
+    <div class="tiles tiles-6">
         <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>
@@ -61,10 +61,9 @@
 <section class="section">
     <header class="section-head">
         <h2>System</h2>
-        <a class="link" href="/subfunctions">Manage</a>
     </header>
 
-    <div class="tiles">
+    <div class="tiles tiles-4">
         <StatTile Icon="🍓" Label="CPU temperature" Value="@State.RaspberryInfo(ERaspberryInfo.Temperature)"/>
         <StatTile Icon="📍" Label="Location" Value="@State.RaspberryInfo(ERaspberryInfo.Location)"/>
         <StatTile Icon="📬" Label="Public IP" Value="@State.RaspberryInfo(ERaspberryInfo.Ip)"/>
@@ -78,6 +77,19 @@
                 <span class="dot"></span>@type.ToString().Replace("Cortana", "")
             </span>
         }
+    </div>
+</section>
+
+<section class="section section-more">
+    <header class="section-head">
+        <h2>More</h2>
+    </header>
+
+    <div class="quick-grid">
+        <a class="quick" href="/raspberry"><span aria-hidden="true">🍓</span> Raspberry</a>
+        <a class="quick" href="/schedules"><span aria-hidden="true">⏰</span> Schedules</a>
+        <a class="quick" href="/subfunctions"><span aria-hidden="true">🧠</span> Subfunctions</a>
+        <a class="quick" href="/utility"><span aria-hidden="true">🧰</span> Utility</a>
     </div>
 </section>
 

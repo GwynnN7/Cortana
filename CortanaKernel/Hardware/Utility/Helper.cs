@@ -16,7 +16,7 @@ public static class Helper
 		string? configured = Environment.GetEnvironmentVariable("CORTANA_SHELL");
 		if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured)) return configured;
 
-		foreach (string candidate in new[] { "/usr/bin/zsh", "/bin/zsh", "/bin/bash", "/bin/sh" })
+		foreach (string candidate in new[] { "/bin/bash", "/usr/bin/bash", "/bin/sh" })
 			if (File.Exists(candidate)) return candidate;
 
 		return "/bin/sh";
@@ -33,12 +33,13 @@ public static class Helper
 		{
 			FileName = Shell,
 			Environment = { ["PATH"] = processPath },
+			RedirectStandardInput = true,
 			RedirectStandardOutput = redirectStdout,
 			RedirectStandardError = true,
 			UseShellExecute = false,
 			CreateNoWindow = true
 		};
-		info.ArgumentList.Add("-c");
+		info.ArgumentList.Add(Shell.EndsWith("bash") ? "-lc" : "-c");
 		info.ArgumentList.Add(command);
 		return info;
 	}
@@ -59,6 +60,7 @@ public static class Helper
 		process.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
 
 		process.Start();
+		process.StandardInput.Close();
 		process.BeginOutputReadLine();
 		process.BeginErrorReadLine();
 
@@ -76,6 +78,7 @@ public static class Helper
 		lock (output)
 		{
 			string text = output.ToString().TrimEnd();
+			if (text.Length == 0) return "(no output)";
 			return text.Length > MaxCommandOutput ? string.Concat(text.AsSpan(0, MaxCommandOutput), "\n[output truncated]") : text;
 		}
 	}

@@ -186,7 +186,8 @@ public static class CortanaDiscordBot
 
 	private static Task LogAsync(LogMessage message)
 	{
-		DataHandler.Log(message.Message);
+		string detail = message.Exception == null ? "" : $" | {message.Exception.GetType().Name}: {message.Exception.Message}";
+		DataHandler.Log($"[{message.Severity}][{message.Source}] {message.Message}{detail}");
 		return Task.CompletedTask;
 	}
 
@@ -194,10 +195,11 @@ public static class CortanaDiscordBot
 	{
 		return new DiscordSocketConfig
 		{
+			LogLevel = LogSeverity.Debug,
 			GatewayIntents = GatewayIntents.All,
 			AlwaysDownloadUsers = true,
 			UseInteractionSnowflakeDate = false,
-			EnableVoiceDaveEncryption = false
+			EnableVoiceDaveEncryption = true
 		};
 	}
 

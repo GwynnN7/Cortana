@@ -10,6 +10,7 @@ WorkingDirectory=%h/Cortana
 ExecStart=%h/Cortana/CortanaDiscord/out/CortanaDiscord
 ExecStartPre=/bin/rm -rf %h/Cortana/CortanaDiscord/out
 ExecStartPre=/usr/bin/dotnet publish %h/Cortana/CortanaDiscord -o %h/Cortana/CortanaDiscord/out --artifacts-path %h/Cortana/CortanaDiscord/out/lib
+ExecStartPre=/bin/sh -c 'cp -f %h/cortana-native/libdave.so %h/Cortana/CortanaDiscord/out/ 2>/dev/null || true'
 EnvironmentFile=%h/.config/cortana/.env
 Restart=on-failure
 RestartSec=5

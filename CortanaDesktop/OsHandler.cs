@@ -14,7 +14,7 @@ internal enum Os
 
 internal static class OsHandler
 {
-	private static readonly TimeSpan CommandTimeout = TimeSpan.FromSeconds(30);
+	private static readonly TimeSpan CommandTimeout = TimeSpan.FromSeconds(18);
 	private static readonly Os OperatingSystem;
 	private static readonly string ShellPath;
 	private static readonly string ShellFlag;
@@ -25,7 +25,16 @@ internal static class OsHandler
 		else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) OperatingSystem = Os.Windows;
 		else throw new CortanaException("Unsupported Operating System");
 
-		(ShellPath, ShellFlag) = OperatingSystem == Os.Linux ? (ResolveLinuxShell(), "-c") : ("cmd.exe", "/C");
+		if (OperatingSystem == Os.Linux)
+		{
+			ShellPath = ResolveLinuxShell();
+			ShellFlag = ShellPath.EndsWith("bash") ? "-lc" : "-c";
+		}
+		else
+		{
+			ShellPath = "cmd.exe";
+			ShellFlag = "/C";
+		}
 	}
 
 	private static string ResolveLinuxShell()
@@ -33,7 +42,7 @@ internal static class OsHandler
 		string? configured = Environment.GetEnvironmentVariable("CORTANA_SHELL");
 		if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured)) return configured;
 
-		foreach (string candidate in new[] { "/usr/bin/fish", "/bin/bash", "/bin/sh" })
+		foreach (string candidate in new[] { "/bin/bash", "/usr/bin/bash", "/bin/sh" })
 			if (File.Exists(candidate)) return candidate;
 
 		return "/bin/sh";
@@ -66,7 +75,7 @@ internal static class OsHandler
 			try
 			{
 				string output = await RunAsync(commandArg);
-				if (sendResult) CortanaDesktop.Write(string.IsNullOrWhiteSpace(output) ? "Command executed" : output);
+				if (sendResult) CortanaDesktop.Write(string.IsNullOrWhiteSpace(output) ? "(no output)" : output);
 			}
 			catch (Exception ex)
 			{
@@ -81,6 +90,7 @@ internal static class OsHandler
 		var startInfo = new ProcessStartInfo
 		{
 			FileName = ShellPath,
+			RedirectStandardInput = true,
 			RedirectStandardOutput = true,
 			RedirectStandardError = true,
 			UseShellExecute = false,
@@ -96,6 +106,7 @@ internal static class OsHandler
 		process.ErrorDataReceived += (_, e) => { if (e.Data != null) lock (output) output.AppendLine(e.Data); };
 
 		process.Start();
+		process.StandardInput.Close();
 		process.BeginOutputReadLine();
 		process.BeginErrorReadLine();
 

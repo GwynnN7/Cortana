@@ -62,13 +62,13 @@ public static class ServerHandler
 			if (identity == null)
 			{
 				DataHandler.Log($"[Server] Rejected unknown client handshake: '{Truncate(message)}'");
-				await socket.SendAsync(Encoding.UTF8.GetBytes("FIN"), SocketFlags.None);
+				await socket.SendAsync(Encoding.UTF8.GetBytes("FIN\n"), SocketFlags.None);
 				socket.Close();
 				return;
 			}
 
 			string pending = message[identity.Length..];
-			await socket.SendAsync(Encoding.UTF8.GetBytes("ACK"), SocketFlags.None);
+			await socket.SendAsync(Encoding.UTF8.GetBytes("ACK\n"), SocketFlags.None);
 
 			switch (identity)
 			{
