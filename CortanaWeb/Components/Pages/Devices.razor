@@ -34,16 +34,17 @@
 <section class="section">
     <header class="section-head">
         <h2>Computer</h2>
+        <p class="section-hint">Commands run on the desktop agent. Output is capped and times out after 8s.</p>
         <span class="badge @(State.IsDeviceOn(EDevice.Computer) ? "badge-ok" : "badge-bad")">
             @(State.IsDeviceOn(EDevice.Computer) ? "Connected" : "Not connected")
         </span>
     </header>
 
     <div class="btn-row wrap">
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Reboot))">Reboot</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Suspend))">Suspend</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.System))">Switch OS</button>
-        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => Run(() => State.ComputerCommand(EComputerCommand.Shutdown))">Shutdown</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Reboot)">Reboot</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Suspend)">Suspend</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.System)">Switch OS</button>
+        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Shutdown)">Shutdown</button>
     </div>
 
     <div class="stack">
@@ -86,25 +87,30 @@
     private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) =>
         args.Key == "Enter" ? action() : Task.CompletedTask;
 
+    private async Task RunPc(EComputerCommand command, string args = "")
+    {
+        _busy = true;
+        try
+        {
+            _commandOutput = await State.ComputerCommand(command, args);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
     private async Task SendNotification()
     {
-        await Run(() => State.ComputerCommand(EComputerCommand.Notify, _notification));
+        await RunPc(EComputerCommand.Notify, _notification);
         _notification = "";
     }
 
     private async Task SendCommand()
     {
         string command = _command;
-        _busy = true;
-        try
-        {
-            _commandOutput = await State.ComputerCommand(EComputerCommand.Command, command);
-            _command = "";
-        }
-        finally
-        {
-            _busy = false;
-        }
+        await RunPc(EComputerCommand.Command, command);
+        _command = "";
     }
 
     private async Task Run(Func<Task<string>> action)

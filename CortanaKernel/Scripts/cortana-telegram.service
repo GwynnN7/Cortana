@@ -8,10 +8,12 @@ PartOf=cortana-kernel.service
 Type=simple
 WorkingDirectory=%h/Cortana
 ExecStart=%h/Cortana/CortanaTelegram/out/CortanaTelegram
-ExecStartPre=/usr/bin/dotnet build %h/Cortana/CortanaTelegram -o %h/Cortana/CortanaTelegram/out --artifacts-path %h/Cortana/CortanaTelegram/out/lib
+ExecStartPre=/bin/rm -rf %h/Cortana/CortanaTelegram/out
+ExecStartPre=/usr/bin/dotnet publish %h/Cortana/CortanaTelegram -o %h/Cortana/CortanaTelegram/out --artifacts-path %h/Cortana/CortanaTelegram/out/lib
 EnvironmentFile=%h/.config/cortana/.env
 Restart=on-failure
 RestartSec=5
+TimeoutStartSec=900
 KillSignal=SIGTERM
 
 StandardOutput=journal

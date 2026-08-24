@@ -8,10 +8,12 @@ PartOf=cortana-kernel.service
 Type=simple
 WorkingDirectory=%h/Cortana
 ExecStart=%h/Cortana/CortanaWeb/out/CortanaWeb
+ExecStartPre=/bin/rm -rf %h/Cortana/CortanaWeb/out
 ExecStartPre=/usr/bin/dotnet publish %h/Cortana/CortanaWeb -o %h/Cortana/CortanaWeb/out --artifacts-path %h/Cortana/CortanaWeb/out/lib
 EnvironmentFile=%h/.config/cortana/.env
 Restart=on-failure
 RestartSec=5
+TimeoutStartSec=900
 KillSignal=SIGTERM
 
 StandardOutput=journal

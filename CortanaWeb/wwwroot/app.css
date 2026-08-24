@@ -176,7 +176,7 @@ a:hover { color: var(--accent-strong); }
 
 .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(172px, 1fr));
     gap: 0.75rem;
 }
 
@@ -191,10 +191,17 @@ a:hover { color: var(--accent-strong); }
 }
 
 .tile-muted { opacity: 0.45; }
-.tile-icon { font-size: 1.3rem; }
+.tile-icon { font-size: 1.3rem; flex-shrink: 0; }
 .tile-body { display: flex; flex-direction: column; min-width: 0; }
 .tile-label { color: var(--text-dim); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
-.tile-value { font-size: 1.15rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tile-value {
+    font-size: clamp(0.92rem, 2.4vw, 1.15rem);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
 
 /* ---------- Cards ---------- */
 

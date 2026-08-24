@@ -262,6 +262,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
 	private async Task<AudioTrack?> ResolveTrack(string query, bool hidden)
 	{
+		string reason = "Non ho trovato niente di riproducibile per questa ricerca";
 		try
 		{
 			AudioTrack? track = await MediaHandler.GetAudioTrack(query);
@@ -270,9 +271,12 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		catch (Exception ex)
 		{
 			DataHandler.Log($"[Discord] Track lookup failed for '{query}': {ex.Message}");
+			reason = ex.Message.Contains("not available", StringComparison.OrdinalIgnoreCase)
+				? "Quel video non è disponibile: privato, rimosso o bloccato nella tua regione"
+				: $"Non riesco a leggere quel video: {ex.Message}";
 		}
 
-		await FollowupAsync("Il video non è più disponibile su youtube", ephemeral: hidden);
+		await FollowupAsync(reason, ephemeral: hidden);
 		return null;
 	}
 

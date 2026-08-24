@@ -7,10 +7,12 @@ Wants=redis.service cortana-discord.service cortana-telegram.service cortana-web
 Type=simple
 WorkingDirectory=%h/Cortana
 ExecStart=%h/Cortana/CortanaKernel/out/CortanaKernel
-ExecStartPre=/usr/bin/dotnet build %h/Cortana/CortanaKernel -o %h/Cortana/CortanaKernel/out --artifacts-path %h/Cortana/CortanaKernel/out/lib
+ExecStartPre=/bin/rm -rf %h/Cortana/CortanaKernel/out
+ExecStartPre=/usr/bin/dotnet publish %h/Cortana/CortanaKernel -o %h/Cortana/CortanaKernel/out --artifacts-path %h/Cortana/CortanaKernel/out/lib
 EnvironmentFile=%h/.config/cortana/.env
 Restart=on-failure
 RestartSec=5
+TimeoutStartSec=900
 KillSignal=SIGTERM
 
 StandardOutput=journal

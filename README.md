@@ -321,6 +321,11 @@ dotnet --version
 # Dependencies
 sudo apt install git zsh redis-server nginx ffmpeg opus-tools libopus0 libopus-dev libsodium-dev
 
+# yt-dlp: YouTube extraction backend (see below). Not in apt at a usable version.
+mkdir -p ~/.local/bin
+curl -fsSL https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux_aarch64 -o ~/.local/bin/yt-dlp
+chmod +x ~/.local/bin/yt-dlp
+
 redis-server --daemonize yes
 sudo cp Cortana/CortanaKernel/Scripts/nginx /etc/nginx/sites-available/default
 sudo systemctl enable nginx
@@ -330,7 +335,19 @@ echo '﻿alias temp='/bin/vcgencmd measure_temp'' >> ~/.zshrc
 echo 'export PATH=$PATH:/home/cortana/.local/bin' >> ~/.zshrc
 ```
 
-`ffmpeg` is required for Discord voice playback.
+`ffmpeg` is required for Discord voice playback, and `libopus`/`libsodium` for the voice
+encryption Discord.Net performs.
+
+### YouTube extraction
+
+`MediaHandler` prefers **yt-dlp** and falls back to YoutubeExplode when it is absent. YouTube now
+enforces proof-of-origin tokens on stream URLs, which YoutubeExplode cannot produce: it still reads
+video metadata fine but `GetManifestAsync` fails with *"Video is not available"* on almost every
+video, including ones that play normally in a browser. yt-dlp works around this and is updated
+almost daily.
+
+Keep it current with `yt-dlp -U`; a stale copy will start failing the same way. Override the
+location with `CORTANA_YTDLP` if it is not on `PATH` or in `~/.local/bin`.
 
 ### Discord voice encryption
 
@@ -340,12 +357,16 @@ existed. Discord does not require bots to support it.
 
 `Discord.Net.Dave` is a P/Invoke binding to a native `libdave` that ships for no runtime identifier,
 and there is no Raspberry Pi OS build of it. Left at its default (`null` = "use it if available")
-the library sees the managed assembly, tries to negotiate DAVE, and the voice session fails - hardest
-in channels with more than one person, which is where the MLS group actually matters.
+the library loads whatever `libdave.so` it finds next to the executable and the voice handshake then
+times out - `ConnectAsync` never completes, the bot appears in the channel and drops out again.
 
-So the package reference is removed and `EnableVoiceDaveEncryption = false` is set explicitly in
-`CortanaDiscordBot.ConfigureSocket`. Nothing else is needed. To adopt DAVE later, build libdave for
-`linux-arm64`, put it next to the executable, re-add the package, and flip the flag.
+`EnableVoiceDaveEncryption = false` is therefore set explicitly in `CortanaDiscordBot.ConfigureSocket`.
+Note that `Discord.Net.Dave.dll` still arrives as a transitive dependency of the `Discord.Net`
+metapackage - that is harmless. What must not be present is the native `libdave.so`.
+
+Because `dotnet build -o out` never cleans its output directory, a `libdave.so` left over from an
+older build survives every rebuild and keeps being loaded. The unit files therefore `rm -rf out`
+before publishing.
 
 ### ESP32
 
