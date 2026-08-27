@@ -118,7 +118,7 @@ public class SensorsHandler : ClientHandler
 		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.On, automatic: true);
 
 		if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
-			IpcHandler.Publish(EMessageCategory.Telegram, "Motion detected, switching lamp on");
+			Notifier.Send(ELogSource.Motion, "Motion detected, switching lamp on");
 	}
 
 	private void ArmMotionTimer(int seconds)
@@ -151,7 +151,7 @@ public class SensorsHandler : ClientHandler
 		{
 			if (overThreshold && !_airQualityWarningSent)
 			{
-				IpcHandler.Publish(EMessageCategory.Telegram, "Air quality warning! You should open the window");
+				Notifier.Send(ELogSource.AirQuality, "Air quality warning, you should open the window", ELogLevel.Alert);
 				_airQualityWarningSent = true;
 
 				_airQualityTimer?.Destroy();
@@ -163,7 +163,7 @@ public class SensorsHandler : ClientHandler
 				_airQualityWarningSent = false;
 				_airQualityTimer?.Destroy();
 				_airQualityTimer = null;
-				IpcHandler.Publish(EMessageCategory.Telegram, "Air quality back to normal");
+				Notifier.Send(ELogSource.AirQuality, "Air quality back to normal");
 			}
 		}
 	}
@@ -186,7 +186,7 @@ public class SensorsHandler : ClientHandler
 
 		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
 		if (HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off)
-			IpcHandler.Publish(EMessageCategory.Telegram, "No motion detected, switching lamp off");
+			Notifier.Send(ELogSource.Motion, "No motion detected, switching lamp off");
 
 		return Task.CompletedTask;
 	}

@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Text;
+using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
 
@@ -24,7 +25,7 @@ public abstract class ClientHandler
 		_socket = socket;
 		_socket.SendTimeout = SendTimeoutMs;
 
-		IpcHandler.Publish(EMessageCategory.Telegram, $"{_deviceName} connected ~ {DateTime.Now}");
+		Notifier.Send(ELogSource.Sensors, $"{_deviceName} connected");
 
 		if (!string.IsNullOrEmpty(pendingData)) SafeHandleRead(pendingData);
 
@@ -124,7 +125,7 @@ public abstract class ClientHandler
 
 	protected virtual void DisconnectSocket()
 	{
-		IpcHandler.Publish(EMessageCategory.Telegram, $"{_deviceName} disconnected at {DateTime.Now}");
+		Notifier.Send(ELogSource.Sensors, $"{_deviceName} disconnected", ELogLevel.Warning);
 
 		try { _socket?.Shutdown(SocketShutdown.Both); } catch {}
 		_socket?.Close();

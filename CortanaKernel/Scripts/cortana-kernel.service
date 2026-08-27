@@ -1,7 +1,7 @@
 [Unit]
 Description=Cortana Kernel
 After=network.target redis.service
-Wants=redis.service cortana-discord.service cortana-telegram.service cortana-web.service
+Wants=redis.service cortana-web.service cortana-discord.service cortana-telegram.service
 
 [Service]
 Type=simple

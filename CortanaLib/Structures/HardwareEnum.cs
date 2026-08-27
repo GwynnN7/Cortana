@@ -60,7 +60,10 @@ public enum ESettings
 	NightHour,
 	MotionOffMax,
 	MotionOffMin,
-	ManualModeMinutes
+	ManualModeMinutes,
+	LogToWeb,
+	LogToTelegram,
+	LogToDiscord
 }
 
 public enum EAutomationState

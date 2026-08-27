@@ -1,7 +1,7 @@
 // Caches the shell for instant startup and serves an honest offline page when the Pi is down.
 
 const CACHE = 'cortana-shell-v1';
-const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192.png', '/manifest.webmanifest', '/offline.html'];
+const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192x192.png', '/icon-144x144.png', '/icon-72x72.png', '/icon-512x512.png', '/manifest.webmanifest', '/offline.html'];
 
 self.addEventListener('install', event => {
     event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));

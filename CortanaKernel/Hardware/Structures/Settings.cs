@@ -51,7 +51,25 @@ public class Settings
 		set => field = Math.Clamp(value, 1, 720);
 	} = 15;
 
-		private void Normalize()
+		public EStatus LogToWeb
+	{
+		get;
+		set => field = value == EStatus.On ? EStatus.On : EStatus.Off;
+	} = EStatus.On;
+
+	public EStatus LogToTelegram
+	{
+		get;
+		set => field = value == EStatus.On ? EStatus.On : EStatus.Off;
+	} = EStatus.Off;
+
+	public EStatus LogToDiscord
+	{
+		get;
+		set => field = value == EStatus.On ? EStatus.On : EStatus.Off;
+	} = EStatus.Off;
+
+	private void Normalize()
 	{
 		if (MotionOffMin > MotionOffMax) (MotionOffMin, MotionOffMax) = (MotionOffMax, MotionOffMin);
 	}

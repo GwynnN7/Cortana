@@ -195,7 +195,7 @@ public static class CortanaDiscordBot
 	{
 		return new DiscordSocketConfig
 		{
-			LogLevel = LogSeverity.Debug,
+			LogLevel = LogSeverity.Info,
 			GatewayIntents = GatewayIntents.All,
 			AlwaysDownloadUsers = true,
 			UseInteractionSnowflakeDate = false,

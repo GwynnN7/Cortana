@@ -8,7 +8,8 @@ public enum ERoute
 	Sensors,
 	SubFunctions,
 	Settings,
-	Schedules
+	Schedules,
+	Logs
 }
 
 public enum ESubFunctionType

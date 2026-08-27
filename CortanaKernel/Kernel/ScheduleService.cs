@@ -346,7 +346,7 @@ public static class ScheduleService
 		}
 
 		string outcome = result.Match(value => value, error => $"Failed: {error}");
-		DataHandler.Log($"[Schedule] '{schedule.Name}' -> {outcome}");
+		Notifier.Send(ELogSource.Schedule, $"{schedule.Name}: {outcome}", result.IsOk ? ELogLevel.Info : ELogLevel.Warning);
 
 		lock (StoreLock)
 		{

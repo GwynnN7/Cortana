@@ -21,13 +21,23 @@
 <section class="section">
     <header class="section-head">
         <h2>Room</h2>
-        <p class="section-hint">Lamp and computer power together, respecting the light threshold.</p>
+        <p class="section-hint">Switches the lamp and the computer supply together. Turning the room on only lights the lamp if the room is already darker than the light threshold.</p>
     </header>
 
-    <div class="btn-row">
-        <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">Room on</button>
-        <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">Room off</button>
-        <button class="btn btn-ghost" disabled="@_busy" @onclick="() => Run(State.Sleep)">Sleep mode</button>
+    <div class="room">
+        <div class="room-state">
+            <span class="room-part @(State.IsDeviceOn(EDevice.Lamp) ? "on" : "")"><Icon Name="lamp" Size="20"/> Lamp<em>@State.DeviceStatus(EDevice.Lamp)</em></span>
+            <span class="room-part @(State.IsDeviceOn(EDevice.Power) ? "on" : "")"><Icon Name="power" Size="20"/> Power<em>@State.DeviceStatus(EDevice.Power)</em></span>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">
+                <Icon Name="home" Size="18"/> Room on
+            </button>
+            <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">
+                <Icon Name="moon" Size="18"/> Room off
+            </button>
+        </div>
     </div>
 </section>
 

@@ -1,0 +1,224 @@
+@page "/logs"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+<PageTitle>Logs</PageTitle>
+
+<h1>Logs</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Activity</h2>
+        <div class="log-controls">
+            <select @bind="_filter">
+                <option value="">All sources</option>
+                @foreach (ELogSource source in Enum.GetValues<ELogSource>())
+                {
+                    <option value="@source">@source</option>
+                }
+            </select>
+            <button class="btn btn-small" disabled="@_busy" @onclick="Reload">Refresh</button>
+            <button class="btn btn-off btn-small" disabled="@_busy" @onclick="Clear">Clear</button>
+        </div>
+    </header>
+
+    @if (Visible.Count == 0)
+    {
+        <p class="section-hint">Nothing logged yet.</p>
+    }
+    else
+    {
+        <ol class="log-list">
+            @foreach (LogEntry entry in Visible)
+            {
+                <li class="log-row log-@entry.Level.ToString().ToLower()">
+                    <time>@entry.Timestamp.ToString("dd MMM HH:mm:ss")</time>
+                    <span class="log-source">@entry.Source</span>
+                    <span class="log-message">@entry.Message</span>
+                </li>
+            }
+        </ol>
+    }
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Where to send logs</h2>
+        <p class="section-hint">Everything is always kept here. These control the extra copies.</p>
+    </header>
+
+    <div class="toggle-row">
+        <div><strong>Keep in the dashboard</strong><small>This page</small></div>
+        <button class="switch @(State.SettingEnabled(ESettings.LogToWeb) ? "switch-on" : "")" role="switch"
+                aria-checked="@Aria(ESettings.LogToWeb)" aria-label="Keep logs in the dashboard"
+                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToWeb)"><span class="knob"></span></button>
+    </div>
+
+    <div class="toggle-row">
+        <div><strong>Mirror to Telegram</strong><small>Log topic in the home group</small></div>
+        <button class="switch @(State.SettingEnabled(ESettings.LogToTelegram) ? "switch-on" : "")" role="switch"
+                aria-checked="@Aria(ESettings.LogToTelegram)" aria-label="Mirror logs to Telegram"
+                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToTelegram)"><span class="knob"></span></button>
+    </div>
+
+    <div class="toggle-row">
+        <div><strong>Mirror to Discord</strong><small>Log channel</small></div>
+        <button class="switch @(State.SettingEnabled(ESettings.LogToDiscord) ? "switch-on" : "")" role="switch"
+                aria-checked="@Aria(ESettings.LogToDiscord)" aria-label="Mirror logs to Discord"
+                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToDiscord)"><span class="knob"></span></button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Notifications</h2>
+        <p class="section-hint">Shows a system notification when a new entry arrives. This device only.</p>
+    </header>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Push to this device</strong>
+            <small>@_permissionLabel</small>
+        </div>
+        <button class="switch @(_notify ? "switch-on" : "")" role="switch"
+                aria-checked="@(_notify ? "true" : "false")" aria-label="Push notifications"
+                disabled="@_busy" @onclick="ToggleNotifications"><span class="knob"></span></button>
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_notifyAlertsOnly"/> Only warnings and alerts</label>
+    </div>
+</section>
+
+@code {
+    private IDisposable? _subscription;
+    private IReadOnlyList<LogEntry> _entries = [];
+    private string _filter = "";
+    private string? _message;
+    private bool _busy;
+
+    private bool _notify;
+    private bool _notifyAlertsOnly = true;
+    private string _permissionLabel = "Off";
+    private DateTimeOffset _lastSeen = DateTimeOffset.MinValue;
+    private bool _ready;
+
+    private IReadOnlyList<LogEntry> Visible =>
+        string.IsNullOrEmpty(_filter) ? _entries : _entries.Where(e => e.Source.ToString() == _filter).ToList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(OnStateChanged));
+        await Reload();
+        _lastSeen = _entries.Count > 0 ? _entries[0].Timestamp : DateTimeOffset.Now;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _ready = true;
+
+        try
+        {
+            _notify = await Js.InvokeAsync<bool>("cortanaNotify.isEnabled");
+            _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
+        }
+        catch
+        {
+            _permissionLabel = "Not supported by this browser";
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task OnStateChanged()
+    {
+        await Reload();
+        await PushNew();
+        StateHasChanged();
+    }
+
+    private async Task Reload() => _entries = await State.GetLogs();
+
+    private async Task PushNew()
+    {
+        if (!_notify || !_ready || _entries.Count == 0) return;
+
+        List<LogEntry> fresh = _entries
+            .Where(e => e.Timestamp > _lastSeen)
+            .Where(e => !_notifyAlertsOnly || e.Level != ELogLevel.Info)
+            .ToList();
+
+        _lastSeen = _entries[0].Timestamp;
+        if (fresh.Count == 0) return;
+
+        LogEntry latest = fresh[0];
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaNotify.show", $"Cortana · {latest.Source}", latest.Message);
+        }
+        catch
+        {
+        }
+    }
+
+    private async Task ToggleNotifications()
+    {
+        _busy = true;
+        try
+        {
+            _notify = await Js.InvokeAsync<bool>("cortanaNotify.toggle");
+            _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
+            _lastSeen = _entries.Count > 0 ? _entries[0].Timestamp : DateTimeOffset.Now;
+        }
+        catch
+        {
+            _permissionLabel = "Not supported by this browser";
+            _notify = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
+
+    private async Task Toggle(ESettings setting)
+    {
+        _busy = true;
+        try
+        {
+            EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
+            _message = await State.SetSetting(setting, (int)target);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Clear()
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.ClearLogs();
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _subscription?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

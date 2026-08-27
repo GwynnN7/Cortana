@@ -37,6 +37,14 @@ public static class HardwareApi
 
 				public static EAutomationState AutomationState => AutomationService.State;
 
+		public static bool LogDestinationEnabled(ESettings destination) => destination switch
+		{
+			ESettings.LogToWeb => AutomationService.Settings.LogToWeb == EStatus.On,
+			ESettings.LogToTelegram => AutomationService.Settings.LogToTelegram == EStatus.On,
+			ESettings.LogToDiscord => AutomationService.Settings.LogToDiscord == EStatus.On,
+			_ => false
+		};
+
 		public static StringResult GetData(ESensor sensor)
 		{
 			switch (sensor)
@@ -90,6 +98,9 @@ public static class HardwareApi
 				ESettings.MotionOffMin => StringResult.Success(AutomationService.Settings.MotionOffMin.ToString()),
 				ESettings.NightHour => StringResult.Success(AutomationService.Settings.NightHour.ToString()),
 				ESettings.ManualModeMinutes => StringResult.Success(AutomationService.Settings.ManualModeMinutes.ToString()),
+				ESettings.LogToWeb => StringResult.Success(AutomationService.Settings.LogToWeb.ToString()),
+				ESettings.LogToTelegram => StringResult.Success(AutomationService.Settings.LogToTelegram.ToString()),
+				ESettings.LogToDiscord => StringResult.Success(AutomationService.Settings.LogToDiscord.ToString()),
 				ESettings.CO2Threshold => StringResult.Success(AutomationService.Settings.Eco2Threshold.ToString()),
 				ESettings.TvocThreshold => StringResult.Success(AutomationService.Settings.TvocThreshold.ToString()),
 				_ => StringResult.Failure("Settings not found")
@@ -140,6 +151,15 @@ public static class HardwareApi
 					break;
 				case ESettings.ManualModeMinutes:
 					AutomationService.Settings.ManualModeMinutes = value;
+					break;
+				case ESettings.LogToWeb:
+					AutomationService.Settings.LogToWeb = ToStatus(value, AutomationService.Settings.LogToWeb);
+					break;
+				case ESettings.LogToTelegram:
+					AutomationService.Settings.LogToTelegram = ToStatus(value, AutomationService.Settings.LogToTelegram);
+					break;
+				case ESettings.LogToDiscord:
+					AutomationService.Settings.LogToDiscord = ToStatus(value, AutomationService.Settings.LogToDiscord);
 					break;
 				default:
 					return StringResult.Failure("Settings not found");

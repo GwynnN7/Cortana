@@ -80,6 +80,14 @@ public sealed class CortanaState : BackgroundService
 	public Task<string> Broadcast(EMessageCategory category, string message) =>
 		Act($"{ERoute.SubFunctions}", new PostCommand(category.ToString(), message));
 
+	public async Task<IReadOnlyList<LogEntry>> GetLogs(int limit = 200)
+	{
+		IOption<LogListResponse> list = await ApiHandler.Get<LogListResponse>($"{ERoute.Logs}?limit={limit}");
+		return list.Match(value => value.Entries, () => []);
+	}
+
+	public Task<string> ClearLogs() => ApiHandler.Delete($"{ERoute.Logs}");
+
 	public async Task<IReadOnlyList<ScheduleResponse>> GetSchedules()
 	{
 		IOption<ScheduleListResponse> list = await ApiHandler.Get<ScheduleListResponse>($"{ERoute.Schedules}");

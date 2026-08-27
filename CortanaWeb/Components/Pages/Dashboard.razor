@@ -30,30 +30,54 @@
 
 <section class="section">
     <header class="section-head">
-        <h2>Quick actions</h2>
+        <h2>Devices</h2>
+        <a class="link" href="/devices">All devices</a>
     </header>
 
     <div class="quick-grid">
         <button class="quick @(State.IsDeviceOn(EDevice.Lamp) ? "quick-active" : "")" disabled="@_busy"
                 @onclick="() => Run(() => State.SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle))">
-            <span aria-hidden="true">💡</span> Lamp
+            <Icon Name="lamp" Size="26"/> Lamp
+            <small>@State.DeviceStatus(EDevice.Lamp)</small>
         </button>
-        <button class="quick @(State.IsDeviceOn(EDevice.Computer) ? "quick-active" : "")" disabled="@_busy"
-                @onclick="() => Run(() => State.SwitchDevice(EDevice.Computer, ESwitchAction.Toggle))">
-            <span aria-hidden="true">💻</span> Computer
+        <button class="quick @(State.IsDeviceOn(EDevice.Generic) ? "quick-active" : "")" disabled="@_busy"
+                @onclick="() => Run(() => State.SwitchDevice(EDevice.Generic, ESwitchAction.Toggle))">
+            <Icon Name="plug" Size="26"/> Generic
+            <small>@State.DeviceStatus(EDevice.Generic)</small>
         </button>
-        <button class="quick" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">
-            <span aria-hidden="true">🏠</span> Room on
+        <button class="quick @(State.IsDeviceOn(EDevice.Power) ? "quick-active" : "")" disabled="@_busy"
+                @onclick="() => Run(() => State.SwitchDevice(EDevice.Power, ESwitchAction.Toggle))">
+            <Icon Name="power" Size="26"/> Power
+            <small>@State.DeviceStatus(EDevice.Power)</small>
         </button>
-        <button class="quick" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">
-            <span aria-hidden="true">🌙</span> Room off
-        </button>
-        <button class="quick" disabled="@_busy" @onclick="() => Run(State.Sleep)">
-            <span aria-hidden="true">🛌</span> Sleep mode
-        </button>
-        <button class="quick @(State.SettingEnabled(ESettings.AutomaticMode) ? "quick-active" : "")" disabled="@_busy"
-                @onclick="ToggleAutomatic">
-            <span aria-hidden="true">🤖</span> Automatic
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Automation</h2>
+        <span class="badge @(State.SettingEnabled(ESettings.AutomaticMode) ? "badge-ok" : "badge-bad")">
+            @(State.SettingEnabled(ESettings.AutomaticMode) ? "Automatic" : "Manual")
+        </span>
+    </header>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Automatic mode</strong>
+            <small>@(State.SettingEnabled(ESettings.AutomaticMode) ? "Motion controls the lamp" : "Manual control only")</small>
+        </div>
+        <button class="switch @(State.SettingEnabled(ESettings.AutomaticMode) ? "switch-on" : "")"
+                role="switch" aria-checked="@(State.SettingEnabled(ESettings.AutomaticMode) ? "true" : "false")"
+                aria-label="Automatic mode" disabled="@_busy" @onclick="ToggleAutomatic"><span class="knob"></span></button>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Sleep mode</strong>
+            <small>Lamp off and manual until morning</small>
+        </div>
+        <button class="btn" disabled="@_busy" @onclick="() => Run(State.Sleep)">
+            <Icon Name="bed" Size="18"/> Sleep now
         </button>
     </div>
 </section>

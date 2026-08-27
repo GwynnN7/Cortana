@@ -44,6 +44,7 @@ public static class CortanaApi
 		_api.MapComputerEndpoints();
 		_api.MapSubfunctionEndpoints();
 		_api.MapScheduleEndpoints();
+		_api.MapLogEndpoints();
 	}
 
 		private static Func<HttpContext, RequestDelegate, Task> ApiKeyMiddleware(ApiKeyGate gate)

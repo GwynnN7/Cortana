@@ -603,3 +603,58 @@ input:disabled, select:disabled { opacity: 0.5; }
 @media (max-width: 860px) {
     .section-more { display: block; }
 }
+
+.icon { display: block; flex-shrink: 0; }
+.nav-icon { display: flex; align-items: center; justify-content: center; width: 1.4rem; }
+
+/* ---------- Logs ---------- */
+
+.log-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.log-controls select { flex: 0 0 auto; min-width: 8rem; }
+
+.log-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+
+.log-row {
+    display: grid;
+    grid-template-columns: 8.5rem 7rem 1fr;
+    gap: 0.25rem 0.9rem;
+    padding: 0.5rem 0.6rem;
+    border-left: 3px solid var(--border);
+    border-bottom: 1px solid var(--rule, var(--border));
+    font-size: 0.88rem;
+}
+
+.log-row time { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.log-source { color: var(--accent); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; align-self: center; }
+.log-message { color: var(--text); overflow-wrap: anywhere; }
+
+.log-info { border-left-color: var(--border); }
+.log-warning { border-left-color: #d8a45c; background: rgba(216, 164, 92, 0.07); }
+.log-alert { border-left-color: var(--bad); background: var(--bad-dim); }
+
+@media (max-width: 700px) {
+    .log-row { grid-template-columns: 1fr; gap: 0.15rem; padding: 0.6rem 0.5rem; }
+    .log-row time { font-size: 0.76rem; }
+}
+
+.quick small { font-size: 0.74rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.quick-active small { color: var(--ok); }
+.btn .icon { margin-right: 0.1rem; }
+
+.room { display: flex; flex-direction: column; gap: 0.9rem; }
+.room-state { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+
+.room-part {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.8rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+}
+
+.room-part em { font-style: normal; color: var(--text-dim); font-size: 0.78rem; }
+.room-part.on { border-color: rgba(61, 220, 151, 0.45); }
+.room-part.on em { color: var(--ok); }

@@ -132,7 +132,7 @@ public static class AutomationService
 		{
 			_nightDeferred = true;
 			ComputerHandler.Notify("It's late, you should go to sleep.");
-			IpcHandler.Publish(EMessageCategory.Telegram, "Night hour reached, but the computer is still on");
+			Notifier.Send(ELogSource.Automation, "Night hour reached, but the computer is still on");
 			return;
 		}
 
@@ -140,7 +140,7 @@ public static class AutomationService
 
 		if (HardwareApi.Devices.GetPower(EDevice.Lamp) == EStatus.Off) return;
 
-		IpcHandler.Publish(EMessageCategory.Telegram, message);
+		Notifier.Send(ELogSource.Automation, message);
 		HardwareApi.Devices.Switch(EDevice.Lamp, ESwitchAction.Off, automatic: true);
 	}
 
@@ -151,7 +151,7 @@ public static class AutomationService
 
 		Settings.AutomaticMode = EStatus.On;
 		Settings.Save();
-		IpcHandler.Publish(EMessageCategory.Telegram, "Good morning, automatic mode is back on");
+		Notifier.Send(ELogSource.Automation, "Good morning, automatic mode is back on");
 	}
 
 		public static void TemporaryManualMode()
@@ -170,7 +170,7 @@ public static class AutomationService
 			if (wasActive) return;
 		}
 
-		IpcHandler.Publish(EMessageCategory.Telegram, $"Manual mode for {Settings.ManualModeMinutes} minutes");
+		Notifier.Send(ELogSource.Automation, $"Manual mode for {Settings.ManualModeMinutes} minutes");
 	}
 
 	private static Task ManualExpired(object? sender)
@@ -183,7 +183,7 @@ public static class AutomationService
 
 		if (IsNight(DateTime.Now)) return Task.CompletedTask;
 
-		IpcHandler.Publish(EMessageCategory.Telegram, "Automatic mode re-enabled");
+		Notifier.Send(ELogSource.Automation, "Automatic mode re-enabled");
 		return Task.CompletedTask;
 	}
 
