@@ -17,6 +17,7 @@ public class Timer : System.Timers.Timer
 	public string Tag { get; }
 	private ETimerLoop LoopType { get; }
 	private Func<object?, Task> Callback { get; }
+	private double _period;
 
 	public Timer(string tag, object? payload, Func<object?, Task> callback, ETimerType timerType, ETimerLoop loop = ETimerLoop.No)
 	{
@@ -34,7 +35,8 @@ public class Timer : System.Timers.Timer
 	public Timer Set(Times times)
 	{
 		double interval = (times.Hours * 3600 + times.Minutes * 60 + times.Seconds) * 1000;
-		Interval = interval > 0 ? interval : 1000;
+		_period = interval > 0 ? interval : 1000;
+		Interval = _period;
 		NextTargetTime = DateTime.Now.AddMilliseconds(Interval);
 
 		Start();
@@ -45,6 +47,7 @@ public class Timer : System.Timers.Timer
 	{
 		if (targetTime <= DateTime.Now) targetTime = targetTime.AddDays(1);
 		Interval = targetTime.Subtract(DateTime.Now).TotalMilliseconds;
+		_period = Interval;
 		NextTargetTime = targetTime;
 
 		Start();
@@ -74,7 +77,7 @@ public class Timer : System.Timers.Timer
 		{
 			ETimerLoop.Daily => anchor.AddDays(1),
 			ETimerLoop.Weekly => anchor.AddDays(7),
-			_ => anchor.AddMilliseconds(Interval)
+			_ => anchor.AddMilliseconds(_period)
 		};
 		while (next <= DateTime.Now)
 		{
@@ -82,12 +85,12 @@ public class Timer : System.Timers.Timer
 			{
 				ETimerLoop.Daily => next.AddDays(1),
 				ETimerLoop.Weekly => next.AddDays(7),
-				_ => next.AddMilliseconds(Interval)
+				_ => next.AddMilliseconds(_period)
 			};
 		}
 
 		NextTargetTime = next;
-		Interval = next.Subtract(DateTime.Now).TotalMilliseconds;
+		Interval = Math.Max(1, next.Subtract(DateTime.Now).TotalMilliseconds);
 		Start();
 	}
 

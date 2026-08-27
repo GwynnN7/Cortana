@@ -15,6 +15,8 @@ public sealed class VoiceSession : IAsyncDisposable
 	private const int PrimeFrames = 30;
 
 	private static readonly TimeSpan ConnectHandshakeTimeout = TimeSpan.FromSeconds(15);
+	private static readonly TimeSpan GatewayCallTimeout = TimeSpan.FromSeconds(25);
+	private static readonly TimeSpan GateTimeout = TimeSpan.FromSeconds(40);
 
 	private readonly SocketGuild _guild;
 	private readonly SemaphoreSlim _connectionGate = new(1, 1);
@@ -47,7 +49,7 @@ public sealed class VoiceSession : IAsyncDisposable
 	{
 		if (_disposed) return "Non sono più disponibile";
 
-		await _connectionGate.WaitAsync();
+		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Sto ancora chiudendo la connessione precedente, riprova";
 		try
 		{
 			if (IsConnected && CurrentChannel?.Id == channel.Id) return "Sono già qui";
@@ -55,7 +57,7 @@ public sealed class VoiceSession : IAsyncDisposable
 			await TeardownConnectionAsync();
 
 			DataHandler.Log($"[Voice] Connecting to '{channel.Name}' in '{_guild.Name}'");
-			IAudioClient? client = await channel.ConnectAsync(selfDeaf: false, selfMute: false);
+			IAudioClient? client = await channel.ConnectAsync(selfDeaf: true, selfMute: false).WaitAsync(GatewayCallTimeout);
 			if (client == null) return "Non riesco a connettermi al canale vocale";
 
 			if (!await WaitForHandshake(client))
@@ -124,7 +126,7 @@ public sealed class VoiceSession : IAsyncDisposable
 
 	public async Task<string> DisconnectAsync()
 	{
-		await _connectionGate.WaitAsync();
+		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Sto ancora gestendo la connessione precedente, riprova";
 		try
 		{
 			if (_audioClient == null && CurrentChannel == null) return "Non sono connessa a nessun canale";
@@ -166,7 +168,8 @@ public sealed class VoiceSession : IAsyncDisposable
 		CurrentChannel = null;
 		if (channel != null)
 		{
-			try { await channel.DisconnectAsync(); } catch (Exception ex) { DataHandler.Log($"[Voice] Disconnect failed: {ex.Message}"); }
+			try { await channel.DisconnectAsync().WaitAsync(GatewayCallTimeout); }
+			catch (Exception ex) { DataHandler.Log($"[Voice] Disconnect failed: {ex.Message}"); }
 		}
 	}
 

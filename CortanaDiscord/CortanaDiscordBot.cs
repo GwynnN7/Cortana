@@ -129,7 +129,7 @@ public static class CortanaDiscordBot
 		SocketGuild guild = (oldState.VoiceChannel ?? newState.VoiceChannel).Guild;
 		if (!DiscordUtils.TryGetGuildSettings(guild.Id, out GuildSettings? settings)) return;
 
-		await VoiceService.HandleConnection(guild);
+		_ = Task.Run(() => VoiceService.HandleConnection(guild));
 
 		bool joined = oldState.VoiceChannel == null && newState.VoiceChannel != null;
 		bool left = oldState.VoiceChannel != null && newState.VoiceChannel == null;
