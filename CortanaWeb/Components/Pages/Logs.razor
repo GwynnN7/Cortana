@@ -48,27 +48,27 @@
 <section class="section">
     <header class="section-head">
         <h2>Where to send logs</h2>
-        <p class="section-hint">Everything is always kept here. These control the extra copies.</p>
+        <p class="section-hint">Forward notifications and logs to the subfunctions</p>
     </header>
 
     <div class="toggle-row">
-        <div><strong>Keep in the dashboard</strong><small>This page</small></div>
+        <div><strong>Send in the dashboard</strong><small>This page</small></div>
         <button class="switch @(State.SettingEnabled(ESettings.LogToWeb) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToWeb)" aria-label="Keep logs in the dashboard"
+                aria-checked="@Aria(ESettings.LogToWeb)" aria-label="Send logs in the dashboard"
                 disabled="@_busy" @onclick="() => Toggle(ESettings.LogToWeb)"><span class="knob"></span></button>
     </div>
 
     <div class="toggle-row">
-        <div><strong>Mirror to Telegram</strong><small>Log topic in the home group</small></div>
+        <div><strong>Send to Telegram</strong><small>Log topic in the home group</small></div>
         <button class="switch @(State.SettingEnabled(ESettings.LogToTelegram) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToTelegram)" aria-label="Mirror logs to Telegram"
+                aria-checked="@Aria(ESettings.LogToTelegram)" aria-label="Send logs to Telegram"
                 disabled="@_busy" @onclick="() => Toggle(ESettings.LogToTelegram)"><span class="knob"></span></button>
     </div>
 
     <div class="toggle-row">
-        <div><strong>Mirror to Discord</strong><small>Log channel</small></div>
+        <div><strong>Send to Discord</strong><small>Log channel</small></div>
         <button class="switch @(State.SettingEnabled(ESettings.LogToDiscord) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToDiscord)" aria-label="Mirror logs to Discord"
+                aria-checked="@Aria(ESettings.LogToDiscord)" aria-label="Send logs to Discord"
                 disabled="@_busy" @onclick="() => Toggle(ESettings.LogToDiscord)"><span class="knob"></span></button>
     </div>
 </section>
@@ -76,7 +76,7 @@
 <section class="section">
     <header class="section-head">
         <h2>Notifications</h2>
-        <p class="section-hint">Shows a system notification when a new entry arrives. This device only.</p>
+        <p class="section-hint">Shows a push notification when a new entry arrives.</p>
     </header>
 
     <div class="toggle-row">

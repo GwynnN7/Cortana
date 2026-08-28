@@ -17,6 +17,7 @@ public sealed class VoiceSession : IAsyncDisposable
 	private static readonly TimeSpan ConnectHandshakeTimeout = TimeSpan.FromSeconds(15);
 	private static readonly TimeSpan GatewayCallTimeout = TimeSpan.FromSeconds(25);
 	private static readonly TimeSpan GateTimeout = TimeSpan.FromSeconds(40);
+	private static readonly TimeSpan StreamTimeout = TimeSpan.FromSeconds(8);
 
 	private readonly SocketGuild _guild;
 	private readonly SemaphoreSlim _connectionGate = new(1, 1);
@@ -152,8 +153,11 @@ public sealed class VoiceSession : IAsyncDisposable
 		_pcmStream = null;
 		if (stream != null)
 		{
-			try { await stream.FlushAsync(); } catch {  }
-			await stream.DisposeAsync();
+			try { await stream.FlushAsync().WaitAsync(StreamTimeout); }
+			catch (Exception ex) { DataHandler.Log($"[Voice] Flush on teardown failed: {ex.Message}"); }
+
+			try { await stream.DisposeAsync().AsTask().WaitAsync(StreamTimeout); }
+			catch (Exception ex) { DataHandler.Log($"[Voice] Stream dispose failed: {ex.Message}"); }
 		}
 
 		IAudioClient? client = _audioClient;
@@ -307,7 +311,15 @@ public sealed class VoiceSession : IAsyncDisposable
 		if (Interlocked.CompareExchange(ref _primed, 1, 0) == 0)
 		{
 			byte[] silence = new byte[FrameBytes];
-			for (var i = 0; i < PrimeFrames; i++) await destination.WriteAsync(silence, token);
+			try
+			{
+				for (var i = 0; i < PrimeFrames; i++) await destination.WriteAsync(silence, token).AsTask().WaitAsync(StreamTimeout, token);
+				DataHandler.Log("[Voice] Pipeline primed");
+			}
+			catch (Exception ex)
+			{
+				DataHandler.Log($"[Voice] Priming stalled: {ex.GetType().Name}");
+			}
 		}
 		using Process ffmpeg = StartFfmpeg(track.StreamUrl);
 
@@ -315,10 +327,14 @@ public sealed class VoiceSession : IAsyncDisposable
 
 		try
 		{
-			await client.SetSpeakingAsync(true);
+			await client.SetSpeakingAsync(true).WaitAsync(StreamTimeout);
 			await PumpAsync(ffmpeg.StandardOutput.BaseStream, destination, token);
 			
-			if (!token.IsCancellationRequested) await destination.FlushAsync(CancellationToken.None);
+			if (!token.IsCancellationRequested)
+			{
+				try { await destination.FlushAsync(CancellationToken.None).WaitAsync(StreamTimeout); }
+				catch (Exception ex) { DataHandler.Log($"[Voice] Track flush failed: {ex.Message}"); }
+			}
 		}
 		finally
 		{

@@ -20,10 +20,9 @@
 
     private static readonly Dictionary<string, (string Title, string Icon)> Known = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "lamp", ("Toggle lamp", "💡") },
-        { "room-on", ("Room on", "🏠") },
-        { "room-off", ("Room off", "🌑") },
         { "sleep", ("Sleep mode", "🛌") },
+        { "lamp", ("Toggle lamp", "💡") },
+        { "generic", ("Toggle generic", "🔌") },
         { "computer", ("Toggle computer", "💻") }
     };
 
@@ -34,10 +33,9 @@
     {
         _result = Action.ToLowerInvariant() switch
         {
+            "generic" => await State.SwitchDevice(EDevice.Generic, ESwitchAction.Toggle),
             "lamp" => await State.SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle),
             "computer" => await State.SwitchDevice(EDevice.Computer, ESwitchAction.Toggle),
-            "room-on" => await State.SwitchRoom(ESwitchAction.On),
-            "room-off" => await State.SwitchRoom(ESwitchAction.Off),
             "sleep" => await State.Sleep(),
             _ => "That shortcut does not exist."
         };

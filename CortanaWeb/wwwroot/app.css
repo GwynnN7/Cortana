@@ -15,8 +15,8 @@
     --accent-strong: #7ee0ff;
     --accent-dim: rgba(81, 209, 246, 0.14);
 
-    --ok: #3ddc97;
-    --ok-dim: rgba(61, 220, 151, 0.14);
+    --ok: #4fd6e8;
+    --ok-dim: rgba(79, 214, 232, 0.14);
     --bad: #ff6b6b;
     --bad-dim: rgba(255, 107, 107, 0.14);
 
@@ -235,7 +235,7 @@ a:hover { color: var(--accent-strong); }
 .device-icon { font-size: 1.5rem; }
 .device-state { font-size: 0.82rem; color: var(--text-dim); }
 
-.card.is-on { border-color: rgba(61, 220, 151, 0.45); box-shadow: 0 0 0 1px rgba(61, 220, 151, 0.12); }
+.card.is-on { border-color: rgba(79, 214, 232, 0.45); box-shadow: 0 0 0 1px rgba(79, 214, 232, 0.12); }
 .card.is-on .device-state { color: var(--ok); }
 .card.is-off .device-state { color: var(--text-dim); }
 
@@ -407,7 +407,7 @@ input:disabled, select:disabled { opacity: 0.5; }
 
 .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-.pill-ok, .badge-ok, .chip-ok { color: var(--ok); background: var(--ok-dim); border-color: rgba(61, 220, 151, 0.35); }
+.pill-ok, .badge-ok, .chip-ok { color: var(--ok); background: var(--ok-dim); border-color: rgba(79, 214, 232, 0.35); }
 .pill-bad, .badge-bad, .chip-bad { color: var(--bad); background: var(--bad-dim); border-color: rgba(255, 107, 107, 0.35); }
 
 .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
@@ -451,7 +451,7 @@ input:disabled, select:disabled { opacity: 0.5; }
     word-break: break-word;
 }
 
-.toast-ok { border-color: rgba(61, 220, 151, 0.35); color: var(--ok); }
+.toast-ok { border-color: rgba(79, 214, 232, 0.35); color: var(--ok); }
 .toast-bad { border-color: rgba(255, 107, 107, 0.35); color: var(--bad); }
 
 .toast-close {
@@ -656,5 +656,9 @@ input:disabled, select:disabled { opacity: 0.5; }
 }
 
 .room-part em { font-style: normal; color: var(--text-dim); font-size: 0.78rem; }
-.room-part.on { border-color: rgba(61, 220, 151, 0.45); }
+.room-part.on { border-color: rgba(79, 214, 232, 0.45); }
 .room-part.on em { color: var(--ok); }
+
+.quick-emoji { font-size: 1.55rem; line-height: 1; }
+.btn-emoji { font-size: 1rem; line-height: 1; }
+.room-emoji { font-size: 1.15rem; line-height: 1; }

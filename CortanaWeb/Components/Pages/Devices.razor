@@ -12,30 +12,25 @@
 <section class="section">
     <div class="card-grid">
         <DeviceCard Device="EDevice.Lamp" Icon="💡" OnResult="Report"/>
+        <DeviceCard Device="EDevice.Generic" Icon="🔌" OnResult="Report"/>
         <DeviceCard Device="EDevice.Computer" Icon="💻" OnResult="Report"/>
         <DeviceCard Device="EDevice.Power" Icon="⚡" OnResult="Report"/>
-        <DeviceCard Device="EDevice.Generic" Icon="🔌" OnResult="Report"/>
     </div>
 </section>
 
 <section class="section">
     <header class="section-head">
         <h2>Room</h2>
-        <p class="section-hint">Switches the lamp and the computer supply together. Turning the room on only lights the lamp if the room is already darker than the light threshold.</p>
+        <p class="section-hint">Switches the entire room and and off depending on multiple factors.</p>
     </header>
 
     <div class="room">
-        <div class="room-state">
-            <span class="room-part @(State.IsDeviceOn(EDevice.Lamp) ? "on" : "")"><Icon Name="lamp" Size="20"/> Lamp<em>@State.DeviceStatus(EDevice.Lamp)</em></span>
-            <span class="room-part @(State.IsDeviceOn(EDevice.Power) ? "on" : "")"><Icon Name="power" Size="20"/> Power<em>@State.DeviceStatus(EDevice.Power)</em></span>
-        </div>
-
         <div class="btn-row">
             <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">
-                <Icon Name="home" Size="18"/> Room on
+                <span class="btn-emoji" aria-hidden="true">🏠</span> Room on
             </button>
             <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">
-                <Icon Name="moon" Size="18"/> Room off
+                <span class="btn-emoji" aria-hidden="true">🌙</span> Room off
             </button>
         </div>
     </div>
@@ -44,17 +39,17 @@
 <section class="section">
     <header class="section-head">
         <h2>Computer</h2>
-        <p class="section-hint">Commands run on the desktop agent. Output is capped and times out after 8s.</p>
+        <p class="section-hint">Execute a command to the connected desktop.</p>
         <span class="badge @(State.IsDeviceOn(EDevice.Computer) ? "badge-ok" : "badge-bad")">
             @(State.IsDeviceOn(EDevice.Computer) ? "Connected" : "Not connected")
         </span>
     </header>
 
     <div class="btn-row wrap">
+        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Shutdown)">Shutdown</button>
         <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Reboot)">Reboot</button>
         <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Suspend)">Suspend</button>
         <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.System)">Switch OS</button>
-        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Shutdown)">Shutdown</button>
     </div>
 
     <div class="stack">
