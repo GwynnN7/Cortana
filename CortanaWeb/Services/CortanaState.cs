@@ -1,3 +1,4 @@
+using System.Globalization;
 using CortanaLib;
 using CortanaLib.Structures;
 
@@ -72,7 +73,7 @@ public sealed class CortanaState : BackgroundService
 		Act($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
 
 	public Task<string> SetSetting(ESettings setting, int value) =>
-		Act($"{ERoute.Settings}/{setting}", new PostValue(value));
+		Act($"{ERoute.Sensors}/settings/{setting}", new PostValue(value));
 
 	public Task<string> Subfunction(ESubFunctionType type, ESubfunctionAction action) =>
 		Act($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
@@ -87,6 +88,45 @@ public sealed class CortanaState : BackgroundService
 	}
 
 	public Task<string> ClearLogs() => ApiHandler.Delete($"{ERoute.Logs}");
+
+	public MetricsResponse? Computer => Snapshot?.Computer;
+
+	public string AutomationState => Snapshot?.Automation.State ?? nameof(EAutomationState.Automatic);
+
+	public int ManualMinutesLeft => Snapshot?.Automation.ManualMinutesLeft ?? 0;
+
+	public bool AutomationRunning => AutomationState != nameof(EAutomationState.Manual);
+
+	public Task<string> Ask(string message, string conversation) =>
+		ApiHandler.Post($"{ERoute.AI}", new PostChat(message, conversation, "Web"));
+
+	public Task<string> ResetChat(string conversation) =>
+		ApiHandler.Delete($"{ERoute.AI}/{conversation}");
+
+	public async Task<IReadOnlyList<ModelResponse>> GetModels()
+	{
+		IOption<ModelListResponse> models = await ApiHandler.Get<ModelListResponse>($"{ERoute.AI}/models");
+		return models.Match(list => list.Models, IReadOnlyList<ModelResponse> () => []);
+	}
+
+	public Task<string> SetModel(string model) =>
+		ApiHandler.Post($"{ERoute.AI}/model", new PostModel(model));
+
+	public Task<string> GetPrompt() => ApiHandler.Get($"{ERoute.AI}/prompt");
+
+	public Task<string> SetPrompt(string prompt) =>
+		ApiHandler.Post($"{ERoute.AI}/prompt", new PostPrompt(prompt));
+
+	public Task<string> ResetPrompt() => ApiHandler.Delete($"{ERoute.AI}/prompt");
+
+	public async Task<IReadOnlyList<AiSettingResponse>> GetAiSettings()
+	{
+		IOption<AiSettingsListResponse> settings = await ApiHandler.Get<AiSettingsListResponse>($"{ERoute.AI}/settings");
+		return settings.Match(list => list.Settings, IReadOnlyList<AiSettingResponse> () => []);
+	}
+
+	public Task<string> SetAiSetting(EAiSetting setting, double value) =>
+		ApiHandler.Post($"{ERoute.AI}/settings/{setting}", new PostNumber(value));
 
 	public async Task<IReadOnlyList<ScheduleResponse>> GetSchedules()
 	{

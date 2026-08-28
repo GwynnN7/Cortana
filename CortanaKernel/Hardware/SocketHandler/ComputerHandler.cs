@@ -121,6 +121,18 @@ public class ComputerHandler : ClientHandler
 		return instance != null && instance.Send("notify") && instance.Send(text);
 	}
 
+	public static async Task<StringResult> Launch(string app)
+	{
+		ComputerHandler? instance = Instance;
+		if (instance == null) return StringResult.Failure("Computer is not connected");
+		if (!instance.Send("launch") || !instance.Send(app)) return StringResult.Failure("Could not reach the computer");
+
+		string? reply = await instance.AwaitReply();
+		return reply is null
+			? StringResult.Failure("The computer did not answer, it may have just disconnected")
+			: StringResult.Success(reply);
+	}
+
 		public static async Task<StringResult> RunCommand(string cmd)
 	{
 		ComputerHandler? instance = Instance;
@@ -128,7 +140,9 @@ public class ComputerHandler : ClientHandler
 		if (!instance.Send("cmd") || !instance.Send(cmd)) return StringResult.Failure("Could not reach the computer");
 
 		string? reply = await instance.AwaitReply();
-		return StringResult.Success(reply ?? "Command executed");
+		return reply is null
+			? StringResult.Failure("The computer did not answer, it may have just disconnected")
+			: StringResult.Success(reply);
 	}
 
 		public static async Task CheckForConnection()

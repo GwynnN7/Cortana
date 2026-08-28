@@ -16,7 +16,7 @@ internal sealed class DeviceModule : IModuleInterface
 	private static int _tabIndex;
 	private static bool _timerActive;
 
-	private const int TabCount = 2;
+	private const int TabCount = 1;
 
 	public static async Task ExecCommand(MessageData messageStats, ITelegramBotClient cortana)
 	{
@@ -61,8 +61,8 @@ internal sealed class DeviceModule : IModuleInterface
 			HardwareEmoji.Lamp => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Lamp}"),
 			HardwareEmoji.Pc => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Computer}"),
 			HardwareEmoji.Generic => await ApiHandler.Post($"{ERoute.Devices}/{EDevice.Generic}"),
-			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On)),
-			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off)),
+			HardwareEmoji.On => await ApiHandler.Post($"{ERoute.Sensors}/settings/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On)),
+			HardwareEmoji.Off => await ApiHandler.Post($"{ERoute.Sensors}/settings/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off)),
 			HardwareEmoji.Night => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
 			HardwareEmoji.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
 			HardwareEmoji.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
@@ -81,9 +81,6 @@ internal sealed class DeviceModule : IModuleInterface
 			case ActionTag.Refresh:
 				await CreateMenu(cortana, query);
 				return;
-			case ActionTag.Tab:
-				_tabIndex = (_tabIndex + 1) % TabCount;
-				await CreateMenu(cortana, query);
 				return;
 			case ActionTag.Timer:
 				_timerActive = !_timerActive;
@@ -93,10 +90,6 @@ internal sealed class DeviceModule : IModuleInterface
 
 		string? response = command switch
 		{
-			ActionTag.System => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.System}")),
-			ActionTag.Reboot => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Reboot}")),
-			ActionTag.Suspend => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Suspend}")),
-			ActionTag.Shutdown => await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Shutdown}")),
 			ActionTag.Sleep => await ApiHandler.Post($"{ERoute.Devices}/sleep"),
 			ActionTag.RoomOn => await ApiHandler.Post($"{ERoute.Devices}/room", new PostAction(nameof(ESwitchAction.On))),
 			ActionTag.RoomOff => await ApiHandler.Post($"{ERoute.Devices}/room", new PostAction(nameof(ESwitchAction.Off))),
@@ -112,16 +105,6 @@ internal sealed class DeviceModule : IModuleInterface
 
 		switch (command)
 		{
-			case ActionTag.Command:
-				if (Utils.AddChatArg(Utils.Topics.Devices, new ChatArgs<List<int>>(EArgsType.ComputerCommand, query, query.Message, []), query))
-					await cortana.EditMessageText(chatId, messageId, "Commands session is open", replyMarkup: CreateCancelButton());
-				break;
-
-			case ActionTag.Notify:
-				if (Utils.AddChatArg(Utils.Topics.Devices, new ChatArgs(EArgsType.Notification, query, query.Message), query))
-					await cortana.EditMessageText(chatId, messageId, "Write the content of the notification", replyMarkup: CreateCancelButton());
-				break;
-
 			case ActionTag.Cancel:
 				if (Utils.ChatArgs.TryGetValue(Utils.Topics.Devices, out ChatArgs? value) && value is ChatArgs<List<int>> { Arg.Count: > 0 } chatArg)
 					await cortana.DeleteMessages(chatId, chatArg.Arg);
@@ -205,23 +188,6 @@ internal sealed class DeviceModule : IModuleInterface
 				await Utils.AnswerMessage(cortana, created, Utils.Topics.Devices, chatArg.Query, false);
 				break;
 
-			case EArgsType.Notification:
-				string result = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Notify}", msgData.Message));
-				await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
-				await Utils.AnswerMessage(cortana, result, Utils.Topics.Devices, chatArg.Query, false);
-				break;
-
-			case EArgsType.ComputerCommand:
-				if (chatArg is ChatArgs<List<int>> arg)
-				{
-					string prompt = msgData.Message;
-					string commandResult = await ApiHandler.Post($"{ERoute.Computer}", new PostCommand($"{EComputerCommand.Command}", prompt));
-					Message msg = await Utils.SendToTopic(commandResult, Utils.Topics.Devices);
-					arg.Arg.Add(msgData.MessageId);
-					arg.Arg.Add(msg.MessageId);
-					return;
-				}
-				break;
 		}
 
 		await CreateMenu(cortana, chatArg.Query);
@@ -245,37 +211,17 @@ internal sealed class DeviceModule : IModuleInterface
 	{
 		InlineKeyboardMarkup inlineKeyboard = new();
 
-		switch (_tabIndex)
-		{
-			case 0:
-				foreach (string element in Enum.GetNames<EDevice>())
-					inlineKeyboard.AddButton($"{element} {DeviceToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}").AddNewRow();
+		foreach (string element in Enum.GetNames<EDevice>())
+			inlineKeyboard.AddButton($"{element} {DeviceToEmoji[element]}", $"{ActionTag.Type}-{element.ToLower()}").AddNewRow();
 
-				inlineKeyboard
-					.AddButton("Room On 🏠", ActionTag.RoomOn)
-					.AddButton("Room Off 🌑", ActionTag.RoomOff)
-					.AddNewRow();
-				break;
+		inlineKeyboard
+			.AddButton("Room On 🏠", ActionTag.RoomOn)
+			.AddButton("Room Off 🌑", ActionTag.RoomOff)
+			.AddNewRow()
+			.AddButton("Sleep 🛌", ActionTag.Sleep)
+			.AddNewRow();
 
-			case 1:
-				inlineKeyboard
-					.AddButton("Reboot 🔄", ActionTag.Reboot)
-					.AddButton("System 🎮", ActionTag.System)
-					.AddNewRow()
-					.AddButton("Suspend 🌙", ActionTag.Suspend)
-					.AddButton("Shutdown ⏻", ActionTag.Shutdown)
-					.AddNewRow()
-					.AddButton("Notify 📢", ActionTag.Notify)
-					.AddButton("Command 💻", ActionTag.Command)
-					.AddNewRow()
-					.AddButton("Sleep 🛌", ActionTag.Sleep)
-					.AddNewRow();
-				break;
-		}
-
-		return inlineKeyboard
-			.AddButton("Refresh 🔄", ActionTag.Refresh)
-			.AddButton("Tab ↔️", ActionTag.Tab);
+		return inlineKeyboard.AddButton("Refresh 🔄", ActionTag.Refresh);
 	}
 
 	private static InlineKeyboardMarkup CreateOnOffToggleButtons()
@@ -325,6 +271,7 @@ internal sealed class DeviceModule : IModuleInterface
 		public const string Shutdown = "device-shutdown";
 		public const string Notify = "device-notify";
 		public const string Command = "device-command";
+		public const string Metrics = "device-metrics";
 		public const string Sleep = "device-sleep";
 		public const string RoomOn = "device-roomon";
 		public const string RoomOff = "device-roomoff";

@@ -1,0 +1,19 @@
+<div class="metric-row @(Nested ? "metric-nested" : "")">
+    <span class="metric-name">@Name</span>
+    <span class="metric-track">
+        <span class="metric-fill @Heat" style="width: @(Math.Clamp(Percent, 0, 100).ToString("F0", CultureInfo.InvariantCulture))%"></span>
+    </span>
+    <span class="metric-value">@Detail</span>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter] public double Percent { get; set; }
+    [Parameter] public string Detail { get; set; } = "";
+    [Parameter] public bool Nested { get; set; }
+    [Parameter] public bool Thermal { get; set; }
+
+    private string Heat => Thermal
+        ? Percent >= 85 ? "metric-hot" : "metric-temp"
+        : Percent >= 90 ? "metric-hot" : Percent >= 70 ? "metric-warm" : "";
+}

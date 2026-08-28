@@ -36,7 +36,8 @@ public enum EComputerCommand
 	Reboot,
 	Notify,
 	System,
-	Command
+	Command,
+	Launch
 }
 
 public enum ESensor
@@ -64,6 +65,13 @@ public enum ESettings
 	LogToWeb,
 	LogToTelegram,
 	LogToDiscord
+}
+
+public static class SettingGroups
+{
+	public static readonly ESettings[] Logs = [ESettings.LogToWeb, ESettings.LogToTelegram, ESettings.LogToDiscord];
+
+	public static bool IsLog(this ESettings setting) => Logs.Contains(setting);
 }
 
 public enum EAutomationState

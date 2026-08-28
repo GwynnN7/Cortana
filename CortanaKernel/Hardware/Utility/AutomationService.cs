@@ -76,6 +76,20 @@ public static class AutomationService
 		}
 	}
 
+	public static int ManualMinutesLeft
+	{
+		get
+		{
+			lock (StateLock)
+			{
+				if (!_manualUntil.HasValue) return 0;
+
+				double left = (_manualUntil.Value - DateTime.Now).TotalMinutes;
+				return left <= 0 ? 0 : (int)Math.Ceiling(left);
+			}
+		}
+	}
+
 		public static bool CanAutoLight => State == EAutomationState.Automatic;
 
 		public static bool CanAutoExtinguish => State != EAutomationState.Manual;

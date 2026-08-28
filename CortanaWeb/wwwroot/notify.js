@@ -23,9 +23,30 @@ window.cortanaNotify = (() => {
             write(true);
             return true;
         },
-        show: (title, body) => {
+        show: async (title, body) => {
             if (!supported() || Notification.permission !== 'granted' || !read()) return;
-            try { new Notification(title, { body, icon: '/icon-192x192.png', tag: 'cortana-log', renotify: false }); } catch { }
+
+            const options = { body, icon: '/icon-192x192.png', badge: '/icon-96x96.png', tag: 'cortana-log' };
+
+            if ('serviceWorker' in navigator) {
+                try {
+                    const registration = await navigator.serviceWorker.ready;
+                    await registration.showNotification(title, options);
+                    return;
+                } catch { }
+            }
+
+            try { new Notification(title, options); } catch { }
         }
     };
 })();
+
+window.cortanaScrollChat = () => {
+    const log = document.getElementById('chat-log');
+    if (log) log.scrollTop = log.scrollHeight;
+};
+
+window.cortanaChatId = {
+    load: () => { try { return localStorage.getItem('cortana-chat'); } catch { return null; } },
+    save: id => { try { localStorage.setItem('cortana-chat', id); } catch { } }
+};

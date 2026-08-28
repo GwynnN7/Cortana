@@ -2,7 +2,7 @@ namespace CortanaDiscord.Utility;
 
 public enum EAnswer
 {
-	Si,
+	Yes,
 	No
 }
 

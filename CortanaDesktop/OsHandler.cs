@@ -59,11 +59,20 @@ internal static class OsHandler
 			"system" => onLinux ? "sudo efibootmgr --bootnext 0000 && systemctl reboot" : "shutdown /r /f /t 0",
 			"notify" => onLinux ? $"echo '{Escape(arg, '\'')}' | cortana notify" : $"notify-send \"Cortana\" \"{Escape(arg, '"')}\"",
 			"cmd" => arg,
+			"launch" => onLinux ? LinuxLaunch(arg) : $"start \"\" {arg}",
 			_ => ""
 		};
 	}
 
 	private static string Escape(string value, char quote) => value.Replace(quote.ToString(), "");
+
+	private static string LinuxLaunch(string arg)
+	{
+		string binary = arg.Trim().Split(' ').First();
+
+		return $"command -v {binary} >/dev/null 2>&1 || {{ echo '{binary} not found'; exit 0; }}; " +
+			$"mkdir -p ~/.cache; setsid -f {arg} >>~/.cache/cortana-launch.log 2>&1; echo 'Launched {binary}'";
+	}
 
 	internal static void ExecuteCommand(string command, string arg = "", bool sendResult = true)
 	{

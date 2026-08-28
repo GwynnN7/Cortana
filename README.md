@@ -28,9 +28,7 @@ Currently living on **Raspberry Pi 4** running mostly on **C# .NET and ASP.NET C
 - **Cortana Discord**
   - Discord bot to integrate **Cortana** with _Discord_
 - **Cortana Web**
-  - Blazor Server dashboard exposing every API from the browser: devices, sensors and their
-    automation settings, Raspberry info and shell, subfunction control, and the media utilities.
-    Installable as a phone app, with home-screen shortcuts for the quick toggles
+  - Blazor Server dashboard covering every API from the browser, and installable as a phone app
 
 ### Modules
 
@@ -39,9 +37,7 @@ Currently living on **Raspberry Pi 4** running mostly on **C# .NET and ASP.NET C
 - **Cortana Embedded**
   - Collection of scripts running on embedded devices with **Client-Server** or **REST API** communications
 
-Each **Subfunction** runs as a **systemd user service** managed by the **Bootloader**. The **Kernel** service auto-starts all sub-services on boot and cascades stop/restart to them. They communicate with the **Kernel** through **Cortana API** and **Redis IPC**
-
-Each **Module** is a standalone software that runs on a different device and communicates with **Cortana's Kernel** through **Cortana API** or **Hardware API**
+Each **Subfunction** runs as a **systemd user service** managed by the **Bootloader**: the Kernel starts them on boot and cascades stop/restart, and they talk back through the **Cortana API** and **Redis IPC**. Each **Module** is standalone software on another device, reaching the Kernel over the same API.
 
 ---
 
@@ -66,6 +62,7 @@ also loads itself, so `dotnet run` behaves the same as the installed services.
 | `CORTANA_WEB_PORT`       | no       | Port the dashboard binds (default `5118`, must match the nginx vhost) |
 | `CORTANA_REDIS`          | no       | Redis connection string for IPC (default `localhost`)           |
 | `CORTANA_SHELL`          | no       | Shell used to run commands (auto-detected)                      |
+| `CORTANA_GEMINI_KEY`     | Chat     | Google AI Studio key. Without it every chat route answers `503` |
 
 Same file on the desktop (`~/.config/environment.d/cortana.conf` there) needs `CORTANA_PATH`,
 `CORTANA_API` and `CORTANA_API_KEY` for the `cortana` CLI and the desktop agent.
@@ -89,8 +86,8 @@ sudo chmod 0440 /etc/sudoers.d/cortana
 sudo -n /sbin/shutdown --help >/dev/null && echo "sudoers rule works"
 ```
 
-Then remove `CORTANA_PASSWORD` from `.env`. With it unset the Kernel uses `sudo -n`; with it set it
-falls back to piping the password into `sudo -S`, which leaves it visible in `ps` output.
+Then remove `CORTANA_PASSWORD` from `.env`: unset, the Kernel uses `sudo -n`; set, it pipes the
+password into `sudo -S`, leaving it visible in `ps`.
 
 ---
 
@@ -108,57 +105,48 @@ Every route carries an access tier, enforced by one middleware:
 | :---------- | :--------------------------- |
 | `X-Api-Key` | Your `CORTANA_API_KEY` value |
 
-If `CORTANA_API_KEY` is **not** configured, ReadOnly and Sensitive routes answer `503` and refuse to
-run at all — the API cannot be left accidentally open. Failures are RFC 9457 problem details
-(`401` wrong or missing key, `503` no key configured, `404` unknown enum value, `503` hardware offline).
+Without `CORTANA_API_KEY` the ReadOnly and Sensitive routes answer `503` rather than running open.
+Failures are RFC 9457 problem details; the OpenAPI docs (`/scalar`) stay reachable without a key.
 
-OpenAPI docs (`/scalar`) stay reachable without a key.
-
-The web dashboard has its own gate: set `CORTANA_WEB_PASSWORD` to require a passcode. The dashboard
-can power off the Pi and the desktop, so on any network that is not fully trusted this should be set.
+The dashboard has its own gate, `CORTANA_WEB_PASSWORD`. It can power off the Pi and the desktop, so
+set it on any network you do not fully trust.
 
 ---
 
 ## API Reference
 
-Note: "**cortana.net**" is a placeholder for the actual address, which is private. API docs are available at `http://cortana.net/scalar`.
+Routes are shown relative to the API base; OpenAPI docs live at `/scalar`.
 
-Every endpoint answers in two formats, chosen by the `Accept` header:
-
-- `text/plain` — a human-readable line, used by the Telegram and Discord bots
-- `application/json` — a typed object, used by the dashboard
-
-Every collection route (`GET /Devices`, `GET /Sensors`, `GET /Settings`, `GET /Raspberry`,
-`GET /SubFunctions`) returns every member at once, and `GET /status` returns all of them in a single
-response.
+Every endpoint answers in two formats, chosen by `Accept`: `text/plain` for the bots and CLI,
+`application/json` for the dashboard. Collection routes return every member at once, and
+`GET /status` returns all of them together.
 
 #### Home
 
 ```http
-  GET http://cortana.net/
-  GET http://cortana.net/health
+  GET /
+  GET /health
 ```
 
 #### Status
 
 ```http
-  GET http://cortana.net/status
-  GET http://cortana.net/events
+  GET /status
+  GET /events
 ```
 
-`/status` returns a full snapshot: devices, sensors, settings, Raspberry info and subfunction states.
-
-`/events` is the same snapshot as a **server-sent-event stream**, pushed whenever anything changes
-(device switched, sensor frame, setting written, subfunction started) plus a 20-second heartbeat.
-The dashboard consumes this and only falls back to polling `/status` while the stream is down.
+`/status` returns a full snapshot: devices, sensors, settings, Raspberry info, subfunction states,
+the desktop's last metrics and the automation state. `/events` is the same snapshot as a
+**server-sent-event stream**, pushed on every change plus a 20-second heartbeat; the dashboard falls
+back to polling `/status` only while the stream is down.
 
 #### Devices
 
 ```http
-  GET  http://cortana.net/Devices
-  GET  http://cortana.net/Devices/{device}
-  POST http://cortana.net/Devices/{device}
-  POST http://cortana.net/Devices/sleep
+  GET  /Devices
+  GET  /Devices/{device}
+  POST /Devices/{device}
+  POST /Devices/sleep
 ```
 
 | Parameter           | Type     | Description                 | Values                                                   |
@@ -169,9 +157,9 @@ The dashboard consumes this and only falls back to polling `/status` while the s
 #### Raspberry
 
 ```http
-  GET  http://cortana.net/Raspberry
-  GET  http://cortana.net/Raspberry/{info}
-  POST http://cortana.net/Raspberry/
+  GET  /Raspberry
+  GET  /Raspberry/{info}
+  POST /Raspberry/
 ```
 
 | Parameter             | Type     | Description                | Values                                             |
@@ -183,20 +171,27 @@ The dashboard consumes this and only falls back to polling `/status` while the s
 #### Computer
 
 ```http
-  GET  http://cortana.net/Computer/
-  POST http://cortana.net/Computer/
+  GET  /Computer/
+  POST /Computer/
+  GET  /Computer/metrics
+  POST /Computer/metrics
 ```
 
-| Parameter             | Type     | Description                | Values                                                                     |
-| :-------------------- | :------- | :------------------------- | :------------------------------------------------------------------------- |
-| `PostCommand.command` | `string` | **Command** to execute     | **Shutdown**, **Suspend**, **Reboot**, **System**, **Command**, **Notify** |
-| `PostCommand.args`    | `string` | Optional text **argument** |                                                                            |
+| Parameter             | Type     | Description                | Values                                                                                |
+| :-------------------- | :------- | :------------------------- | :------------------------------------------------------------------------------------ |
+| `PostCommand.command` | `string` | **Command** to execute     | **Shutdown**, **Suspend**, **Reboot**, **System**, **Command**, **Notify**, **Launch** |
+| `PostCommand.args`    | `string` | Optional text **argument** |                                                                                       |
+
+**Command** waits for the process to finish and returns its output, killing it after 18 seconds.
+**Launch** starts a detached process with `setsid` and returns immediately, which is what graphical
+applications need. `GET /Computer/metrics` returns the last snapshot pushed by the desktop agent,
+flagged `stale` once it is older than two minutes.
 
 #### Sensors
 
 ```http
-  GET http://cortana.net/Sensors
-  GET http://cortana.net/Sensors/{sensor}
+  GET /Sensors
+  GET /Sensors/{sensor}
 ```
 
 | Parameter | Type     | Description               | Values                                                                          |
@@ -206,10 +201,10 @@ The dashboard consumes this and only falls back to polling `/status` while the s
 #### Subfunctions
 
 ```http
-  GET  http://cortana.net/SubFunctions
-  GET  http://cortana.net/SubFunctions/{subfunction}
-  POST http://cortana.net/SubFunctions/{subfunction}
-  POST http://cortana.net/SubFunctions/
+  GET  /SubFunctions
+  GET  /SubFunctions/{subfunction}
+  POST /SubFunctions/{subfunction}
+  POST /SubFunctions/
 ```
 
 | Parameter             | Type     | Description                      | Values                                                                     |
@@ -222,15 +217,15 @@ The dashboard consumes this and only falls back to polling `/status` while the s
 #### Schedules
 
 ```http
-  GET    http://cortana.net/Schedules
-  GET    http://cortana.net/Schedules/{id}
-  POST   http://cortana.net/Schedules
-  POST   http://cortana.net/Schedules/{id}
-  DELETE http://cortana.net/Schedules/{id}
+  GET    /Schedules
+  GET    /Schedules/{id}
+  POST   /Schedules
+  POST   /Schedules/{id}
+  DELETE /Schedules/{id}
 ```
 
-Persistent, kernel-owned schedules, stored in `~/.config/cortana/CortanaKernel/Schedules.json` and
-re-armed on boot. Replaces the in-memory timers each bot used to keep to itself.
+Persistent kernel-owned schedules, stored in `~/.config/cortana/CortanaKernel/Schedules.json` and
+re-armed on boot.
 
 | Field                    | Description                                                                        |
 | :----------------------- | :---------------------------------------------------------------------------------- |
@@ -247,21 +242,136 @@ re-armed on boot. Replaces the in-memory timers each bot used to keep to itself.
 `POST /Schedules/{id}` takes `{"command": "enable" \| "disable" \| "run"}`.
 
 A `Once` schedule missed while the Kernel was down still fires if it was due within the last hour;
-older ones are dropped and logged. `Interval` schedules skip whole missed periods rather than firing
-a catch-up burst.
+older ones are dropped. `Interval` schedules skip missed periods rather than firing a catch-up burst.
 
 #### Settings
 
+Automation settings live under **Sensors** because that is what they drive, and the logging
+switches live under **SubFunctions** because they choose which subfunction mirrors the log.
+
 ```http
-  GET  http://cortana.net/Settings
-  GET  http://cortana.net/Settings/{setting}
-  POST http://cortana.net/Settings/{setting}
+  GET  /Sensors/settings
+  GET  /Sensors/settings/{setting}
+  POST /Sensors/settings/{setting}
+  GET  /SubFunctions/logs
+  POST /SubFunctions/logs/{target}
 ```
+
+`target` is **Web**, **Telegram** or **Discord**.
 
 | Parameter         | Type     | Description         | Values                                                                                                                        |
 | :---------------- | :------- | :------------------ | :---------------------------------------------------------------------------------------------------------------------------- |
-| `setting`         | `string` | **Setting** to read or write | **LightThreshold**, **LampToggle**, **CO2Threshold**, **TvocThreshold**, **AutomaticMode**, **MorningHour**, **MotionOffMax**, **MotionOffMin** |
+| `setting`         | `string` | **Setting** to read or write | **LightThreshold**, **LampToggle**, **CO2Threshold**, **TvocThreshold**, **AutomaticMode**, **MorningHour**, **NightHour**, **MotionOffMax**, **MotionOffMin**, **ManualModeMinutes** |
 | `PostValue.value` | `number` | **Value** to update. For the `On`/`Off` settings, any other number toggles.                                                                     |
+
+#### AI
+
+```http
+  POST   /AI
+  DELETE /AI/{conversation}
+  GET    /AI/prompt
+  POST   /AI/prompt
+  DELETE /AI/prompt
+  GET    /AI/models
+  GET    /AI/model
+  POST   /AI/model
+  GET    /AI/settings
+  GET    /AI/settings/{setting}
+  POST   /AI/settings/{setting}
+```
+
+| Parameter              | Type      | Description                                                        | Values                                                        |
+| :--------------------- | :-------- | :------------------------------------------------------------------ | :-------------------------------------------------------------- |
+| `PostChat.message`     | `string`  | What to ask                                                         |                                                               |
+| `PostChat.conversation`| `string`  | Thread key. The prefix decides which tools are offered              | `web:*`, `telegram:*`, `discord:*`, `desktop:*`                |
+| `PostChat.author`      | `string`  | Display name, so she can address people by name                     |                                                               |
+| `PostChat.remember`    | `boolean` | `false` runs one-shot: reads no history and writes none             | default `true`                                                 |
+| `PostChat.owner`       | `boolean` | Whether she is talking to her owner. Forced true off Discord        | default `true`                                                 |
+| `PostModel.model`      | `string`  | Model family to switch to                                           | **Flash**, **Flash Lite**, **Gemma**                          |
+| `PostPrompt.prompt`    | `string`  | New system prompt. `DELETE` restores the shipped one                |                                                               |
+| `setting`              | `string`  | AI setting to read or write                                         | **Temperature**, **History**, **DiscordMinutes**              |
+| `PostNumber.value`     | `number`  | New value for that setting                                          |                                                               |
+
+---
+
+## AI
+
+Cortana answers in her own voice through **Gemini**, from the web dashboard, Telegram, Discord and
+the terminal. The Kernel owns it, so every surface shares one implementation, one conversation store
+and one set of tools.
+
+Get a free key at [aistudio.google.com](https://aistudio.google.com/apikey) and set
+`CORTANA_GEMINI_KEY`. Without it the AI routes answer `503` and everything else keeps working.
+
+### Tools
+
+She reads and drives the house rather than talking about it. Tools are plain C# methods described
+with `[Description]`; `Microsoft.Extensions.AI` generates their schemas and binds the arguments.
+
+| Tool                                              | What it does                                  |
+| :------------------------------------------------ | :--------------------------------------------- |
+| `GetDevices` `GetSensors` `GetSettings`            | read the house                                 |
+| `GetComputerMetrics`                               | desktop performance and temperatures           |
+| `SwitchDevice` `SetSetting` `EnterSleepMode`       | change the house                               |
+| `RunOnComputer` `LaunchOnComputer` `RunOnRaspberry`| shell and app launching on either machine      |
+
+**Discord gets only the four read-only tools.** Anyone in a channel can talk to her, so she must not
+switch hardware or run commands from there. The Kernel decides this from the `discord:` conversation
+prefix, so a bug in the bot cannot widen its own access, and a prompt line tells her to say that
+changes have to come from the web app, Telegram or the terminal.
+
+Gemini 3 requires the `thought_signature` it returns on a function call to be echoed back verbatim,
+so the transport keeps the model's parts untouched inside an exchange.
+
+### History
+
+Threads are keyed per surface: `discord:{channel}`, `telegram:{topic}`, `web:{browser}`,
+`desktop:{host}`. Only prose is kept — tool calls and results are dropped once she has answered, so
+stale readings cannot resurface as current facts. Threads keep the last `History` exchanges, cap at
+60 entries, and expire after 6 hours idle; trimming only cuts on a question boundary.
+
+`remember: false` runs one-shot: nothing read, nothing stored. `cortana ask` uses it.
+
+On Discord, `@Cortana` opens a session and clears what came before. While it is open every message
+in that channel continues the conversation without a mention, and each message pushes the expiry out
+by `DiscordMinutes`. Once it lapses she ignores the channel until tagged again.
+
+### Model
+
+You pick a **family**, not a version. She runs the newest model in it and falls back down the chain
+when one is unavailable.
+
+| Family       | Chain                                                   | Free tier                                  |
+| :----------- | :------------------------------------------------------- | :------------------------------------------ |
+| `Flash`      | `gemini-3.7-flash` → `3.6` → `3.5` → `3-flash-preview`   | 5/min, 20/day                               |
+| `Flash Lite` | `gemini-3.5-flash-lite` → `3.1` → `2.5`                  | 15/min, 500/day — the default               |
+| `Gemma`      | `gemma-4-31b-it` → `gemma-4-26b-a4b-it`                  | 30/min, 14.4k/day, weaker in character      |
+
+The chain is rebuilt from Google's model list at boot and at 00:01, so new versions appear without a
+code change. Nothing is probed per request — picking a model is an in-memory lookup, and the
+fallback only moves down the chain **after** a `429` or `503`. Cooldowns match the cause: a
+per-minute limit parks the model for whatever `RetryInfo` asks, a per-day limit until after
+midnight, an overloaded model briefly. The next model answers within the same request:
+
+```
+gemini-3.7-flash unavailable, parked for 90s     # 503, overloaded
+falling back to gemini-3.6-flash
+gemini-3.6-flash unavailable, parked for 1.9h    # 429, daily quota spent
+falling back to gemini-3.5-flash                 # answered
+```
+
+### Settings
+
+Everything is editable at runtime from the web **AI** page, the Telegram **Cortana → Settings** menu
+and the Discord `/hardware llm-*` commands. Model and the values below live in
+`~/.config/cortana/CortanaKernel/Ai.json`, the prompt in `Prompt.txt` beside it; deleting the prompt
+restores the one shipped in `CortanaLib/Storage/prompt.txt`.
+
+| Setting          | Range      | Default | Meaning                                        |
+| :--------------- | :--------- | :------ | :---------------------------------------------- |
+| `Temperature`    | 0 – 2      | 0.9     | how much she improvises                        |
+| `History`        | 1 – 40     | 8       | exchanges kept per thread                      |
+| `DiscordMinutes` | 0.5 – 120  | 1       | how long a Discord session stays open          |
 
 ---
 
@@ -269,12 +379,12 @@ a catch-up burst.
 
 The dashboard ships a web manifest and a service worker, so Chrome on Android offers **Install app**
 (iOS: Share -> Add to Home Screen). Once installed it runs without browser chrome, and long-pressing
-the icon exposes shortcuts for **Toggle lamp**, **Room on**, **Room off** and **Sleep mode**, which
-open `/quick/{action}`.
+the icon exposes shortcuts for **Toggle lamp**, **Toggle Computer** and **Sleep mode**, which open
+`/quick/{action}`.
 
 Blazor Server needs a live connection, so the service worker caches only the shell and shows an
-offline page rather than pretending to work. Installation requires the site be served over HTTPS or
-from `localhost`; on a plain-HTTP LAN vhost the browser will not offer to install it.
+offline page. Installing requires HTTPS or `localhost`; on a plain-HTTP LAN vhost the browser will
+not offer it.
 
 ---
 
@@ -288,14 +398,15 @@ The lamp is driven by motion, light level and a day/night window.
 | **Night**     | inside `[NightHour, MorningHour)`                        | no                   | yes, after `MotionOffMin` |
 | **Manual**    | `AutomaticMode` off, or a lamp switched by hand recently | no                   | no |
 
-- Switching the lamp by hand starts a **manual hold** lasting `ManualModeMinutes`. Setting
-  `AutomaticMode` back on ends the hold immediately.
-- The night window wraps midnight, so `NightHour: 23` / `MorningHour: 9` behaves as expected.
-- At the night boundary, **if the computer is still on Cortana does not touch the lamp**: it sends a
-  desktop notification instead and re-applies night as soon as the computer goes off.
-- `POST /Devices/sleep` applies night behaviour immediately, computer or not.
-- Lamp-off timeout is `MotionOffMax` when the computer is on, `MotionOffMin` at night or when it is off.
-- Boundaries are scheduled onto the exact hour rather than polled.
+- Switching the lamp by hand starts a **manual hold** for `ManualModeMinutes`; turning `AutomaticMode`
+  back on ends it immediately. The dashboard shows the derived state, so the toggle reads off while a
+  hold or night mode is active.
+- The night window wraps midnight, so `NightHour: 23` / `MorningHour: 9` works as expected, and
+  boundaries are scheduled onto the hour rather than polled.
+- At the night boundary, **if the computer is still on the lamp is left alone**: Cortana sends a
+  desktop notification and applies night as soon as the computer goes off. `POST /Devices/sleep`
+  applies it immediately either way.
+- Lamp-off timeout is `MotionOffMax` when the computer is on, `MotionOffMin` at night or when off.
 
 ---
 
@@ -340,33 +451,38 @@ encryption Discord.Net performs.
 
 ### YouTube extraction
 
-`MediaHandler` prefers **yt-dlp** and falls back to YoutubeExplode when it is absent. YouTube now
-enforces proof-of-origin tokens on stream URLs, which YoutubeExplode cannot produce: it still reads
-video metadata fine but `GetManifestAsync` fails with *"Video is not available"* on almost every
-video, including ones that play normally in a browser. yt-dlp works around this and is updated
-almost daily.
-
-Keep it current with `yt-dlp -U`; a stale copy will start failing the same way. Override the
-location with `CORTANA_YTDLP` if it is not on `PATH` or in `~/.local/bin`.
+`MediaHandler` prefers **yt-dlp**, falling back to YoutubeExplode when absent. YouTube enforces
+proof-of-origin tokens on stream URLs that YoutubeExplode cannot produce, so it fails with *"Video is
+not available"* on almost everything. Keep yt-dlp current with `yt-dlp -U`; override its location
+with `CORTANA_YTDLP` if it is not on `PATH` or in `~/.local/bin`.
 
 ### Discord voice encryption
 
-**libdave is not required.** DAVE is Discord's optional end-to-end encryption for voice; without it
-audio is still encrypted in transit to Discord's servers, exactly as every bot worked before DAVE
-existed. Discord does not require bots to support it.
+Discord **requires** DAVE, its end-to-end voice encryption: without it the voice websocket closes the
+moment it opens. `Discord.Net.Dave` P/Invokes a native `libdave.so` that the NuGet package ships for
+no runtime, so on arm64 it has to be compiled from
+[discord/libdave](https://github.com/discord/libdave). The build lives at
+`CortanaDiscord/Voice/libdave.so` and the unit file copies it beside the executable on every start,
+because `dotnet build -o out` never cleans its output. `CORTANA_DISCORD_DAVE=false` skips it, though
+Discord will then refuse the connection.
 
-`Discord.Net.Dave` is a P/Invoke binding to a native `libdave` that ships for no runtime identifier,
-and there is no Raspberry Pi OS build of it. Left at its default (`null` = "use it if available")
-the library loads whatever `libdave.so` it finds next to the executable and the voice handshake then
-times out - `ConnectAsync` never completes, the bot appears in the channel and drops out again.
+Cortana joins **undeafened**: DAVE members refuse an MLS add proposal for anyone not announced in a
+previous `clients_connect`, and a `selfDeaf` client is never told who is in the media session.
 
-`EnableVoiceDaveEncryption = false` is therefore set explicitly in `CortanaDiscordBot.ConfigureSocket`.
-Note that `Discord.Net.Dave.dll` still arrives as a transitive dependency of the `Discord.Net`
-metapackage - that is harmless. What must not be present is the native `libdave.so`.
+**Voice is unreliable, and the cause is upstream.** Discord.Net's DAVE session sometimes builds an
+empty recognised-user set, so it rejects the MLS welcome — including ones listing the bot's own user
+id — resets, and loops until Discord closes the session and drops everyone from the channel:
 
-Because `dotnet build -o out` never cleans its output directory, a `libdave.so` left over from an
-older build survives every rebuild and keeps being loaded. The unit files therefore `rm -rf out`
-before publishing.
+```
+Attempted to verify credential for unrecognized user ID: <the bot's own id>
+MLS welcome lists unrecognized user ID
+Resetting MLS session
+```
+
+Whether it happens is a matter of ordering, so reconnecting often clears it. The session reconnects
+itself up to three times with exponential backoff when a connection dies within 20 seconds, which is
+the signature of this failure. Nothing in this repo can fix it properly; it needs a patched
+`Discord.Net.WebSocket`.
 
 ### ESP32
 
@@ -441,14 +557,29 @@ systemctl --user daemon-reload
 systemctl --user enable --now cortana-desktop
 ```
 
-`cortana-desktop.service` hardcodes its paths — edit them if the repo is not at
-`~/Projects/Cortana`. The `cortana` CLI wraps the service, git, the API and desktop notifications:
+`cortana-desktop.service` hardcodes its paths — edit them if the repo is not at `~/Projects/Cortana`.
+
+The agent holds the TCP connection to the Kernel, runs what it is told, and every 30 seconds pushes
+CPU, RAM, GPU, disk and uptime to `POST /Computer/metrics`, read straight from `/proc` and
+`/sys/class/hwmon` — AMD (`k10temp`, `amdgpu`) and NVIDIA (`nvidia-smi`), no dependencies. The
+snapshot rides the dashboard's SSE stream, so the Pi and both bots see it.
+
+One `cortana` command covers both halves: the shell wrapper keeps what must work before the binary
+exists (install, build, deploy, service, git) and hands everything else to the agent, building it
+first if needed.
 
 ```bash
 cortana service restart
+cortana deploy                       # rsync this tree to the Pi and restart the services
 cortana api sensors
 cortana api Devices/Lamp -act toggle
 cortana api raspberry/temperature | cortana notify
+
+cortana chat                         # conversation, /reset clears it
+cortana ask "is the lamp on?"        # one-shot, left out of the conversation
+cortana monitor --watch              # live local bars
+cortana pc                           # what the Pi last heard from this machine
+cortana status                       # house, sensors, services and this computer
 ```
 
 ### Windows

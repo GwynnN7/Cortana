@@ -7,7 +7,7 @@ namespace CortanaDiscord.Voice;
 
 internal static class VoiceService
 {
-	private const string NotConnected = "Non sono connessa a nessun canale";
+	private const string NotConnected = "I'm not connected to any channel";
 
 	private static readonly ConcurrentDictionary<ulong, VoiceSession> Sessions = new();
 
@@ -18,7 +18,8 @@ internal static class VoiceService
 
 	private static VoiceSession? Get(ulong guildId) => Sessions.GetValueOrDefault(guildId);
 
-	public static Task<string> Connect(SocketVoiceChannel channel) => GetOrCreate(channel.Guild).ConnectAsync(channel);
+	public static async Task<string> Connect(SocketVoiceChannel channel) =>
+		await GetOrCreate(channel.Guild).ConnectAsync(channel);
 
 	public static async Task<string> Disconnect(ulong guildId)
 	{
@@ -68,14 +69,14 @@ internal static class VoiceService
 	{
 		VoiceSession? session = Get(guildId);
 		if (session == null) return NotConnected;
-		return await session.SkipAsync() ? "Audio skippato" : "Non c'è niente da skippare";
+		return await session.SkipAsync() ? "Skipped" : "There is nothing to skip";
 	}
 
 	public static string Clear(ulong guildId)
 	{
 		VoiceSession? session = Get(guildId);
 		if (session == null) return NotConnected;
-		return session.Clear() ? "Queue rimossa" : "Non c'è niente in coda";
+		return session.Clear() ? "Queue rimossa" : "There is nothing queued";
 	}
 
 	public static async Task<string> Stop(ulong guildId)
@@ -83,8 +84,8 @@ internal static class VoiceService
 		VoiceSession? session = Get(guildId);
 		if (session == null) return NotConnected;
 
-		string clearResult = session.Clear() ? "Queue rimossa" : "Non c'è niente in coda";
-		string skipResult = await session.SkipAsync() ? "Audio skippato" : "Non c'è niente da skippare";
+		string clearResult = session.Clear() ? "Queue rimossa" : "There is nothing queued";
+		string skipResult = await session.SkipAsync() ? "Skipped" : "There is nothing to skip";
 		return $"{skipResult} ~ {clearResult}";
 	}
 
@@ -109,7 +110,9 @@ internal static class VoiceService
 		if (!DiscordUtils.TryGetGuildSettings(guild.Id, out GuildSettings? settings)) return false;
 		if (channel.Id == settings.AfkChannel) return false;
 
-		int humans = channel.ConnectedUsers.Count(user => user.Id != DiscordUtils.Data.CortanaId);
-		return humans > 0;
+		return HumanCount(channel) > 0;
 	}
+
+	private static int HumanCount(SocketVoiceChannel channel) =>
+		channel.ConnectedUsers.Count(user => user.Id != DiscordUtils.Data.CortanaId);
 }

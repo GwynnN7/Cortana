@@ -83,10 +83,18 @@ public static class CortanaTelegramBot
 				case EArgsType.DeleteSchedule:
 					await UtilityModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
-				case EArgsType.Notification:
-				case EArgsType.ComputerCommand:
+				case EArgsType.Llm:
+				case EArgsType.SetPrompt:
+				case EArgsType.SetAiSetting:
+					await CortanaModule.HandleTextMessage(cortana, msgData, chatArg);
+					break;
 				case EArgsType.HardwareTimer:
 					await DeviceModule.HandleTextMessage(cortana, msgData, chatArg);
+					break;
+				case EArgsType.Notification:
+				case EArgsType.ComputerCommand:
+				case EArgsType.Launch:
+					await RaspberryModule.HandleTextMessage(cortana, msgData, chatArg);
 					break;
 				case EArgsType.SetSetting:
 					await SensorModule.HandleTextMessage(cortana, msgData, chatArg);
@@ -166,7 +174,7 @@ public static class CortanaTelegramBot
 			.AddNewRow()
 			.AddButton("Sensors", ActionTag.Sensor)
 			.AddNewRow()
-			.AddButton("Raspberry", ActionTag.Raspberry)
+			.AddButton("System", ActionTag.Raspberry)
 			.AddNewRow()
 			.AddButton("Cortana", ActionTag.Cortana)
 			.AddNewRow()

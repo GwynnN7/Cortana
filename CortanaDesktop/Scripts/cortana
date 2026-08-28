@@ -2,6 +2,7 @@
 import os
 import sys
 import re
+import shlex
 import subprocess
 import requests
 import argparse
@@ -12,6 +13,10 @@ BASE_PATH = os.environ.get("CORTANA_PATH")
 API_URL = os.environ.get("CORTANA_API")
 API_KEY = os.environ.get("CORTANA_API_KEY")  # required by every route except / and /health
 SERVICE_NAME = "cortana-desktop"
+PI = os.environ.get("CORTANA_PI", "cortana@192.168.1.117")
+PI_PATH = os.environ.get("CORTANA_PI_PATH", "~/Cortana/")
+SERVICES = ["kernel", "telegram", "discord", "web"]
+AGENT_COMMANDS = ("chat", "ask", "monitor", "status", "pc")
 
 # ANSI Colors
 BLUE = "\033[1;34m"
@@ -84,6 +89,21 @@ def handle_service(args):
         if run_cmd(f"systemctl --user {action} {SERVICE_NAME}"):
             print_blue(f"Service {action_verb}ed.")
 
+def agent_binary():
+    return f"{BASE_PATH}/CortanaDesktop/out/CortanaDesktop"
+
+def build_agent():
+    out = f"{BASE_PATH}/CortanaDesktop/out"
+    return run_cmd(f'dotnet build "{BASE_PATH}/CortanaDesktop" -o "{out}" --artifacts-path "{out}/lib"', shell=True)
+
+def dispatch_agent(argv):
+    binary = agent_binary()
+    if not os.path.exists(binary):
+        print_blue("Building desktop agent...")
+        if not build_agent():
+            sys.exit(1)
+    os.execv(binary, [binary] + argv)
+
 # --- Module: Git ---
 def handle_git(args):
     """Handles Git operations."""
@@ -135,6 +155,59 @@ def handle_api(args):
 
     print_blue(res)
 
+# --- Module: Deploy ---
+def handle_deploy(args):
+    """Mirrors the local working tree onto the Pi and restarts what changed."""
+    if not BASE_PATH:
+        print_blue("CORTANA_PATH is not set.")
+        sys.exit(1)
+
+    excludes = [".git/", "bin/", "obj/", "out/", ".claude/", ".vscode/", "*.user"]
+    rsync = ["rsync", "-az", "--delete", "--info=stats1"]
+    if args.dry_run:
+        rsync.append("--dry-run")
+    for pattern in excludes:
+        rsync += ["--exclude", pattern]
+    rsync += ["-e", "ssh -o ConnectTimeout=10", f"{BASE_PATH.rstrip('/')}/", f"{PI}:{PI_PATH}"]
+
+    print_blue(f"Syncing {BASE_PATH} -> {PI}:{PI_PATH}")
+    if not run_cmd(rsync):
+        sys.exit(1)
+
+    if args.dry_run:
+        print_blue("Dry run, nothing changed.")
+        return
+    if args.no_restart:
+        print_blue("Synced, services untouched.")
+        return
+
+    targets = [f"cortana-{s}" for s in (args.services or ["kernel"])]
+
+    print_blue("Reinstalling unit files")
+    run_cmd(["ssh", "-o", "ConnectTimeout=10", PI,
+             "cp ~/Cortana/CortanaKernel/Scripts/*.service ~/.config/systemd/user/ && systemctl --user daemon-reload"])
+
+    for svc in targets:
+        print_blue(f"Restarting {svc} (clean publish, this takes a while)")
+        run_cmd(["ssh", "-o", "ConnectTimeout=10", PI, f"systemctl --user restart {svc} --no-block"])
+
+    print_blue("Waiting for services")
+    for _ in range(80):
+        probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
+                                f"systemctl --user is-active --quiet {targets[0]}"],
+                               capture_output=True)
+        if probe.returncode == 0:
+            break
+        time.sleep(10)
+
+    status = ('for s in cortana-kernel cortana-telegram cortana-discord cortana-web; do '
+              'printf "  %-18s %s\n" "$s" "$(systemctl --user is-active $s)"; done')
+    run_cmd(["ssh", "-o", "ConnectTimeout=10", PI, f"bash -lc {shlex.quote(status)}"])
+
+    if args.logs:
+        print_blue(f"Following {targets[0]}")
+        run_cmd(["ssh", "-t", PI, f"journalctl --user -u {targets[0]} -f -n 30"])
+
 # --- Module: Notify ---
 def handle_notify(args):
     """Reads piped input and sends a desktop notification."""
@@ -151,7 +224,19 @@ def handle_notify(args):
 
 # --- Main ---
 def main():
-    parser = argparse.ArgumentParser(description="Cortana Control Interface")
+    if len(sys.argv) > 1 and sys.argv[1] in AGENT_COMMANDS:
+        dispatch_agent(sys.argv[1:])
+
+    parser = argparse.ArgumentParser(
+        description="Cortana Control Interface",
+        epilog=(
+            "agent commands (handled by CortanaDesktop):\n"
+            "  chat                  interactive conversation, /reset clears it\n"
+            "  ask <question>        one-shot question, left out of the conversation\n"
+            "  monitor [--watch]     this machine's performance and temperatures\n"
+            "  pc                    what the Kernel last heard from this machine\n"
+            "  status                house, sensors, services and this computer"),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers(dest="category", required=True)
 
     # 1. Service Command
@@ -174,7 +259,16 @@ def main():
     api_parser.add_argument("-val", dest="value", help="Value param")
     api_parser.add_argument("-arg", dest="arg", default="", help="Extra args")
 
-    # 4. Notify Command
+    # 4. Deploy Command
+    # Usage: cortana deploy [discord ...] [-n] [-s] [-l]
+    dep_parser = subparsers.add_parser("deploy", help="Sync this tree to the Pi and restart services")
+    dep_parser.add_argument("services", nargs="*", choices=SERVICES, default=[],
+                            help="Which services to restart (default: kernel, which cascades)")
+    dep_parser.add_argument("-n", "--dry-run", action="store_true", help="Preview the transfer")
+    dep_parser.add_argument("-s", "--no-restart", action="store_true", help="Sync only")
+    dep_parser.add_argument("-l", "--logs", action="store_true", help="Follow the journal afterwards")
+
+    # 5. Notify Command
     # Usage: command | cortana notify [-t "Title"]
     notify_parser = subparsers.add_parser("notify", help="Send piped output as a desktop notification")
     notify_parser.add_argument("-t", dest="title", default="Cortana", help="Notification title")
@@ -187,6 +281,8 @@ def main():
         handle_git(args)
     elif args.category == "api":
         handle_api(args)
+    elif args.category == "deploy":
+        handle_deploy(args)
     elif args.category == "notify":
         handle_notify(args)
 

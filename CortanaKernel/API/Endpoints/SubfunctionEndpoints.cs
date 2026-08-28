@@ -1,3 +1,4 @@
+using CortanaKernel.Hardware;
 using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
@@ -15,6 +16,18 @@ public static class SubfunctionEndpoints
 			.WithName("GetSubfunctions")
 			.WithSummary("Running state of every subfunction.")
 			.Produces<SubfunctionListResponse>();
+
+		group.MapGet("/logs", AllLogSettings)
+			.Access(EApiAccess.ReadOnly)
+			.WithName("GetLogSettings")
+			.WithSummary("Where Cortana mirrors her log lines.")
+			.Produces<SettingsListResponse>();
+
+		group.MapPost("/logs/{target}", SetLogSetting)
+			.Access(EApiAccess.Sensitive)
+			.WithName("SetLogSetting")
+			.WithSummary("Turns logging to one destination on or off. Any other number toggles.")
+			.Produces<SettingsResponse>();
 
 		group.MapGet("/{subfunction}", Status)
 			.Access(EApiAccess.ReadOnly)
@@ -61,6 +74,31 @@ public static class SubfunctionEndpoints
 			return ApiResults.UnknownValue<ESubfunctionAction>(request, "Action", command.Action);
 
 		return ApiResults.From(request, await Bootloader.SubfunctionCall(parsed, action));
+	}
+
+	private static bool TryParseTarget(string target, out ESettings setting)
+	{
+		if (ApiResults.TryParseEnum(target, out setting) && setting.IsLog()) return true;
+
+		return ApiResults.TryParseEnum($"LogTo{target}", out setting) && setting.IsLog();
+	}
+
+	private static IResult AllLogSettings(HttpRequest request)
+	{
+		IReadOnlyList<SettingsResponse> settings = HardwareApi.Sensors.GetAllSettings()
+			.Where(setting => Enum.Parse<ESettings>(setting.Setting).IsLog()).ToList();
+
+		string text = string.Join("\n", settings.Select(setting => $"{setting.Setting.Replace("LogTo", "")}: {setting.Value}"));
+		return ApiResults.Ok(request, text, new SettingsListResponse(settings));
+	}
+
+	private static IResult SetLogSetting(string target, PostValue value, HttpRequest request)
+	{
+		if (!TryParseTarget(target, out ESettings parsed))
+			return ApiResults.NotFound(request, $"Log target '{target}' not found. Valid values: Web, Telegram, Discord");
+
+		return ApiResults.From(request, HardwareApi.Sensors.SetSettings(parsed, value.Value),
+			updated => ($"{parsed}: {updated}", new SettingsResponse(parsed.ToString(), updated)));
 	}
 
 	private static IResult PublishMessage(PostCommand message, HttpRequest request)

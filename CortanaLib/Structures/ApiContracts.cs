@@ -26,5 +26,9 @@ public record SystemStatusResponse(
 	IReadOnlyList<SettingsResponse> Settings,
 	IReadOnlyList<SensorResponse> Raspberry,
 	IReadOnlyList<SubfunctionResponse> Subfunctions,
+	MetricsResponse? Computer,
+	AutomationResponse Automation,
 	DateTimeOffset Timestamp
 ) : IApiResponse;
+
+public record AutomationResponse(string State, int ManualMinutesLeft) : IApiResponse;

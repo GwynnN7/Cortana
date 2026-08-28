@@ -60,6 +60,12 @@
         </div>
 
         <div class="field-row">
+            <input type="text" placeholder="Application to launch, e.g. steam" @bind="_launch" @bind:event="oninput"
+                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, LaunchApp))"/>
+            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_launch))" @onclick="LaunchApp">Launch</button>
+        </div>
+
+        <div class="field-row">
             <input type="text" placeholder="Shell command" @bind="_command" @bind:event="oninput"
                    disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, SendCommand))"/>
             <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_command))" @onclick="SendCommand">Run</button>
@@ -72,11 +78,14 @@
     }
 </section>
 
+<ComputerCard Metrics="State.Computer"/>
+
 @code {
     private IDisposable? _subscription;
     private string? _message;
     private string _notification = "";
     private string _command = "";
+    private string _launch = "";
     private string? _commandOutput;
     private bool _busy;
 
@@ -103,6 +112,12 @@
         {
             _busy = false;
         }
+    }
+
+    private async Task LaunchApp()
+    {
+        await RunPc(EComputerCommand.Launch, _launch);
+        _launch = "";
     }
 
     private async Task SendNotification()

@@ -8,13 +8,13 @@ using Discord.WebSocket;
 
 namespace CortanaDiscord.Modules;
 
-[Group("media", "Gestione audio")]
+[Group("media", "Voice audio")]
 public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 {
 	[SlashCommand("play", "Metti qualcosa da youtube", runMode: RunMode.Async)]
-	public async Task Play([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
+	public async Task Play([Summary("video", "YouTube link or search terms")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 		await DeferAsync(hidden);
 
 		AudioTrack? track = await ResolveTrack(text, hidden);
@@ -22,29 +22,29 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
 		if (!VoiceService.Play(track, Context.Guild.Id))
 		{
-			await FollowupAsync("Non sono connessa a nessun canale, non posso mettere audio", ephemeral: hidden);
+			await FollowupAsync("I'm not in a voice channel, I can't play anything", ephemeral: hidden);
 			return;
 		}
 
 		await FollowupAsync(embed: TrackEmbed(track), components: PlayerControls(), ephemeral: hidden);
 	}
 
-	[SlashCommand("nowplaying", "Cosa sto suonando adesso")]
+	[SlashCommand("nowplaying", "What I'm playing right now")]
 	public async Task NowPlaying([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 		AudioTrack? track = VoiceService.NowPlaying(Context.Guild.Id);
 
 		if (track == null)
 		{
-			await RespondAsync("Non sto suonando niente", ephemeral: hidden);
+			await RespondAsync("I'm not playing anything", ephemeral: hidden);
 			return;
 		}
 
 		IReadOnlyCollection<string> queue = VoiceService.GetQueue(Context.Guild.Id);
 		Embed embed = TrackEmbed(track).ToEmbedBuilder()
 			.WithAuthor("In riproduzione")
-			.WithFooter(queue.Count == 0 ? "Niente in coda" : $"{queue.Count} in coda")
+			.WithFooter(queue.Count == 0 ? "Nothing queued" : $"{queue.Count} queued")
 			.Build();
 
 		await RespondAsync(embed: embed, components: PlayerControls(), ephemeral: hidden);
@@ -66,9 +66,9 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		AudioTrack? current = VoiceService.NowPlaying(Context.Guild.Id);
 
 		string body = current == null ? "" : $"**Ora:** {current.Title}\n\n";
-		body += queue.Count == 0 ? "La coda è vuota" : string.Join("\n", queue.Select((title, index) => $"`{index + 1}.` {title}"));
+		body += queue.Count == 0 ? "The queue is empty" : string.Join("\n", queue.Select((title, index) => $"`{index + 1}.` {title}"));
 
-		await RespondAsync(embed: DiscordUtils.CreateEmbed("Coda", description: body), ephemeral: true);
+		await RespondAsync(embed: DiscordUtils.CreateEmbed("Queue", description: body), ephemeral: true);
 	}
 
 	private Task AcknowledgeAsync(string result) => RespondAsync(result, ephemeral: true);
@@ -93,47 +93,47 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 	public async Task Skip([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
 		string result = await VoiceService.Skip(Context.Guild.Id);
-		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
+		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Yes);
 	}
 
 	[SlashCommand("clear", "Clear queue")]
 	public async Task Clear([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
 		string result = VoiceService.Clear(Context.Guild.Id);
-		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
+		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Yes);
 	}
 
 	[SlashCommand("stop", "Stop track and clear queue")]
 	public async Task Stop([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
 		string result = await VoiceService.Stop(Context.Guild.Id);
-		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Si);
+		await RespondAsync(result, ephemeral: ephemeral == EAnswer.Yes);
 	}
 
-	[SlashCommand("queue", "Mostro cosa c'è in coda")]
-	public async Task Queue([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
+	[SlashCommand("queue", "Show what is queued")]
+	public async Task Queue([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Yes)
 	{
 		IReadOnlyCollection<string> queue = VoiceService.GetQueue(Context.Guild.Id);
 		if (queue.Count == 0)
 		{
-			await RespondAsync("La coda è vuota", ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync("The queue is empty", ephemeral: ephemeral == EAnswer.Yes);
 			return;
 		}
 
 		string description = string.Join("\n", queue.Select((title, index) => $"`{index + 1}.` {title}"));
-		Embed embed = DiscordUtils.CreateEmbed($"In coda ({queue.Count})", description: description);
-		await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+		Embed embed = DiscordUtils.CreateEmbed($"Queued ({queue.Count})", description: description);
+		await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 	}
 
-	[SlashCommand("join", "Entro nel canale dove sono stata chiamata", runMode: RunMode.Async)]
+	[SlashCommand("join", "Join the channel I was called from", runMode: RunMode.Async)]
 	public async Task Join([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 
 		SocketVoiceChannel? voiceChannel = Context.Guild.VoiceChannels.FirstOrDefault(channel => channel.ConnectedUsers.Contains(Context.User));
 		if (voiceChannel == null)
 		{
-			await RespondAsync("Non posso connettermi se non sei in un canale", ephemeral: hidden);
+			await RespondAsync("I can't join if you are not in a channel", ephemeral: hidden);
 			return;
 		}
 
@@ -142,19 +142,19 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		await FollowupAsync(text, ephemeral: hidden);
 	}
 
-	[SlashCommand("leave", "Esco dal canale vocale", runMode: RunMode.Async)]
+	[SlashCommand("leave", "Leave the voice channel", runMode: RunMode.Async)]
 	public async Task Disconnect([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 		await DeferAsync(hidden);
 		string text = await VoiceService.Disconnect(Context.Guild.Id);
 		await FollowupAsync(text, ephemeral: hidden);
 	}
 
-	[SlashCommand("download-music", "Scarica una canzone da youtube", runMode: RunMode.Async)]
-	public async Task DownloadMusic([Summary("video", "Link o nome del video youtube")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
+	[SlashCommand("download-music", "Download a song from YouTube", runMode: RunMode.Async)]
+	public async Task DownloadMusic([Summary("video", "YouTube link or search terms")] string text, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 		await DeferAsync(hidden);
 
 		AudioTrack? track = await ResolveTrack(text, hidden);
@@ -171,20 +171,20 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		catch (Exception ex)
 		{
 			DataHandler.Log($"[Discord] Download failed: {ex.Message}");
-			await FollowupAsync("Non sono riuscita a scaricare l'audio", ephemeral: hidden);
+			await FollowupAsync("I couldn't download the audio", ephemeral: hidden);
 		}
 	}
 
-	[SlashCommand("meme", "Metto un meme tra quelli disponibili", runMode: RunMode.Async)]
-	public async Task Meme([Summary("nome", "Nome del meme")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
+	[SlashCommand("meme", "Play one of the saved memes", runMode: RunMode.Async)]
+	public async Task Meme([Summary("nome", "Meme name")] string name, [Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Yes)
 	{
-		bool hidden = ephemeral == EAnswer.Si;
+		bool hidden = ephemeral == EAnswer.Yes;
 		await DeferAsync(hidden);
 
 		KeyValuePair<string, MemeJsonStructure> meme = DiscordUtils.Memes.FirstOrDefault(entry => entry.Value.Alias.Contains(name.ToLower()));
 		if (meme.Key == null)
 		{
-			await FollowupAsync("Non ho nessun meme salvato con quel nome", ephemeral: hidden);
+			await FollowupAsync("I have no meme saved under that name", ephemeral: hidden);
 			return;
 		}
 
@@ -199,15 +199,15 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
 		if (!VoiceService.Play(track, Context.Guild.Id))
 		{
-			await FollowupAsync("Non sono connessa a nessun canale, non posso mettere audio", ephemeral: hidden);
+			await FollowupAsync("I'm not in a voice channel, I can't play anything", ephemeral: hidden);
 			return;
 		}
 
 		await FollowupAsync(embed: embed, components: PlayerControls(), ephemeral: hidden);
 	}
 
-	[SlashCommand("meme-list", "Lista dei meme disponibili")]
-	public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Si)
+	[SlashCommand("meme-list", "List the available memes")]
+	public async Task GetMemes([Summary("ephemeral", "Vuoi vederlo solo tu?")] EAnswer ephemeral = EAnswer.Yes)
 	{
 		EmbedBuilder embedBuilder = DiscordUtils.CreateEmbed("Memes").ToEmbedBuilder();
 		foreach (EMemeCategory category in Enum.GetValues<EMemeCategory>())
@@ -220,10 +220,10 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 			embedBuilder.AddField(category.ToString(), categoryString);
 		}
 
-		await RespondAsync(embed: embedBuilder.Build(), ephemeral: ephemeral == EAnswer.Si);
+		await RespondAsync(embed: embedBuilder.Build(), ephemeral: ephemeral == EAnswer.Yes);
 	}
 
-	[SlashCommand("meme-fix", "Rimuovi meme non più disponibili", runMode: RunMode.Async)]
+	[SlashCommand("meme-fix", "Remove memes that are no longer available", runMode: RunMode.Async)]
 	public async Task FixMemes()
 	{
 		await DeferAsync(ephemeral: true);
@@ -239,7 +239,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 			try
 			{
 				string content = await client.GetStringAsync(pair.Value.Link);
-				if (content.Contains("video non è più disponibile") || content.Contains("video unavailable"))
+				if (content.Contains("video is no longer available") || content.Contains("video unavailable"))
 				{
 					unavailable.Add(pair.Key);
 					return;
@@ -262,7 +262,7 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 
 	private async Task<AudioTrack?> ResolveTrack(string query, bool hidden)
 	{
-		string reason = "Non ho trovato niente di riproducibile per questa ricerca";
+		string reason = "I found nothing playable for that search";
 		try
 		{
 			AudioTrack? track = await MediaHandler.GetAudioTrack(query);
@@ -272,8 +272,8 @@ public class AudioModule : InteractionModuleBase<SocketInteractionContext>
 		{
 			DataHandler.Log($"[Discord] Track lookup failed for '{query}': {ex.Message}");
 			reason = ex.Message.Contains("not available", StringComparison.OrdinalIgnoreCase)
-				? "Quel video non è disponibile: privato, rimosso o bloccato nella tua regione"
-				: $"Non riesco a leggere quel video: {ex.Message}";
+				? "That video is unavailable: private, removed or blocked in your region"
+				: $"I can't read that video: {ex.Message}";
 		}
 
 		await FollowupAsync(reason, ephemeral: hidden);

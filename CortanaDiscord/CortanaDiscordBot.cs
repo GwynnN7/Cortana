@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Globalization;
 using CortanaDiscord.Handlers;
 using CortanaDiscord.Utility;
 using CortanaDiscord.Voice;
@@ -13,6 +15,28 @@ namespace CortanaDiscord;
 
 public static class CortanaDiscordBot
 {
+	private static readonly bool DaveEnabled =
+		!(DataHandler.EnvOrNull("CORTANA_DISCORD_DAVE")?.Equals("false", StringComparison.OrdinalIgnoreCase) ?? false);
+
+	private static readonly TimeSpan WindowCacheFor = TimeSpan.FromSeconds(60);
+	private static readonly ConcurrentDictionary<ulong, DateTime> Sessions = new();
+
+	private static TimeSpan _chatWindow = TimeSpan.FromMinutes(1);
+	private static DateTime _windowChecked = DateTime.MinValue;
+
+	private static async Task<TimeSpan> ChatWindow()
+	{
+		if (DateTime.Now - _windowChecked < WindowCacheFor) return _chatWindow;
+
+		_windowChecked = DateTime.Now;
+		string value = await ApiHandler.Get($"{ERoute.AI}/settings/{EAiSetting.DiscordMinutes}");
+
+		if (double.TryParse(value.Trim(), CultureInfo.InvariantCulture, out double minutes) && minutes > 0)
+			_chatWindow = TimeSpan.FromMinutes(minutes);
+
+		return _chatWindow;
+	}
+
 	public static async Task Main()
 	{
 		DataHandler.LoadEnvironment(required: false);
@@ -85,8 +109,18 @@ public static class CortanaDiscordBot
 			if (DiscordUtils.TryGetGuildSettings(channel.Guild.Id, out GuildSettings? settings) &&
 				settings.BannedWords.Any(word => message.Contains(word)))
 			{
-				await arg.Channel.SendMessageAsync("Ho trovato una parola non consentita, sono costretta ad eliminare il messaggio");
+				await arg.Channel.SendMessageAsync("That word is not allowed here, deleting the message");
 				await arg.DeleteAsync();
+				return;
+			}
+		}
+
+		if (arg is SocketUserMessage userMessage)
+		{
+			bool mentioned = MentionsCortana(userMessage);
+			if (mentioned || SessionOpen(arg.Channel.Id))
+			{
+				await ReplyWithLlm(arg, userMessage, mentioned);
 				return;
 			}
 		}
@@ -94,12 +128,44 @@ public static class CortanaDiscordBot
 		switch (message)
 		{
 			case "cortana":
-				await arg.Channel.SendMessageAsync($"Dimmi {arg.Author.Mention}");
+				await arg.Channel.SendMessageAsync($"Go ahead {arg.Author.Mention}");
 				break;
-			case "ciao cortana":
-				await arg.Channel.SendMessageAsync($"Ciao {arg.Author.Mention}");
+			case "hi cortana":
+				await arg.Channel.SendMessageAsync($"Hi {arg.Author.Mention}");
 				break;
 		}
+	}
+
+	private static bool MentionsCortana(SocketUserMessage message) =>
+		message.MentionedUsers.Any(user => user.Id == DiscordUtils.Data.CortanaId);
+
+	private static bool SessionOpen(ulong channel) =>
+		Sessions.TryGetValue(channel, out DateTime expiry) && expiry > DateTime.UtcNow;
+
+	private static async Task ExtendSession(ulong channel) =>
+		Sessions[channel] = DateTime.UtcNow + await ChatWindow();
+
+	private static async Task ReplyWithLlm(SocketMessage arg, SocketUserMessage message, bool mentioned)
+	{
+		string prompt = message.Content;
+		foreach (SocketUser tagged in message.MentionedUsers)
+			prompt = prompt.Replace($"<@{tagged.Id}>", "").Replace($"<@!{tagged.Id}>", "");
+		prompt = prompt.Trim();
+
+		if (prompt.Length == 0) return;
+
+		var conversation = $"discord:{arg.Channel.Id}";
+		if (mentioned && !SessionOpen(arg.Channel.Id)) await ApiHandler.Delete($"{ERoute.AI}/{conversation}");
+		await ExtendSession(arg.Channel.Id);
+
+		using IDisposable typing = arg.Channel.EnterTypingState();
+
+		string author = (arg.Author as SocketGuildUser)?.DisplayName ?? arg.Author.Username;
+		bool owner = arg.Author.Id == DiscordUtils.Data.ChiefId;
+		string reply = await ApiHandler.Post($"{ERoute.AI}", new PostChat(prompt, conversation, author, Owner: owner));
+
+		await ExtendSession(arg.Channel.Id);
+		await arg.Channel.SendMessageAsync(reply, messageReference: new MessageReference(arg.Id));
 	}
 
 	private static async Task ActivityTimerElapsed(object? sender)
@@ -111,7 +177,7 @@ public static class CortanaDiscordBot
 		}
 		catch (Exception ex)
 		{
-			DataHandler.Log($"Impossibile aggiornare l'Activity Status: {ex.Message}");
+			DataHandler.Log($"Could not update the activity status: {ex.Message}");
 		}
 	}
 
@@ -137,7 +203,7 @@ public static class CortanaDiscordBot
 
 		string? displayName = guild.GetUser(user.Id)?.DisplayName ?? user.Username;
 		var footer = new EmbedFooterBuilder { IconUrl = user.GetAvatarUrl(), Text = joined ? "Joined at:" : "Left at:" };
-		Embed embed = DiscordUtils.CreateEmbed(joined ? $"Ciao {displayName}" : $"A dopo {displayName}", withoutAuthor: true, footer: footer);
+		Embed embed = DiscordUtils.CreateEmbed(joined ? $"Hi {displayName}" : $"See you, {displayName}", withoutAuthor: true, footer: footer);
 
 		if (settings.Greetings)
 		{
@@ -159,7 +225,7 @@ public static class CortanaDiscordBot
 	private static async Task OnServerJoin(SocketGuild guild)
 	{
 		DiscordUtils.AddGuildSettings(guild);
-		await guild.DefaultChannel.SendMessageAsync(embed: DiscordUtils.CreateEmbed("Ciao, sono Cortana"));
+		await guild.DefaultChannel.SendMessageAsync(embed: DiscordUtils.CreateEmbed("Hi, I'm Cortana"));
 	}
 
 	private static async Task OnServerLeave(SocketGuild guild)
@@ -199,7 +265,7 @@ public static class CortanaDiscordBot
 			GatewayIntents = GatewayIntents.All,
 			AlwaysDownloadUsers = true,
 			UseInteractionSnowflakeDate = false,
-			EnableVoiceDaveEncryption = true
+			EnableVoiceDaveEncryption = DaveEnabled
 		};
 	}
 

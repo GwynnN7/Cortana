@@ -10,18 +10,22 @@ public static class CortanaDesktop
 {
 	private static readonly TimeSpan KeepAliveInterval = TimeSpan.FromSeconds(4);
 	private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(2);
+	private static readonly TimeSpan MetricsInterval = TimeSpan.FromSeconds(30);
 
 	internal static DesktopInfo DesktopInfo { get; private set; }
 
 	private static readonly Lock SocketLock = new();
 	private static Socket? _computerSocket;
 
-	private static async Task Main()
+	private static async Task<int> Main(string[] args)
 	{
+		if (args.Length > 0) return await Cli.Run(args);
+
 		DesktopInfo = GetClientInfo();
 
 		string address = await ResolveCortanaAddress();
 		_ = Task.Run(KeepAliveLoop);
+		_ = Task.Run(MetricsLoop);
 
 		while (true)
 		{
@@ -95,6 +99,25 @@ public static class CortanaDesktop
 		}
 	}
 
+	private static async Task MetricsLoop()
+	{
+		SystemMonitor.Collect();
+
+		while (true)
+		{
+			await Task.Delay(MetricsInterval);
+
+			try
+			{
+				await ApiHandler.Post($"{ERoute.Computer}/metrics", SystemMonitor.Collect());
+			}
+			catch (Exception ex)
+			{
+				DataHandler.Log($"[Metrics] {ex.Message}");
+			}
+		}
+	}
+
 	private static async Task ReadLoop()
 	{
 		Socket? socket;
@@ -128,7 +151,7 @@ public static class CortanaDesktop
 						case "shutdown" or "suspend" or "reboot" or "system":
 							OsHandler.ExecuteCommand(message);
 							break;
-						case "notify" or "cmd":
+						case "notify" or "cmd" or "launch":
 							textCommand = message;
 							break;
 						default:

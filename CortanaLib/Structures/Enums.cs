@@ -7,9 +7,9 @@ public enum ERoute
 	Raspberry,
 	Sensors,
 	SubFunctions,
-	Settings,
 	Schedules,
-	Logs
+	Logs,
+	AI
 }
 
 public enum ESubFunctionType

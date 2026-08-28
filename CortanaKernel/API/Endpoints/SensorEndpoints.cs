@@ -17,11 +17,56 @@ public static class SensorEndpoints
 			.WithSummary("Latest reading from every sensor.")
 			.Produces<SensorListResponse>();
 
+		group.MapGet("/settings", AllSettings)
+			.Access(EApiAccess.ReadOnly)
+			.WithName("GetSensorSettings")
+			.WithSummary("Every automation setting and its current value.")
+			.Produces<SettingsListResponse>();
+
+		group.MapGet("/settings/{setting}", GetSetting)
+			.Access(EApiAccess.ReadOnly)
+			.WithName("GetSensorSetting")
+			.WithSummary("One automation setting.")
+			.Produces<SettingsResponse>();
+
+		group.MapPost("/settings/{setting}", SetSetting)
+			.Access(EApiAccess.Sensitive)
+			.WithName("SetSensorSetting")
+			.WithSummary("Updates a setting. On/Off settings toggle when given any other number.")
+			.Produces<SettingsResponse>();
+
 		group.MapGet("/{sensor}", GetData)
 			.Access(EApiAccess.ReadOnly)
 			.WithName("GetSensor")
 			.WithSummary("Latest reading from one sensor.")
 			.Produces<SensorResponse>();
+	}
+
+	private static IResult AllSettings(HttpRequest request)
+	{
+		IReadOnlyList<SettingsResponse> settings = HardwareApi.Sensors.GetAllSettings()
+			.Where(setting => !Enum.Parse<ESettings>(setting.Setting).IsLog()).ToList();
+
+		string text = string.Join("\n", settings.Select(setting => $"{setting.Setting}: {setting.Value}"));
+		return ApiResults.Ok(request, text, new SettingsListResponse(settings));
+	}
+
+	private static IResult GetSetting(string setting, HttpRequest request)
+	{
+		if (!ApiResults.TryParseEnum(setting, out ESettings parsed) || parsed.IsLog())
+			return ApiResults.UnknownValue<ESettings>(request, "Setting", setting);
+
+		return ApiResults.From(request, HardwareApi.Sensors.GetSettings(parsed),
+			value => ($"{parsed}: {value}", new SettingsResponse(parsed.ToString(), value)));
+	}
+
+	private static IResult SetSetting(string setting, PostValue value, HttpRequest request)
+	{
+		if (!ApiResults.TryParseEnum(setting, out ESettings parsed) || parsed.IsLog())
+			return ApiResults.UnknownValue<ESettings>(request, "Setting", setting);
+
+		return ApiResults.From(request, HardwareApi.Sensors.SetSettings(parsed, value.Value),
+			updated => ($"{parsed}: {updated}", new SettingsResponse(parsed.ToString(), updated)));
 	}
 
 	private static IResult AllSensors(HttpRequest request)

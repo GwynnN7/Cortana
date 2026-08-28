@@ -15,31 +15,31 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 	[Group("utility", "Comandi di utilità")]
 	public abstract class UtilityGroup : InteractionModuleBase<SocketInteractionContext>
 	{
-		[SlashCommand("comandi", "Vi mostro le categorie dei miei comandi")]
+		[SlashCommand("comandi", "Show my command categories")]
 		public async Task ShowCommands()
 		{
 			Embed commandsEmbed = DiscordUtils.CreateEmbed("Comandi", withTimeStamp: false);
 			commandsEmbed = commandsEmbed.ToEmbedBuilder()
 				.AddField("/utility", "Funzioni di utility")
-				.AddField("/media", "Gestione audio dei canali vocali")
+				.AddField("/media", "Voice audio dei canali vocali")
 				.AddField("/domotica", "Domotica personale riservata")
-				.AddField("/timer", "Gestione timer e sveglie")
+				.AddField("/timer", "Timers and alarms")
 				.AddField("/random", "Scelte random")
-				.AddField("/games", "Comandi per videogames")
-				.AddField("/gestione", "Gestione Server Discord")
+				.AddField("/games", "Video game commands")
+				.AddField("/server", "Discord server management")
 				.AddField("/settings", "Impostazioni Server Discord")
 				.Build();
 			await RespondAsync(embed: commandsEmbed);
 		}
 
-		[SlashCommand("qrcode", "Creo un QRCode con quello che mi dite")]
+		[SlashCommand("qrcode", "Create a QR code from your text")]
 		public async Task CreateQr([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No,
 			[Summary("colore-base", "Vuoi il colore bianco normale?")]
-			EAnswer normalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer quietZones = EAnswer.Si)
+			EAnswer normalColor = EAnswer.No, [Summary("bordo", "Vuoi aggiungere il bordo?")] EAnswer quietZones = EAnswer.Yes)
 		{
-			Stream imageStream = MediaHandler.CreateQrCode(content, normalColor == EAnswer.Si, quietZones == EAnswer.Si);
+			Stream imageStream = MediaHandler.CreateQrCode(content, normalColor == EAnswer.Yes, quietZones == EAnswer.Yes);
 
-			await RespondWithFileAsync(imageStream, "QRCode.png", ephemeral: ephemeral == EAnswer.Si);
+			await RespondWithFileAsync(imageStream, "QRCode.png", ephemeral: ephemeral == EAnswer.Yes);
 		}
 
 		[SlashCommand("avatar", "Vi mando la vostra immagine profile")]
@@ -53,7 +53,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			await RespondAsync(embed: embed);
 		}
 
-		[SlashCommand("tempo-in-voice", "Da quanto tempo state in chat vocale?")]
+		[SlashCommand("tempo-in-voice", "How long you have been in voice chat")]
 		public async Task TimeConnected([Summary("user", "A chi è rivolto?")] SocketUser? user = null, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			user ??= Context.User;
@@ -66,30 +66,30 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 				if (deltaTime.Seconds > 0) connectionTime += $" {deltaTime.Seconds} secondi";
 
 				Embed embed = DiscordUtils.CreateEmbed(connectionTime, user);
-				await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+				await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 			}
 			else
 			{
-				Embed embed = DiscordUtils.CreateEmbed("Non connesso alla chat vocale", user);
-				await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+				Embed embed = DiscordUtils.CreateEmbed("Not connected to voice chat", user);
+				await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 			}
 		}
 
-		[SlashCommand("conta-parole", "Scrivi un messaggio e ti dirò quante parole e caratteri ci sono")]
+		[SlashCommand("conta-parole", "Send a message and I'll count its words and characters")]
 		public async Task CountWorld([Summary("contenuto", "Cosa vuoi metterci?")] string content, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			Embed embed = DiscordUtils.CreateEmbed("Conta Parole");
 			embed = embed.ToEmbedBuilder()
 				.AddField("Parole", content.Split(" ").Length)
 				.AddField("Caratteri", content.Replace(" ", "").Length)
-				.AddField("Caratteri con spazi", content.Length)
+				.AddField("Characters with spaces", content.Length)
 				.Build();
 
-			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 		}
 
 		[SlashCommand("scrivi", "Scrivo qualcosa al posto vostro")]
-		public async Task WriteSomething([Summary("testo", "Cosa vuoi che dica?")] string text, [Summary("canale", "In che canale vuoi che scriva?")] SocketTextChannel channel)
+		public async Task WriteSomething([Summary("testo", "What should I say?")] string text, [Summary("channel", "Which channel should I write in?")] SocketTextChannel channel)
 		{
 			try
 			{
@@ -98,12 +98,12 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			}
 			catch
 			{
-				await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: true);
+				await RespondAsync("Something went wrong, the message is probably too long", ephemeral: true);
 			}
 		}
 
-		[SlashCommand("scrivi-in-privato", "Scrivo in privato qualcosa a chi volete")]
-		public async Task WriteSomethingInDm([Summary("testo", "Cosa vuoi che dica?")] string text, [Summary("user", "Vuoi mandarlo in privato a qualcuno?")] SocketUser user)
+		[SlashCommand("send-private", "Send someone a private message")]
+		public async Task WriteSomethingInDm([Summary("testo", "What should I say?")] string text, [Summary("user", "Should I send it to someone privately?")] SocketUser user)
 		{
 			try
 			{
@@ -112,7 +112,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			}
 			catch
 			{
-				await RespondAsync("C'è stato un problema, probabilmente il messaggio è troppo lungo", ephemeral: true);
+				await RespondAsync("Something went wrong, the message is probably too long", ephemeral: true);
 			}
 		}
 
@@ -150,15 +150,15 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 	[Group("games", "videogames")]
 	public class VideogamesGroup : InteractionModuleBase<SocketInteractionContext>
 	{
-		[SlashCommand("igdb", "Cerco uno o più giochi su IGDB")]
-		public async Task SearchGame([Summary("game", "Nome del gioco")] string game)
+		[SlashCommand("igdb", "Search IGDB for one or more games")]
+		public async Task SearchGame([Summary("game", "Game name")] string game)
 		{
 			await DeferAsync();
 
 			Embed? gameEmbed = await GetGameEmbedAsync(game, 0);
 			if (gameEmbed == null)
 			{
-				await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
+				await FollowupAsync("Sorry, I couldn't find that game");
 				return;
 			}
 
@@ -236,7 +236,7 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			Embed? gameEmbed = await GetGameEmbedAsync(game, count);
 			if (gameEmbed == null)
 			{
-				await FollowupAsync("Mi dispiace, non ho trovato il gioco che stavi cercando");
+				await FollowupAsync("Sorry, I couldn't find that game");
 				return;
 			}
 
@@ -268,40 +268,40 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 		{
 			var randomNumber = Convert.ToString(Random.Shared.Next(min, max));
 			Embed embed = DiscordUtils.CreateEmbed(randomNumber);
-			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 		}
 
-		[SlashCommand("dado", "Lancio uno o più dadi")]
-		public async Task Dice([Summary("dadi", "Numero di dadi [default 1]")] int dices = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
+		[SlashCommand("dado", "Roll one or more dice")]
+		public async Task Dice([Summary("dice", "How many dice [default 1]")] int dices = 1, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			var dicesResults = "";
 			for (var i = 0; i < dices; i++) dicesResults += Convert.ToString(Random.Shared.Next(1, 7)) + " ";
 			Embed embed = DiscordUtils.CreateEmbed(dicesResults);
-			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 		}
 
-		[SlashCommand("moneta", "Lancio una moneta")]
+		[SlashCommand("coin", "Flip a coin")]
 		public async Task Coin([Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			var list = new List<string> { "Testa", "Croce" };
 			int index = Random.Shared.Next(list.Count);
 			string result = list[index];
 			Embed embed = DiscordUtils.CreateEmbed(result);
-			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 		}
 
-		[SlashCommand("opzione", "Scelgo un'opzione tra quelle che mi date")]
+		[SlashCommand("opzione", "Pick one of the options you give me")]
 		public async Task RandomChoice([Summary("opzioni", "Opzioni separate dallo spazio")] string options, [Summary("ephemeral", "Voi vederlo solo tu?")] EAnswer ephemeral = EAnswer.No)
 		{
 			string[] separatedList = options.Split(" ");
 			int index = Random.Shared.Next(separatedList.Length);
 			string result = separatedList[index];
 			Embed embed = DiscordUtils.CreateEmbed(result);
-			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync(embed: embed, ephemeral: ephemeral == EAnswer.Yes);
 		}
 
 		[SlashCommand("user", "Scelgo uno di voi")]
-		public async Task OneOfYou([Summary("tutti", "Anche chi non è in chat vocale")] EAnswer all = EAnswer.No, [Summary("cortana", "Anche io?")] EAnswer cortana = EAnswer.No,
+		public async Task OneOfYou([Summary("tutti", "Including people not in voice chat")] EAnswer all = EAnswer.No, [Summary("cortana", "Anche io?")] EAnswer cortana = EAnswer.No,
 			[Summary("ephemeral", "Voi vederlo solo tu?")]
 			EAnswer ephemeral = EAnswer.No)
 		{
@@ -311,32 +311,32 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 					if (channel.ConnectedUsers.Contains(Context.User))
 						availableUsers = channel.ConnectedUsers;
 
-			List<SocketGuildUser> users = availableUsers.Where(user => !user.IsBot || (user.IsBot && user.Id == DiscordUtils.Data.CortanaId && cortana == EAnswer.Si)).ToList();
+			List<SocketGuildUser> users = availableUsers.Where(user => !user.IsBot || (user.IsBot && user.Id == DiscordUtils.Data.CortanaId && cortana == EAnswer.Yes)).ToList();
 
 			SocketGuildUser chosenUser = users[Random.Shared.Next(0, users.Count)];
-			await RespondAsync($"Ho scelto {chosenUser.Mention}", ephemeral: ephemeral == EAnswer.Si);
+			await RespondAsync($"Ho scelto {chosenUser.Mention}", ephemeral: ephemeral == EAnswer.Yes);
 		}
 	}
 
-	[Group("gestione", "Comandi gestione server")]
+	[Group("server", "Comandi server server")]
 	public class ManageGroup : InteractionModuleBase<SocketInteractionContext>
 	{
-		[SlashCommand("banned-words", "Vi mostro le parole bannate in questo server")]
+		[SlashCommand("banned-words", "Show the banned words on this server")]
 		public async Task ShowBannedWords()
 		{
 			if (DiscordUtils.SettingsFor(Context.Guild).BannedWords.Count == 0)
 			{
-				await RespondAsync("Non ci sono parole vietate in questo server");
+				await RespondAsync("There are no banned words on this server");
 				return;
 			}
 
-			string bannedWordsList = DiscordUtils.SettingsFor(Context.Guild).BannedWords.Aggregate("Ecco le parole bannate di questo server:\n```\n", (current, word) => current + word + "\n");
+			string bannedWordsList = DiscordUtils.SettingsFor(Context.Guild).BannedWords.Aggregate("Banned words on this server:\n```\n", (current, word) => current + word + "\n");
 			bannedWordsList += "```";
 			await RespondAsync(bannedWordsList);
 		}
 
-		[SlashCommand("modify-banned-words", "Aggiungo o rimuovo parole bannate da questo server")]
-		public async Task ShowBannedWords([Summary("action", "Cosa vuoi fare?")] EListAction action, [Summary("word", "Parola bannata")] string word)
+		[SlashCommand("modify-banned-words", "Add or remove banned words on this server")]
+		public async Task ShowBannedWords([Summary("action", "Cosa vuoi fare?")] EListAction action, [Summary("word", "Banned word")] string word)
 		{
 			word = word.ToLower();
 			switch (action)
@@ -344,34 +344,34 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 				case EListAction.Crea:
 					if (DiscordUtils.SettingsFor(Context.Guild).BannedWords.Contains(word))
 					{
-						await RespondAsync("Questa parola è già presente tra quelle bannate in questo server");
+						await RespondAsync("That word is already in this server's banned list");
 						return;
 					}
 
 					DiscordUtils.SettingsFor(Context.Guild).BannedWords.Add(word);
-					await RespondAsync("Parola aggiunta con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
+					await RespondAsync("Word added. Use ```/server banned-words``` to see the updated list");
 					break;
 				case EListAction.Elimina:
 					if (!DiscordUtils.SettingsFor(Context.Guild).BannedWords.Contains(word))
 					{
-						await RespondAsync("Questa parola non è presente tra quelle bannate in questo server");
+						await RespondAsync("That word is not in this server's banned list");
 						return;
 					}
 
 					DiscordUtils.SettingsFor(Context.Guild).BannedWords.Remove(word);
-					await RespondAsync("Parola rimossa con successo! Usa il seguente comando per visualizzare la nuova lista: ```/gestione banned-words```");
+					await RespondAsync("Word removed. Use ```/server banned-words``` to see the updated list");
 					break;
 			}
 
 			DiscordUtils.UpdateSettings();
 		}
 
-		[SlashCommand("kick", "Kicko un utente dal server")]
-		public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
+		[SlashCommand("kick", "Kick a user from the server")]
+		public async Task KickMember([Summary("user", "Chi vuoi kickare?")] SocketGuildUser user, [Summary("motivazione", "What is the reason?")] string reason = "No reason given")
 		{
 			if (user.Id == DiscordUtils.Data.ChiefId)
 			{
-				await RespondAsync("Non farei mai una cosa simile");
+				await RespondAsync("I would never do such a thing");
 			}
 			else if (user.Id == DiscordUtils.Data.CortanaId)
 			{
@@ -380,16 +380,16 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			else
 			{
 				await user.KickAsync(reason);
-				await RespondAsync("Utente kickato");
+				await RespondAsync("User kicked");
 			}
 		}
 
-		[SlashCommand("ban", "Banno un utente dal server")]
-		public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "Per quale motivo?")] string reason = "Motivazione non specificata")
+		[SlashCommand("ban", "Ban a user from the server")]
+		public async Task BanMember([Summary("user", "Chi vuoi bannare?")] SocketGuildUser user, [Summary("motivazione", "What is the reason?")] string reason = "No reason given")
 		{
 			if (user.Id == DiscordUtils.Data.ChiefId)
 			{
-				await RespondAsync("Non farei mai una cosa simile");
+				await RespondAsync("I would never do such a thing");
 			}
 			else if (user.Id == DiscordUtils.Data.CortanaId)
 			{
@@ -398,18 +398,18 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			else
 			{
 				await user.BanAsync(reason: reason);
-				await RespondAsync("Utente bannato");
+				await RespondAsync("User banned");
 			}
 		}
 
-		[SlashCommand("imposta-timeout", "Timeout di un utente dal server")]
+		[SlashCommand("imposta-timeout", "Time a user out")]
 		public async Task SetTimeoutMember([Summary("user", "Chi vuoi in timeout?")] SocketGuildUser user,
 			[Summary("tempo", "Quanti minuti deve durare il timeout? [Default: 10]")]
 			double timeout = 10)
 		{
 			if (user.Id == DiscordUtils.Data.ChiefId)
 			{
-				await RespondAsync("Non farei mai una cosa simile");
+				await RespondAsync("I would never do such a thing");
 			}
 			else if (user.Id == DiscordUtils.Data.CortanaId)
 			{
@@ -418,15 +418,15 @@ public class UtilityModule : InteractionModuleBase<SocketInteractionContext>
 			else
 			{
 				await user.SetTimeOutAsync(TimeSpan.FromMinutes(timeout));
-				await RespondAsync($"Utente in timeout per {timeout} minuti");
+				await RespondAsync($"User timed out for {timeout} minutes");
 			}
 		}
 
-		[SlashCommand("rimuovi-timeout", "Rimuovo il timeout di un utente del server")]
+		[SlashCommand("remove-timeout", "Remove a user's timeout")]
 		public async Task RemoveTimeoutMember([Summary("user", "Di chi vuoi rimuovere il timeout?")] SocketGuildUser user)
 		{
 			await user.RemoveTimeOutAsync();
-			await RespondAsync("Timeout rimosso");
+			await RespondAsync("Timeout removed");
 		}
 	}
 }

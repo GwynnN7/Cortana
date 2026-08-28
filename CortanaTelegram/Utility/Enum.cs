@@ -14,5 +14,9 @@ internal enum EArgsType
 	SetSetting,
 	Broadcast,
 	Timers,
-	DeleteSchedule
+	DeleteSchedule,
+	Llm,
+	SetPrompt,
+	SetAiSetting,
+	Launch
 }

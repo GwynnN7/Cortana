@@ -1,3 +1,4 @@
+using CortanaDiscord.Utility;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using CortanaLib;
@@ -18,6 +19,8 @@ public sealed class VoiceSession : IAsyncDisposable
 	private static readonly TimeSpan GatewayCallTimeout = TimeSpan.FromSeconds(25);
 	private static readonly TimeSpan GateTimeout = TimeSpan.FromSeconds(40);
 	private static readonly TimeSpan StreamTimeout = TimeSpan.FromSeconds(8);
+	private static readonly TimeSpan EarlyDrop = TimeSpan.FromSeconds(20);
+	private const int MaxReconnects = 3;
 
 	private readonly SocketGuild _guild;
 	private readonly SemaphoreSlim _connectionGate = new(1, 1);
@@ -34,6 +37,8 @@ public sealed class VoiceSession : IAsyncDisposable
 	private Task? _worker;
 	private int _primed;
 	private volatile bool _disposed;
+	private DateTime _connectedAt;
+	private int _reconnects;
 
 	public VoiceSession(SocketGuild guild) => _guild = guild;
 
@@ -48,24 +53,24 @@ public sealed class VoiceSession : IAsyncDisposable
 
 	public async Task<string> ConnectAsync(SocketVoiceChannel channel)
 	{
-		if (_disposed) return "Non sono più disponibile";
+		if (_disposed) return "I'm not available any more";
 
-		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Sto ancora chiudendo la connessione precedente, riprova";
+		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Still closing the previous connection, try again";
 		try
 		{
-			if (IsConnected && CurrentChannel?.Id == channel.Id) return "Sono già qui";
+			if (IsConnected && CurrentChannel?.Id == channel.Id) return "I'm already here";
 
 			await TeardownConnectionAsync();
 
 			DataHandler.Log($"[Voice] Connecting to '{channel.Name}' in '{_guild.Name}'");
-			IAudioClient? client = await channel.ConnectAsync(selfDeaf: true, selfMute: false).WaitAsync(GatewayCallTimeout);
-			if (client == null) return "Non riesco a connettermi al canale vocale";
+			IAudioClient? client = await channel.ConnectAsync(selfDeaf: false, selfMute: false).WaitAsync(GatewayCallTimeout);
+			if (client == null) return "I can't connect to the voice channel";
 
 			if (!await WaitForHandshake(client))
 			{
 				DataHandler.Log($"[Voice] Handshake to '{channel.Name}' timed out (state: {client.ConnectionState})");
 				await SafeStop(client);
-				return "La connessione al canale vocale non si è completata";
+				return "The voice connection never completed";
 			}
 
 			client.Disconnected += OnClientDisconnected;
@@ -76,14 +81,15 @@ public sealed class VoiceSession : IAsyncDisposable
 			CurrentChannel = channel;
 
 			DataHandler.Log($"[Voice] Connected to '{channel.Name}'");
+			_connectedAt = DateTime.UtcNow;
 			EnsureWorker();
 			Enqueue(HelloTrack());
-			return "Arrivo";
+			return "On my way";
 		}
 		catch (Exception ex)
 		{
 			DataHandler.Log($"[Voice] Connect failed: {ex.Message}");
-			return "Non riesco a connettermi al canale vocale";
+			return "I can't connect to the voice channel";
 		}
 		finally
 		{
@@ -120,19 +126,42 @@ public sealed class VoiceSession : IAsyncDisposable
 	private Task OnClientDisconnected(Exception exception)
 	{
 		DataHandler.Log($"[Voice] Voice client dropped in '{_guild.Name}': {exception.Message}");
+
+		SocketVoiceChannel? lost = CurrentChannel;
+		bool early = DateTime.UtcNow - _connectedAt < EarlyDrop;
+
 		_pcmStream = null;
 		CurrentChannel = null;
+
+		if (!early) _reconnects = 0;
+		if (_disposed || !early || lost == null || _reconnects >= MaxReconnects) return Task.CompletedTask;
+
+		_reconnects++;
+		_ = Task.Run(() => ReconnectAsync(lost.Id, _reconnects));
+
 		return Task.CompletedTask;
+	}
+
+	private async Task ReconnectAsync(ulong channelId, int attempt)
+	{
+		await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)));
+		if (_disposed) return;
+
+		SocketVoiceChannel? channel = _guild.GetVoiceChannel(channelId);
+		if (channel == null || channel.ConnectedUsers.All(user => user.Id == DiscordUtils.Data.CortanaId)) return;
+
+		DataHandler.Log($"[Voice] Reconnecting to '{channel.Name}' after an early drop ({attempt}/{MaxReconnects})");
+		await ConnectAsync(channel);
 	}
 
 	public async Task<string> DisconnectAsync()
 	{
-		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Sto ancora gestendo la connessione precedente, riprova";
+		if (!await _connectionGate.WaitAsync(GateTimeout)) return "Still handling the previous connection, try again";
 		try
 		{
-			if (_audioClient == null && CurrentChannel == null) return "Non sono connessa a nessun canale";
+			if (_audioClient == null && CurrentChannel == null) return "I'm not connected to any channel";
 			await TeardownConnectionAsync();
-			return "Mi sto disconnettendo";
+			return "Disconnecting";
 		}
 		finally
 		{
@@ -168,7 +197,10 @@ public sealed class VoiceSession : IAsyncDisposable
 			await SafeStop(client);
 		}
 
-		SocketVoiceChannel? channel = CurrentChannel;
+		SocketVoiceChannel? actual = _guild.VoiceChannels
+			.FirstOrDefault(voice => voice.ConnectedUsers.Any(user => user.Id == _guild.CurrentUser.Id));
+
+		SocketVoiceChannel? channel = actual ?? CurrentChannel;
 		CurrentChannel = null;
 		if (channel != null)
 		{
@@ -385,14 +417,17 @@ public sealed class VoiceSession : IAsyncDisposable
 			CreateNoWindow = true
 		};
 
-		foreach (string arg in new[]
+		bool remote = path.StartsWith("http", StringComparison.OrdinalIgnoreCase);
+
+		var args = new List<string> { "-hide_banner", "-loglevel", "warning", "-nostdin" };
+		if (remote)
 		{
-			"-hide_banner", "-loglevel", "warning", "-nostdin",
-			"-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5",
-			"-rw_timeout", "15000000",
-			"-i", path,
-			"-vn", "-ac", "2", "-f", "s16le", "-ar", "48000", "pipe:1"
-		}) info.ArgumentList.Add(arg);
+			args.AddRange(["-reconnect", "1", "-reconnect_streamed", "1", "-reconnect_delay_max", "5"]);
+			args.AddRange(["-rw_timeout", "15000000"]);
+		}
+		args.AddRange(["-i", path, "-vn", "-ac", "2", "-f", "s16le", "-ar", "48000", "pipe:1"]);
+
+		foreach (string arg in args) info.ArgumentList.Add(arg);
 
 		return Process.Start(info) ?? throw new InvalidOperationException("Unable to start ffmpeg");
 	}

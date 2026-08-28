@@ -1,5 +1,6 @@
 using CortanaKernel.API;
 using CortanaKernel.Hardware;
+using CortanaKernel.Kernel;
 using CortanaLib;
 using CortanaLib.Structures;
 
@@ -16,6 +17,8 @@ public static class Cortana
 		IpcHandler.Publish(EMessageCategory.Telegram, "Initializing IPC Service");
 
 		Task shutdownTask = Task.Run(WaitForShutdown);
+
+		ModelCatalogue.Start();
 
 		DataHandler.Log("Initializing API...");
 		CortanaApi.Initialize();

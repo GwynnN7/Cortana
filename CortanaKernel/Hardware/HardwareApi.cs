@@ -233,6 +233,10 @@ public static class HardwareApi
 				if (GetPower(EDevice.Computer) == EStatus.Off) return StringResult.Failure("Computer is off");
 
 				if (command == EComputerCommand.Command) return await ComputerHandler.RunCommand(args ?? "dir");
+				if (command == EComputerCommand.Launch)
+					return string.IsNullOrWhiteSpace(args)
+						? StringResult.Failure("Nothing to launch")
+						: await ComputerHandler.Launch(args);
 
 				bool result = command switch
 				{

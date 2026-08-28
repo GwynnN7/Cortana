@@ -80,14 +80,12 @@ internal sealed class UtilityModule : IModuleInterface
 				case ActionTag.VideoDownloader:
 					await cortana.EditMessageText(chatId, messageId, "Choose the download priority", replyMarkup: CreateVideoDownloadButtons());
 					break;
-				case ActionTag.Cancel:
-
-					await CreateMenu(cortana, query);
-					break;
 				case ActionTag.LeaveChat:
 					Utils.ChatArgs.TryGetValue(Utils.Topics.Home, out ChatArgs? genericChatArg);
-					if (genericChatArg is not ChatArgs<long> { Type: EArgsType.Chat } leaveChatArg) return;
-					await cortana.AnswerCallbackQuery(query.Id, $"Chat with {Utils.IdToName(leaveChatArg.Arg)} ended");
+					string ended = genericChatArg is ChatArgs<long> { Type: EArgsType.Chat } leaveChatArg
+						? $"Chat with {Utils.IdToName(leaveChatArg.Arg)} ended"
+						: "Chat ended";
+					await cortana.AnswerCallbackQuery(query.Id, ended);
 
 					await CreateMenu(cortana, query);
 					break;

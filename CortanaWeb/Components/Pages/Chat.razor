@@ -1,0 +1,243 @@
+@page "/chat"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@inject IJSRuntime Js
+
+<PageTitle>AI</PageTitle>
+
+<h1>AI</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section chat-section">
+    <header class="section-head">
+        <h2>Cortana</h2>
+        <button class="btn btn-ghost" disabled="@(_busy || _turns.Count == 0)" @onclick="Clear">New chat</button>
+    </header>
+
+    <div class="chat-log" id="chat-log">
+        @if (_turns.Count == 0)
+        {
+            <p class="chat-empty">Ask about the house, or tell her what to switch.</p>
+        }
+        @foreach (Turn turn in _turns)
+        {
+            <div class="chat-turn @(turn.Mine ? "chat-mine" : "chat-hers")">
+                <span class="chat-bubble">@turn.Text</span>
+            </div>
+        }
+        @if (_busy)
+        {
+            <div class="chat-turn chat-hers">
+                <span class="chat-bubble chat-typing"><i></i><i></i><i></i></span>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input">
+        <input class="input" placeholder="Message" maxlength="500" disabled="@_busy"
+               @bind="_draft" @bind:event="oninput" @onkeydown="OnKey"/>
+        <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" @onclick="Send">Send</button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Settings</h2>
+        <button class="btn btn-ghost" @onclick="() => _open = !_open">@(_open ? "Hide" : "Show")</button>
+    </header>
+
+    @if (_open)
+    {
+        <div class="brain">
+            <label class="brain-label" for="model">Model</label>
+            <select id="model" disabled="@_saving" @onchange="OnModel">
+                @foreach (ModelResponse model in _models)
+                {
+                    <option value="@model.Name" selected="@model.Current">@model.Name</option>
+                }
+            </select>
+
+            <label class="brain-label" for="temperature">
+                Temperature <span class="brain-value">@Number(EAiSetting.Temperature).ToString("0.##", CultureInfo.InvariantCulture)</span>
+            </label>
+            <input id="temperature" type="range" min="0" max="2" step="0.1" disabled="@_saving"
+                   value="@Number(EAiSetting.Temperature).ToString(CultureInfo.InvariantCulture)"
+                   @onchange="args => OnSetting(EAiSetting.Temperature, args)"/>
+            <small class="note">Low keeps her precise, high lets her improvise.</small>
+
+            <label class="brain-label" for="history">Exchanges remembered</label>
+            <input id="history" type="number" min="1" max="40" step="1" disabled="@_saving"
+                   value="@Number(EAiSetting.History).ToString("0", CultureInfo.InvariantCulture)"
+                   @onchange="args => OnSetting(EAiSetting.History, args)"/>
+
+            <label class="brain-label" for="discord">Discord session minutes</label>
+            <input id="discord" type="number" min="0.5" max="120" step="0.5" disabled="@_saving"
+                   value="@Number(EAiSetting.DiscordMinutes).ToString("0.##", CultureInfo.InvariantCulture)"
+                   @onchange="args => OnSetting(EAiSetting.DiscordMinutes, args)"/>
+            <small class="note">How long she keeps answering in a channel after being tagged.</small>
+
+            <label class="brain-label" for="prompt">System prompt</label>
+            <textarea id="prompt" class="brain-prompt" rows="14" disabled="@_saving" @bind="_prompt"></textarea>
+
+            <div class="brain-actions">
+                <button class="btn btn-primary" disabled="@_saving" @onclick="SavePrompt">Save prompt</button>
+                <button class="btn btn-ghost" disabled="@_saving" @onclick="ResetPrompt">Restore default</button>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private readonly List<Turn> _turns = [];
+    private string _conversation = "";
+    private string _draft = "";
+    private IReadOnlyList<ModelResponse> _models = [];
+    private string _prompt = "";
+    private IReadOnlyList<AiSettingResponse> _settings = [];
+    private string? _message;
+    private bool _open;
+    private bool _saving;
+    private bool _busy;
+
+    private record Turn(string Text, bool Mine);
+
+    protected override async Task OnInitializedAsync() => await LoadSettings();
+
+    private async Task LoadSettings()
+    {
+        _models = await State.GetModels();
+        _prompt = await State.GetPrompt();
+        _settings = await State.GetAiSettings();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _conversation = await Js.InvokeAsync<string?>("cortanaChatId.load") ?? await NewConversation();
+        }
+        catch (JSException)
+        {
+            _conversation = $"web:{Guid.NewGuid():N}";
+        }
+    }
+
+    private async Task<string> NewConversation()
+    {
+        var id = $"web:{Guid.NewGuid():N}";
+
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaChatId.save", id);
+        }
+        catch (JSException)
+        {
+        }
+
+        return id;
+    }
+
+    private async Task OnKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey) await Send();
+    }
+
+    private async Task Send()
+    {
+        string question = _draft.Trim();
+        if (_busy || question.Length == 0) return;
+
+        if (string.IsNullOrEmpty(_conversation)) _conversation = await NewConversation();
+
+        _draft = "";
+        _busy = true;
+        _turns.Add(new Turn(question, true));
+        await Scroll();
+
+        try
+        {
+            string reply = await State.Ask(question, _conversation);
+            _turns.Add(new Turn(reply, false));
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            await Scroll();
+        }
+    }
+
+    private async Task Clear()
+    {
+        _turns.Clear();
+        if (!string.IsNullOrEmpty(_conversation)) await State.ResetChat(_conversation);
+        _conversation = await NewConversation();
+    }
+
+    private async Task OnModel(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is not { Length: > 0 } model) return;
+
+        await Saving(async () =>
+        {
+            _message = await State.SetModel(model);
+            _models = await State.GetModels();
+        });
+    }
+
+    private double Number(EAiSetting setting)
+    {
+        string? value = _settings.FirstOrDefault(entry => entry.Setting == setting.ToString())?.Value;
+        return double.TryParse(value, CultureInfo.InvariantCulture, out double parsed) ? parsed : 0;
+    }
+
+    private async Task OnSetting(EAiSetting setting, ChangeEventArgs args)
+    {
+        if (!double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out double value)) return;
+
+        await Saving(async () =>
+        {
+            _message = await State.SetAiSetting(setting, value);
+            _settings = await State.GetAiSettings();
+        });
+    }
+
+    private Task SavePrompt() => Saving(async () => _message = await State.SetPrompt(_prompt));
+
+    private Task ResetPrompt() => Saving(async () =>
+    {
+        _message = await State.ResetPrompt();
+        _prompt = await State.GetPrompt();
+    });
+
+    private async Task Saving(Func<Task> action)
+    {
+        _saving = true;
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task Scroll()
+    {
+        StateHasChanged();
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaScrollChat");
+        }
+        catch (JSException)
+        {
+        }
+    }
+}

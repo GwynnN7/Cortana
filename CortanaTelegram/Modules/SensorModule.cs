@@ -65,13 +65,13 @@ internal sealed class SensorModule : IModuleInterface
 		switch (command)
 		{
 			case ActionTag.EnableAutomatic:
-				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On));
+				await ApiHandler.Post($"{ERoute.Sensors}/settings/{ESettings.AutomaticMode}", new PostValue((int)EStatus.On));
 				break;
 			case ActionTag.DisableAutomatic:
-				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off));
+				await ApiHandler.Post($"{ERoute.Sensors}/settings/{ESettings.AutomaticMode}", new PostValue((int)EStatus.Off));
 				break;
 			case ActionTag.ToggleLampRelay:
-				await ApiHandler.Post($"{ERoute.Settings}/{ESettings.LampToggle}", new PostValue(-1));
+				await ApiHandler.Post($"{ERoute.Sensors}/settings/{ESettings.LampToggle}", new PostValue(-1));
 				break;
 		}
 
@@ -83,7 +83,7 @@ internal sealed class SensorModule : IModuleInterface
 		await cortana.SendChatAction(Utils.HomeId, ChatAction.Typing);
 
 		if (chatArg is ChatArgs<ESettings> setting && int.TryParse(msgData.Message, out int value))
-			await ApiHandler.Post($"{ERoute.Settings}/{setting.Arg}", new PostValue(value));
+			await ApiHandler.Post($"{ERoute.Sensors}/settings/{setting.Arg}", new PostValue(value));
 
 		await cortana.DeleteMessage(Utils.HomeId, msgData.MessageId);
 		await CreateMenu(cortana, chatArg.Query);
@@ -92,7 +92,7 @@ internal sealed class SensorModule : IModuleInterface
 	private static async Task<string> GetSensorDashboard()
 	{
 		IOption<SensorListResponse> sensorsOption = await ApiHandler.Get<SensorListResponse>($"{ERoute.Sensors}");
-		IOption<SettingsListResponse> settingsOption = await ApiHandler.Get<SettingsListResponse>($"{ERoute.Settings}");
+		IOption<SettingsListResponse> settingsOption = await ApiHandler.Get<SettingsListResponse>($"{ERoute.Sensors}/settings");
 
 		string Sensor(ESensor sensor) => sensorsOption.Match(
 			list =>

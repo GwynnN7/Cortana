@@ -34,20 +34,20 @@ internal class CommandHandler(DiscordSocketClient client, InteractionService com
 		switch (result.Error)
 		{
 			case InteractionCommandError.UnmetPrecondition:
-				await context.Interaction.RespondAsync("Non hai l'autorizzazione per eseguire questo comando", ephemeral: true);
+				await context.Interaction.RespondAsync("You are not allowed to run this command", ephemeral: true);
 				break;
 			case InteractionCommandError.UnknownCommand:
-				await context.Interaction.RespondAsync("Mi dispiace, non conosco questo comando", ephemeral: true);
+				await context.Interaction.RespondAsync("Sorry, I don't know that command", ephemeral: true);
 				break;
 			case InteractionCommandError.BadArgs:
-				await context.Interaction.RespondAsync("Mi dispiace, non ho capito cosa intendi", ephemeral: true);
+				await context.Interaction.RespondAsync("Sorry, I didn't understand that", ephemeral: true);
 				break;
 			default:
-				await context.Interaction.RespondAsync("Non sono riuscita ad eseguire questo comando", ephemeral: true);
+				await context.Interaction.RespondAsync("I couldn't run that command", ephemeral: true);
 				break;
 		}
 
-		await DiscordUtils.SendToChannel($"C'è stato un problema:\n```{result.Error}: {result.ErrorReason}```", ECortanaChannels.Log);
+		await DiscordUtils.SendToChannel($"Something went wrong:\n```{result.Error}: {result.ErrorReason}```", ECortanaChannels.Log);
 	}
 
 	private async Task HandleInteraction(SocketInteraction arg)
@@ -59,7 +59,7 @@ internal class CommandHandler(DiscordSocketClient client, InteractionService com
 		}
 		catch (Exception ex)
 		{
-			await DiscordUtils.SendToChannel($"C'è stato un problema in HandleInteraction:\n```{ex.Message}```", ECortanaChannels.Log);
+			await DiscordUtils.SendToChannel($"Something went wrong handling that:\n```{ex.Message}```", ECortanaChannels.Log);
 			if (arg.Type == InteractionType.ApplicationCommand) await arg.GetOriginalResponseAsync().ContinueWith(async msg => await msg.Result.DeleteAsync());
 		}
 	}

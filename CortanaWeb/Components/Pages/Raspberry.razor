@@ -20,6 +20,62 @@
 
 <section class="section">
     <header class="section-head">
+        <h2>Subfunctions</h2>
+    </header>
+
+    <div class="card-grid">
+        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+        {
+            bool running = State.SubfunctionRunning(type);
+            <article class="card service-card @(running ? "is-on" : "is-off")">
+                <header>
+                    <span class="device-icon" aria-hidden="true">@Icons[type]</span>
+                    <div>
+                        <h3>@type.ToString().Replace("Cortana", "")</h3>
+                        <p class="device-state">@(running ? "Running" : "Stopped")</p>
+                    </div>
+                </header>
+
+                <div class="btn-row wrap">
+                    <button class="btn btn-on btn-small" disabled="@_busy"
+                            @onclick="() => RunSubfunction(type, ESubfunctionAction.Start)">Start</button>
+                    <button class="btn btn-small" disabled="@_busy"
+                            @onclick="() => RunSubfunction(type, ESubfunctionAction.Restart)">Restart</button>
+                    <button class="btn btn-small" disabled="@_busy"
+                            @onclick="() => RunSubfunction(type, ESubfunctionAction.Update)">Update</button>
+                    <button class="btn btn-off btn-small" disabled="@_busy"
+                            @onclick="() => RunSubfunction(type, ESubfunctionAction.Stop)">Stop</button>
+                </div>
+
+                @if (type == ESubFunctionType.CortanaKernel)
+                {
+                    <p class="note">Stopping the kernel stops every other subfunction.</p>
+                }
+            </article>
+        }
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Broadcast</h2>
+        <p class="section-hint">Publishes a message through the kernel to a log channel.</p>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_category" disabled="@_busy">
+            @foreach (EMessageCategory category in Enum.GetValues<EMessageCategory>())
+            {
+                <option value="@category">@category</option>
+            }
+        </select>
+        <input type="text" placeholder="Message" @bind="_broadcast" @bind:event="oninput" disabled="@_busy"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_broadcast))" @onclick="SendBroadcast">Send</button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
         <h2>Shell</h2>
         <p class="section-hint">Execute a command on Raspberry Pi.</p>
     </header>
@@ -62,8 +118,18 @@
 </section>
 
 @code {
+    private static readonly Dictionary<ESubFunctionType, string> Icons = new()
+    {
+        { ESubFunctionType.CortanaKernel, "🧠" },
+        { ESubFunctionType.CortanaTelegram, "✈️" },
+        { ESubFunctionType.CortanaDiscord, "💬" },
+        { ESubFunctionType.CortanaWeb, "🌐" }
+    };
+
     private IDisposable? _subscription;
     private string? _message;
+    private string _broadcast = "";
+    private EMessageCategory _category = EMessageCategory.Telegram;
     private string _command = "";
     private string? _output;
     private bool _busy;
@@ -73,6 +139,33 @@
         _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
 
     public void Dispose() => _subscription?.Dispose();
+
+    private async Task RunSubfunction(ESubFunctionType type, ESubfunctionAction action)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.Subfunction(type, action);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SendBroadcast()
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.Broadcast(_category, _broadcast);
+            _broadcast = "";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private Task OnEnter(KeyboardEventArgs args) => args.Key == "Enter" ? RunCommand() : Task.CompletedTask;
 

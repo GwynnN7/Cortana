@@ -1,12 +1,6 @@
-@page "/schedules"
-@attribute [Authorize(Policy = WebAuth.Policy)]
-@rendermode InteractiveServer
 @inject CortanaState State
 @implements IDisposable
 
-<PageTitle>Schedules</PageTitle>
-
-<h1>Schedules</h1>
 <Toast @bind-Message="_message"/>
 
 <section class="section">
@@ -95,7 +89,7 @@
     </div>
 
     <div class="field-row">
-        <select @bind="_draft.ActionType" disabled="@_busy">
+        <select value="@_draft.ActionType" disabled="@_busy" @onchange="OnActionType">
             @foreach (EScheduleAction action in Enum.GetValues<EScheduleAction>())
             {
                 <option value="@action">@action</option>
@@ -165,6 +159,15 @@
     public void Dispose() => _subscription?.Dispose();
 
     private async Task Reload() => _schedules = await State.GetSchedules();
+
+    private void OnActionType(ChangeEventArgs args)
+    {
+        if (!Enum.TryParse(args.Value?.ToString(), out EScheduleAction action)) return;
+
+        _draft.ActionType = action;
+        _draft.Target = TargetOptions(action).FirstOrDefault() ?? "";
+        _draft.Value = ValueOptions(action).FirstOrDefault() ?? "";
+    }
 
     private static List<string> TargetOptions(EScheduleAction action) => action switch
     {

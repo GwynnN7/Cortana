@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CortanaKernel.Hardware;
+using CortanaKernel.Hardware.Utility;
 using CortanaLib;
 using CortanaKernel.Kernel;
 using CortanaLib.Structures;
@@ -90,5 +91,7 @@ public static class HomeEndpoints
 		Settings: HardwareApi.Sensors.GetAllSettings(),
 		Raspberry: await HardwareApi.Raspberry.GetAllHardwareInfo(),
 		Subfunctions: await Bootloader.GetAllStatuses(),
+		Computer: MetricsStore.Latest().Match<MetricsResponse?>(metrics => metrics, () => null),
+		Automation: new AutomationResponse(AutomationService.State.ToString(), AutomationService.ManualMinutesLeft),
 		Timestamp: DateTimeOffset.Now);
 }
