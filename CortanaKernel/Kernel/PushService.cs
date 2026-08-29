@@ -143,8 +143,7 @@ public static class PushService
 			(!device.AlertsOnly || alert) &&
 			(device.Sources is not { Count: > 0 } || device.Sources.Contains(source.ToString()));
 
-		await Deliver($"Cortana · {source}", body, device => Wanted(device) && !device.Sticky, null, _ => true);
-		await Deliver(Title, body, device => Wanted(device) && device.Sticky, StatusTag, device => device.Vibrate);
+		await Deliver(StatusLine(), body, device => Wanted(device) && device.Sticky, StatusTag, device => device.Vibrate);
 
 		HoldThenRevert();
 	}
@@ -152,8 +151,8 @@ public static class PushService
 	public static Task Broadcast(string title, string body) => Deliver(title, body, _ => true, null, _ => true);
 
 	public static Task RefreshStatus() =>
-		Deliver(Title, StatusLine(), device => device.Sticky, StatusTag, _ => false);
-
+		Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
+		
 	private static void HoldThenRevert()
 	{
 		if (Devices.Values.All(device => !device.Sticky)) return;
@@ -167,7 +166,7 @@ public static class PushService
 
 	public static string StatusLine()
 	{
-		var parts = new List<string>();
+		var parts = new List<string>() { "Online"};
 
 		try
 		{
@@ -200,7 +199,7 @@ public static class PushService
 		{
 		}
 
-		return parts.Count > 0 ? string.Join("  ·  ", parts) : Title;
+		return parts.Count > 0 ? string.Join(" · ", parts) : Title;
 	}
 
 	private static async Task Deliver(string title, string body, Func<PostPushDevice, bool> wants, string? tag,
