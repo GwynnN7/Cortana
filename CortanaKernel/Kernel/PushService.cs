@@ -142,15 +142,17 @@ public static async Task Send(ELogSource source, string body, bool alert)
 			(!device.AlertsOnly || alert) &&
 			(device.Sources is not { Count: > 0 } || device.Sources.Contains(source.ToString()));
 
-		await Deliver(StatusLine(), body, device => Wanted(device) && device.Sticky, StatusTag, device => device.Vibrate);
-
+		await Deliver("", body, device => Wanted(device) && device.Sticky, StatusTag, device => device.Vibrate);
 		HoldThenRevert();
 	}
 
-	public static Task Broadcast(string title, string body) => Deliver(title, body, _ => true, null, _ => true);
+	public static async Task Broadcast(string message){
+		await Deliver("", message, _ => true, StatusTag, _ => true);
+		HoldThenRevert();
+	}
 
 	public static Task RefreshStatus() =>
-		Deliver(StatusLine(), "", device => device.Sticky, StatusTag, _ => false);
+		Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
 
 	private static void HoldThenRevert()
 	{
@@ -169,6 +171,19 @@ public static async Task Send(ELogSource source, string body, bool alert)
 
 		try
 		{
+			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
+
+			bool On(EDevice device) =>
+				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status
+					.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase) ?? false;
+
+			var first = new List<string>();
+			if (On(EDevice.Lamp)) first.Add("💡");
+			if (On(EDevice.Computer)) first.Add("🖥️");
+			if (On(EDevice.Generic)) first.Add("🔌");
+
+			if (first.Count > 0) parts.Add(string.Join(" ", first));
+
 			string? temperature = HardwareApi.Sensors.GetAllData()
 				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Temperature))?.Value;
 
@@ -176,23 +191,10 @@ public static async Task Send(ELogSource source, string body, bool alert)
 				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Motion))?.Value
 				.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
 
-			var head = new List<string>();
-			if (!string.IsNullOrWhiteSpace(temperature)) head.Add($"{temperature}°C");
-			if (motion) head.Add("🖲");
-			if (head.Count > 0) parts.Add(string.Join(" ", head));
-
-			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
-
-			bool On(EDevice device) =>
-				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status
-					.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase) ?? false;
-
-			var lit = new List<string>();
-			if (On(EDevice.Lamp)) lit.Add("💡");
-			if (On(EDevice.Computer)) lit.Add("🖥️");
-			if (On(EDevice.Generic)) lit.Add("🔌");
-
-			if (lit.Count > 0) parts.Add(string.Join(" ", lit));
+			var second = new List<string>();
+			if (motion) second.Add("🖲");
+			if (!string.IsNullOrWhiteSpace(temperature)) second.Add($"{temperature}°");
+			if (second.Count > 0) parts.Add(string.Join(" ", second));
 		}
 		catch (Exception)
 		{
