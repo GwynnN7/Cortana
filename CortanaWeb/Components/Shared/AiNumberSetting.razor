@@ -1,0 +1,47 @@
+@inject CortanaState State
+
+<div class="toggle-row">
+    <div>
+        <strong>@Label</strong>
+        <small>@Setting</small>
+    </div>
+    <input type="number" class="ai-number" min="@Min" max="@Max" step="@Step" disabled="@_busy"
+           value="@_value.ToString("0.##", CultureInfo.InvariantCulture)" @onchange="Save"/>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public EAiSetting Setting { get; set; }
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public double Min { get; set; }
+    [Parameter] public double Max { get; set; } = 100;
+    [Parameter] public double Step { get; set; } = 1;
+    [Parameter] public EventCallback<string> OnResult { get; set; }
+
+    private double _value;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        IReadOnlyList<AiSettingResponse> settings = await State.GetAiSettings();
+        string? raw = settings.FirstOrDefault(entry => entry.Setting == Setting.ToString())?.Value;
+        if (double.TryParse(raw, CultureInfo.InvariantCulture, out double parsed)) _value = parsed;
+    }
+
+    private async Task Save(ChangeEventArgs args)
+    {
+        if (!double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out double value)) return;
+
+        _busy = true;
+        try
+        {
+            await OnResult.InvokeAsync(await State.SetAiSetting(Setting, value));
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

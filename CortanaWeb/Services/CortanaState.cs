@@ -89,6 +89,26 @@ public sealed class CortanaState : BackgroundService
 
 	public Task<string> ClearLogs() => ApiHandler.Delete($"{ERoute.Logs}");
 
+	public MetricsResponse? RaspberryMetrics => Snapshot?.RaspberryMetrics;
+
+	public async Task<HistorySeries?> History(string metric, int hours)
+	{
+		IOption<HistorySeries> series = await ApiHandler.Get<HistorySeries>($"{ERoute.History}/{metric}?hours={hours}");
+		return series.Match(HistorySeries? (found) => found, () => null);
+	}
+
+	public Task<string> Journal(ESubFunctionType type, int lines = 100) =>
+		ApiHandler.Get($"{ERoute.SubFunctions}/{type}/journal?lines={lines}");
+
+	public Task<string> PushKey() => ApiHandler.Get($"{ERoute.Push}/key");
+
+	public Task<string> PushSubscribe(PostPushDevice device) => ApiHandler.Post($"{ERoute.Push}", device);
+
+	public Task<string> PushUnsubscribe(string endpoint) =>
+		ApiHandler.Delete($"{ERoute.Push}", new PostPushDevice(endpoint, "", ""));
+
+	public Task<string> PushTest() => ApiHandler.Post($"{ERoute.Push}/test");
+
 	public MetricsResponse? Computer => Snapshot?.Computer;
 
 	public string AutomationState => Snapshot?.Automation.State ?? nameof(EAutomationState.Automatic);

@@ -20,7 +20,10 @@ public enum EAiSetting
 {
 	Temperature,
 	History,
-	DiscordMinutes
+	DiscordMinutes,
+	HistoryMinutes,
+	HistoryDays,
+	NotifyMinutes
 }
 
 public record AiSettingResponse(string Setting, string Value) : IApiResponse;

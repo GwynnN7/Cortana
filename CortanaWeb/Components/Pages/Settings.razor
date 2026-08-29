@@ -1,0 +1,147 @@
+@page "/settings"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Settings</PageTitle>
+
+<h1>Settings</h1>
+<Toast @bind-Message="_message"/>
+
+<div class="subnav">
+    @foreach ((string key, string label) in Tabs)
+    {
+        <button class="subnav-tab @(_tab == key ? "subnav-active" : "")" @onclick="() => _tab = key">@label</button>
+    }
+</div>
+
+@if (_tab == "sensors")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Sensors</h2>
+        </header>
+
+        <div class="toggle-row">
+            <div>
+                <strong>Automatic mode</strong>
+                <small>@(State.AutomationRunning ? "Cortana controls the lamp" : "Manual control only")</small>
+            </div>
+            <button class="switch @(State.AutomationRunning ? "switch-on" : "")"
+                    role="switch" aria-checked="@(State.AutomationRunning ? "true" : "false")" aria-label="Automatic mode"
+                    disabled="@_busy" @onclick="ToggleAutomatic">
+                <span class="knob"></span>
+            </button>
+        </div>
+
+        <div class="toggle-row">
+            <div>
+                <strong>Lamp is a toggle relay</strong>
+                <small>Pulse the pin instead of holding a level</small>
+            </div>
+            <button class="switch @(State.SettingEnabled(ESettings.LampToggle) ? "switch-on" : "")"
+                    role="switch" aria-checked="@Aria(ESettings.LampToggle)" aria-label="Lamp is a toggle relay"
+                    disabled="@_busy" @onclick="() => Toggle(ESettings.LampToggle)">
+                <span class="knob"></span>
+            </button>
+        </div>
+
+        <div class="settings-grid">
+            <NumberSetting Setting="ESettings.LightThreshold" Label="Light threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.MorningHour" Label="Morning hour" Hint="0-23, when automatic mode resumes" Icon="🕒" Max="23" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.NightHour" Label="Night hour" Hint="0-23, when night mode starts" Icon="🌙" Max="23" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.ManualModeMinutes" Label="Manual hold (min)" Hint="minutes a hand switch pauses automation" Icon="✋" Max="1440" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.MotionOffMin" Label="Motion timeout (min)" Hint="seconds, computer off" Icon="⏳" Max="3600" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.MotionOffMax" Label="Motion timeout (max)" Hint="seconds, computer on" Icon="⏳" Max="3600" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.CO2Threshold" Label="CO₂ threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
+            <NumberSetting Setting="ESettings.TvocThreshold" Label="TVOC threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>
+        </div>
+    </section>
+}
+else if (_tab == "ai")
+{
+    <AiSettingsPanel OnResult="Report"/>
+}
+else if (_tab == "logging")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Where to send logs</h2>
+        </header>
+
+        @foreach ((ESettings setting, string title, string hint) in Destinations)
+        {
+            <div class="toggle-row">
+                <div>
+                    <strong>@title</strong>
+                    <small>@hint</small>
+                </div>
+                <button class="switch @(State.SettingEnabled(setting) ? "switch-on" : "")" role="switch"
+                        aria-checked="@Aria(setting)" aria-label="@title"
+                        disabled="@_busy" @onclick="() => Toggle(setting)"><span class="knob"></span></button>
+            </div>
+        }
+    </section>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>History</h2>
+            <p class="section-hint">How often readings are recorded and how long they are kept</p>
+        </header>
+
+        <AiNumberSetting Setting="EAiSetting.HistoryMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="EAiSetting.HistoryDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
+    </section>
+}
+
+@code {
+    private static readonly (string Key, string Label)[] Tabs =
+        [("sensors", "Sensors"), ("ai", "AI"), ("logging", "Logging")];
+
+    private static readonly (ESettings Setting, string Title, string Hint)[] Destinations =
+    [
+        (ESettings.LogToWeb, "Send in the dashboard", "This page"),
+        (ESettings.LogToTelegram, "Send to Telegram", "Log topic in the home group"),
+        (ESettings.LogToDiscord, "Send to Discord", "Log channel")
+    ];
+
+    private string _tab = "sensors";
+    private IDisposable? _subscription;
+    private string? _message;
+    private bool _busy;
+
+    protected override void OnInitialized() =>
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private void Report(string result) => _message = result;
+
+    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
+
+    private Task ToggleAutomatic()
+    {
+        EStatus target = State.AutomationRunning ? EStatus.Off : EStatus.On;
+        return Apply(ESettings.AutomaticMode, (int)target);
+    }
+
+    private Task Toggle(ESettings setting)
+    {
+        EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
+        return Apply(setting, (int)target);
+    }
+
+    private async Task Apply(ESettings setting, int value)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.SetSetting(setting, value);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

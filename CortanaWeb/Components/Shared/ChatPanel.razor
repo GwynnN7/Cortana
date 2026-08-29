@@ -1,0 +1,140 @@
+@inject CortanaState State
+@inject IJSRuntime Js
+
+<Toast @bind-Message="_message"/>
+
+<div class="chat-section">
+    @if (ShowHeader)
+    {
+        <header class="section-head">
+            <h2>Cortana</h2>
+            <button class="btn btn-ghost" disabled="@(_busy || _turns.Count == 0)" @onclick="ClearAsync">New chat</button>
+        </header>
+    }
+
+    <div class="chat-log" id="chat-log">
+        @if (_turns.Count == 0)
+        {
+            <p class="chat-empty">What do you want to talk about?</p>
+        }
+        @foreach (Turn turn in _turns)
+        {
+            <div class="chat-turn @(turn.Mine ? "chat-mine" : "chat-hers")">
+                <span class="chat-bubble">@turn.Text</span>
+            </div>
+        }
+        @if (_busy)
+        {
+            <div class="chat-turn chat-hers">
+                <span class="chat-bubble chat-typing"><i></i><i></i><i></i></span>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input">
+        <input class="input" placeholder="Message" maxlength="500" disabled="@_busy"
+               @bind="_draft" @bind:event="oninput" @onkeydown="OnKey"/>
+        <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" @onclick="Send">Send</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool ShowHeader { get; set; } = true;
+
+    private readonly List<Turn> _turns = [];
+    private string _conversation = "";
+    private string _draft = "";
+    private string? _message;
+    private bool _busy;
+
+    private record Turn(string Text, bool Mine);
+
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _conversation = await Js.InvokeAsync<string?>("cortanaChatId.load") ?? await NewConversation();
+        }
+        catch (JSException)
+        {
+            _conversation = $"web:{Guid.NewGuid():N}";
+        }
+    }
+
+    private async Task<string> NewConversation()
+    {
+        var id = $"web:{Guid.NewGuid():N}";
+
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaChatId.save", id);
+        }
+        catch (JSException)
+        {
+        }
+
+        return id;
+    }
+
+    private async Task OnKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !args.ShiftKey) await Send();
+    }
+
+    private async Task Send()
+    {
+        string question = _draft.Trim();
+        if (_busy || question.Length == 0) return;
+
+        if (string.IsNullOrEmpty(_conversation)) _conversation = await NewConversation();
+
+        _draft = "";
+        _busy = true;
+        _turns.Add(new Turn(question, true));
+        await Scroll();
+
+        try
+        {
+            string reply = await State.Ask(question, _conversation);
+            _turns.Add(new Turn(reply, false));
+        }
+        catch (Exception ex)
+        {
+            _message = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+            await Scroll();
+        }
+    }
+
+    public async Task ClearAsync()
+    {
+        _turns.Clear();
+        if (!string.IsNullOrEmpty(_conversation)) await State.ResetChat(_conversation);
+        _conversation = await NewConversation();
+    }
+
+
+
+
+
+
+
+    private async Task Scroll()
+    {
+        StateHasChanged();
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaScrollChat");
+        }
+        catch (JSException)
+        {
+        }
+    }
+}

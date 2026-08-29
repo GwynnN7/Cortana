@@ -12,6 +12,32 @@
 
 <section class="section">
     <header class="section-head">
+        <h2>Hi, I'm Cortana</h2>
+        <div class="btn-row">
+            @if (_chatOpen)
+            {
+                <button class="btn btn-ghost" @onclick="ClearChat">Clear</button>
+            }
+            <button class="btn btn-ghost" @onclick="() => _chatOpen = !_chatOpen">@(_chatOpen ? "Hide" : "Chat")</button>
+        </div>
+    </header>
+
+    <div class="chips">
+        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+        {
+            <span class="chip @(State.SubfunctionRunning(type) ? "chip-ok" : "chip-bad")">
+                <span class="dot"></span>@type.ToString().Replace("Cortana", "")
+            </span>
+        }
+    </div>
+
+    <div class="chat-body @(_chatOpen ? "" : "collapsed")">
+        <ChatPanel @ref="_chat" ShowHeader="false"/>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
         <h2><a class="section-link" href="/sensors">Sensors</a></h2>
         <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
             @(State.SensorsOnline ? "Station online" : "Station offline")
@@ -40,7 +66,7 @@
 
 <section class="section">
     <header class="section-head">
-        <h2><a class="section-link" href="/devices">Quick Devices</a></h2>
+        <h2><a class="section-link" href="/devices">Quick Toggles</a></h2>
     </header>
 
     <div class="quick-grid">
@@ -61,27 +87,7 @@
 
 <ComputerCard Metrics="State.Computer"/>
 
-<section class="section">
-    <header class="section-head">
-        <h2><a class="section-link" href="/raspberry">Raspberry</a></h2>
-    </header>
-
-    <div class="tiles tiles-4">
-        <StatTile Icon="🍓" Label="CPU temperature" Value="@State.RaspberryInfo(ERaspberryInfo.Temperature)"/>
-        <StatTile Icon="📍" Label="Location" Value="@State.RaspberryInfo(ERaspberryInfo.Location)"/>
-        <StatTile Icon="📬" Label="Public IP" Value="@State.RaspberryInfo(ERaspberryInfo.Ip)"/>
-        <StatTile Icon="🌐" Label="Gateway" Value="@State.RaspberryInfo(ERaspberryInfo.Gateway)"/>
-    </div>
-
-    <div class="chips">
-        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
-        {
-            <span class="chip @(State.SubfunctionRunning(type) ? "chip-ok" : "chip-bad")">
-                <span class="dot"></span>@type.ToString().Replace("Cortana", "")
-            </span>
-        }
-    </div>
-</section>
+<ComputerCard Metrics="State.RaspberryMetrics"/>
 
 <section class="section section-more">
     <header class="section-head">
@@ -89,9 +95,10 @@
     </header>
 
     <div class="quick-grid">
-        <a class="quick" href="/raspberry"><span aria-hidden="true">🍓</span> Raspberry</a>
+        <a class="quick" href="/raspberry"><span aria-hidden="true">🧠</span> Core</a>
         <a class="quick" href="/utility"><span aria-hidden="true">🧰</span> Utility</a>
         <a class="quick" href="/logs"><span aria-hidden="true">📜</span> Logs</a>
+        <a class="quick" href="/settings"><span aria-hidden="true">⚙️</span> Settings</a>
     </div>
 </section>
 
@@ -103,6 +110,14 @@
         (EDevice.Computer, "🖥️", true),
         (EDevice.Power, "⚡", false)
     ];
+
+    private ChatPanel? _chat;
+    private bool _chatOpen;
+
+    private async Task ClearChat()
+    {
+        if (_chat != null) await _chat.ClearAsync();
+    }
 
     private IDisposable? _subscription;
     private string? _message;

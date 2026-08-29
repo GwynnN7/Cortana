@@ -2,9 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using CortanaLib.Structures;
 
-namespace CortanaDesktop;
+namespace CortanaLib;
 
-internal static class SystemMonitor
+public static class SystemMonitor
 {
 	private static readonly string[] CpuHwmon = ["k10temp", "coretemp", "zenpower", "cpu_thermal", "acpitz"];
 	private static readonly string[] GpuHwmon = ["amdgpu", "nouveau", "i915"];

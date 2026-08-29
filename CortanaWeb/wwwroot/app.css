@@ -127,6 +127,7 @@ a:hover { color: var(--accent-strong); }
 .brand small { color: var(--text-dim); font-size: 0.75rem; }
 
 .nav-links { display: flex; flex-direction: column; gap: 0.2rem; flex: 1; }
+.nav-home { order: -1; }
 
 .nav-link {
     display: flex;
@@ -283,7 +284,7 @@ a:hover { color: var(--accent-strong); }
 
 @media (max-width: 700px) {
     .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
-    .section-more .quick-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .section-more .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .quick { padding: 0.7rem 0.5rem; font-size: 0.88rem; }
 }
 
@@ -589,6 +590,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
     .nav-secondary { display: none; }
 
     .nav-links { flex-direction: row; justify-content: space-around; width: 100%; gap: 0; }
+    .nav-home { order: 0; }
 
     .nav-link {
         flex-direction: column;
@@ -796,7 +798,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
 .metric-nested .metric-name { padding-left: 0.6rem; color: var(--text-dim); }
 .metric-value { width: 8.5rem; text-align: right; color: var(--text-dim); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 
-/* Quick devices: the extra two only fit on wide screens */
+/* Quick toggles: the extra two only fit on wide screens */
 .quick-wide { display: none; }
 
 @media (min-width: 700px) {
@@ -827,3 +829,69 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
     border-radius: 999px;
 }
 .log-list::-webkit-scrollbar-thumb:hover, .chat-log::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.journal { max-height: min(55vh, 34rem); overflow: auto; font-size: 0.76rem; line-height: 1.45; }
+
+.pill-link { text-decoration: none; }
+.pill-link:hover { border-color: currentColor; }
+
+/* A stale computer keeps its last reading, visibly dimmed */
+.section-stale .metric-body { opacity: 0.4; filter: grayscale(0.5); }
+
+.source-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: 0.35rem 0.9rem; margin-top: 0.3rem; }
+.source-grid label { display: flex; align-items: center; gap: 0.45rem; font-size: 0.88rem; color: var(--text-muted); }
+
+/* ---------- History chart ---------- */
+
+.chart { width: 100%; height: 160px; display: block; margin-top: 0.4rem; }
+.chart-axis {
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-dim);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    margin: 0.2rem 0 0 3.1rem;
+}
+.chart-axis span:first-child { text-align: left; }
+.chart-axis span:last-child { text-align: right; }
+.chart-legend { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-top: 0.6rem; color: var(--text-muted); font-size: 0.84rem; }
+.chart-legend strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.chart-empty { color: var(--text-dim); font-size: 0.88rem; padding: 1.5rem 0; text-align: center; }
+
+.collapsed { display: none; }
+
+.chart-wrap { display: flex; gap: 0.5rem; align-items: stretch; margin-top: 0.4rem; }
+.chart-wrap .chart { flex: 1 1 auto; min-width: 0; margin-top: 0; }
+.chart-y {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 2.6rem;
+    height: 160px;
+    text-align: right;
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+.chart-y span { transform: translateY(-0.35em); }
+.chart-y span:first-child { transform: translateY(0); }
+.chart-y span:last-child { transform: translateY(-0.7em); }
+
+.subnav { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.subnav-tab {
+    padding: 0.45rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+.subnav-tab:hover { border-color: var(--accent); color: var(--text); }
+.subnav-active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-strong); }
+
+.ai-number { max-width: 7rem; flex: 0 0 auto; }
+
+.chips + .chat-body { margin-top: 0.9rem; }

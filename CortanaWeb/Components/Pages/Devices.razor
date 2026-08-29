@@ -21,7 +21,7 @@
 <section class="section">
     <header class="section-head">
         <h2>Room</h2>
-        <p class="section-hint">Switches the entire room and and off depending on multiple factors.</p>
+        <p class="section-hint">Switches the entire room and and off</p>
     </header>
 
     <div class="room">
@@ -39,7 +39,7 @@
 <section class="section">
     <header class="section-head">
         <h2>Computer</h2>
-        <p class="section-hint">Execute a command to the connected desktop.</p>
+        <p class="section-hint">Execute a command to the connected desktop</p>
         <span class="badge @(State.IsDeviceOn(EDevice.Computer) ? "badge-ok" : "badge-bad")">
             @(State.IsDeviceOn(EDevice.Computer) ? "Connected" : "Not connected")
         </span>
@@ -60,7 +60,7 @@
         </div>
 
         <div class="field-row">
-            <input type="text" placeholder="Application to launch, e.g. steam" @bind="_launch" @bind:event="oninput"
+            <input type="text" placeholder="Application to launch" @bind="_launch" @bind:event="oninput"
                    disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, LaunchApp))"/>
             <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_launch))" @onclick="LaunchApp">Launch</button>
         </div>
@@ -78,7 +78,6 @@
     }
 </section>
 
-<ComputerCard Metrics="State.Computer"/>
 
 @code {
     private IDisposable? _subscription;

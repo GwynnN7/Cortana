@@ -142,7 +142,7 @@ public class HardwareModule : InteractionModuleBase<SocketInteractionContext>
 	{
 		if (subfunction == ESubFunctionType.CortanaKernel && action == ESubfunctionAction.Stop && confirm != EAnswer.Yes)
 		{
-			await RespondAsync("Stopping the Kernel cascades to every subfunction, including this bot. Re-run with `confirm: Yes`.", ephemeral: true);
+			await RespondAsync("Stopping the Kernel cascades to every subfunction", ephemeral: true);
 			return;
 		}
 

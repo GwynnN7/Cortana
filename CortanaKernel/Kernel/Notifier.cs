@@ -23,6 +23,8 @@ public static class Notifier
 		if (HardwareApi.Sensors.LogDestinationEnabled(ESettings.LogToTelegram)) IpcHandler.Publish(EMessageCategory.Telegram, message);
 		if (HardwareApi.Sensors.LogDestinationEnabled(ESettings.LogToDiscord)) IpcHandler.Publish(EMessageCategory.Discord, message);
 
+		_ = PushService.Send(source, message, level != ELogLevel.Info);
+
 		SystemEvents.Notify();
 	}
 

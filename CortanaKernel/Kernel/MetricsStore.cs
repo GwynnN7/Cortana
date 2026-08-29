@@ -1,3 +1,4 @@
+using CortanaLib;
 using CortanaLib.Structures;
 
 namespace CortanaKernel.Kernel;
@@ -17,6 +18,26 @@ public static class MetricsStore
 			_latest = metrics;
 			_timestamp = DateTime.Now;
 		}
+	}
+
+	private static readonly TimeSpan LocalInterval = TimeSpan.FromSeconds(10);
+	private static System.Threading.Timer? _localTimer;
+	private static PostMetrics _local = SystemMonitor.Collect();
+
+	public static void StartLocalSampler()
+	{
+		_localTimer?.Dispose();
+		_localTimer = new System.Threading.Timer(_ => _local = SystemMonitor.Collect(), null, LocalInterval, LocalInterval);
+	}
+
+	public static MetricsResponse Local()
+	{
+		PostMetrics metrics = _local;
+
+		return new MetricsResponse(
+			metrics.Host, metrics.Os, metrics.CpuLoad, metrics.CpuTemp,
+			metrics.MemoryUsed, metrics.MemoryTotal, metrics.GpuLoad, metrics.GpuTemp,
+			metrics.DiskUsed, metrics.DiskTotal, metrics.Uptime, DateTime.Now, false);
 	}
 
 	public static IOption<MetricsResponse> Latest()

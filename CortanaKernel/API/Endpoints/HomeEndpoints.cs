@@ -92,6 +92,7 @@ public static class HomeEndpoints
 		Raspberry: await HardwareApi.Raspberry.GetAllHardwareInfo(),
 		Subfunctions: await Bootloader.GetAllStatuses(),
 		Computer: MetricsStore.Latest().Match<MetricsResponse?>(metrics => metrics, () => null),
+		RaspberryMetrics: MetricsStore.Local(),
 		Automation: new AutomationResponse(AutomationService.State.ToString(), AutomationService.ManualMinutesLeft),
 		Timestamp: DateTimeOffset.Now);
 }

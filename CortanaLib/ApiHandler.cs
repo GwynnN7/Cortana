@@ -79,8 +79,8 @@ public static class ApiHandler
 	public static Task<string> Post(string route, object? body = null, CancellationToken token = default) =>
 		SendText(HttpMethod.Post, route, body ?? new { }, token);
 
-	public static Task<string> Delete(string route, CancellationToken token = default) =>
-		SendText(HttpMethod.Delete, route, null, token);
+	public static Task<string> Delete(string route, object? body = null, CancellationToken token = default) =>
+		SendText(HttpMethod.Delete, route, body, token);
 
 	public static Task<IOption<T>> Get<T>(string route, CancellationToken token = default) where T : IApiResponse =>
 		SendJson<T>(HttpMethod.Get, route, null, token);

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using CortanaKernel.API.Endpoints;
 using CortanaLib;
 using Microsoft.Extensions.Primitives;
@@ -22,7 +23,7 @@ public static class CortanaApi
 			foreach (System.Text.Json.Serialization.JsonConverter converter in DataHandler.ApiSerializerOptions.Converters)
 				options.SerializerOptions.Converters.Add(converter);
 		});
-		builder.Services.AddLogging(c => c.ClearProviders());
+		builder.Services.AddLogging(c => { c.ClearProviders(); c.AddSimpleConsole(); c.SetMinimumLevel(LogLevel.Error); });
 		builder.Services.AddCors(options => options.AddPolicy("AllowCors", policy =>
 			policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
@@ -46,6 +47,8 @@ public static class CortanaApi
 		_api.MapScheduleEndpoints();
 		_api.MapLogEndpoints();
 		_api.MapAiEndpoints();
+		_api.MapPushEndpoints();
+		_api.MapHistoryEndpoints();
 	}
 
 		private static Func<HttpContext, RequestDelegate, Task> ApiKeyMiddleware(ApiKeyGate gate)

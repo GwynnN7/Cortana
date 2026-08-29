@@ -15,7 +15,10 @@ public static class AiSettings
 		{
 			[EAiSetting.Temperature] = (0, 2),
 			[EAiSetting.History] = (1, 40),
-			[EAiSetting.DiscordMinutes] = (0.5, 120)
+			[EAiSetting.DiscordMinutes] = (0.5, 120),
+			[EAiSetting.HistoryMinutes] = (1, 60),
+			[EAiSetting.HistoryDays] = (1, 3650),
+			[EAiSetting.NotifyMinutes] = (0.5, 120)
 		};
 
 	private sealed class Stored
@@ -24,6 +27,9 @@ public static class AiSettings
 		public double Temperature { get; set; } = 0.9;
 		public int History { get; set; } = 8;
 		public double DiscordMinutes { get; set; } = 1;
+		public int HistoryMinutes { get; set; } = 5;
+		public int HistoryDays { get; set; } = 180;
+		public double NotifyMinutes { get; set; } = 5;
 	}
 
 	private static Stored _values = Load();
@@ -39,6 +45,9 @@ public static class AiSettings
 	public static double Temperature { get { lock (Gate) return _values.Temperature; } }
 	public static int History { get { lock (Gate) return _values.History; } }
 	public static double DiscordMinutes { get { lock (Gate) return _values.DiscordMinutes; } }
+	public static int HistoryMinutes { get { lock (Gate) return _values.HistoryMinutes; } }
+	public static int HistoryDays { get { lock (Gate) return _values.HistoryDays; } }
+	public static double NotifyMinutes { get { lock (Gate) return _values.NotifyMinutes; } }
 
 	private static Stored Load()
 	{
@@ -107,6 +116,9 @@ public static class AiSettings
 		EAiSetting.Temperature => Temperature.ToString("0.##", CultureInfo.InvariantCulture),
 		EAiSetting.History => History.ToString(CultureInfo.InvariantCulture),
 		EAiSetting.DiscordMinutes => DiscordMinutes.ToString("0.##", CultureInfo.InvariantCulture),
+		EAiSetting.HistoryMinutes => HistoryMinutes.ToString(CultureInfo.InvariantCulture),
+		EAiSetting.HistoryDays => HistoryDays.ToString(CultureInfo.InvariantCulture),
+		EAiSetting.NotifyMinutes => NotifyMinutes.ToString("0.##", CultureInfo.InvariantCulture),
 		_ => ""
 	};
 
@@ -126,10 +138,18 @@ public static class AiSettings
 				case EAiSetting.Temperature: _values.Temperature = value; break;
 				case EAiSetting.History: _values.History = (int)value; break;
 				case EAiSetting.DiscordMinutes: _values.DiscordMinutes = value; break;
+				case EAiSetting.HistoryMinutes: _values.HistoryMinutes = (int)value; break;
+				case EAiSetting.HistoryDays: _values.HistoryDays = (int)value; break;
+				case EAiSetting.NotifyMinutes: _values.NotifyMinutes = value; break;
 			}
 
 			StringResult saved = Save();
-			return saved.IsOk ? StringResult.Success($"{setting} set to {Read(setting)}") : saved;
+			if (!saved.IsOk) return saved;
+
+			if (setting == EAiSetting.HistoryMinutes) HistoryService.Reschedule();
+			if (setting == EAiSetting.HistoryDays) HistoryService.Prune();
+
+			return StringResult.Success($"{setting} set to {Read(setting)}");
 		}
 	}
 }

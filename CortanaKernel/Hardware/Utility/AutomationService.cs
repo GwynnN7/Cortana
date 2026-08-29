@@ -21,6 +21,7 @@ public static class AutomationService
 		private static DateTime? _manualUntil;
 
 		private static bool _nightApplied;
+		private static bool _sleeping;
 
 		private static bool _nightDeferred;
 
@@ -72,7 +73,7 @@ public static class AutomationService
 			{
 				if (_manualUntil.HasValue && DateTime.Now < _manualUntil.Value) return EAutomationState.Manual;
 			}
-			return IsNight(DateTime.Now) ? EAutomationState.Night : EAutomationState.Automatic;
+			return _sleeping || IsNight(DateTime.Now) ? EAutomationState.Night : EAutomationState.Automatic;
 		}
 	}
 
@@ -162,6 +163,7 @@ public static class AutomationService
 	{
 		ClearManualHold();
 		_nightDeferred = false;
+		_sleeping = false;
 
 		Settings.AutomaticMode = EStatus.On;
 		Settings.Save();
@@ -201,6 +203,8 @@ public static class AutomationService
 		return Task.CompletedTask;
 	}
 
+	public static void WakeUp() => _sleeping = false;
+
 	public static void ClearManualHold()
 	{
 		lock (StateLock)
@@ -214,6 +218,7 @@ public static class AutomationService
 	public static void EnterSleepMode()
 	{
 		_nightApplied = true;
+		_sleeping = true;
 		ApplyNight("Good night, switching everything off", force: true);
 	}
 

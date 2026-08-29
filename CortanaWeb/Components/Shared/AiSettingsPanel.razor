@@ -1,0 +1,124 @@
+@inject CortanaState State
+
+<section class="section">
+    <header class="section-head">
+        <h2>Model</h2>
+    </header>
+
+    <div class="brain">
+        <label class="brain-label" for="model">Model</label>
+        <select id="model" disabled="@_saving" @onchange="OnModel">
+            @foreach (ModelResponse model in _models)
+            {
+                <option value="@model.Name" selected="@model.Current">@model.Name</option>
+            }
+        </select>
+
+        <label class="brain-label" for="temperature">
+            Temperature <span class="brain-value">@Number(EAiSetting.Temperature).ToString("0.##", CultureInfo.InvariantCulture)</span>
+        </label>
+        <input id="temperature" type="range" min="0" max="2" step="0.1" disabled="@_saving"
+               value="@Number(EAiSetting.Temperature).ToString(CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(EAiSetting.Temperature, args)"/>
+        <small class="note">Low to be precise, high to improvise</small>
+
+        <label class="brain-label" for="history">Exchanges remembered</label>
+        <input id="history" type="number" min="1" max="40" step="1" disabled="@_saving"
+               value="@Number(EAiSetting.History).ToString("0", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(EAiSetting.History, args)"/>
+
+        <label class="brain-label" for="discord">Discord session minutes</label>
+        <input id="discord" type="number" min="0.5" max="120" step="0.5" disabled="@_saving"
+               value="@Number(EAiSetting.DiscordMinutes).ToString("0.##", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(EAiSetting.DiscordMinutes, args)"/>
+        <small class="note">How long to keep answering in a channel after being tagged</small>
+
+        <label class="brain-label" for="notify">Notification hold (min)</label>
+        <input id="notify" type="number" min="0.5" max="120" step="0.5" disabled="@_saving"
+               value="@Number(EAiSetting.NotifyMinutes).ToString("0.##", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(EAiSetting.NotifyMinutes, args)"/>
+        <small class="note">How long the persistent notification shows an event before falling back to the status line</small>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>System prompt</h2>
+    </header>
+
+    <div class="brain">
+        <textarea id="prompt" class="brain-prompt" rows="14" disabled="@_saving" @bind="_prompt"></textarea>
+
+        <div class="brain-actions">
+            <button class="btn btn-primary" disabled="@_saving" @onclick="SavePrompt">Save prompt</button>
+            <button class="btn btn-ghost" disabled="@_saving" @onclick="ResetPrompt">Restore default</button>
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public EventCallback<string> OnResult { get; set; }
+
+    private IReadOnlyList<ModelResponse> _models = [];
+    private IReadOnlyList<AiSettingResponse> _settings = [];
+    private string _prompt = "";
+    private bool _saving;
+
+    protected override async Task OnInitializedAsync() => await Load();
+
+    private async Task Load()
+    {
+        _models = await State.GetModels();
+        _prompt = await State.GetPrompt();
+        _settings = await State.GetAiSettings();
+    }
+
+    private double Number(EAiSetting setting)
+    {
+        string? value = _settings.FirstOrDefault(entry => entry.Setting == setting.ToString())?.Value;
+        return double.TryParse(value, CultureInfo.InvariantCulture, out double parsed) ? parsed : 0;
+    }
+
+    private async Task OnModel(ChangeEventArgs args)
+    {
+        if (args.Value?.ToString() is not { Length: > 0 } model) return;
+
+        await Saving(async () =>
+        {
+            await OnResult.InvokeAsync(await State.SetModel(model));
+            _models = await State.GetModels();
+        });
+    }
+
+    private async Task OnSetting(EAiSetting setting, ChangeEventArgs args)
+    {
+        if (!double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out double value)) return;
+
+        await Saving(async () =>
+        {
+            await OnResult.InvokeAsync(await State.SetAiSetting(setting, value));
+            _settings = await State.GetAiSettings();
+        });
+    }
+
+    private Task SavePrompt() => Saving(async () => await OnResult.InvokeAsync(await State.SetPrompt(_prompt)));
+
+    private Task ResetPrompt() => Saving(async () =>
+    {
+        await OnResult.InvokeAsync(await State.ResetPrompt());
+        _prompt = await State.GetPrompt();
+    });
+
+    private async Task Saving(Func<Task> action)
+    {
+        _saving = true;
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

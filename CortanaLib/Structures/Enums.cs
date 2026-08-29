@@ -9,7 +9,9 @@ public enum ERoute
 	SubFunctions,
 	Schedules,
 	Logs,
-	AI
+	AI,
+	Push,
+	History
 }
 
 public enum ESubFunctionType

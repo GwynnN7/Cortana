@@ -12,7 +12,7 @@
     <div class="nav-links">
         @foreach ((string href, string label, string icon, bool primary) in Links)
         {
-            <NavLink class="@($"nav-link {(primary ? "nav-primary" : "nav-secondary")}")" href="@href" Match="@(href == "" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+            <NavLink class="@($"nav-link {(primary ? "nav-primary" : "nav-secondary")} {(href == "" ? "nav-home" : "")}")" href="@href" Match="@(href == "" ? NavLinkMatch.All : NavLinkMatch.Prefix)">
                 <span class="nav-icon"><Icon Name="@icon" Size="20"/></span>
                 <span class="nav-label">@label</span>
             </NavLink>
@@ -30,11 +30,11 @@
 @code {
     private static readonly (string Href, string Label, string Icon, bool Primary)[] Links =
     [
-        ("", "Dashboard", "dashboard", true),
         ("devices", "Devices", "devices", true),
+        ("", "Dashboard", "dashboard", true),
         ("sensors", "Sensors", "sensors", true),
-        ("chat", "AI", "chat", true),
-        ("raspberry", "Raspberry", "raspberry", false),
+        ("raspberry", "Core", "raspberry", false),
+        ("settings", "Settings", "settings", false),
         ("utility", "Utility", "utility", false),
         ("logs", "Logs", "logs", false)
     ];

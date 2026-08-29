@@ -1,7 +1,7 @@
-<span class="pill @(Online ? "pill-ok" : "pill-bad")" title="@Title">
+<a class="pill pill-link @(Online ? "pill-ok" : "pill-bad")" href="/logs" title="@Title">
     <span class="dot"></span>
     @Label
-</span>
+</a>
 
 @code {
     [Parameter] public bool Online { get; set; }

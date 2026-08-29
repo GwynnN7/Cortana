@@ -1,0 +1,92 @@
+@inject CortanaState State
+
+<section class="section">
+    <header class="section-head">
+        <h2>@Title</h2>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_metric" @bind:after="Load" disabled="@_loading">
+            @foreach (string metric in Metrics)
+            {
+                <option value="@metric">@Pretty(metric)</option>
+            }
+        </select>
+        <select @bind="_hours" @bind:after="Load" disabled="@_loading">
+            <option value="6">6 hours</option>
+            <option value="24">24 hours</option>
+            <option value="72">3 days</option>
+            <option value="168">7 days</option>
+            <option value="720">30 days</option>
+        </select>
+    </div>
+
+    <HistoryChart Series="_series" Min="Bounds().Low" Max="Bounds().High" Binary="IsBinary"/>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string[] Metrics { get; set; } = [];
+    [Parameter] public string Title { get; set; } = "History";
+
+    private string _metric = "";
+    private int _hours = 24;
+    private HistorySeries? _series;
+    private bool _loading;
+
+    private static readonly Dictionary<string, string> Labels = new()
+    {
+        ["co2"] = "CO₂",
+        ["tvoc"] = "TVOC",
+        ["pi_temp"] = "CPU Temperature",
+        ["pi_cpu"] = "CPU Usage",
+        ["pi_ram"] = "RAM Usage",
+        ["pc_temp"] = "CPU Temperature",
+        ["pc_cpu"] = "CPU Usage",
+        ["pc_ram"] = "RAM Usage",
+        ["pc_gpu"] = "GPU Usage",
+        ["pc_gpu_temp"] = "GPU Temperature",
+        ["lamp"] = "Lamp",
+        ["computer"] = "Computer",
+        ["motion"] = "Motion"
+    };
+
+    private static readonly string[] BinaryMetrics = ["motion", "lamp", "computer"];
+
+    private bool IsBinary => BinaryMetrics.Contains(_metric);
+
+    /// Fixed axis bounds keep a flat reading readable; null lets the axis follow the data.
+    private (double? Low, double? High) Bounds() => _metric switch
+    {
+        "motion" or "lamp" or "computer" => (0, 1),
+        "humidity" or "pi_cpu" or "pi_ram" or "pc_cpu" or "pc_ram" or "pc_gpu" => (0, 100),
+        "pi_temp" or "pc_temp" or "pc_gpu_temp" => (30, 100),
+        "temperature" => (10, 40),
+        "co2" => (400, 2000),
+        "tvoc" => (0, 5000),
+        _ => (null, null)
+    };
+
+    private static string Pretty(string metric) =>
+        Labels.TryGetValue(metric, out string? label) ? label : char.ToUpper(metric[0]) + metric[1..];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _metric = Metrics.FirstOrDefault() ?? "";
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        if (string.IsNullOrEmpty(_metric)) return;
+
+        _loading = true;
+        try
+        {
+            _series = await State.History(_metric, _hours);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

@@ -18,12 +18,16 @@ public static class Cortana
 
 		Task shutdownTask = Task.Run(WaitForShutdown);
 
+		MetricsStore.StartLocalSampler();
 		ModelCatalogue.Start();
+		HistoryService.Start();
 
 		DataHandler.Log("Initializing API...");
 		CortanaApi.Initialize();
 		Task apiTask = CortanaApi.RunAsync();
 
+		PushService.StartHeartbeat();
+		_ = PushService.RefreshStatus();
 		DataHandler.Log("Boot Completed, I'm Online!");
 		await Task.WhenAll(apiTask, shutdownTask);
 

@@ -1,5 +1,6 @@
 using System.Globalization;
 using CortanaKernel.Hardware;
+using CortanaKernel.Kernel;
 using CortanaKernel.Hardware.Utility;
 using CortanaLib.Structures;
 
@@ -17,6 +18,12 @@ public static class RaspberryEndpoints
 			.WithSummary("Temperature, location, gateway and public IP.")
 			.Produces<RaspberryListResponse>();
 
+		group.MapGet("/metrics", Metrics)
+			.Access(EApiAccess.ReadOnly)
+			.WithName("GetRaspberryMetrics")
+			.WithSummary("CPU, RAM, disk and temperature of the Raspberry itself.")
+			.Produces<MetricsResponse>();
+
 		group.MapGet("/{info}", GetInfo)
 			.Access(EApiAccess.ReadOnly)
 			.WithName("GetRaspberryInfoItem")
@@ -28,6 +35,12 @@ public static class RaspberryEndpoints
 			.WithName("CommandRaspberry")
 			.WithSummary("Shuts down, reboots, or runs a shell command on the Pi.")
 			.Produces<MessageResponse>();
+	}
+
+	private static IResult Metrics(HttpRequest request)
+	{
+		MetricsResponse metrics = MetricsStore.Local();
+		return ApiResults.Ok(request, MetricsStore.Render(metrics), metrics);
 	}
 
 	private static async Task<IResult> AllInfo(HttpRequest request)

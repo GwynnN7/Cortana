@@ -29,6 +29,12 @@ public static class SubfunctionEndpoints
 			.WithSummary("Turns logging to one destination on or off. Any other number toggles.")
 			.Produces<SettingsResponse>();
 
+		group.MapGet("/{subfunction}/journal", Journal)
+			.Access(EApiAccess.ReadOnly)
+			.WithName("GetSubfunctionJournal")
+			.WithSummary("Recent systemd journal lines for one subfunction.")
+			.Produces<MessageResponse>();
+
 		group.MapGet("/{subfunction}", Status)
 			.Access(EApiAccess.ReadOnly)
 			.WithName("GetSubfunction")
@@ -74,6 +80,14 @@ public static class SubfunctionEndpoints
 			return ApiResults.UnknownValue<ESubfunctionAction>(request, "Action", command.Action);
 
 		return ApiResults.From(request, await Bootloader.SubfunctionCall(parsed, action));
+	}
+
+	private static async Task<IResult> Journal(string subfunction, int? lines, HttpRequest request)
+	{
+		if (!ApiResults.TryParseEnum(subfunction, out ESubFunctionType parsed))
+			return ApiResults.UnknownValue<ESubFunctionType>(request, "Subfunction", subfunction);
+
+		return ApiResults.From(request, await Bootloader.Journal(parsed, lines ?? 100));
 	}
 
 	private static bool TryParseTarget(string target, out ESettings setting)

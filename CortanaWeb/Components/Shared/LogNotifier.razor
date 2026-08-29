@@ -1,0 +1,63 @@
+@rendermode InteractiveServer
+@inject CortanaState State
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+@code {
+    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(30);
+
+    private System.Threading.Timer? _timer;
+    private DateTimeOffset _lastSeen = DateTimeOffset.Now;
+    private bool _enabled;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        try
+        {
+            _enabled = await Js.InvokeAsync<bool>("cortanaNotify.isEnabled");
+        }
+        catch (JSException)
+        {
+            return;
+        }
+
+        if (_enabled) _timer = new System.Threading.Timer(_ => _ = Check(), null, Interval, Interval);
+    }
+
+    private async Task Check()
+    {
+        try
+        {
+            if (!await Js.InvokeAsync<bool>("cortanaNotify.isEnabled")) return;
+            if (await Js.InvokeAsync<string?>("cortanaPush.current") is { Length: > 0 }) return;
+
+            IReadOnlyList<LogEntry> entries = await State.GetLogs(20);
+            if (entries.Count == 0) return;
+
+            bool alertsOnly = await Js.InvokeAsync<bool>("cortanaNotify.alertsOnly");
+
+            List<LogEntry> fresh = entries
+                .Where(entry => entry.Timestamp > _lastSeen)
+                .Where(entry => !alertsOnly || entry.Level != ELogLevel.Info)
+                .ToList();
+
+            _lastSeen = entries[0].Timestamp;
+            if (fresh.Count == 0) return;
+
+            LogEntry latest = fresh[0];
+            string title = fresh.Count == 1 ? $"Cortana · {latest.Source}" : $"Cortana · {fresh.Count} new";
+
+            await Js.InvokeVoidAsync("cortanaNotify.show", title, latest.Message);
+        }
+        catch (Exception)
+        {
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_timer != null) await _timer.DisposeAsync();
+    }
+}

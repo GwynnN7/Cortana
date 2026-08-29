@@ -135,7 +135,11 @@ public static class HardwareApi
 				case ESettings.AutomaticMode:
 					AutomationService.Settings.AutomaticMode = ToStatus(value, AutomationService.Settings.AutomaticMode);
 					
-					if (AutomationService.Settings.AutomaticMode == EStatus.On) AutomationService.ClearManualHold();
+					if (AutomationService.Settings.AutomaticMode == EStatus.On)
+					{
+						AutomationService.ClearManualHold();
+						AutomationService.WakeUp();
+					}
 					break;
 				case ESettings.MorningHour:
 					AutomationService.Settings.MorningHour = value;

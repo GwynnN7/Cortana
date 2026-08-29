@@ -20,13 +20,18 @@ public static class LlmTools
 		[nameof(GetSettings)] = AIFunctionFactory.Create(GetSettings),
 		[nameof(SetSetting)] = AIFunctionFactory.Create(SetSetting),
 		[nameof(GetComputerMetrics)] = AIFunctionFactory.Create(GetComputerMetrics),
+		[nameof(GetRaspberryMetrics)] = AIFunctionFactory.Create(GetRaspberryMetrics),
+		[nameof(GetHistory)] = AIFunctionFactory.Create(GetHistory),
 		[nameof(RunOnComputer)] = AIFunctionFactory.Create(RunOnComputer),
 		[nameof(LaunchOnComputer)] = AIFunctionFactory.Create(LaunchOnComputer),
 		[nameof(RunOnRaspberry)] = AIFunctionFactory.Create(RunOnRaspberry)
 	};
 
 	private static readonly string[] Harmless =
-		[nameof(GetDevices), nameof(GetSensors), nameof(GetSettings), nameof(GetComputerMetrics)];
+	[
+		nameof(GetDevices), nameof(GetSensors), nameof(GetSettings),
+		nameof(GetComputerMetrics), nameof(GetRaspberryMetrics), nameof(GetHistory)
+	];
 
 	public static IReadOnlyDictionary<string, AIFunction> ReadOnly { get; } =
 		All.Where(tool => Harmless.Contains(tool.Key)).ToDictionary(tool => tool.Key, tool => tool.Value);
@@ -43,6 +48,34 @@ public static class LlmTools
 				? $"{MetricsStore.Render(metrics)}\nThese numbers are old, the computer stopped reporting."
 				: MetricsStore.Render(metrics),
 			() => "The computer has not reported any metrics yet");
+
+	[Description("Performance and temperature of the Raspberry Pi that runs the house.")]
+	private static string GetRaspberryMetrics() => MetricsStore.Render(MetricsStore.Local());
+
+	[Description("How a sensor or machine reading changed over time. Use this for questions about the past, like how warm it was today.")]
+	private static string GetHistory(
+		[Description("One of: temperature, humidity, light, co2, tvoc, motion, lamp, computer, pi_cpu, pi_temp, pi_ram, pc_cpu, pc_temp, pc_ram")] string metric,
+		[Description("How many hours back to look, 1 to 720")] int hours)
+	{
+		string wanted = metric.Trim().ToLowerInvariant();
+		if (!HistoryService.Metrics.Contains(wanted))
+			return $"Unknown metric '{metric}'. Valid metrics: {string.Join(", ", HistoryService.Metrics)}";
+
+		DateTime to = DateTime.Now;
+		DateTime from = to.AddHours(-Math.Clamp(hours, 1, 720));
+
+		IReadOnlyList<HistoryPoint> points = HistoryService.Read(wanted, from, to);
+		if (points.Count == 0) return $"Nothing recorded for {wanted} in the last {hours} hours";
+
+		HistoryPoint coldest = points.MinBy(point => point.Value)!;
+		HistoryPoint warmest = points.MaxBy(point => point.Value)!;
+
+		return $"{wanted} over the last {hours}h: " +
+			$"lowest {Math.Round(coldest.Value, 1)} at {coldest.At:HH:mm}, " +
+			$"highest {Math.Round(warmest.Value, 1)} at {warmest.At:HH:mm}, " +
+			$"average {Math.Round(points.Average(point => point.Value), 1)}, " +
+			$"now {Math.Round(points[^1].Value, 1)} ({points.Count} samples)";
+	}
 
 	[Description("Run a shell command on the desktop computer and return its output. To start a graphical application use LaunchOnComputer instead.")]
 	private static async Task<string> RunOnComputer([Description("Shell command, runs under bash on Arch Linux")] string command)

@@ -27,8 +27,13 @@ public record SystemStatusResponse(
 	IReadOnlyList<SensorResponse> Raspberry,
 	IReadOnlyList<SubfunctionResponse> Subfunctions,
 	MetricsResponse? Computer,
+	MetricsResponse? RaspberryMetrics,
 	AutomationResponse Automation,
 	DateTimeOffset Timestamp
 ) : IApiResponse;
 
 public record AutomationResponse(string State, int ManualMinutesLeft) : IApiResponse;
+
+public record HistoryPoint(DateTime At, double Value);
+public record HistorySeries(string Metric, string Unit, int Points, double Min, double Max, double Average, IReadOnlyList<HistoryPoint> Samples) : IApiResponse;
+public record HistoryInfoResponse(IReadOnlyList<string> Metrics, int Days, int Minutes, long Bytes) : IApiResponse;

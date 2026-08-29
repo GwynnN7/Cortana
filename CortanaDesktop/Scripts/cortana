@@ -156,6 +156,18 @@ def handle_api(args):
     print_blue(res)
 
 # --- Module: Deploy ---
+def started_at(service):
+    """systemd's ActiveEnterTimestamp, so we can tell a real restart from a still-running old process."""
+    probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
+                            f"systemctl --user show {service} -p ActiveEnterTimestamp --value"],
+                           capture_output=True, text=True)
+    return probe.stdout.strip()
+
+def is_active(service):
+    probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
+                            f"systemctl --user is-active --quiet {service}"], capture_output=True)
+    return probe.returncode == 0
+
 def handle_deploy(args):
     """Mirrors the local working tree onto the Pi and restarts what changed."""
     if not BASE_PATH:
@@ -187,18 +199,21 @@ def handle_deploy(args):
     run_cmd(["ssh", "-o", "ConnectTimeout=10", PI,
              "cp ~/Cortana/CortanaKernel/Scripts/*.service ~/.config/systemd/user/ && systemctl --user daemon-reload"])
 
+    started_before = {svc: started_at(svc) for svc in targets}
+
     for svc in targets:
         print_blue(f"Restarting {svc} (clean publish, this takes a while)")
         run_cmd(["ssh", "-o", "ConnectTimeout=10", PI, f"systemctl --user restart {svc} --no-block"])
 
-    print_blue("Waiting for services")
-    for _ in range(80):
-        probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
-                                f"systemctl --user is-active --quiet {targets[0]}"],
-                               capture_output=True)
-        if probe.returncode == 0:
-            break
-        time.sleep(10)
+    print_blue("Waiting for the new build to come up")
+    for svc in targets:
+        for _ in range(90):
+            now = started_at(svc)
+            if now and now != started_before[svc] and is_active(svc):
+                break
+            time.sleep(10)
+        else:
+            print_blue(f"WARNING: {svc} did not come back up, the old build may still be running")
 
     status = ('for s in cortana-kernel cortana-telegram cortana-discord cortana-web; do '
               'printf "  %-18s %s\n" "$s" "$(systemctl --user is-active $s)"; done')

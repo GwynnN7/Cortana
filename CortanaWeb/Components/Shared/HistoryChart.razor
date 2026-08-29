@@ -1,0 +1,113 @@
+@using System.Globalization
+
+@if (Series is { Samples.Count: > 1 })
+{
+    <div class="chart-wrap">
+        <div class="chart-y">
+            @foreach (double tick in Ticks)
+            {
+                <span>@Label(tick)</span>
+            }
+        </div>
+
+        <svg class="chart" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img"
+             aria-label="@Series.Metric over time">
+            <defs>
+                <linearGradient id="chart-fill-@Id" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="var(--accent)" stop-opacity="0"/>
+                </linearGradient>
+            </defs>
+
+            @foreach (double tick in Ticks)
+            {
+                <line x1="0" x2="@Width" y1="@Y(tick).ToString("F1", Invariant)" y2="@Y(tick).ToString("F1", Invariant)"
+                      stroke="var(--border)" stroke-width="1"/>
+            }
+
+            <path d="@Area" fill="url(#chart-fill-@Id)"/>
+            <path d="@Line" fill="none" stroke="var(--accent)" stroke-width="2"
+                  stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+        </svg>
+    </div>
+
+    <div class="chart-axis">
+        @foreach (DateTime moment in TimeTicks)
+        {
+            <span>@moment.ToString(Format)</span>
+        }
+    </div>
+
+    <div class="chart-legend">
+        <span>min <strong>@Value(Series.Min)</strong></span>
+        <span>avg <strong>@Value(Series.Average)</strong></span>
+        <span>max <strong>@Value(Series.Max)</strong></span>
+        <span class="note">@Series.Points samples</span>
+    </div>
+}
+else if (Series is { Points: 1 })
+{
+    <p class="chart-empty">Only one sample so far — a line needs two. The next one is recorded within a few minutes.</p>
+}
+else
+{
+    <p class="chart-empty">Nothing recorded in this window yet.</p>
+}
+
+@code {
+    [Parameter, EditorRequired] public HistorySeries? Series { get; set; }
+
+    /// Fixed axis bounds. Left null the axis follows the data.
+    [Parameter] public double? Min { get; set; }
+    [Parameter] public double? Max { get; set; }
+
+    /// Renders the axis as Off/On rather than numbers.
+    [Parameter] public bool Binary { get; set; }
+
+    private const int Width = 600;
+    private const int Height = 160;
+
+    private static readonly CultureInfo Invariant = CultureInfo.InvariantCulture;
+
+    private readonly string Id = Guid.NewGuid().ToString("N")[..6];
+
+    private double Low => Min ?? Padded().Low;
+    private double High => Max ?? Padded().High;
+
+    private double Span => High - Low < 0.001 ? 1 : High - Low;
+
+    /// Without fixed bounds, widen the data range a little so the line never rides the edge.
+    private (double Low, double High) Padded()
+    {
+        double low = Series!.Samples.Min(point => point.Value);
+        double high = Series!.Samples.Max(point => point.Value);
+        double margin = high - low < 0.5 ? 0.5 : (high - low) * 0.1;
+
+        return (Math.Floor(low - margin), Math.Ceiling(high + margin));
+    }
+
+    private IEnumerable<double> Ticks =>
+        Binary ? [1, 0] : Enumerable.Range(0, 4).Select(step => High - Span * step / 3);
+
+    private string Label(double value) =>
+        Binary ? value >= 0.5 ? "On" : "Off" : value.ToString(Span >= 10 ? "0" : "0.#", Invariant);
+
+    private string Value(double value) =>
+        Binary ? $"{value * 100:0}% on" : $"{value.ToString("0.#", Invariant)}{Series!.Unit}";
+
+    /// Five evenly spaced sample times, so the x-axis reads as a scale rather than two endpoints.
+    private IEnumerable<DateTime> TimeTicks =>
+        Enumerable.Range(0, 5).Select(step => Series!.Samples[step * (Series.Samples.Count - 1) / 4].At);
+
+    private string Format =>
+        (Series!.Samples[^1].At - Series.Samples[0].At).TotalHours > 30 ? "dd MMM" : "HH:mm";
+
+    private double X(int index) => (double)index / (Series!.Samples.Count - 1) * Width;
+
+    private double Y(double value) => Height - (Math.Clamp(value, Low, High) - Low) / Span * Height;
+
+    private string Line => string.Join(" ", Series!.Samples.Select((point, index) =>
+        $"{(index == 0 ? "M" : "L")}{X(index).ToString("F1", Invariant)},{Y(point.Value).ToString("F1", Invariant)}"));
+
+    private string Area => $"{Line} L{Width.ToString(Invariant)},{Height.ToString(Invariant)} L0,{Height.ToString(Invariant)} Z";
+}

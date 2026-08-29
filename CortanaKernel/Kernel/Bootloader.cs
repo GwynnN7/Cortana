@@ -14,6 +14,23 @@ public static class Bootloader
 	private static IReadOnlyList<SubfunctionResponse>? _cachedStatuses;
 	private static DateTime _cachedStatusesTime = DateTime.MinValue;
 
+	public static async Task<StringResult> Journal(ESubFunctionType type, int lines)
+	{
+		int wanted = Math.Clamp(lines, 10, 500);
+
+		try
+		{
+			string output = await Helper.RunCommandWithOutput(
+				$"journalctl --user -u {GetServiceName(type)} -n {wanted} --no-pager --reverse --output=short-iso", TimeSpan.FromSeconds(20));
+
+			return StringResult.Success(string.IsNullOrWhiteSpace(output) ? "No journal entries" : output.TrimEnd());
+		}
+		catch (Exception ex)
+		{
+			return StringResult.Failure($"Could not read the journal: {ex.Message}");
+		}
+	}
+
 	private static string GetServiceName(ESubFunctionType type) => type switch
 	{
 		ESubFunctionType.CortanaKernel => "cortana-kernel",

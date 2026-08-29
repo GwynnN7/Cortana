@@ -1,6 +1,6 @@
 @if (Metrics is { } pc)
 {
-    <section class="section">
+    <section class="section @(pc.Stale ? "section-stale" : "")">
         <header class="section-head">
             <h2>@pc.Host</h2>
             <span class="badge @(pc.Stale ? "badge-bad" : "badge-ok")">
@@ -8,17 +8,22 @@
             </span>
         </header>
 
+        <div class="metric-body">
         <p class="metric-device">CPU</p>
         <Metric Name="Load" Percent="pc.CpuLoad" Detail="@($"{pc.CpuLoad:F0}%")" Nested="true"/>
         <Metric Name="Temp" Percent="pc.CpuTemp" Detail="@($"{pc.CpuTemp:F0} °C")" Nested="true" Thermal="true"/>
 
-        <p class="metric-device">GPU</p>
-        <Metric Name="Load" Percent="pc.GpuLoad" Detail="@($"{pc.GpuLoad:F0}%")" Nested="true"/>
-        <Metric Name="Temp" Percent="pc.GpuTemp" Detail="@($"{pc.GpuTemp:F0} °C")" Nested="true" Thermal="true"/>
+        @if (pc.GpuLoad > 0 || pc.GpuTemp > 0)
+        {
+            <p class="metric-device">GPU</p>
+            <Metric Name="Load" Percent="pc.GpuLoad" Detail="@($"{pc.GpuLoad:F0}%")" Nested="true"/>
+            <Metric Name="Temp" Percent="pc.GpuTemp" Detail="@($"{pc.GpuTemp:F0} °C")" Nested="true" Thermal="true"/>
+        }
 
         <p class="metric-device">Memory</p>
         <Metric Name="RAM" Percent="Ratio(pc.MemoryUsed, pc.MemoryTotal)" Detail="@($"{pc.MemoryUsed:F1}/{pc.MemoryTotal:F1} GB")" Nested="true"/>
         <Metric Name="Disk" Percent="Ratio(pc.DiskUsed, pc.DiskTotal)" Detail="@($"{pc.DiskUsed:F0}/{pc.DiskTotal:F0} GB")" Nested="true"/>
+        </div>
     </section>
 }
 

@@ -47,36 +47,36 @@
 
 <section class="section">
     <header class="section-head">
-        <h2>Where to send logs</h2>
-        <p class="section-hint">Forward notifications and logs to the subfunctions</p>
+        <h2>Service journal</h2>
+        <p class="section-hint">Journal of systemd output from the Pi</p>
     </header>
 
-    <div class="toggle-row">
-        <div><strong>Send in the dashboard</strong><small>This page</small></div>
-        <button class="switch @(State.SettingEnabled(ESettings.LogToWeb) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToWeb)" aria-label="Send logs in the dashboard"
-                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToWeb)"><span class="knob"></span></button>
+    <div class="field-row">
+        <select @bind="_journalService" disabled="@_journalBusy">
+            @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+            {
+                <option value="@type">@type.ToString().Replace("Cortana", "")</option>
+            }
+        </select>
+        <select @bind="_journalLines" disabled="@_journalBusy">
+            <option value="50">50 lines</option>
+            <option value="100">100 lines</option>
+            <option value="200">200 lines</option>
+            <option value="500">500 lines</option>
+        </select>
+        <button class="btn" disabled="@_journalBusy" @onclick="LoadJournal">Load</button>
     </div>
 
-    <div class="toggle-row">
-        <div><strong>Send to Telegram</strong><small>Log topic in the home group</small></div>
-        <button class="switch @(State.SettingEnabled(ESettings.LogToTelegram) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToTelegram)" aria-label="Send logs to Telegram"
-                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToTelegram)"><span class="knob"></span></button>
-    </div>
-
-    <div class="toggle-row">
-        <div><strong>Send to Discord</strong><small>Log channel</small></div>
-        <button class="switch @(State.SettingEnabled(ESettings.LogToDiscord) ? "switch-on" : "")" role="switch"
-                aria-checked="@Aria(ESettings.LogToDiscord)" aria-label="Send logs to Discord"
-                disabled="@_busy" @onclick="() => Toggle(ESettings.LogToDiscord)"><span class="knob"></span></button>
-    </div>
+    @if (!string.IsNullOrEmpty(_journal))
+    {
+        <pre class="console journal">@_journal</pre>
+    }
 </section>
 
 <section class="section">
     <header class="section-head">
         <h2>Notifications</h2>
-        <p class="section-hint">Shows a push notification when a new entry arrives.</p>
+        <p class="section-hint">Shows a push notification when a new entry arrives</p>
     </header>
 
     <div class="toggle-row">
@@ -90,11 +90,57 @@
     </div>
 
     <div class="options">
-        <label><input type="checkbox" @bind="_notifyAlertsOnly"/> Only warnings and alerts</label>
+        <label><input type="checkbox" checked="@_notifyAlertsOnly" @onchange="OnAlertsOnly"/> Only warnings and alerts</label>
     </div>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Persistent notification</strong>
+            <small>One status notification that shows the latest event</small>
+        </div>
+        <button class="switch @(_sticky ? "switch-on" : "")" role="switch"
+                aria-checked="@(_sticky ? "true" : "false")" aria-label="Persistent notification"
+                disabled="@(_busy || !_notify)" @onclick="ToggleSticky"><span class="knob"></span></button>
+    </div>
+
+    <div class="toggle-row">
+        <div>
+            <strong>Vibrate on events</strong>
+            <small>A short pulse when a log arrives, silent otherwise</small>
+        </div>
+        <button class="switch @(_vibrate ? "switch-on" : "")" role="switch"
+                aria-checked="@(_vibrate ? "true" : "false")" aria-label="Vibrate on events"
+                disabled="@(_busy || !_notify)" @onclick="ToggleVibrate"><span class="knob"></span></button>
+    </div>
+
+    <p class="brain-label">Sources to notify</p>
+    <div class="source-grid">
+        @foreach (ELogSource source in Enum.GetValues<ELogSource>())
+        {
+            <label>
+                <input type="checkbox" checked="@_sources.Contains(source)" @onchange="args => OnSource(source, args)"/> @source
+            </label>
+        }
+    </div>
+
+    @if (_notify)
+    {
+        <div class="btn-row" style="margin-top: 0.7rem;">
+            <button class="btn btn-small" disabled="@_busy" @onclick="TestPush">Try it!</button>
+        </div>
+    }
 </section>
 
 @code {
+    private readonly HashSet<ELogSource> _sources = [.. Enum.GetValues<ELogSource>()];
+    private bool _sticky;
+    private bool _vibrate = true;
+
+    private ESubFunctionType _journalService = ESubFunctionType.CortanaKernel;
+    private int _journalLines = 100;
+    private string? _journal;
+    private bool _journalBusy;
+
     private IDisposable? _subscription;
     private IReadOnlyList<LogEntry> _entries = [];
     private string _filter = "";
@@ -126,6 +172,18 @@
         {
             _notify = await Js.InvokeAsync<bool>("cortanaNotify.isEnabled");
             _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
+
+            string[] saved = await Js.InvokeAsync<string[]>("cortanaNotify.sources");
+            if (saved.Length > 0)
+            {
+                _sources.Clear();
+                foreach (string name in saved)
+                    if (Enum.TryParse(name, out ELogSource parsed)) _sources.Add(parsed);
+            }
+
+            _notifyAlertsOnly = await Js.InvokeAsync<bool>("cortanaNotify.alertsOnly");
+            _sticky = await Js.InvokeAsync<bool>("cortanaNotify.sticky");
+            _vibrate = await Js.InvokeAsync<bool>("cortanaNotify.vibrate");
         }
         catch
         {
@@ -166,19 +224,161 @@
         }
     }
 
+    private async Task ToggleVibrate()
+    {
+        _busy = true;
+        try
+        {
+            _vibrate = !_vibrate;
+            await Js.InvokeVoidAsync("cortanaNotify.setVibrate", _vibrate);
+            await Resubscribe();
+        }
+        catch (JSException)
+        {
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ToggleSticky()
+    {
+        _busy = true;
+        try
+        {
+            _sticky = !_sticky;
+            await Js.InvokeVoidAsync("cortanaNotify.setSticky", _sticky);
+            await Resubscribe();
+        }
+        catch (JSException)
+        {
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OnSource(ELogSource source, ChangeEventArgs args)
+    {
+        if (args.Value is true) _sources.Add(source);
+        else _sources.Remove(source);
+
+        await SaveSources();
+    }
+
+    private async Task SaveSources()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaNotify.setSources", _sources.Select(source => source.ToString()).ToArray());
+            await Resubscribe();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task Resubscribe()
+    {
+        if (!_notify) return;
+
+        var device = await Js.InvokeAsync<PostPushDevice?>("cortanaPush.subscribe", (await State.PushKey()).Trim());
+        if (device != null) _message = await State.PushSubscribe(Describe(device));
+    }
+
+    private PostPushDevice Describe(PostPushDevice device) => device with
+    {
+        Sticky = _sticky,
+        Vibrate = _vibrate,
+        AlertsOnly = _notifyAlertsOnly,
+        Sources = _sources.Count == Enum.GetValues<ELogSource>().Length ? [] : _sources.Select(source => source.ToString()).ToList()
+    };
+
+    private async Task OnAlertsOnly(ChangeEventArgs args)
+    {
+        _notifyAlertsOnly = args.Value is true;
+
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaNotify.setAlertsOnly", _notifyAlertsOnly);
+
+            await Resubscribe();
+        }
+        catch (JSException)
+        {
+        }
+    }
+
     private async Task ToggleNotifications()
     {
         _busy = true;
         try
         {
-            _notify = await Js.InvokeAsync<bool>("cortanaNotify.toggle");
+            if (_notify)
+            {
+                string? endpoint = await Js.InvokeAsync<string?>("cortanaPush.unsubscribe");
+                if (!string.IsNullOrEmpty(endpoint)) _message = await State.PushUnsubscribe(endpoint);
+
+                await Js.InvokeAsync<bool>("cortanaNotify.toggle");
+                _notify = false;
+            }
+            else
+            {
+                if (!await Js.InvokeAsync<bool>("cortanaPush.supported"))
+                {
+                    _permissionLabel = "Needs HTTPS, open the dashboard over your Tailscale address";
+                    return;
+                }
+
+                string key = (await State.PushKey()).Trim();
+                var device = await Js.InvokeAsync<PostPushDevice?>("cortanaPush.subscribe", key);
+
+                if (device == null)
+                {
+                    _permissionLabel = "Permission denied";
+                    return;
+                }
+
+                _message = await State.PushSubscribe(Describe(device));
+                await Js.InvokeAsync<bool>("cortanaNotify.toggle");
+                _notify = true;
+            }
+
             _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
             _lastSeen = _entries.Count > 0 ? _entries[0].Timestamp : DateTimeOffset.Now;
         }
-        catch
+        catch (Exception ex)
         {
-            _permissionLabel = "Not supported by this browser";
+            _permissionLabel = ex is JSException ? "Not supported by this browser" : "Could not register this device";
             _notify = false;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task LoadJournal()
+    {
+        _journalBusy = true;
+        try
+        {
+            _journal = await State.Journal(_journalService, _journalLines);
+        }
+        finally
+        {
+            _journalBusy = false;
+        }
+    }
+
+    private async Task TestPush()
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.PushTest();
         }
         finally
         {
