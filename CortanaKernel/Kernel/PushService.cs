@@ -165,28 +165,40 @@ public static async Task Send(ELogSource source, string body, bool alert)
 
 	public static string StatusLine()
 	{
-		var parts = new List<string> { "Cortana Online" };
+		var parts = new List<string>() { "Online" };
 
 		try
 		{
+			string? temperature = HardwareApi.Sensors.GetAllData()
+				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Temperature))?.Value;
+
+			bool motion = HardwareApi.Sensors.GetAllData()
+				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Motion))?.Value
+				.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+
+			var head = new List<string>();
+			if (!string.IsNullOrWhiteSpace(temperature)) head.Add($"{temperature}°C");
+			if (motion) head.Add("🖲");
+			if (head.Count > 0) parts.Add(string.Join(" ", head));
+
 			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
 
-			bool? On(EDevice device) =>
-				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status is { } status
-					? status.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase)
-					: null;
+			bool On(EDevice device) =>
+				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status
+					.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase) ?? false;
 
 			var lit = new List<string>();
-			if (On(EDevice.Lamp) is true) lit.Add("💡");
-			if (On(EDevice.Computer) is true) lit.Add("🖥️");
+			if (On(EDevice.Lamp)) lit.Add("💡");
+			if (On(EDevice.Computer)) lit.Add("🖥️");
+			if (On(EDevice.Generic)) lit.Add("🔌");
 
-			if (lit.Count > 0) parts.Add($"·  {string.Join("  ", lit)}");
+			if (lit.Count > 0) parts.Add(string.Join(" ", lit));
 		}
 		catch (Exception)
 		{
 		}
 
-		return string.Join("  ", parts);
+		return string.Join(" · ", parts);
 	}
 
 	private static async Task Deliver(string title, string body, Func<PostPushDevice, bool> wants, string? tag,
