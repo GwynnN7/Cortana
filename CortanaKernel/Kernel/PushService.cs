@@ -118,7 +118,6 @@ public static class PushService
 	}
 
 	private const string StatusTag = "cortana-status";
-	private const string Title = "Cortana Online";
 
 	private static readonly TimeSpan Heartbeat = TimeSpan.FromMinutes(15);
 
@@ -137,7 +136,7 @@ public static class PushService
 		}, null, Heartbeat, Heartbeat);
 	}
 
-	public static async Task Send(ELogSource source, string body, bool alert)
+public static async Task Send(ELogSource source, string body, bool alert)
 	{
 		bool Wanted(PostPushDevice device) =>
 			(!device.AlertsOnly || alert) &&
@@ -151,8 +150,8 @@ public static class PushService
 	public static Task Broadcast(string title, string body) => Deliver(title, body, _ => true, null, _ => true);
 
 	public static Task RefreshStatus() =>
-		Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
-		
+		Deliver(StatusLine(), "", device => device.Sticky, StatusTag, _ => false);
+
 	private static void HoldThenRevert()
 	{
 		if (Devices.Values.All(device => !device.Sticky)) return;
@@ -166,40 +165,28 @@ public static class PushService
 
 	public static string StatusLine()
 	{
-		var parts = new List<string>() { "Online"};
+		var parts = new List<string> { "Cortana Online" };
 
 		try
 		{
-			string? temperature = HardwareApi.Sensors.GetAllData()
-				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Temperature))?.Value;
-
-			bool motion = HardwareApi.Sensors.GetAllData()
-				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Motion))?.Value
-				.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
-
-			var head = new List<string>();
-			if (!string.IsNullOrWhiteSpace(temperature)) head.Add($"{temperature}°C");
-			if (motion) head.Add("🖲");
-			if (head.Count > 0) parts.Add(string.Join(" ", head));
-
 			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
 
-			bool On(EDevice device) =>
-				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status
-					.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase) ?? false;
+			bool? On(EDevice device) =>
+				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status is { } status
+					? status.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase)
+					: null;
 
 			var lit = new List<string>();
-			if (On(EDevice.Lamp)) lit.Add("💡");
-			if (On(EDevice.Computer)) lit.Add("🖥️");
-			if (On(EDevice.Generic)) lit.Add("🔌");
+			if (On(EDevice.Lamp) is true) lit.Add("💡");
+			if (On(EDevice.Computer) is true) lit.Add("🖥️");
 
-			if (lit.Count > 0) parts.Add(string.Join(" ", lit));
+			if (lit.Count > 0) parts.Add($"·  {string.Join("  ", lit)}");
 		}
 		catch (Exception)
 		{
 		}
 
-		return parts.Count > 0 ? string.Join(" · ", parts) : Title;
+		return string.Join("  ", parts);
 	}
 
 	private static async Task Deliver(string title, string body, Func<PostPushDevice, bool> wants, string? tag,
