@@ -56,7 +56,7 @@ public static class PushEndpoints
 
 	private static async Task<IResult> Test(HttpRequest request)
 	{
-		await PushService.Broadcast("Hi, I'm Cortana");
+		await PushService.RefreshStatus();
 		return ApiResults.Message(request, $"Test sent to {PushService.DeviceCount} device(s)");
 	}
 }

@@ -146,18 +146,11 @@ public static async Task Send(ELogSource source, string body, bool alert)
 		HoldThenRevert();
 	}
 
-	public static async Task Broadcast(string message){
-		await Deliver("", message, _ => true, StatusTag, _ => true);
-		HoldThenRevert();
-	}
-
 	public static Task RefreshStatus() =>
 		Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
 
 	private static void HoldThenRevert()
 	{
-		if (Devices.Values.All(device => !device.Sticky)) return;
-
 		TimeSpan hold = TimeSpan.FromMinutes(Math.Clamp(AiSettings.NotifyMinutes, 0.5, 120));
 		_holdUntil = DateTime.Now + hold;
 
