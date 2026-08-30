@@ -18,7 +18,7 @@ public static class AiSettings
 			[EAiSetting.DiscordMinutes] = (0.5, 120),
 			[EAiSetting.HistoryMinutes] = (1, 60),
 			[EAiSetting.HistoryDays] = (1, 3650),
-			[EAiSetting.NotifyMinutes] = (0.5, 120)
+			[EAiSetting.NotifySeconds] = (1, 120)
 		};
 
 	private sealed class Stored
@@ -29,7 +29,7 @@ public static class AiSettings
 		public double DiscordMinutes { get; set; } = 1;
 		public int HistoryMinutes { get; set; } = 5;
 		public int HistoryDays { get; set; } = 180;
-		public double NotifyMinutes { get; set; } = 5;
+		public double NotifySeconds { get; set; } = 5;
 	}
 
 	private static Stored _values = Load();
@@ -47,7 +47,7 @@ public static class AiSettings
 	public static double DiscordMinutes { get { lock (Gate) return _values.DiscordMinutes; } }
 	public static int HistoryMinutes { get { lock (Gate) return _values.HistoryMinutes; } }
 	public static int HistoryDays { get { lock (Gate) return _values.HistoryDays; } }
-	public static double NotifyMinutes { get { lock (Gate) return _values.NotifyMinutes; } }
+	public static double NotifySeconds { get { lock (Gate) return _values.NotifySeconds; } }
 
 	private static Stored Load()
 	{
@@ -64,27 +64,7 @@ public static class AiSettings
 			DataHandler.Log($"[AI] Could not read the settings: {ex.Message}");
 		}
 
-		return Migrate();
-	}
-
-	private static Stored Migrate()
-	{
-		var stored = new Stored();
-
-		string model = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path)!, "Model.txt");
-		string temperature = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(Path)!, "Temperature.txt");
-
-		try
-		{
-			if (File.Exists(model)) stored.Model = File.ReadAllText(model).Trim();
-			if (File.Exists(temperature) && double.TryParse(File.ReadAllText(temperature).Trim(), CultureInfo.InvariantCulture, out double value))
-				stored.Temperature = value;
-		}
-		catch (IOException)
-		{
-		}
-
-		return stored;
+		return new Stored();
 	}
 
 	private static StringResult Save()
@@ -118,7 +98,7 @@ public static class AiSettings
 		EAiSetting.DiscordMinutes => DiscordMinutes.ToString("0.##", CultureInfo.InvariantCulture),
 		EAiSetting.HistoryMinutes => HistoryMinutes.ToString(CultureInfo.InvariantCulture),
 		EAiSetting.HistoryDays => HistoryDays.ToString(CultureInfo.InvariantCulture),
-		EAiSetting.NotifyMinutes => NotifyMinutes.ToString("0.##", CultureInfo.InvariantCulture),
+		EAiSetting.NotifySeconds => NotifySeconds.ToString("0.##", CultureInfo.InvariantCulture),
 		_ => ""
 	};
 
@@ -140,7 +120,7 @@ public static class AiSettings
 				case EAiSetting.DiscordMinutes: _values.DiscordMinutes = value; break;
 				case EAiSetting.HistoryMinutes: _values.HistoryMinutes = (int)value; break;
 				case EAiSetting.HistoryDays: _values.HistoryDays = (int)value; break;
-				case EAiSetting.NotifyMinutes: _values.NotifyMinutes = value; break;
+				case EAiSetting.NotifySeconds: _values.NotifySeconds = value; break;
 			}
 
 			StringResult saved = Save();

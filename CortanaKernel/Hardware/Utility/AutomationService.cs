@@ -91,14 +91,14 @@ public static class AutomationService
 		}
 	}
 
-		public static bool CanAutoLight => State == EAutomationState.Automatic;
+	public static bool CanAutoLight => State == EAutomationState.Automatic;
 
-		public static bool CanAutoExtinguish => State != EAutomationState.Manual;
+	public static bool CanAutoExtinguish => State != EAutomationState.Manual;
 
-		public static int MotionOffSeconds =>
-		IsNight(DateTime.Now) || HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off
-			? Settings.MotionOffMin
-			: Settings.MotionOffMax;
+	public static int MotionOffSeconds =>
+	IsNight(DateTime.Now) || HardwareApi.Devices.GetPower(EDevice.Computer) == EStatus.Off
+		? Settings.MotionOffMin
+		: Settings.MotionOffMax;
 
 	private static void ScheduleNextBoundary()
 	{

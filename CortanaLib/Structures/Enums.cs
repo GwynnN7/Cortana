@@ -61,6 +61,7 @@ public enum EDirType
 
 public enum EMessageCategory
 {
+	Global,
 	Telegram,
 	Discord
 }

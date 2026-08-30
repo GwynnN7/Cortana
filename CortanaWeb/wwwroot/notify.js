@@ -52,11 +52,6 @@ window.cortanaNotify = (() => {
     };
 })();
 
-window.cortanaScrollChat = () => {
-    const log = document.getElementById('chat-log');
-    if (log) log.scrollTop = log.scrollHeight;
-};
-
 window.cortanaPush = {
     supported: () => 'serviceWorker' in navigator && 'PushManager' in window && window.isSecureContext,
 
@@ -98,6 +93,11 @@ window.cortanaPush = {
         await subscription.unsubscribe();
         return endpoint;
     }
+};
+
+window.cortanaScrollChat = () => {
+    const log = document.getElementById('chat-log');
+    if (log) log.scrollTop = log.scrollHeight;
 };
 
 window.cortanaChatId = {

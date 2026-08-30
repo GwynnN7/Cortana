@@ -14,7 +14,7 @@ public static class Cortana
 
 		DataHandler.LoadEnvironment();
 		HardwareApi.InitializeHardware();
-		IpcHandler.Publish(EMessageCategory.Telegram, "Initializing IPC Service");
+		IpcHandler.Publish(EMessageCategory.Global, "Initializing IPC Service");
 
 		Task shutdownTask = Task.Run(WaitForShutdown);
 
@@ -26,8 +26,7 @@ public static class Cortana
 		CortanaApi.Initialize();
 		Task apiTask = CortanaApi.RunAsync();
 
-		PushService.StartHeartbeat();
-		_ = PushService.RefreshStatus();
+		PushService.Start();
 		DataHandler.Log("Boot Completed, I'm Online!");
 		await Task.WhenAll(apiTask, shutdownTask);
 

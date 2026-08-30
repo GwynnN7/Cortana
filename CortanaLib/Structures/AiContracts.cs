@@ -23,7 +23,7 @@ public enum EAiSetting
 	DiscordMinutes,
 	HistoryMinutes,
 	HistoryDays,
-	NotifyMinutes
+	NotifySeconds
 }
 
 public record AiSettingResponse(string Setting, string Value) : IApiResponse;

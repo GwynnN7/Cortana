@@ -1,6 +1,6 @@
 // Caches the shell for instant startup and serves an honest offline page when the Pi is down.
 
-const CACHE = 'cortana-shell-v6';
+const CACHE = 'cortana-shell-v9';
 const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192x192.png', '/icon-144x144.png', '/icon-72x72.png', '/icon-512x512.png', '/manifest.webmanifest', '/offline.html',
     '/badge-96x96.png'];
 
@@ -58,6 +58,7 @@ self.addEventListener('push', event => {
     let silent = false;
     let ongoing = false;
     let vibrate = [];
+    let timestamp;
 
     if (event.data) {
         try {
@@ -67,20 +68,31 @@ self.addEventListener('push', event => {
             tag = payload.tag || tag;
             silent = !!payload.silent;
             ongoing = !!payload.ongoing;
+            timestamp = Number.isFinite(payload.timestamp) ? payload.timestamp : undefined;
             vibrate = Array.isArray(payload.vibrate) ? payload.vibrate : [];
         } catch {
             body = event.data.text();
         }
     }
 
-    event.waitUntil(self.registration.showNotification(title, {
+    const options = {
         body,
         tag,
         silent,
-        vibrate,
         renotify: !silent,
         requireInteraction: ongoing,
-        icon: '/icon-192x192.png',
+        icon: '/badge-96x96.png',
         badge: '/badge-96x96.png'
-    }));
+    };
+
+    if (timestamp !== undefined) options.timestamp = timestamp;
+
+    if (!silent && vibrate.length > 0)
+        options.vibrate = vibrate;
+
+    event.waitUntil(
+        self.registration.showNotification(title, options).catch(error => {
+            console.error('[Push] showNotification failed:', error);
+        })
+    );
 });

@@ -12,12 +12,12 @@ namespace CortanaKernel.Kernel;
 public static class LlmService
 {
 	private const string Untrusted = "discord:";
-	private const string Owned = "- You are talking to your creator right now. Speak to him as you would to the Chief.";
+	private const string Owned = "- You are talking to gwynn7 now.";
 
 	private static string Guest(string author) =>
-		$"- You are talking to {(string.IsNullOrWhiteSpace(author) ? "someone who is not your creator" : author)}, a guest, not your creator. Stay friendly and helpful, but do not treat them as him.";
+		$"- You are talking to a guest ({author}), not gwynn7. Stay friendly and helpful, but keep it in mind.";
 
-	private const string Restriction = "- In this conversation your tools are read-only: you can look at the house and the computer but not change them. Never bring this up on your own. Only when someone actually asks you to switch, set or run something, say it has to come from the web app, Telegram or the terminal.";
+	private const string Restriction = "- In this conversation your tools are read-only: you can look at the house and the computer but not change them. If (and only if) someone asks you to activate something, say you can't from here.";
 	private const int MaxEntries = 60;
 	private const int MaxConversations = 64;
 	private const int MaxToolRounds = 5;

@@ -121,12 +121,12 @@ public static class Bootloader
 
 	public static async Task<IReadOnlyList<SubfunctionResponse>> GetAllStatuses()
 	{
-		if (IsStatusCacheFresh(out IReadOnlyList<SubfunctionResponse>? cached)) return cached!;
+		if (IsStatusCacheValid(out IReadOnlyList<SubfunctionResponse>? cached)) return cached!;
 
 		await StatusGate.WaitAsync();
 		try
 		{
-			if (IsStatusCacheFresh(out cached)) return cached!;
+			if (IsStatusCacheValid(out cached)) return cached!;
 
 			ESubFunctionType[] types = Enum.GetValues<ESubFunctionType>();
 			bool[] running = await Task.WhenAll(types.Select(IsSubfunctionRunning));
@@ -141,7 +141,7 @@ public static class Bootloader
 		}
 	}
 
-	private static bool IsStatusCacheFresh(out IReadOnlyList<SubfunctionResponse>? cached)
+	private static bool IsStatusCacheValid(out IReadOnlyList<SubfunctionResponse>? cached)
 	{
 		cached = _cachedStatuses;
 		return cached != null && DateTime.UtcNow - _cachedStatusesTime < StatusCacheDuration;

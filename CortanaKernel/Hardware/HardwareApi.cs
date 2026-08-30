@@ -34,8 +34,9 @@ public static class HardwareApi
 	public static class Sensors
 	{
 		public static bool IsStationOnline => SensorsHandler.IsOnline;
+		public static bool IsAirQualityUnsafe => SensorsHandler.AirQualityUnsafe;
 
-				public static EAutomationState AutomationState => AutomationService.State;
+		public static EAutomationState AutomationState => AutomationService.State;
 
 		public static bool LogDestinationEnabled(ESettings destination) => destination switch
 		{

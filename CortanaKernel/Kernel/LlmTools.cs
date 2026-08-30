@@ -106,7 +106,7 @@ public static class LlmTools
 	private static string GetDevices() =>
 		string.Join("\n", HardwareApi.Devices.GetAllPower().Select(device => $"{device.Device} is {device.Status}"));
 
-	[Description("Turn a device on or off, or toggle it. Use this to actually change the state of the house.")]
+	[Description("Turn a device on or off, or toggle it. Use this to actually change the state of the house. Note that Generic is usually the room speakers.")]
 	private static string SwitchDevice(
 		[Description("Lamp, Computer, Power, Generic, or Room to switch every light at once")] string device,
 		[Description("On, Off or Toggle")] string action)

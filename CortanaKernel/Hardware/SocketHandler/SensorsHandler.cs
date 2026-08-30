@@ -23,7 +23,6 @@ public class SensorsHandler : ClientHandler
 
 	private Timer? _motionTimer;
 	private Timer? _airQualityTimer;
-	private bool _airQualityWarningSent;
 	private SensorData? _lastSensorData;
 	private DateTime _lastUpdate = DateTime.MinValue;
 
@@ -149,20 +148,19 @@ public class SensorsHandler : ClientHandler
 
 		lock (_stateLock)
 		{
-			if (overThreshold && !_airQualityWarningSent)
+			if (overThreshold && !AirQualityUnsafe)
 			{
-				Notifier.Send(ELogSource.AirQuality, "Air quality warning, you should open the window", ELogLevel.Alert);
-				_airQualityWarningSent = true;
+				Notifier.Send(ELogSource.AirQuality, "Air quality warning, open the window", ELogLevel.Alert);
+				AirQualityUnsafe = true;
 
 				_airQualityTimer?.Destroy();
 				_airQualityTimer = new Timer("air-quality-timer", null, ClearAirQualityWarning, ETimerType.Utility)
 					.Set((0, (int)AirQualityWarningCooldown.TotalMinutes, 0));
 			}
-			else if (backToNormal && _airQualityWarningSent)
+			else if (backToNormal && AirQualityUnsafe)
 			{
-				_airQualityWarningSent = false;
+				AirQualityUnsafe = false;
 				_airQualityTimer?.Destroy();
-				_airQualityTimer = null;
 				Notifier.Send(ELogSource.AirQuality, "Air quality back to normal");
 			}
 		}
@@ -172,8 +170,7 @@ public class SensorsHandler : ClientHandler
 	{
 		lock (_stateLock)
 		{
-			_airQualityWarningSent = false;
-			_airQualityTimer = null;
+			AirQualityUnsafe = false;
 		}
 		return Task.CompletedTask;
 	}
@@ -218,6 +215,7 @@ public class SensorsHandler : ClientHandler
 		lock (instance._stateLock) return instance._lastSensorData;
 	}
 
+	public static bool AirQualityUnsafe;
 	public static bool IsOnline
 	{
 		get

@@ -25,7 +25,7 @@ public static class IpcHandler
 		}
 	}
 
-		public static void Publish(EMessageCategory category, string message)
+	public static void Publish(EMessageCategory category, string message)
 	{
 		try
 		{

@@ -119,78 +119,88 @@ public static class PushService
 
 	private const string StatusTag = "cortana-status";
 
-	private static readonly TimeSpan Heartbeat = TimeSpan.FromMinutes(15);
+	private static readonly TimeSpan UpdateInterval = TimeSpan.FromMinutes(5);
 
 	private static System.Threading.Timer? _revert;
 	private static System.Threading.Timer? _pulse;
-	private static DateTime _holdUntil;
 
-	/// Refreshes the status notification periodically so Android's own timestamp stays honest.
-	public static void StartHeartbeat()
+	public static void Start()
 	{
-		_pulse?.Dispose();
-		_pulse = new System.Threading.Timer(_ =>
-		{
-			if (DateTime.Now < _holdUntil) return;
-			_ = RefreshStatus();
-		}, null, Heartbeat, Heartbeat);
+		Task.Run(() => _ = RefreshStatus());
+		StartReverter();
 	}
 
-public static async Task Send(ELogSource source, string body, bool alert)
+	public static void StartUpdater()
+	{
+		_pulse?.Dispose();
+		_pulse = new System.Threading.Timer(_ => _ = RefreshStatus(), null, UpdateInterval, UpdateInterval);
+	}
+
+	public static void StartReverter()
+	{
+		TimeSpan hold = TimeSpan.FromSeconds(Math.Clamp(AiSettings.NotifySeconds, 1, 120));
+		_revert?.Dispose();
+		_revert = new System.Threading.Timer(_ => _ = RefreshStatus(), null, hold, Timeout.InfiniteTimeSpan);
+	}
+
+	public static async Task Send(ELogSource source, string body, bool alert)
 	{
 		bool Wanted(PostPushDevice device) =>
 			(!device.AlertsOnly || alert) &&
 			(device.Sources is not { Count: > 0 } || device.Sources.Contains(source.ToString()));
 
 		await Deliver("", body, device => Wanted(device) && device.Sticky, StatusTag, device => device.Vibrate);
-		HoldThenRevert();
+		StartUpdater();
+		StartReverter();
 	}
 
-	public static Task RefreshStatus() =>
-		Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
-
-	private static void HoldThenRevert()
+	public static async Task RefreshStatus()
 	{
-		TimeSpan hold = TimeSpan.FromMinutes(Math.Clamp(AiSettings.NotifyMinutes, 0.5, 120));
-		_holdUntil = DateTime.Now + hold;
-
-		_revert?.Dispose();
-		_revert = new System.Threading.Timer(_ => _ = RefreshStatus(), null, hold, Timeout.InfiniteTimeSpan);
+		await Deliver("", StatusLine(), device => device.Sticky, StatusTag, _ => false);
 	}
 
 	public static string StatusLine()
 	{
-		var parts = new List<string>() { "Online" };
+		var parts = new List<string>();
 
 		try
 		{
-			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
+			var main = new List<string>{ "Online" };
+			 parts.Add(string.Join(" ", main));
 
+			var dev = new List<string>();
+			IReadOnlyList<DeviceResponse> devices = HardwareApi.Devices.GetAllPower();
 			bool On(EDevice device) =>
 				devices.FirstOrDefault(entry => entry.Device == device.ToString())?.Status
 					.Equals(nameof(EStatus.On), StringComparison.OrdinalIgnoreCase) ?? false;
 
-			var first = new List<string>();
-			if (On(EDevice.Lamp)) first.Add("💡");
-			if (On(EDevice.Computer)) first.Add("🖥️");
-			if (On(EDevice.Generic)) first.Add("🔌");
 
-			if (first.Count > 0) parts.Add(string.Join(" ", first));
+			if (On(EDevice.Lamp)) dev.Add("💡");
+			if (On(EDevice.Computer)) dev.Add("🖥️");
+			if (On(EDevice.Generic)) dev.Add("🔌");
+			if (dev.Count > 0) parts.Add(string.Join("", dev));
 
-			string? temperature = HardwareApi.Sensors.GetAllData()
-				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Temperature))?.Value;
-
+			var sensors = new List<string>();
 			bool motion = HardwareApi.Sensors.GetAllData()
 				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Motion))?.Value
 				.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
 
-			var second = new List<string>();
-			if (motion) second.Add("🖲");
-			if (!string.IsNullOrWhiteSpace(temperature)) second.Add($"{temperature}°");
-			if (second.Count > 0) parts.Add(string.Join(" ", second));
+			if(Hardware.Utility.AutomationService.CanAutoExtinguish)
+			{
+				if (motion) sensors.Add("🔆");
+				else sensors.Add("💠");
+			}
+			else if(Hardware.Utility.AutomationService.IsNight(DateTime.Now)) sensors.Add("💤");
+			
+			if(HardwareApi.Sensors.IsAirQualityUnsafe) sensors.Add("💨");
+			string? temperature = HardwareApi.Sensors.GetAllData()
+				.FirstOrDefault(sensor => sensor.Sensor == nameof(ESensor.Temperature))?.Value;
+			if (!string.IsNullOrWhiteSpace(temperature)) sensors.Add($" {temperature}°");
+			if (sensors.Count > 0) parts.Add(string.Join("", sensors));
 		}
-		catch (Exception)
+		catch (Exception ex)
 		{
+			DataHandler.Log($"[Push] Status line failed: {ex.Message}");
 		}
 
 		return string.Join(" · ", parts);
@@ -209,18 +219,26 @@ public static async Task Send(ELogSource source, string body, bool alert)
 			if (!wants(device)) continue;
 
 			bool alert = alerts(device);
-			string payload = JsonSerializer.Serialize(new
+
+			var payload = new Dictionary<string, object?>
 			{
-				title, body, tag,
-				silent = !alert,
-				ongoing = tag != null,
-				vibrate = alert ? new[] { 60 } : []
-			});
+				["title"] = title,
+				["body"] = body,
+				["tag"] = tag,
+				["silent"] = !alert,
+				["ongoing"] = tag != null,
+				["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+			};
+
+			if (alert)
+				payload["vibrate"] = new[] { 60 };
+
+			string json = JsonSerializer.Serialize(payload);
 
 			try
 			{
 				await Client.SendNotificationAsync(
-					new WebPush.PushSubscription(device.Endpoint, device.P256dh, device.Auth), payload, details);
+					new WebPush.PushSubscription(device.Endpoint, device.P256dh, device.Auth), json, details);
 			}
 			catch (WebPushException ex) when (ex.StatusCode is System.Net.HttpStatusCode.NotFound or System.Net.HttpStatusCode.Gone)
 			{

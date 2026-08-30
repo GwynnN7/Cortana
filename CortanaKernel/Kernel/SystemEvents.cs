@@ -18,6 +18,7 @@ internal static class SystemEvents
 	public static void Notify()
 	{
 		foreach (Channel<byte> channel in Subscribers.Values) channel.Writer.TryWrite(1);
+		Task.Run(() => PushService.RefreshStatus());
 	}
 
 	internal sealed class Subscription(Guid id, ChannelReader<byte> reader) : IDisposable
