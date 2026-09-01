@@ -153,6 +153,16 @@ public sealed class ScheduleService(
 
 	private static Result<ScheduleAction> Fail(string message) => Result.Fail<ScheduleAction>(message);
 
+	private static string Why(Schedule schedule) => schedule.Trigger switch
+	{
+		ScheduleTrigger.Event => $"the {schedule.Event} event fired",
+		ScheduleTrigger.Once => $"it was due at {schedule.At:dd MMM HH:mm}",
+		ScheduleTrigger.Interval => $"its {schedule.IntervalSeconds}s interval elapsed",
+		ScheduleTrigger.Daily => $"its daily {schedule.Hour:00}:{schedule.Minute:00} time was reached",
+		ScheduleTrigger.Weekly => $"its {schedule.Day} {schedule.Hour:00}:{schedule.Minute:00} time was reached",
+		_ => "it was run"
+	};
+
 	private async Task<Result<string>> Dispatch(ScheduleAction action, CancellationToken token)
 	{
 		CommandOrigin origin = CommandOrigin.Scheduler;
@@ -206,7 +216,8 @@ public sealed class ScheduleService(
 
 		string outcome = result.Match(value => value, error => $"Failed: {error}");
 		notifications.Raise(NotificationSource.Schedule, $"{schedule.Name}: {outcome}",
-			result.IsOk ? NotificationLevel.Info : NotificationLevel.Warning);
+			result.IsOk ? NotificationLevel.Info : NotificationLevel.Warning,
+			Why(schedule));
 
 		lock (_gate)
 		{

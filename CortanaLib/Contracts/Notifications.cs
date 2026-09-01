@@ -6,7 +6,8 @@ public sealed record NotificationEntry(
 	DateTimeOffset Timestamp,
 	NotificationSource Source,
 	NotificationLevel Level,
-	string Message);
+	string Message,
+	string? Reason = null);
 
 public sealed record NotificationEnvelope(NotificationChannel Channel, NotificationEntry Notification);
 

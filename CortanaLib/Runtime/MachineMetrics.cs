@@ -178,17 +178,48 @@ public static class MachineMetrics
 
 	private static double GpuBusy()
 	{
+		double sum = 0;
+		var count = 0;
+
 		try
 		{
 			foreach (string card in Directory.EnumerateDirectories("/sys/class/drm", "card?"))
 			{
-				string path = Path.Combine(card, "device", "gpu_busy_percent");
-				if (File.Exists(path) && double.TryParse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture, out double busy))
-					return busy;
+				string device = Path.Combine(card, "device");
+				if (ReadNumber(Path.Combine(device, "gpu_busy_percent")) is not { } busy) continue;
+
+				double effective = busy;
+				string hwmon = Path.Combine(device, "hwmon");
+				string sensors = Directory.Exists(hwmon)
+					? Directory.EnumerateDirectories(hwmon, "hwmon*").FirstOrDefault() ?? ""
+					: "";
+
+				if (sensors.Length > 0 &&
+					ReadNumber(Path.Combine(sensors, "power1_average")) is { } drawn &&
+					ReadNumber(Path.Combine(sensors, "power1_cap")) is { } budget &&
+					budget > 0)
+					effective = Math.Min(busy * (drawn / budget), 100);
+
+				sum += effective;
+				count++;
 			}
 		}
 		catch (Exception) { }
 
-		return 0;
+		return count > 0 ? sum / count : 0;
+	}
+
+	private static double? ReadNumber(string path)
+	{
+		try
+		{
+			return File.Exists(path) && double.TryParse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture, out double value)
+				? value
+				: null;
+		}
+		catch (IOException)
+		{
+			return null;
+		}
 	}
 }

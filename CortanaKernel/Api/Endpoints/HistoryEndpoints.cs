@@ -28,6 +28,10 @@ public static class HistoryEndpoints
 			.WithSummary("Recorded values for one metric. 'until' pages the window back through time.")
 			.Produces<HistorySeries>();
 
+		group.MapGet("/{metric}/usual", (string metric, int? days, HistoryService history, HttpRequest request) =>
+				ApiResults.From(request, history.CompareToUsual(metric, days ?? 21), result => result.Summary))
+			.Access(ApiAccess.ReadOnly).WithTags("History").WithSummary("How the latest reading compares with this hour's usual range");
+
 		group.MapPost("/analysis", (AnalysisRequest body, HistoryService history, HttpRequest request) =>
 				ApiResults.From(request, history.Analyse(body), result => result.Summary))
 			.Access(ApiAccess.ReadOnly)

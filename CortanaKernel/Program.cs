@@ -1,6 +1,7 @@
 using CortanaKernel.Api;
 using CortanaKernel.Api.Endpoints;
 using CortanaKernel.Application;
+using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
@@ -46,6 +47,7 @@ builder.Services.AddSingleton<IEventBus, EventBus>();
 builder.Services.AddSingleton<DeviceRegistry>();
 builder.Services.AddSingleton<SensorRegistry>();
 builder.Services.AddSingleton<MetricsRegistry>();
+builder.Services.AddSingleton<ActivityRegistry>();
 builder.Services.AddSingleton<NotificationLog>();
 builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<AiSettingsStore>();
@@ -68,6 +70,8 @@ builder.Services.AddSingleton<ModelCatalogue>();
 builder.Services.AddSingleton<IAiProvider, GeminiProvider>();
 builder.Services.AddSingleton<PushService>();
 builder.Services.AddSingleton(provider => new Lazy<PushService>(provider.GetRequiredService<PushService>));
+builder.Services.AddSingleton(provider => new Lazy<SnapshotService>(provider.GetRequiredService<SnapshotService>));
+builder.Services.AddSingleton(provider => new Lazy<ScheduleService>(provider.GetRequiredService<ScheduleService>));
 
 // ---------- application ----------
 builder.Services.AddSingleton<StateBroadcaster>();

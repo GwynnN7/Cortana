@@ -3,6 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using CortanaLib.Client;
+using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
 
@@ -10,7 +11,7 @@ namespace CortanaDesktop;
 
 internal sealed record AgentCommand(string Id, string Command, string Argument);
 
-internal sealed record AgentMessage(string Type, string Id = "", string Text = "");
+internal sealed record AgentMessage(string Type, string Id = "", string Text = "", DesktopActivity? Activity = null);
 
 /// Keeps one socket to the Kernel open, answers commands and pushes this machine's metrics
 internal static class Agent
@@ -29,6 +30,7 @@ internal static class Agent
 
 		_ = Task.Run(KeepAliveLoop);
 		_ = Task.Run(MetricsLoop);
+		Activity.Start(Report);
 
 		Log.Write("Agent", $"Talking to the Kernel at {host}:{port}");
 
@@ -71,6 +73,7 @@ internal static class Agent
 
 			Send("computer");
 			_ = DesktopOs.Execute(ComputerCommand.Notify, "Cortana connected");
+			Activity.Resend(Report);
 			return true;
 		}
 		catch (Exception ex)
@@ -148,6 +151,9 @@ internal static class Agent
 			Send(JsonSerializer.Serialize(new AgentMessage("reply", command.Id, result), CortanaEnvironment.WireJson));
 		});
 	}
+
+	private static void Report(DesktopActivity activity) =>
+		Send(JsonSerializer.Serialize(new AgentMessage("activity", Activity: activity), CortanaEnvironment.WireJson));
 
 	private static async Task KeepAliveLoop()
 	{

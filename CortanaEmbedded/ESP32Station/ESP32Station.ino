@@ -31,9 +31,33 @@ int luxLight = 0;
 uint16_t eco2 = 0;
 uint16_t tvoc = 0;
 
+bool busResponds(int sda, int scl)
+{
+  Wire.end();
+  if (!Wire.begin(sda, scl)) return false;
+
+  for (uint8_t address = 1; address < 127; address++)
+  {
+    Wire.beginTransmission(address);
+    if (Wire.endTransmission() == 0) return true;
+  }
+
+  return false;
+}
+
+void startI2C()
+{
+  if (busResponds(21, 22)) return;
+  if (busResponds(13, 16)) return;
+  if (busResponds(13, 33)) return;
+
+  Wire.end();
+  Wire.begin();
+}
+
 void setup()
 {
-  Wire.begin(); 
+  startI2C();
 
   pinMode(motion_sensor, INPUT);
   pinMode(led, OUTPUT);
@@ -70,10 +94,8 @@ void loop()
       tcpTime = millis(); 
     }
 
-    // temperature/humidity are the SHT4x, the room sensor. airQualityTemperature is the AHT20,
-    // which exists to compensate the ENS160; it is reported only so the two can be compared.
-    char buff[240];
-    snprintf(buff, 240, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u, \"airQualityTemperature\": %.2f }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc, temp);
+    char buff[200]; 
+    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u, \"airQualityTemperature\": %.2f }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc, temp);
 
     client.print(buff);
     lastSentLedState = currentMotion;
@@ -137,7 +159,6 @@ void connectToWiFi()
     }
     WiFi.disconnect();
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
     WiFi.setSleep(true);
 
     tryCount++;

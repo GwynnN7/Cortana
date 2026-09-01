@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using CortanaLib.Client;
 using CortanaLib.Contracts;
@@ -28,7 +29,7 @@ internal static class Cli
 	{
 		"chat" => Chat(string.Join(' ', args[1..])),
 		"ask" => Ask(string.Join(' ', args[1..])),
-		"pc" => Print(Client.ComputerMetricsText()),
+		"pc" => PrintMetrics(Client.ComputerMetricsText()),
 		"monitor" => Monitor(args.Contains("--watch")),
 		"status" => Status(),
 		"help" or "--help" or "-h" => Task.FromResult(Help()),
@@ -106,6 +107,58 @@ internal static class Cli
 	private static async Task<string> Send(string message, bool remember) =>
 		(await Client.Ask(message, remember ? Conversation : $"ask:{Guid.NewGuid():N}", Environment.UserName, remember))
 		.Match(reply => reply, error => $"{Bad}{error}{Reset}");
+
+	private static readonly Regex TemperaturePattern = new(@"(\d+(?:\.\d+)?)°C", RegexOptions.Compiled);
+	private static readonly Regex PercentPattern = new(@"(\d+(?:\.\d+)?)%", RegexOptions.Compiled);
+
+	private static async Task<int> PrintMetrics(Task<string> call)
+	{
+		string text = await call;
+		var rendered = new List<string>();
+		var first = true;
+
+		foreach (string line in text.ReplaceLineEndings("\n").Split('\n'))
+		{
+			if (line.Trim().Length == 0) continue;
+
+			if (first)
+			{
+				first = false;
+				int open = line.IndexOf('(');
+				rendered.Add(open < 0
+					? $"{AccentStrong}{Bold}{line}{Reset}"
+					: $"{AccentStrong}{Bold}{line[..open].TrimEnd()}{Reset} {Muted}{line[open..]}{Reset}");
+				continue;
+			}
+
+			int colon = line.IndexOf(':');
+			if (colon < 0)
+			{
+				rendered.Add(line);
+				continue;
+			}
+
+			rendered.Add($"  {Accent}{line[..colon] + ':',-8}{Reset} {Scale(line[(colon + 1)..].Trim())}");
+		}
+
+		Console.WriteLine(string.Join("\n", rendered));
+		return 0;
+	}
+
+	private static string Scale(string value)
+	{
+		string coloured = TemperaturePattern.Replace(value, match =>
+		{
+			double degrees = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+			return $"{(degrees >= 75 ? Hot : degrees >= 60 ? Warm : Ok)}{match.Value}{Reset}";
+		});
+
+		return PercentPattern.Replace(coloured, match =>
+		{
+			double percent = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+			return $"{(percent >= 85 ? Bad : percent >= 60 ? Warm : Ok)}{match.Value}{Reset}";
+		});
+	}
 
 	private static async Task<int> Print(Task<string> call)
 	{

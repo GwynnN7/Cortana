@@ -27,8 +27,9 @@ public sealed class CapabilityRegistry
 		var list = new List<AiCapability>
 		{
 			// ---------- queries ----------
-			Query("GetHouseState", "Everything at a glance: device power states, sensor readings, automation and sleep mode.",
-				(_, _, _) => Task.FromResult(HouseState(devices, sensors, automation))),
+			Query("GetHouseState", "Everything at a glance: how Cortana reads her own situation, device power states, sensor readings, automation and sleep mode.",
+				async (_, _, token) =>
+					$"Mood: {await snapshot.Mood(token)} ({await snapshot.MoodReason(token)})\n{HouseState(devices, sensors, automation)}"),
 
 			Query("GetDevices", "Power state of every device in the room.",
 				(_, _, _) => Task.FromResult(string.Join("\n", devices.All().Select(view => $"{view.Device} is {view.State}")))),
@@ -83,6 +84,14 @@ public sealed class CapabilityRegistry
 				},
 				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
 				new AiToolParameter("hours", "How many hours back to look, 1 to 720", AiParameterType.Integer, false)),
+
+			Analysis("CompareToUsual",
+				"Say whether a reading is normal for this time of day, by comparing the latest value with the median and spread for the same hour over the past few weeks. Use this instead of a fixed threshold whenever you want to know if something is unusual rather than merely high.",
+				(arguments, _, _) => Task.FromResult(
+					history.CompareToUsual(arguments.Text("metric"), arguments.Integer("days", 21))
+						.Match(result => result.Summary, error => error)),
+				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
+				new AiToolParameter("days", "How many days of history to build the usual range from, 1 to 365", AiParameterType.Integer, false)),
 
 			Analysis("AnalyseHistory",
 				"Run an exact calculation over recorded data instead of estimating it. Use this for averages, extremes, trends, how long something stayed in a state, the worst period, or comparing two windows.",

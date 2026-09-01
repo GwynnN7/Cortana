@@ -12,6 +12,14 @@
 
 <section class="section">
     <header class="section-head">
+        <h2>Mood</h2>
+        <span class="badge mood-@State.Mood.ToString().ToLower()">@State.Mood</span>
+    </header>
+    <p class="mood-reason">@(State.MoodReason.Length > 0 ? State.MoodReason : "Nothing to report")</p>
+</section>
+
+<section class="section">
+    <header class="section-head">
         <h2>Activity</h2>
         <div class="log-controls">
             <select @bind="_filter">
@@ -38,7 +46,17 @@
                 <li class="log-row log-@entry.Level.ToString().ToLower()">
                     <time>@entry.Timestamp.ToString("dd MMM HH:mm:ss")</time>
                     <span class="log-source">@entry.Source</span>
-                    <span class="log-message">@entry.Message</span>
+                    <span class="log-message">
+                        @entry.Message
+                        @if (!string.IsNullOrEmpty(entry.Reason))
+                        {
+                            <button class="log-why" @onclick="() => Toggle(entry)">@(_expanded.Contains(entry) ? "why ▾" : "why ▸")</button>
+                            @if (_expanded.Contains(entry))
+                            {
+                                <span class="log-reason">@entry.Reason</span>
+                            }
+                        }
+                    </span>
                 </li>
             }
         </ol>
@@ -131,6 +149,12 @@
 
 @code {
     private readonly HashSet<NotificationSource> _sources = [.. Enum.GetValues<NotificationSource>()];
+    private readonly HashSet<NotificationEntry> _expanded = [];
+
+    private void Toggle(NotificationEntry entry)
+    {
+        if (!_expanded.Add(entry)) _expanded.Remove(entry);
+    }
 
     private IDisposable? _subscription;
     private IReadOnlyList<NotificationEntry> _entries = [];
@@ -167,6 +191,10 @@
         try
         {
             _notify = await Js.InvokeAsync<bool>("cortanaNotify.isEnabled");
+
+            if (!_notify && await Js.InvokeAsync<string?>("cortanaPush.current") is { Length: > 0 })
+                _notify = await Js.InvokeAsync<bool>("cortanaNotify.setEnabled", true);
+
             _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
 
             string[] saved = await Js.InvokeAsync<string[]>("cortanaNotify.sources");

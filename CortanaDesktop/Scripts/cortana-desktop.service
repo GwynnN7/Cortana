@@ -3,9 +3,9 @@ Description=Cortana Desktop Agent
 After=network.target
 
 [Service]
-ExecStartPre=/usr/bin/dotnet build %h/Projects/Cortana/CortanaDesktop -o %h/Projects/Cortana/CortanaDesktop/out --artifacts-path %h/Projects/Cortana/CortanaDesktop/out/lib
-ExecStart=%h/Projects/Cortana/CortanaDesktop/out/CortanaDesktop
-WorkingDirectory=%h/Projects/Cortana/CortanaDesktop/out
+ExecStartPre=/usr/bin/dotnet build %h/Projects/Cortana/CortanaDesktop -o %h/.local/share/cortana/desktop --artifacts-path %h/.local/share/cortana/desktop/lib
+ExecStart=%h/.local/share/cortana/desktop/CortanaDesktop
+WorkingDirectory=%h
 Restart=on-failure
 RestartSec=5
 KillSignal=SIGTERM

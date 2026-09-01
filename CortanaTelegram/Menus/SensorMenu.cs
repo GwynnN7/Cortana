@@ -17,8 +17,7 @@ public sealed class SensorMenu : Menu
 		(SettingKey.TvocThreshold, "TVOC 🦠", "TVOC threshold in ppb"),
 		(SettingKey.MorningHour, "Morning 🌅", "Morning hour, 0 to 23"),
 		(SettingKey.NightHour, "Night 🌇", "Night hour, 0 to 23"),
-		(SettingKey.MotionTimeoutComputerOffSeconds, "Motion off ⏳", "Seconds of inactivity before the lamp goes off, pc off"),
-		(SettingKey.MotionTimeoutComputerOnSeconds, "Motion on ⏳", "Seconds of inactivity before the lamp goes off, pc on"),
+		(SettingKey.MotionTimeoutSeconds, "Motion ⏳", "Seconds without motion before the lamp goes off, unless you are at the desk"),
 		(SettingKey.ManualOverrideMinutes, "Manual ✋", "Minutes the day hold pauses automation"),
 		(SettingKey.SleepManualOverrideMinutes, "Sleep touch 🌙", "Minutes the night hold pauses automation"),
 		(SettingKey.SleepEntryDelayMinutes, "Sleep delay ⏱", "Minutes between the night starting and sleep mode"),
@@ -53,6 +52,9 @@ public sealed class SensorMenu : Menu
 			return sensor == SensorId.Motion ? view.Value == "true" ? "🟢" : "🔴" : $"{view.Value}{view.Unit}";
 		}
 
+		string MotionIcon() =>
+			state.Sensors.FirstOrDefault(entry => entry.Sensor == SensorId.Motion)?.Value == "true" ? "💠" : "🔮";
+
 		string Setting(SettingKey key) => state.Settings.FirstOrDefault(entry => entry.Setting == key)?.Value ?? "?";
 
 		AutomationView automation = state.Automation;
@@ -63,14 +65,14 @@ public sealed class SensorMenu : Menu
 			$"💧 • <b>Humidity:</b> {Reading(SensorId.Humidity)}\n" +
 			$"🧪 • <b>CO2:</b> {Reading(SensorId.Co2)}\n" +
 			$"🦠 • <b>TVOC:</b> {Reading(SensorId.Tvoc)}\n" +
-			$"🖲 • <b>Motion:</b> {Reading(SensorId.Motion)}\n\n" +
+			$"{MotionIcon()} • <b>Motion:</b> {Reading(SensorId.Motion)}\n\n" +
 			$"⚙️ <b>Automation</b>\n=================\n" +
 			$"🤖 • <b>Automation:</b> {Status(automation)}\n" +
 			$"🛌 • <b>Sleep mode:</b> {(automation.SleepMode ? "🟢" : "🔴")}\n" +
 			$"🕒 • <b>Context:</b> {automation.TimeContext}\n" +
 			$"💡 • <b>Light threshold:</b> {Setting(SettingKey.LightThreshold)}\n" +
 			$"🌅 • <b>Morning:</b> {Setting(SettingKey.MorningHour)}  🌇 <b>Night:</b> {Setting(SettingKey.NightHour)}\n" +
-			$"⏳ • <b>Motion off/on:</b> {Setting(SettingKey.MotionTimeoutComputerOffSeconds)}/{Setting(SettingKey.MotionTimeoutComputerOnSeconds)}s\n" +
+			$"⏳ • <b>Motion timeout:</b> {Setting(SettingKey.MotionTimeoutSeconds)}s\n" +
 			$"✋ • <b>Overrides:</b> {Setting(SettingKey.ManualOverrideMinutes)}/{Setting(SettingKey.SleepManualOverrideMinutes)} min\n";
 	}
 

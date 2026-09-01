@@ -40,7 +40,7 @@
     <header class="section-head">
         <h2><a class="section-link" href="/sensors">Sensors</a></h2>
         <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
-            @(State.SensorsOnline ? "Station online" : "Station offline")
+            @(State.SensorsOnline ? "Station Online" : "Station Offline")
         </span>
     </header>
 
@@ -48,7 +48,7 @@
         <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="@State.MotionIcon" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
         <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
     </div>
@@ -59,7 +59,7 @@
             <small>@AutomationHint</small>
         </div>
         <div class="toggle-actions">
-            @if (State.Automation.Status == AutomationStatus.Holding)
+            @if (State.Automation.HoldingUntil is not null)
             {
                 <button class="btn btn-small" disabled="@_busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
             }
@@ -92,7 +92,7 @@
     </div>
 </section>
 
-<ComputerCard Metrics="State.Computer"/>
+<ComputerCard Metrics="State.Computer" Activity="State.Activity"/>
 
 <ComputerCard Metrics="State.RaspberryMetrics"/>
 
@@ -110,6 +110,7 @@
 </section>
 
 @code {
+
     private static readonly (DeviceId Device, string Emoji, bool Compact)[] QuickDevices =
     [
         (DeviceId.Lamp, "💡", true),
@@ -144,6 +145,7 @@
     {
         { Status: AutomationStatus.Off } => "Manual control only",
         { Status: AutomationStatus.Holding, HoldingUntil: { } until } => $"Holding until {until:HH:mm}",
+        { Status: AutomationStatus.Holding, DesktopHold: true } => "Holding, fullscreen app detected",
         { SleepMode: true } => "Sleep rules are active",
         _ => "Motion controls the lamp"
     };

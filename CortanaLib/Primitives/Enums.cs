@@ -31,6 +31,18 @@ public enum SensorId
 	Tvoc
 }
 
+public enum Mood
+{
+	Calm,
+	Friendly,
+	Helpful,
+	Happy,
+	Watching,
+	Worried,
+	Resting,
+	Alone
+}
+
 /// What automation is doing
 public enum AutomationStatus
 {
@@ -133,8 +145,7 @@ public enum SettingKey
 	MorningHour,
 	NightHour,
 	TemperatureOffset,
-	MotionTimeoutComputerOnSeconds,
-	MotionTimeoutComputerOffSeconds,
+	MotionTimeoutSeconds,
 	ManualOverrideMinutes,
 	SleepManualOverrideMinutes,
 	SleepHoldMinutes,

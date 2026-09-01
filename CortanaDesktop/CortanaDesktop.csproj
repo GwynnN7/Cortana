@@ -14,10 +14,4 @@
       <ProjectReference Include="..\CortanaLib\CortanaLib.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Compile Remove="out\**" />
-      <EmbeddedResource Remove="out\**" />
-      <None Remove="out\**" />
-    </ItemGroup>
-
 </Project>

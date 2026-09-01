@@ -83,6 +83,10 @@ public sealed class AiService(
 		bus.Publish(new ConversationUpdated(conversation, DateTimeOffset.Now));
 	}
 
+	public string Mood { get; set; } = "";
+
+	public string Activity { get; set; } = "";
+
 	public async Task<Result<string>> Ask(AskRequest request, CommandOrigin origin, CancellationToken token = default)
 	{
 		if (!provider.IsConfigured) return Result.Fail<string>("No language model is configured");
@@ -112,7 +116,10 @@ public sealed class AiService(
 		Conversation? conversation = request.Remember ? conversations.Load(request.Conversation) : null;
 		IReadOnlyCollection<AiCapability> tools = capabilities.For(request.Trusted);
 
-		string instructions = SystemPrompt + "\n" + (request.Trusted
+		string mood = string.IsNullOrEmpty(Mood) ? "" : $"\n- Current mood: {Mood}.";
+		if (!string.IsNullOrEmpty(Activity)) mood += $"\n- {Activity}";
+
+		string instructions = SystemPrompt + mood + "\n" + (request.Trusted
 			? OwnerNote
 			: $"- You are talking to a guest ({request.Author}), not gwynn7. Stay friendly and helpful, but keep it in mind.");
 

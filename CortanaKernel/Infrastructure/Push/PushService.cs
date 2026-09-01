@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using CortanaKernel.Domain.Ai;
+using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
 using CortanaKernel.Domain.Devices;
@@ -33,6 +34,9 @@ public sealed class PushService : BackgroundService
 	private readonly SensorRegistry _sensors;
 	private readonly AutomationEngine _automation;
 	private readonly AiSettingsStore _aiSettings;
+	private readonly ActivityRegistry _activity;
+	private readonly Lazy<CortanaKernel.Application.SnapshotService> _snapshots;
+	private readonly Lazy<CortanaKernel.Application.ScheduleService> _schedules;
 	private readonly IEventBus _bus;
 
 	private readonly SemaphoreSlim _pending = new(0, 1);
@@ -43,12 +47,18 @@ public sealed class PushService : BackgroundService
 		SensorRegistry sensors,
 		AutomationEngine automation,
 		AiSettingsStore aiSettings,
+		ActivityRegistry activity,
+		Lazy<CortanaKernel.Application.SnapshotService> snapshots,
+		Lazy<CortanaKernel.Application.ScheduleService> schedules,
 		IEventBus bus)
 	{
 		_deviceRegistry = devices;
 		_sensors = sensors;
 		_automation = automation;
 		_aiSettings = aiSettings;
+		_activity = activity;
+		_snapshots = snapshots;
+		_schedules = schedules;
 		_bus = bus;
 		_keys = LoadKeys();
 
@@ -84,15 +94,16 @@ public sealed class PushService : BackgroundService
 	// ---------- the status line ----------
 
 	/// Online · {lamp}{computer}{generic} · {motion}{air} {temperature}
-	public string StatusLine()
+	public async Task<string> StatusLine()
 	{
-		var parts = new List<string> { "Online" };
+		var parts = new List<string> { (await _snapshots.Value.Mood()).ToString() };
 
 		try
 		{
 			var devices = "";
 			if (_deviceRegistry.IsOn(DeviceId.Lamp)) devices += "💡";
 			if (_deviceRegistry.IsOn(DeviceId.Computer)) devices += "🖥️";
+			if (_activity.Current?.Playing is { Paused: false }) devices += "♪";
 			if (_deviceRegistry.IsOn(DeviceId.Generic)) devices += "🔌";
 			if (devices.Length > 0) parts.Add(devices);
 
@@ -100,10 +111,11 @@ public sealed class PushService : BackgroundService
 			var readings = "";
 
 			if (view.SleepMode) readings += "💤";
-			else if (view.Enabled) readings += view.MotionActive ? "🔆" : "💠";
+			else if (view.Enabled && view.StationOnline) readings += view.MotionActive ? "💠" : "🔮";
 
-			if (view.AirQualityWarning) readings += "💨";
-			if (_sensors.Temperature is { } temperature) readings += $" {Units.Number(temperature)}°";
+			if (view.StationOnline && view.AirQualityWarning) readings += "💨";
+			if (_schedules.Value.All().Any(schedule => schedule.Enabled)) readings += "⏰";
+			if (view.StationOnline && _sensors.Temperature is { } temperature) readings += $" {Units.Number(temperature)}°";
 
 			if (readings.Length > 0) parts.Add(readings.Trim());
 		}
@@ -124,7 +136,7 @@ public sealed class PushService : BackgroundService
 		return single.Length <= MaxOverlayLength ? single : string.Concat(single.AsSpan(0, MaxOverlayLength - 1), "…");
 	}
 
-	public Task RefreshStatus() => Deliver("", StatusLine(), device => device.StatusNotification, StatusTag, _ => false);
+	public async Task RefreshStatus() => await Deliver("", await StatusLine(), device => device.StatusNotification, StatusTag, _ => false, "/");
 
 	/// An accepted event replaces the status body for a configured moment, then the newest status is rebuilt from live state
 	public async Task ShowEvent(NotificationEntry entry)
@@ -140,7 +152,7 @@ public sealed class PushService : BackgroundService
 			return;
 		}
 
-		await Deliver("", Shorten(entry.Message), Wants, StatusTag, device => device.Vibrate);
+		await Deliver("", Shorten(entry.Message), Wants, StatusTag, device => device.Vibrate, "/logs");
 
 		var hold = TimeSpan.FromSeconds(Math.Clamp(_aiSettings.Number(AiSettingKey.PushEventSeconds), 1, 120));
 		DateTimeOffset until = DateTimeOffset.Now + hold;
@@ -183,7 +195,7 @@ public sealed class PushService : BackgroundService
 
 	// ---------- delivery ----------
 
-	private async Task Deliver(string title, string body, Func<PushDeviceRequest, bool> wants, string? tag, Func<PushDeviceRequest, bool> vibrates)
+	private async Task Deliver(string title, string body, Func<PushDeviceRequest, bool> wants, string? tag, Func<PushDeviceRequest, bool> vibrates, string url)
 	{
 		if (_devices.IsEmpty || string.IsNullOrWhiteSpace(_keys.PrivateKey)) return;
 
@@ -203,7 +215,8 @@ public sealed class PushService : BackgroundService
 				["tag"] = tag,
 				["silent"] = !vibrate,
 				["ongoing"] = tag != null,
-				["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+				["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+				["url"] = url
 			};
 
 			if (vibrate) payload["vibrate"] = new[] { 60 };

@@ -91,6 +91,8 @@ The Kernel unit pulls the other three services up with it, and stopping it stops
 Put `CortanaDesktop/Scripts/cortana` on your `PATH` and copy
 `CortanaDesktop/Scripts/cortana-desktop.service` into `~/.config/systemd/user/`.
 
+The agent builds to `~/.local/share/cortana/desktop`, so nothing lands in the checkout.
+
 ```bash
 cortana service start          # the resident agent
 cortana chat                   # interactive conversation

@@ -20,7 +20,8 @@ Contracts, the API client, and small runtime helpers. Holds no business rules.
 | `Contracts/Ai.cs` | Ask request/response, model list, AI setting keys |
 | `Contracts/History.cs` | History points, series, and the deterministic analysis request/result |
 | `Contracts/Metrics.cs` | `MachineSample`, pushed by the desktop and produced locally for the Pi |
-| `Contracts/Notifications.cs` | Notification entry and the channel envelope used by the event stream |
+| `Contracts/Notifications.cs` | Notification entry (with its `Reason`) and the channel envelope used by the event stream |
+| `Contracts/Activity.cs` | The desktop's focus category and, separately, what is playing |
 | `Contracts/Push.cs` | Browser push subscription and its per-device preferences |
 | `Client/CortanaClient.cs` | The only way a client talks to the Kernel: typed HTTP plus both SSE streams |
 | `Runtime/CortanaEnvironment.cs` | Config folders, the `.env` loader, and the two JSON conventions |
@@ -48,6 +49,7 @@ Pure C#. No ASP.NET, no GPIO, no sockets, no provider SDK.
 | `Common/EventBus.cs` | In-process typed publish/subscribe; no string hooks, no central switch |
 | `Automation/AutomationRules.cs` | The pure decisions: day/night, motion freshness, the lamp, air-quality hysteresis |
 | `Automation/AutomationEngine.cs` | Owns automation authority, sleep mode, device holds and the sleep hold; ticks once a second |
+| `Automation/MoodRules.cs` | The pure decision behind Cortana's mood word, and the sentence explaining it |
 | `Devices/DeviceRegistry.cs` | Cortana's *belief* about each device, plus the hardware and computer interfaces |
 | `Sensors/SensorRegistry.cs` | Last observation, freshness, motion timestamp and the air-quality flag |
 | `Settings/SettingsStore.cs` | Domain-owned settings: definitions, validation, persistence, change notification |
@@ -57,8 +59,10 @@ Pure C#. No ASP.NET, no GPIO, no sockets, no provider SDK.
 | `Ai/AiSettingsStore.cs` | Model choice, memory depth, history cadence, push overlay duration |
 | `History/HistoryRepository.cs` | The recorded-sample store interface |
 | `History/HistoryAnalysis.cs` | The deterministic reductions the AI uses instead of doing arithmetic |
+| `History/HistoryBaseline.cs` | What is normal for this metric at this hour, as a median and a robust spread |
 | `Metrics/MetricsRegistry.cs` | Latest desktop and Raspberry samples, with staleness |
 | `Notifications/NotificationLog.cs` | Bounded activity history and the delivery-sink interface |
+| `Activity/ActivityRegistry.cs` | The desktop's current activity, plus the do-not-disturb and at-the-desk rules |
 | `Services/ServiceSupervisor.cs` | Process supervision and host-machine interfaces |
 
 ### `Application/` — commands, queries, orchestration
@@ -76,7 +80,7 @@ Pure C#. No ASP.NET, no GPIO, no sockets, no provider SDK.
 | `MetricsService.cs` | Samples the Pi on a timer, accepts the desktop's pushes |
 | `HistoryService.cs` | Records the house on a cadence; answers series and analysis queries |
 | `ServiceControlService.cs` | Start/stop/restart/update with a short status cache |
-| `ComputerPresenceService.cs` | Turns an agent connection into device state — this is what "PC is on" means |
+| `ComputerPresenceService.cs` | Turns an agent connection into device state — this is what "PC is on" means; also takes activity updates |
 | `CapabilityRegistry.cs` | Every capability the AI can reach, each calling an ordinary application command |
 | `AiService.cs` | Conversation persistence, prompt handling, and the single door between model and Cortana |
 
@@ -195,10 +199,11 @@ Pure C#. No ASP.NET, no GPIO, no sockets, no provider SDK.
 | :--- | :--- |
 | `Program.cs` | Agent when run bare, CLI when given arguments |
 | `Agent.cs` | The resident socket, the JSON-line protocol, and the metrics push |
+| `Activity.cs` | Watches Hyprland and `playerctl`, maps class to a category, debounces, reports transitions only |
 | `Cli.cs` | `chat`, `ask`, `monitor`, `pc`, `status` |
 | `DesktopOs.cs` | Everything done to this machine, including misspelling-tolerant app matching |
 | `Scripts/cortana` | The desktop wrapper: agent dispatch, API, git, deploy, notifications |
-| `Scripts/cortana-desktop.service` | The agent's systemd user unit |
+| `Scripts/cortana-desktop.service` | The agent's systemd user unit; builds to `~/.local/share/cortana/desktop` |
 
 ### CortanaEmbedded
 

@@ -15,6 +15,8 @@ public interface IAutomationWorld
 	DateTimeOffset? LastMotionAt { get; }
 	bool StationOnline { get; }
 	bool AirQualityWarning { get; }
+	bool DesktopBusy { get; }
+	bool DeskActive { get; }
 }
 
 /// What the engine is allowed to do
@@ -22,7 +24,7 @@ public interface IAutomationEffects
 {
 	void SwitchDevice(DeviceId device, PowerState state, string reason);
 	void TellComputer(string message);
-	void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info);
+	void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null);
 	void Publish(IDomainEvent domainEvent);
 }
 
@@ -137,7 +139,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		foreach (DeviceId device in expired)
 		{
 			effects.Publish(new DeviceHoldChanged(device, null, now));
-			effects.Notify(NotificationSource.Automation, "Automation resumed");
+			effects.Notify(NotificationSource.Automation, "Automation resumed", reason: $"the hold on {device} expired");
 			reevaluate = true;
 		}
 
@@ -205,7 +207,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		Record(device.ToString(), "manual override", $"held for {duration.TotalMinutes:0} minutes");
 		effects.Publish(new DeviceHoldChanged(device, now + duration, now));
-		effects.Notify(NotificationSource.Automation, $"Automation held {duration.TotalMinutes:0}m");
+		effects.Notify(NotificationSource.Automation, $"Automation held {duration.TotalMinutes:0}m", reason: $"a user action on {device} while automation was in control");
 	}
 
 	public void OnAutomationChanged(bool enabled, CommandOrigin origin)
@@ -295,7 +297,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		string reason = active ? $"activated by {origin}" : $"ended by {origin}";
 		effects.Publish(new SleepModeChanged(active, automatic, reason, now));
-		effects.Notify(NotificationSource.Sleep, active ? "Sleep mode on" : "Sleep mode off");
+		effects.Notify(NotificationSource.Sleep, active ? "Sleep mode on" : "Sleep mode off", reason: reason);
 		Record("sleep", active ? "active" : "off", reason);
 
 		Evaluate();
@@ -303,7 +305,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 	private void OnNightStarted()
 	{
-		effects.Notify(NotificationSource.Automation, "Night started");
+		effects.Notify(NotificationSource.Automation, "Night started", reason: $"the clock reached the configured night hour of {settings.Number(SettingKey.NightHour)}");
 
 		if (SleepMode)
 		{
@@ -326,7 +328,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		if (world.ComputerConnected)
 		{
 			effects.TellComputer("It's late, you should go to sleep.");
-			effects.Notify(NotificationSource.Automation, "Night, but the computer is on");
+			effects.Notify(NotificationSource.Automation, "Night, but the computer is on", reason: "automatic sleep is blocked while the computer is connected, so the computer was told instead");
 			Record("sleep", "deferred", "the computer is on, so the computer was notified instead");
 			return;
 		}
@@ -342,7 +344,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 			_sleepEntryDueAt = null;
 		}
 
-		effects.Notify(NotificationSource.Automation, "Good morning");
+		effects.Notify(NotificationSource.Automation, "Good morning", reason: $"the clock reached the configured morning hour of {settings.Number(SettingKey.MorningHour)}");
 
 		if (SleepMode)
 		{
@@ -404,6 +406,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		var input = new LampInput(
 			Enabled,
 			overrideActive,
+			world.DesktopBusy,
 			SleepMode,
 			motion,
 			world.DeviceState(DeviceId.Lamp) == PowerState.On,
@@ -417,15 +420,11 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		Record(nameof(DeviceId.Lamp), target.ToString(), decision.Reason);
 		effects.SwitchDevice(DeviceId.Lamp, target, decision.Reason);
+		effects.Notify(NotificationSource.Automation, $"Lamp {target.ToString().ToLowerInvariant()}", reason: decision.Reason);
 	}
 
-	private bool MotionActive(DateTimeOffset now) =>
-		AutomationRules.MotionActive(world.LastMotionAt, now, MotionTimeout());
-
-	private TimeSpan MotionTimeout() => AutomationRules.MotionTimeout(
-		world.ComputerConnected,
-		settings.Seconds(SettingKey.MotionTimeoutComputerOnSeconds),
-		settings.Seconds(SettingKey.MotionTimeoutComputerOffSeconds));
+	private bool MotionActive(DateTimeOffset now) => AutomationRules.Present(
+		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds), world.DeskActive);
 
 	private bool Due(ref DateTimeOffset? deadline, DateTimeOffset now)
 	{
@@ -460,7 +459,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 			AutomationStatus status = !enabled
 				? AutomationStatus.Off
-				: holdingUntil.HasValue ? AutomationStatus.Holding : AutomationStatus.Active;
+				: holdingUntil.HasValue || world.DesktopBusy ? AutomationStatus.Holding : AutomationStatus.Active;
 
 			return new AutomationView(
 				enabled,
@@ -472,7 +471,8 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 				_sleepHoldUntil,
 				_sleepEntryDueAt,
 				holdingUntil,
-				AutomationRules.MotionActive(world.LastMotionAt, now, MotionTimeout()),
+				world.DesktopBusy,
+				MotionActive(now),
 				world.LastMotionAt,
 				world.AirQualityWarning,
 				world.StationOnline);
@@ -496,7 +496,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		if (released.Count > 0)
 		{
 			Record("automation", "resumed", reason);
-			effects.Notify(NotificationSource.Automation, "Automation resumed");
+			effects.Notify(NotificationSource.Automation, "Automation resumed", reason: reason);
 		}
 
 		if (evaluate) Evaluate();

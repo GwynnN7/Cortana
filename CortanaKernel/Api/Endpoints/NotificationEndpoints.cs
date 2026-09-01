@@ -39,9 +39,12 @@ public static class NotificationEndpoints
 				ApiResults.Ok(request, service.PublicKey, new PushKeyResponse(service.PublicKey)))
 			.Access(ApiAccess.ReadOnly).WithSummary("Public VAPID key a browser needs to subscribe.").Produces<PushKeyResponse>();
 
-		push.MapGet("", (PushService service, HttpRequest request) =>
-				ApiResults.Ok(request, $"{service.DeviceCount} browser(s) subscribed\nStatus line: {service.StatusLine()}",
-					new PushDevicesResponse(service.DeviceCount, service.StatusLine())))
+		push.MapGet("", async (PushService service, HttpRequest request) =>
+			{
+				string line = await service.StatusLine();
+				return ApiResults.Ok(request, $"{service.DeviceCount} browser(s) subscribed\nStatus line: {line}",
+					new PushDevicesResponse(service.DeviceCount, line));
+			})
 			.Access(ApiAccess.ReadOnly).WithSummary("How many browsers are subscribed and what the status line says.")
 			.Produces<PushDevicesResponse>();
 

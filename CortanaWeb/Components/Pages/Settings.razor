@@ -57,8 +57,7 @@
             <NumberSetting Setting="SettingKey.LightThreshold" Label="Light Threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.MorningHour" Label="Morning Hour" Hint="0-23, when the night ends" Icon="🌅" Max="23" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.NightHour" Label="Night Hour" Hint="0-23, when the night begins" Icon="🌇" Max="23" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.MotionTimeoutComputerOffSeconds" Label="Motion Timeout" Hint="seconds of inactivity before the lamp goes off" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.MotionTimeoutComputerOnSeconds" Label="Motion Timeout, PC ON" Hint="second of inactivity, when pc is on" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.MotionTimeoutSeconds" Label="Motion Timeout" Hint="seconds without motion before the lamp goes off, unless you are at the desk" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.TemperatureOffset" Label="Temperature Offset" Hint="°C summed to the reading, to threshold the sensor" Icon="🌡" Min="-10" Max="10" Step="0.1" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.Co2Threshold" Label="CO₂ Threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.TvocThreshold" Label="TVOC Threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>

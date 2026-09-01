@@ -1,0 +1,103 @@
+@inject CortanaState State
+@implements IDisposable
+
+<div class="ribbon-block">
+    <header class="ribbon-head">
+        <p class="metric-device">Activity</p>
+        <select @bind="_hours" @bind:after="Load" disabled="@_loading">
+            <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24">24 hours</option>
+        </select>
+    </header>
+
+    @if (_segments.Count == 0)
+    {
+        <p class="section-hint">@(_loading ? "Reading the history" : "Nothing recorded in this window yet")</p>
+    }
+    else
+    {
+        <div class="ribbon">
+            @foreach (Segment segment in _segments)
+            {
+                <span class="ribbon-part ribbon-@segment.Category.ToString().ToLower()"
+                      style="flex-grow:@segment.Weight.ToString(CultureInfo.InvariantCulture)"
+                      title="@Describe(segment)"></span>
+            }
+        </div>
+
+        <div class="ribbon-legend">
+            @foreach (ActivityCategory category in _segments.Select(segment => segment.Category).Distinct())
+            {
+                <span class="ribbon-key">
+                    <span class="ribbon-dot ribbon-@category.ToString().ToLower()"></span>@category.ToString().ToLower()
+                    <span class="ribbon-share">@Share(category)</span>
+                </span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<Segment> _segments = [];
+    private IDisposable? _subscription;
+    private bool _loading = true;
+    private int _hours = 12;
+    private double _total;
+
+    private sealed record Segment(ActivityCategory Category, DateTimeOffset From, DateTimeOffset To, double Weight);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+        await Load();
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private async Task Load()
+    {
+        _loading = true;
+        _segments.Clear();
+
+        HistorySeries? series = await State.History("activity", _hours);
+        if (series is { Samples.Count: > 1 })
+        {
+            List<HistoryPoint> samples = [.. series.Samples];
+            var runFrom = samples[0].At;
+            var runCategory = (ActivityCategory)(int)samples[0].Value;
+
+            for (var i = 1; i <= samples.Count; i++)
+            {
+                bool last = i == samples.Count;
+                var category = last ? runCategory : (ActivityCategory)(int)samples[i].Value;
+                if (!last && category == runCategory) continue;
+
+                DateTimeOffset until = last ? samples[^1].At : samples[i].At;
+                double seconds = (until - runFrom).TotalSeconds;
+                if (seconds > 0) _segments.Add(new Segment(runCategory, runFrom, until, seconds));
+
+                if (last) break;
+                runCategory = category;
+                runFrom = until;
+            }
+
+            _total = _segments.Sum(segment => segment.Weight);
+        }
+
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private string Describe(Segment segment) =>
+        $"{segment.Category.ToString().ToLower()} · {segment.From:HH:mm}–{segment.To:HH:mm} · {Length(segment.Weight)}";
+
+    private string Share(ActivityCategory category)
+    {
+        double seconds = _segments.Where(segment => segment.Category == category).Sum(segment => segment.Weight);
+        return _total > 0 ? $"{seconds / _total * 100:F0}%" : "";
+    }
+
+    private static string Length(double seconds) =>
+        seconds >= 3600 ? $"{seconds / 3600:F1}h" : $"{seconds / 60:F0}m";
+}

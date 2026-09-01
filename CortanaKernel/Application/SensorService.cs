@@ -73,7 +73,8 @@ public sealed class SensorService(
 		sensors.SetOnline(online);
 		bus.Publish(new SensorAvailabilityChanged(online, DateTimeOffset.Now));
 		notifications.Raise(NotificationSource.Sensors, online ? "Station online" : "Station offline",
-			online ? NotificationLevel.Info : NotificationLevel.Warning);
+			online ? NotificationLevel.Info : NotificationLevel.Warning,
+			online ? "the station reconnected and sent a reading" : "the station stopped sending readings");
 	}
 
 	private void EvaluateAirQuality(SensorReading reading)
@@ -96,7 +97,8 @@ public sealed class SensorService(
 		{
 			sensors.SetAirQualityWarning(true);
 			sensors.AirQualityWarningUntil = now + AirQualityCooldown;
-			notifications.Raise(NotificationSource.AirQuality, "Air quality low, open the window", NotificationLevel.Alert);
+			notifications.Raise(NotificationSource.AirQuality, "Air quality low, open the window", NotificationLevel.Alert,
+				$"CO2 {reading.Co2} ppm against a {co2Threshold} ppm threshold, TVOC {reading.Tvoc} ppb against {tvocThreshold} ppb");
 			bus.Publish(new AirQualityWarningChanged(true, now));
 			return;
 		}
@@ -105,7 +107,8 @@ public sealed class SensorService(
 		{
 			sensors.SetAirQualityWarning(false);
 			sensors.AirQualityWarningUntil = null;
-			notifications.Raise(NotificationSource.AirQuality, "Air quality normal");
+			notifications.Raise(NotificationSource.AirQuality, "Air quality normal",
+				reason: $"CO2 back to {reading.Co2} ppm and TVOC to {reading.Tvoc} ppb");
 			bus.Publish(new AirQualityWarningChanged(false, now));
 		}
 	}

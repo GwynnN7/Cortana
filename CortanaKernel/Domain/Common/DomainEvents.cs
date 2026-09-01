@@ -28,6 +28,8 @@ public sealed record AirQualityWarningChanged(bool Warning, DateTimeOffset At) :
 
 public sealed record DeviceHoldChanged(DeviceId Device, DateTimeOffset? Until, DateTimeOffset At) : IDomainEvent;
 
+public sealed record DesktopActivityChanged(DesktopActivity Activity, DateTimeOffset At) : IDomainEvent;
+
 public sealed record SettingChanged(SettingKey Setting, string Value, DateTimeOffset At) : IDomainEvent;
 
 public sealed record ScheduleTriggered(string Id, string Name, string Outcome, DateTimeOffset At) : IDomainEvent;

@@ -48,3 +48,14 @@ public sealed record AnalysisResult(
 	DateTimeOffset? At,
 	int Samples,
 	string Summary);
+
+public sealed record BaselineResult(
+	string Metric,
+	string Unit,
+	int Hour,
+	double? Median,
+	double? Spread,
+	double? Current,
+	double? Deviation,
+	int Samples,
+	string Summary);

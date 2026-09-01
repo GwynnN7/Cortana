@@ -20,7 +20,7 @@ public static class HomeEndpoints
 			.Access(ApiAccess.Public).WithTags("Home").WithSummary("Liveness probe. Reachable without an API ke.");
 
 		app.MapGet("/snapshot", async (SnapshotService snapshots, HttpRequest request, CancellationToken token) =>
-				ApiResults.Ok(request, "Cortana is online", await snapshots.Build(token)))
+				ApiResults.Ok(request, "Cortana is Online", await snapshots.Build(token)))
 			.Access(ApiAccess.ReadOnly).WithTags("Home").WithSummary("The whole system state in one read")
 			.Produces<CortanaSnapshot>();
 

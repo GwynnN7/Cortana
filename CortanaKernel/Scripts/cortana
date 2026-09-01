@@ -29,6 +29,32 @@ station="$repo/CortanaEmbedded/ESP32Station"
 secret_store="$HOME/.config/cortana/esp32-secrets.h"
 fqbn="${CORTANA_ESP32_FQBN:-esp32:esp32:esp32-poe-iso}"
 
+station_libraries=(
+	"Adafruit AHTX0"
+	"Adafruit SHT4x Library"
+	"SparkFun Indoor Air Quality Sensor - ENS160"
+	"BH1750"
+)
+
+ensure_libraries() {
+	local installed missing=()
+	installed="$(arduino-cli lib list 2>/dev/null)"
+
+	for library in "${station_libraries[@]}"; do
+		grep -qi "^${library}[[:space:]]" <<< "$installed" || missing+=("$library")
+	done
+
+	[ ${#missing[@]} -eq 0 ] && return 0
+
+	echo "Installing ${#missing[@]} missing librar$([ ${#missing[@]} -eq 1 ] && echo y || echo ies)"
+	arduino-cli lib update-index >/dev/null 2>&1
+
+	for library in "${missing[@]}"; do
+		echo "  $library"
+		arduino-cli lib install "$library" >/dev/null || { echo "Could not install '$library'"; exit 1; }
+	done
+}
+
 flash() {
 	local port="${1:-${CORTANA_ESP32_PORT:-/dev/ttyUSB0}}"
 
@@ -47,6 +73,8 @@ flash() {
 	fi
 
 	trap 'rm -f "$station/secrets.h"' EXIT
+
+	ensure_libraries
 
 	echo "Compiling for $fqbn"
 	arduino-cli compile --fqbn "$fqbn" "$station" || { echo "Compilation failed, secrets.h removed"; exit 1; }

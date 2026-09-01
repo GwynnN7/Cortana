@@ -15,9 +15,9 @@ public sealed class NotificationService(
 {
 	private readonly IReadOnlyList<INotificationSink> _sinks = [.. sinks];
 
-	public void Raise(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info)
+	public void Raise(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null)
 	{
-		var entry = new NotificationEntry(DateTimeOffset.Now, source, level, message);
+		var entry = new NotificationEntry(DateTimeOffset.Now, source, level, message, reason);
 
 		log.Add(entry);
 		Log.Write(source.ToString(), message);

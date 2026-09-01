@@ -1,3 +1,4 @@
+using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
 using CortanaKernel.Domain.Devices;
@@ -8,7 +9,7 @@ using CortanaLib.Primitives;
 
 namespace CortanaKernel.Application;
 
-public sealed class AutomationWorld(DeviceRegistry devices, SensorRegistry sensors, IComputerEndpoint computer) : IAutomationWorld
+public sealed class AutomationWorld(DeviceRegistry devices, SensorRegistry sensors, IComputerEndpoint computer, ActivityRegistry activity) : IAutomationWorld
 {
 	public PowerState DeviceState(DeviceId device) => devices.State(device);
 
@@ -21,6 +22,11 @@ public sealed class AutomationWorld(DeviceRegistry devices, SensorRegistry senso
 	public bool StationOnline => sensors.Online;
 
 	public bool AirQualityWarning => sensors.AirQualityWarning;
+
+	public bool DesktopBusy => activity.Current is { } current
+		&& (current.Fullscreen || current.Category == ActivityCategory.Gaming);
+
+	public bool DeskActive => computer.Connected && activity.Current is { Locked: false, IdleSeconds: 0 };
 }
 
 public sealed class AutomationEffects(
@@ -34,8 +40,8 @@ public sealed class AutomationEffects(
 	public void TellComputer(string message) =>
 		_ = devices.Value.CommandComputer(ComputerCommand.Notify, message, CommandOrigin.Automation);
 
-	public void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info) =>
-		notifications.Raise(source, message, level);
+	public void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null) =>
+		notifications.Raise(source, message, level, reason);
 
 	public void Publish(IDomainEvent domainEvent)
 	{

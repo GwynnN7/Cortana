@@ -1,6 +1,6 @@
 // Caches the shell for instant startup and serves an offline page when the Pi is down
 
-const CACHE = 'cortana-shell-v9';
+const CACHE = 'cortana-shell-v11';
 const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192x192.png', '/icon-144x144.png', '/icon-72x72.png', '/icon-512x512.png', '/manifest.webmanifest', '/offline.html',
     '/badge.png'];
 
@@ -25,7 +25,11 @@ self.addEventListener('fetch', event => {
         url.pathname.startsWith('/media') || url.pathname.startsWith('/quick')) return;
 
     if (event.request.mode === 'navigate') {
-        event.respondWith(fetch(event.request).catch(() => caches.match('/offline.html')));
+        event.respondWith(
+            fetch(event.request)
+                .then(response => response.status >= 500 ? caches.match('/offline.html') : response)
+                .catch(() => caches.match('/offline.html'))
+        );
         return;
     }
 
@@ -43,11 +47,20 @@ self.addEventListener('fetch', event => {
 
 self.addEventListener('notificationclick', event => {
     event.notification.close();
+
+    const target = (event.notification.data && event.notification.data.url) || '/logs';
+
     event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
         for (const client of list) {
-            if ('focus' in client) return client.focus();
+            if (!('focus' in client)) continue;
+
+            const sent = 'navigate' in client
+                ? client.navigate(target).catch(() => client)
+                : Promise.resolve(client);
+
+            return sent.then(window => (window || client).focus());
         }
-        return clients.openWindow('/logs');
+        return clients.openWindow(target);
     }));
 });
 
@@ -59,6 +72,7 @@ self.addEventListener('push', event => {
     let ongoing = false;
     let vibrate = [];
     let timestamp;
+    let url = '/logs';
 
     if (event.data) {
         try {
@@ -70,6 +84,7 @@ self.addEventListener('push', event => {
             ongoing = !!payload.ongoing;
             timestamp = Number.isFinite(payload.timestamp) ? payload.timestamp : undefined;
             vibrate = Array.isArray(payload.vibrate) ? payload.vibrate : [];
+            url = payload.url || url;
         } catch {
             body = event.data.text();
         }
@@ -82,7 +97,8 @@ self.addEventListener('push', event => {
         renotify: !silent,
         requireInteraction: ongoing,
         icon: '/badge.png',
-        badge: '/badge.png'
+        badge: '/badge.png',
+        data: { url }
     };
 
     if (timestamp !== undefined) options.timestamp = timestamp;

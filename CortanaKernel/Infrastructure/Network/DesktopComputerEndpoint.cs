@@ -5,6 +5,7 @@ using System.Text.Json;
 using CortanaKernel.Application;
 using CortanaKernel.Domain.Devices;
 using CortanaKernel.Infrastructure.Raspberry;
+using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
 
@@ -13,7 +14,7 @@ namespace CortanaKernel.Infrastructure.Network;
 /// Wire format between the Kernel and the desktop agent
 public sealed record AgentCommand(string Id, string Command, string Argument);
 
-public sealed record AgentMessage(string Type, string Id = "", string Text = "");
+public sealed record AgentMessage(string Type, string Id = "", string Text = "", DesktopActivity? Activity = null);
 
 public sealed class DesktopComputerEndpoint(IComputerPresence presence, RaspberryHost host) : IComputerEndpoint
 {
@@ -116,8 +117,15 @@ public sealed class DesktopComputerEndpoint(IComputerPresence presence, Raspberr
 
 	private void Dispatch(AgentMessage message)
 	{
-		if (message.Type == "reply" && _pending.TryRemove(message.Id, out TaskCompletionSource<string>? completion))
-			completion.TrySetResult(message.Text);
+		switch (message.Type)
+		{
+			case "reply" when _pending.TryRemove(message.Id, out TaskCompletionSource<string>? completion):
+				completion.TrySetResult(message.Text);
+				break;
+			case "activity" when message.Activity is not null:
+				presence.ActivityChanged(message.Activity);
+				break;
+		}
 	}
 
 	private void Dropped(AgentConnection connection)

@@ -42,8 +42,16 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 
 	public bool SensorsOnline => Snapshot?.Automation.StationOnline ?? false;
 
+	public string MotionIcon => Sensor(SensorId.Motion)?.Value == "true" ? "💠" : "🔮";
+
+	public Mood Mood => Snapshot?.Mood ?? Mood.Calm;
+
+	public string MoodReason => Snapshot?.MoodReason ?? "";
+
+	public DesktopActivity? Activity => Snapshot?.Activity;
+
 	public AutomationView Automation => Snapshot?.Automation ??
-		new AutomationView(false, AutomationStatus.Off, TimeContext.Day, false, null, false, null, null, null, false, null, false, false);
+		new AutomationView(false, AutomationStatus.Off, TimeContext.Day, false, null, false, null, null, null, false, false, null, false, false);
 
 	public string SettingValue(SettingKey setting) =>
 		Snapshot?.Settings.FirstOrDefault(view => view.Setting == setting)?.Value ?? "-";

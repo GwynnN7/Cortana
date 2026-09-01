@@ -9,37 +9,46 @@ API_KEY="${CORTANA_API_KEY:-}"
 PI="${CORTANA_PI:-cortana@192.168.1.117}"
 PI_PATH="${CORTANA_PI_PATH:-~/Cortana/}"
 SERVICE="cortana-desktop"
-AGENT="$BASE_PATH/CortanaDesktop/out/CortanaDesktop"
+AGENT_DIR="${CORTANA_DESKTOP_OUT:-$HOME/.local/share/cortana/desktop}"
+AGENT="$AGENT_DIR/CortanaDesktop"
 SERVICES=(kernel telegram discord web)
 
 BLUE=$'\033[1;34m'
 RESET=$'\033[0m'
+ACCENT=$'\033[38;2;81;209;246m'
+STRONG=$'\033[1m'$'\033[38;2;126;224;255m'
+MUTED=$'\033[38;2;138;164;192m'
+DIM=$'\033[2m'
 
 say() { printf '%s%s%s\n' "$BLUE" "$*" "$RESET"; }
 die() { say "$*"; exit 1; }
 
 usage() {
-	cat <<'USAGE'
-cortana chat                      interactive persistent conversation
-cortana chat <message>            one message through that same conversation
-cortana ask <question>            one-shot question, never stored in any conversation
-cortana monitor [--watch]         this machine's performance and temperatures
-cortana pc                        what the Kernel last heard from this machine
-cortana status                    house, sensors, automation, services
+	cat <<USAGE
+${STRONG}cortana${RESET} ${MUTED}- desktop agent and client${RESET}
 
-cortana service [start|stop|restart|build]     the resident agent
-cortana git status|update [message]            version control, then tell the Kernel to update
-cortana api [route] [-act|-cmd|-val|-msg X]    talk to the API directly
-cortana deploy [service...] [-n|-s|-l]         sync this tree to the Pi and restart
-cortana notify [-t Title]                      send piped input as a desktop notification
+  ${ACCENT}chat${RESET}                     interactive persistent conversation
+  ${ACCENT}chat${RESET} <message>           one message through that same conversation
+  ${ACCENT}ask${RESET} <question>           one-shot question, never stored in any conversation
+  ${ACCENT}monitor${RESET} [--watch]        this machine's performance and temperatures
+  ${ACCENT}pc${RESET}                       what the Kernel last heard from this machine
+  ${ACCENT}status${RESET}                   house, sensors, automation, services
+
+  ${ACCENT}service${RESET} [start|stop|restart|build]    the resident agent
+  ${ACCENT}git${RESET} status|update [message]           version control, then tell the Kernel to update
+  ${ACCENT}api${RESET} [route] [-act|-cmd|-val|-msg X]   talk to the API directly
+  ${ACCENT}deploy${RESET} [service...] [-n|-s|-l]        sync this tree to the Pi and restart
+  ${ACCENT}notify${RESET} [-t Title]                     send piped input as a desktop notification
+  ${ACCENT}idle${RESET} on|off                           report desk idle state, for hypridle to call
+
+${DIM}Run with no arguments to start the resident agent.${RESET}
 USAGE
 }
 
 # --- agent -------------------------------------------------------------------
 
 build_agent() {
-	local out="$BASE_PATH/CortanaDesktop/out"
-	dotnet build "$BASE_PATH/CortanaDesktop" -o "$out" --artifacts-path "$out/lib"
+	dotnet build "$BASE_PATH/CortanaDesktop" -o "$AGENT_DIR" --artifacts-path "$AGENT_DIR/lib"
 }
 
 dispatch_agent() {
@@ -146,7 +155,7 @@ handle_git() {
 
 # --- deploy ------------------------------------------------------------------
 
-remote() { ssh -o ConnectTimeout=10 "$PI" "$1"; }
+remote() { ssh -o ConnectTimeout=10 "$PI" bash -s <<< "$1"; }
 
 started_at() { remote "systemctl --user show $1 -p ActiveEnterTimestamp --value" 2>/dev/null | tr -d '\r'; }
 
@@ -225,6 +234,20 @@ handle_notify() {
 	notify-send -i "$BASE_PATH/CortanaLib/Storage/cortana.jpg" -u low -a cortana "$title" "$message"
 }
 
+handle_idle() {
+	local state="${1:-}"
+	local dir="${XDG_RUNTIME_DIR:-/tmp}/cortana"
+
+	mkdir -p "$dir"
+
+	case "$state" in
+		on|start|1)  printf '1' > "$dir/idle" ;;
+		off|stop|0)  printf '0' > "$dir/idle" ;;
+		"")          cat "$dir/idle" 2>/dev/null || echo 0 ;;
+		*)           die "Usage: cortana idle on|off" ;;
+	esac
+}
+
 # --- entry point -------------------------------------------------------------
 
 command="${1:-help}"
@@ -237,5 +260,6 @@ case "$command" in
 	api)                        handle_api "$@" ;;
 	deploy)                     handle_deploy "$@" ;;
 	notify)                     handle_notify "$@" ;;
+	idle)                       handle_idle "$@" ;;
 	*)                          usage ;;
 esac

@@ -25,7 +25,7 @@ public static class Units
 		SettingKey.Co2Threshold => " ppm",
 		SettingKey.TvocThreshold => " ppb",
 		SettingKey.MorningHour or SettingKey.NightHour => "h",
-		SettingKey.MotionTimeoutComputerOnSeconds or SettingKey.MotionTimeoutComputerOffSeconds or SettingKey.ComputerShutdownGraceSeconds => "s",
+		SettingKey.MotionTimeoutSeconds or SettingKey.ComputerShutdownGraceSeconds => "s",
 		SettingKey.ManualOverrideMinutes or SettingKey.SleepManualOverrideMinutes or SettingKey.SleepHoldMinutes
 			or SettingKey.SleepEntryDelayMinutes or SettingKey.DaySleepMinutes => " min",
 		_ => ""

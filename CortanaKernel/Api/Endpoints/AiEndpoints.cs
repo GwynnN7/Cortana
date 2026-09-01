@@ -9,9 +9,12 @@ public static class AiEndpoints
 	{
 		RouteGroupBuilder group = app.MapGroup("/ai").WithTags("AI");
 
-		group.MapPost("", async (AskRequest body, AiService ai, HttpRequest request, CancellationToken token) =>
+		group.MapPost("", async (AskRequest body, AiService ai, SnapshotService snapshots, HttpRequest request, CancellationToken token) =>
 			{
 				if (!ai.IsConfigured) return ApiResults.Unavailable(request, "No language model is configured");
+
+				ai.Mood = $"{await snapshots.Mood(token)}, because {await snapshots.MoodReason(token)}";
+				ai.Activity = snapshots.Doing();
 
 				return ApiResults.From(request, await ai.Ask(body, RequestOrigin.From(request), token),
 					reply => (reply, new AskResponse(reply, body.Conversation)));

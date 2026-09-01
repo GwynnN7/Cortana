@@ -34,7 +34,7 @@ _ = Task.Run(() => LiveMenu.Run(lifetime.Token), lifetime.Token);
 _ = Task.Run(() => FollowNotifications(lifetime.Token), lifetime.Token);
 _ = Task.Run(() => FollowState(lifetime.Token), lifetime.Token);
 
-await TelegramSession.Post("I'm online", TelegramSession.Topics.Log, silent: true);
+await TelegramSession.Post("I'm Online", TelegramSession.Topics.Log, silent: true);
 Log.Write("Telegram", "Online");
 
 await ProcessSignals.WaitForShutdown();

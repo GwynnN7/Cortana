@@ -19,13 +19,14 @@ public static class AutomationRules
 	public static bool MotionActive(DateTimeOffset? lastMotionAt, DateTimeOffset now, TimeSpan timeout) =>
 		lastMotionAt.HasValue && now - lastMotionAt.Value < timeout;
 
-	public static TimeSpan MotionTimeout(bool computerConnected, TimeSpan computerOn, TimeSpan computerOff) =>
-		computerConnected ? computerOn : computerOff;
+	public static bool Present(DateTimeOffset? lastMotionAt, DateTimeOffset now, TimeSpan timeout, bool deskActive) =>
+		deskActive || MotionActive(lastMotionAt, now, timeout);
 
 	public static LampDecision DecideLamp(LampInput input)
 	{
 		if (!input.AutomationEnabled) return new LampDecision(null, "automation is off");
 		if (input.OverrideActive) return new LampDecision(null, "a manual override is active");
+		if (input.DesktopBusy) return new LampDecision(null, "the computer is busy with a game or something fullscreen");
 		if (input.SleepMode) return new LampDecision(PowerState.Off, "sleep mode keeps the lamp off");
 
 		if (!input.MotionActive) return new LampDecision(PowerState.Off, "no motion within the timeout");
@@ -47,6 +48,7 @@ public static class AutomationRules
 public readonly record struct LampInput(
 	bool AutomationEnabled,
 	bool OverrideActive,
+	bool DesktopBusy,
 	bool SleepMode,
 	bool MotionActive,
 	bool LampIsOn,

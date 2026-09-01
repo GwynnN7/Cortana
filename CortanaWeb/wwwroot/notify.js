@@ -20,6 +20,7 @@ window.cortanaNotify = (() => {
         vibrate: () => { try { return localStorage.getItem('cortana-notify-vibrate') !== 'off'; } catch { return true; } },
         setVibrate: value => { try { localStorage.setItem('cortana-notify-vibrate', value ? 'on' : 'off'); } catch { } },
         isEnabled: () => supported() && Notification.permission === 'granted' && read(),
+        setEnabled: value => { write(!!value); return read(); },
         toggle: async () => {
             if (!supported()) return false;
             if (read()) { write(false); return false; }

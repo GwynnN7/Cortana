@@ -1,4 +1,4 @@
-<a class="pill pill-link @(Online ? "pill-ok" : "pill-bad")" href="/logs" title="@Title">
+<a class="pill pill-link @(Online ? $"mood-{Mood.ToString().ToLower()}" : "pill-bad")" href="/logs" title="@Title">
     <span class="dot"></span>
     @Label
 </a>
@@ -7,11 +7,15 @@
     [Parameter] public bool Online { get; set; }
     [Parameter] public DateTimeOffset? LastUpdate { get; set; }
 
+    [Parameter] public Mood Mood { get; set; }
+
+    [Parameter] public string Reason { get; set; } = "";
+
     private string Label => Online
-        ? "Online"
+        ? Mood.ToString().ToLower()
         : LastUpdate == null ? "Offline" : $"Offline · {LastUpdate:HH:mm:ss}";
 
-    private string Title => LastUpdate == null
-        ? "Never reached the kernel"
-        : $"Last update {LastUpdate:HH:mm:ss}";
+    private string Title => Online
+        ? Reason
+        : LastUpdate == null ? "Never reached the kernel" : $"Last update {LastUpdate:HH:mm:ss}";
 }

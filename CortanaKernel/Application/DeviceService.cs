@@ -1,3 +1,4 @@
+using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
 using CortanaKernel.Domain.Devices;
@@ -20,6 +21,7 @@ public sealed class DeviceService(
 	IHostMachine host,
 	SettingsStore settings,
 	NotificationService notifications,
+	ActivityRegistry activity,
 	IEventBus bus)
 {
 	public IReadOnlyList<DeviceView> All() => devices.All(automation.OverrideUntil);
@@ -116,7 +118,8 @@ public sealed class DeviceService(
 				await computer.Send(ComputerCommand.Shutdown, "");
 				await computer.WaitUntilPoweredOff(settings.Seconds(SettingKey.ComputerShutdownGraceSeconds));
 				Apply(DeviceId.Power, PowerState.Off, CommandOrigin.Internal);
-				notifications.Raise(NotificationSource.Computer, "Computer off, power cut");
+				notifications.Raise(NotificationSource.Computer, "Computer off, power cut",
+					reason: $"the desktop went quiet, then a {settings.Seconds(SettingKey.ComputerShutdownGraceSeconds).TotalSeconds:0}s grace period elapsed");
 			}
 			catch (Exception ex)
 			{
@@ -134,6 +137,9 @@ public sealed class DeviceService(
 	public async Task<Result<string>> CommandComputer(ComputerCommand command, string argument, CommandOrigin origin, CancellationToken token = default)
 	{
 		if (!computer.Connected) return Result.Fail<string>("The computer is not connected");
+
+		if (command == ComputerCommand.Notify && !origin.IsUser && ActivityRules.DoNotDisturb(activity.Current))
+			return Result.Ok("Held back, the desktop is busy");
 
 		Result<string> result = await computer.Send(command, argument, token);
 

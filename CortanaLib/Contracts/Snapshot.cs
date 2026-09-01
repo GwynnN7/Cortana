@@ -5,6 +5,8 @@ namespace CortanaLib.Contracts;
 /// Coherent read model of everything Cortana currently believes
 public sealed record CortanaSnapshot(
 	DateTimeOffset Timestamp,
+	Mood Mood,
+	string MoodReason,
 	IReadOnlyList<DeviceView> Devices,
 	IReadOnlyList<SensorView> Sensors,
 	AutomationView Automation,
@@ -12,7 +14,8 @@ public sealed record CortanaSnapshot(
 	IReadOnlyList<RaspberryInfoView> Raspberry,
 	IReadOnlyList<ServiceView> Services,
 	MetricsView? ComputerMetrics,
-	MetricsView RaspberryMetrics);
+	MetricsView RaspberryMetrics,
+	DesktopActivity? Activity);
 
 public sealed record DeviceView(DeviceId Device, PowerState State, DateTimeOffset? OverrideUntil);
 
@@ -29,6 +32,7 @@ public sealed record AutomationView(
 	DateTimeOffset? SleepHoldUntil,
 	DateTimeOffset? SleepEntryAt,
 	DateTimeOffset? HoldingUntil,
+	bool DesktopHold,
 	bool MotionActive,
 	DateTimeOffset? LastMotionAt,
 	bool AirQualityWarning,

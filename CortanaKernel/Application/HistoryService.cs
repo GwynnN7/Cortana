@@ -1,3 +1,4 @@
+using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.History;
 using CortanaKernel.Domain.Metrics;
@@ -13,6 +14,7 @@ public sealed class HistoryService(
 	SensorRegistry sensors,
 	DeviceService devices,
 	MetricsRegistry metrics,
+	ActivityRegistry activity,
 	AiSettingsStore aiSettings) : BackgroundService
 {
 	private const int MaxSamples = 240;
@@ -97,6 +99,21 @@ public sealed class HistoryService(
 		}
 	}
 
+	public Result<BaselineResult> CompareToUsual(string metric, int days = 21, DateTimeOffset? at = null)
+	{
+		string wanted = metric.Trim().ToLowerInvariant();
+		if (!repository.Metrics.Contains(wanted))
+			return Result.Fail<BaselineResult>($"Unknown metric '{metric}'. Valid metrics: {string.Join(", ", repository.Metrics)}");
+
+		DateTimeOffset moment = at ?? DateTimeOffset.Now;
+		int window = Math.Clamp(days, 1, 365);
+
+		IReadOnlyList<HistoryPoint> points = repository.Read(wanted, moment.AddDays(-window), moment);
+		double? current = points.Count > 0 ? points[^1].Value : null;
+
+		return Result.Ok(HistoryBaseline.Build(wanted, points, current, moment.Hour));
+	}
+
 	private HistorySample Sample()
 	{
 		SensorReading? reading = sensors.Last;
@@ -120,7 +137,9 @@ public sealed class HistoryService(
 			["pc_temp"] = pc?.CpuTemp,
 			["pc_ram"] = pc == null ? null : Percent(pc.MemoryUsed, pc.MemoryTotal),
 			["pc_gpu"] = pc?.GpuLoad,
-			["pc_gpu_temp"] = pc?.GpuTemp
+			["pc_gpu_temp"] = pc?.GpuTemp,
+			["activity"] = activity.Current is { } doing ? (int)doing.Category : null,
+			["music"] = activity.Current?.Playing is { } playing ? playing.Paused ? 0 : 1 : null
 		};
 
 		return new HistorySample(DateTimeOffset.Now, values);

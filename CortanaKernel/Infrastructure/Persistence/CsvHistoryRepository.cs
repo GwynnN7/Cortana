@@ -14,7 +14,8 @@ public sealed class CsvHistoryRepository : IHistoryRepository
 	private static readonly string[] Columns =
 	[
 		"temperature", "humidity", "light", "co2", "tvoc", "motion", "lamp", "computer",
-		"pi_cpu", "pi_temp", "pi_ram", "pc_cpu", "pc_temp", "pc_ram", "pc_gpu", "pc_gpu_temp"
+		"pi_cpu", "pi_temp", "pi_ram", "pc_cpu", "pc_temp", "pc_ram", "pc_gpu", "pc_gpu_temp",
+		"activity", "music"
 	];
 
 	private static readonly string Header = "timestamp," + string.Join(",", Columns);

@@ -84,7 +84,7 @@ Task OnReady()
 			await commands.RegisterCommandsGloballyAsync();
 			_ = Task.Run(() => ShowActivity(lifetime.Token), lifetime.Token);
 
-			await DiscordContext.Post("I'm online", CortanaChannel.Cortana);
+			await DiscordContext.Post("I'm Online", CortanaChannel.Cortana);
 			Log.Write("Discord", "Online");
 		}
 		catch (Exception ex)

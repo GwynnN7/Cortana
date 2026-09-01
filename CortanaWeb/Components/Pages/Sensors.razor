@@ -29,7 +29,7 @@
             <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
             <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
             <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="@State.MotionIcon" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
             <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
             <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
         </div>
@@ -39,7 +39,7 @@
 }
 else if (_tab == "computer")
 {
-    <ComputerCard Metrics="State.Computer"/>
+    <ComputerCard Metrics="State.Computer" Activity="State.Activity"/>
     <HistoryPanel Title="History" Metrics="@(new[] { "pc_cpu", "pc_temp", "pc_gpu", "pc_gpu_temp", "pc_ram" })"/>
 }
 else

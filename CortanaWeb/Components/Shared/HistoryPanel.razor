@@ -14,6 +14,7 @@
         </select>
         <select @bind="_hours" @bind:after="Reset" disabled="@_loading">
             <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
             <option value="24">24 hours</option>
             <option value="72">3 days</option>
             <option value="168">7 days</option>
@@ -44,7 +45,7 @@
     [Parameter] public string Title { get; set; } = "History";
 
     private string _metric = "";
-    private int _hours = 24;
+    private int _hours = 12;
     private HistorySeries? _series;
     private bool _loading;
     private int _offset;

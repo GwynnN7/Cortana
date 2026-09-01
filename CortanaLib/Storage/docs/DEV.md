@@ -93,11 +93,92 @@ expiry reachable from one place.
 - **Night alone no longer suppresses automatic lighting.** Previously `Night` and `Sleep` were the
   same state, so motion did not light the lamp after `NightHour`. They are now separate: at night,
   before sleep mode is entered, motion still lights the lamp. Nighttime sleep entry is what stops it.
-- **The motion timeout follows the computer only**, not "night or computer off" as before.
+- **The motion timeout is one number, not one per computer state.** `MotionTimeoutComputerOnSeconds`
+  and `MotionTimeoutComputerOffSeconds` were a crude proxy for "is anyone there"; real presence
+  signals replaced them with a single `MotionTimeoutSeconds`.
+
+  `AutomationRules.Present` is `deskActive || MotionActive(...)`: using the computer holds the lamp
+  on, and everything else falls back to the plain PIR timeout.
+
+  `DeskActive` requires `computer.Connected && Locked: false && IdleSeconds: 0` — a *positive* report
+  of not-idle, never merely the absence of an idle signal. `IdleSeconds` is `-1` (unknown) whenever
+  idle cannot be observed: no idle file, **no running idle daemon** (`hypridle`/`swayidle` — checked
+  every poll, so a dead daemon degrades to plain motion instead of pinning the lamp on with a stale
+  file), or **an idle inhibitor is held**. That last case matters —
+  `systemd-inhibit --what=idle --mode=block` stops hypridle reporting idle at all, so treating "no
+  idle signal" as "at the desk" would keep the lamp on forever after leaving with the inhibitor on.
+  Unknown therefore falls back to plain motion, which is the safe direction.
+
+  The four states: at the desk → no timeout; idle, locked, inhibited, or computer off → plain motion
+  timeout. The lamp can still switch *on* from motion and lux in every one of them.
 - **Sleep mode is a real toggle** with its own lifetime, hold and entry delay, instead of a one-way
   "enter sleep" button.
 - `ComputerCommand.System` became `BootIntoOtherOperatingSystem`, and the rest of the enum names were
   spelled out, because the AI picks tools by reading them.
+
+### Mood and activity
+
+Two derived read-only values sit next to the engine, both computed fresh per snapshot and never stored.
+
+`Domain/Automation/MoodRules.cs` reduces the whole house to one word — `Watching`, `Quiet`,
+`Concerned`, `Resting`, `Alone` — with `Explain()` giving the sentence behind it. Every word describes
+**Cortana**, not the user: `Quiet` means she is holding back because the desk is busy, which is why it
+is not called `Busy`. `Explain()` reaches clients as `CortanaSnapshot.MoodReason`, so the word is
+never unexplained: it is the status pill's tooltip and the first section of the logs page.
+
+Mood drives the push status line, the top-right status pill (which carries the online dot and links
+to the logs) and the AI's opening context.
+
+`Domain/Activity/ActivityRegistry.cs` holds what the desktop is doing. It has **two independent axes**,
+which is the whole point: `Category` is the focused window, `Playing` is whatever MPRIS is playing.
+Coding with music on is `Coding` **and** a track — one field could not say that, and folding music into
+`Category` would have made background music invisible.
+
+Two things read it:
+
+- `ActivityRules.DoNotDisturb` — a fullscreen game or film. It gates exactly one thing:
+  `DeviceService.CommandComputer` drops a non-user `ComputerCommand.Notify`, so nothing pops up on the
+  desktop mid-game. Push to the phone, the web log, Telegram and Discord are all untouched, and a
+  notification the user explicitly asked for still goes through because `origin.IsUser` bypasses it.
+  Background music never triggers it — DND requires fullscreen.
+- `MoodRules` — fullscreen gaming or media reads as `Quiet` regardless of CPU load.
+- `AutomationEngine` — while anything is fullscreen the engine holds: the lamp decision returns "no
+  action" and `AutomationStatus` reads `Holding`. A manual lamp change during a film therefore sticks.
+  This hold has no expiry, so `HoldingUntil` is null and the dashboard's Resume button is hidden —
+  `FullscreenHold` on `AutomationView` is what tells the two kinds of hold apart.
+
+The privacy boundary is the agent, not the Kernel: `CortanaDesktop/Activity.cs` maps the window class
+to a category on the desktop. **Window titles never leave the machine, at any setting.** It also only
+names a class that is in the map, because an unmapped class can itself be sensitive — a browser-made
+web app encodes its site host in the class, which is how the first live run shipped a Tailscale
+hostname to the Pi.
+
+`~/.config/cortana/activity.conf` holds `class = category` lines plus one `detail =` line — the §11
+privacy dial, `CategoryOnly` | `GameTitles` | `NowPlaying`. **It defaults to `NowPlaying`**, on the
+grounds that the destination is the user's own Pi on their own LAN and track titles are the point of
+the feature. `detail = CategoryOnly` turns off both the app name and the track.
+
+The agent is also where the debouncing lives. It listens on Hyprland's `socket2` and reads
+`playerctl --follow`, collapses bursts into one evaluation every 750 ms, and sends only transitions
+plus a 5-minute heartbeat. That matters
+because `StateBroadcaster` turns every bus event into a snapshot rebroadcast; wiring a raw compositor
+event stream into the bus would melt the Blazor clients. The broadcaster's bounded(1)/`DropWrite`
+channel and the SSE coalesce delay are the second line of defence, not the first.
+
+### Baselines
+
+`Domain/History/HistoryBaseline.cs` answers "is this normal for this hour" instead of "is this above a
+number". It buckets the last few weeks of a metric by hour-of-day and reduces to a **median and a MAD**
+(scaled by 1.4826 to read like a standard deviation) — both robust, so one bad afternoon does not move
+the baseline the way a mean would. Below eight samples in the bucket it says so rather than guessing.
+
+Reached as `GET /history/{metric}/usual` and as the `CompareToUsual` AI capability, which is the point:
+the model gets "clearly higher than usual" as a computed fact rather than inventing the judgement.
+
+Two caveats worth knowing: `pc_gpu` baselines are skewed until the old raw-utilisation samples age out
+of the window, because effective load reads much lower; and a metric added to the CSV mid-day is
+unreadable for the rest of that day, since `Read` resolves columns from the file's own header and
+`Append` only writes a header for a fresh file.
 
 ---
 
@@ -192,7 +273,8 @@ it would do. `Vapid.json` and the history CSVs were already compatible and are l
   `esp32` then bare JSON objects with no delimiter; frames are cut by counting braces.
 - **Desktop agent ↔ Kernel**: one JSON object per line in both directions. Agent sends `computer`,
   then `{"type":"ping"|"reply","id","text"}`; the Kernel sends `{"id","command","argument"}`.
-  Replies are correlated by id, so several commands can be in flight.
+  Replies are correlated by id, so several commands can be in flight. The agent also pushes
+  `{"type":"activity","activity":{...}}` on transitions.
 - **API**: every route answers plain text when `Accept: text/plain`, JSON otherwise. That is what lets
   the bots and the CLI stay thin.
 
@@ -221,9 +303,17 @@ if any endpoint signature is invalid, because that failure otherwise turns every
   presented as a room reading.
 - The temperature offset is applied at ingest, so it corrects live readings and everything recorded
   from that moment on; history written before it was set keeps the old values.
-- **Not yet run against real hardware.** Everything compiles and the rules are tested, but the GPIO
-  writes, the ESP32 socket, the desktop agent handshake and the deploy have not been exercised on the
-  Pi. `migrate-config` has been tested against copies of the live config but not run on the Pi.
+- **`Wire.begin()` must never be left to the board variant.** The sketch probes 21/22, then 13/16,
+  then 13/33, and only falls back to the variant default. This is not defensive padding: flashing with
+  `esp32:esp32:esp32-poe-iso` put I²C on **SDA 13 / SCL 16** while the sensors are wired for the
+  generic ESP32's **21/22**, so every I²C device failed `begin()` while the GPIO PIR on pin 23 kept
+  working perfectly. The tell was `light = -2`, which is BH1750's documented "sensor not configured"
+  sentinel rather than a reading. Changing the FQBN silently moves the bus; the probe makes the sketch
+  independent of which board definition it is compiled for.
+- **The ESP32 has not been reflashed since the firmware changed.** `airQualityTemperature` and
+  `WiFi.setSleep(true)` only take effect after `cortana flash` is run **on the Pi**, where
+  `arduino-cli` is installed. Everything else — GPIO, the station socket, the agent handshake, the
+  deploy and `migrate-config` — has been exercised against the real Pi.
 - Device overrides are per-device with one shared duration, as specified. If automation ever controls
   more than the lamp, per-device durations become worth having.
 - `HistoryAnalysis.WorstPeriod` is O(n²) over the window. Fine for a few thousand samples, worth an
@@ -231,3 +321,21 @@ if any endpoint signature is invalid, because that failure otherwise turns every
 - The Discord `/games` module needs `CORTANA_IGDB_*`; without them the command answers that it is not
   configured rather than failing.
 - `yt-dlp` is required for anything YouTube. There is no fallback, on purpose.
+- `Locked` comes from `qs -c caelestia ipc call lock isLocked`, polled every 10s and only when a `qs`
+  process is actually running.
+- Idle arrives from outside: `cortana idle on|off` writes `$XDG_RUNTIME_DIR/cortana/idle`, and the
+  agent turns that into `Away` with `IdleSeconds` measured from the file's mtime. This exists because
+  Wayland exposes idle only through `ext-idle-notify-v1` and logind is no help — `IdleAction=ignore`
+  and nothing maintains the session `IdleHint`, so systemd holds no idle counter to read. An
+  `ext-idle-notify` client such as `hypridle` calls the wrapper on timeout and resume.
+- The agent is Hyprland-first, not Hyprland-only. With `HYPRLAND_INSTANCE_SIGNATURE` set it reads
+  socket2 and `hyprctl`; without it (the CachyOS gamescope session) it falls back to probing for a
+  `gamescope` process or a `steamapps/common` binary and reports `Gaming` fullscreen. `playerctl` and
+  the lock query work in both.
+- `activity` and `music` were appended to the history columns. `Read` resolves each column from the
+  file's own header, so older CSVs stay readable and simply lack the two; the day the change lands
+  keeps its old header until midnight rollover, so those two are blank for the rest of that day.
+- Mood still has **no behavioural consumer** — it is display text and LLM context only. Activity has
+  exactly one, the do-not-disturb gate above.
+- The activity map is Hyprland-only. On any other compositor `Activity` stays null, which every
+  consumer already treats as "unknown" rather than "idle".
