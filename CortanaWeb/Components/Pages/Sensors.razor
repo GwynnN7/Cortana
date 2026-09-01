@@ -7,7 +7,6 @@
 <PageTitle>Sensors</PageTitle>
 
 <h1>Sensors</h1>
-<Toast @bind-Message="_message"/>
 
 <div class="subnav">
     @foreach ((string key, string label) in Tabs)
@@ -27,12 +26,12 @@
         </header>
 
         <div class="tiles tiles-6">
-            <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(ESensor.Motion)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(ESensor.CO2)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(ESensor.Tvoc)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
+            <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
         </div>
     </section>
 
@@ -54,37 +53,9 @@ else
         [("station", "Station"), ("computer", "Computer"), ("raspberry", "Raspberry")];
 
     private string _tab = "station";
-
-
-
-
     private IDisposable? _subscription;
-    private string? _message;
-    private bool _busy;
 
-    protected override void OnInitialized() =>
-        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
 
     public void Dispose() => _subscription?.Dispose();
-
-    private void Report(string result) => _message = result;
-
-    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
-
-    private Task ToggleAutomatic() => Toggle(ESettings.AutomaticMode);
-    private Task ToggleLampRelay() => Toggle(ESettings.LampToggle);
-
-    private async Task Toggle(ESettings setting)
-    {
-        _busy = true;
-        try
-        {
-            EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
-            _message = await State.SetSetting(setting, (int)target);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
 }

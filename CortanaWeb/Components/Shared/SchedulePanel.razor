@@ -15,11 +15,11 @@
     else
     {
         <div class="schedule-list">
-            @foreach (ScheduleResponse entry in _schedules)
+            @foreach (ScheduleView entry in _schedules)
             {
-                <article class="schedule @(entry.Schedule.Enabled ? "" : "is-disabled")">
+                <article class="schedule @(entry.Schedule.Enabled || Spent(entry) ? "" : "is-disabled")">
                     <div class="schedule-main">
-                        <strong>@entry.Schedule.Name</strong>
+                        <strong>@entry.Schedule.Name @(Spent(entry) ? "· done" : "")</strong>
                         <span class="schedule-when">@Describe(entry)</span>
                         <span class="schedule-action">@ActionText(entry.Schedule.Action)</span>
                         @if (entry.Schedule.LastRun != null)
@@ -28,10 +28,15 @@
                         }
                     </div>
                     <div class="btn-row wrap">
-                        <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, "run")'>Run</button>
-                        <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, entry.Schedule.Enabled ? "disable" : "enable")'>
-                            @(entry.Schedule.Enabled ? "Disable" : "Enable")
+                        <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, "run")'>
+                            @(Spent(entry) ? "Run again" : "Run")
                         </button>
+                        @if (!Spent(entry))
+                        {
+                            <button class="btn btn-small" disabled="@_busy" @onclick='() => Command(entry.Schedule.Id, entry.Schedule.Enabled ? "disable" : "enable")'>
+                                @(entry.Schedule.Enabled ? "Disable" : "Enable")
+                            </button>
+                        }
                         <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Delete(entry.Schedule.Id)">Delete</button>
                     </div>
                 </article>
@@ -51,7 +56,7 @@
 
     <div class="field-row">
         <select @bind="_draft.Trigger" disabled="@_busy">
-            @foreach (EScheduleTrigger trigger in Enum.GetValues<EScheduleTrigger>())
+            @foreach (ScheduleTrigger trigger in Enum.GetValues<ScheduleTrigger>())
             {
                 <option value="@trigger">@trigger</option>
             }
@@ -59,16 +64,16 @@
 
         @switch (_draft.Trigger)
         {
-            case EScheduleTrigger.Once:
+            case ScheduleTrigger.Once:
                 <input type="datetime-local" @bind="_draft.At" disabled="@_busy"/>
                 break;
-            case EScheduleTrigger.Interval:
+            case ScheduleTrigger.Interval:
                 <input type="number" min="10" placeholder="Seconds" @bind="_draft.IntervalSeconds" disabled="@_busy"/>
                 break;
-            case EScheduleTrigger.Daily:
+            case ScheduleTrigger.Daily:
                 <input type="time" @bind="_draft.Time" disabled="@_busy"/>
                 break;
-            case EScheduleTrigger.Weekly:
+            case ScheduleTrigger.Weekly:
                 <select @bind="_draft.Day" disabled="@_busy">
                     @foreach (DayOfWeek day in Enum.GetValues<DayOfWeek>())
                     {
@@ -77,9 +82,9 @@
                 </select>
                 <input type="time" @bind="_draft.Time" disabled="@_busy"/>
                 break;
-            case EScheduleTrigger.Event:
+            case ScheduleTrigger.Event:
                 <select @bind="_draft.Event" disabled="@_busy">
-                    @foreach (EScheduleEvent scheduleEvent in Enum.GetValues<EScheduleEvent>())
+                    @foreach (ScheduleEvent scheduleEvent in Enum.GetValues<ScheduleEvent>())
                     {
                         <option value="@scheduleEvent">@scheduleEvent</option>
                     }
@@ -88,9 +93,16 @@
         }
     </div>
 
+    @if (_draft.Trigger == ScheduleTrigger.Event)
+    {
+        <div class="options">
+            <label><input type="checkbox" @bind="_draft.RunOnce"/> Run only once, then disable</label>
+        </div>
+    }
+
     <div class="field-row">
         <select value="@_draft.ActionType" disabled="@_busy" @onchange="OnActionType">
-            @foreach (EScheduleAction action in Enum.GetValues<EScheduleAction>())
+            @foreach (ScheduleActionType action in Enum.GetValues<ScheduleActionType>())
             {
                 <option value="@action">@action</option>
             }
@@ -130,7 +142,7 @@
 
 @code {
     private IDisposable? _subscription;
-    private IReadOnlyList<ScheduleResponse> _schedules = [];
+    private IReadOnlyList<ScheduleView> _schedules = [];
     private string? _message;
     private bool _busy;
 
@@ -139,15 +151,16 @@
     private sealed class Draft
     {
         public string Name { get; set; } = "";
-        public EScheduleTrigger Trigger { get; set; } = EScheduleTrigger.Daily;
-        public EScheduleAction ActionType { get; set; } = EScheduleAction.Device;
-        public string Target { get; set; } = nameof(EDevice.Lamp);
-        public string Value { get; set; } = nameof(ESwitchAction.Toggle);
+        public ScheduleTrigger Trigger { get; set; } = ScheduleTrigger.Daily;
+        public ScheduleActionType ActionType { get; set; } = ScheduleActionType.SwitchDevice;
+        public string Target { get; set; } = nameof(DeviceId.Lamp);
+        public string Value { get; set; } = nameof(SwitchAction.Toggle);
         public DateTime At { get; set; } = DateTime.Now.AddHours(1);
         public int IntervalSeconds { get; set; } = 3600;
         public DateTime Time { get; set; } = DateTime.Today.AddHours(8);
         public DayOfWeek Day { get; set; } = DayOfWeek.Monday;
-        public EScheduleEvent Event { get; set; } = EScheduleEvent.ComputerOff;
+        public ScheduleEvent Event { get; set; } = ScheduleEvent.ComputerTurnedOn;
+        public bool RunOnce { get; set; } = true;
     }
 
     protected override async Task OnInitializedAsync()
@@ -158,32 +171,33 @@
 
     public void Dispose() => _subscription?.Dispose();
 
-    private async Task Reload() => _schedules = await State.GetSchedules();
+    private async Task Reload() => _schedules = await State.Schedules();
 
     private void OnActionType(ChangeEventArgs args)
     {
-        if (!Enum.TryParse(args.Value?.ToString(), out EScheduleAction action)) return;
+        if (!Enum.TryParse(args.Value?.ToString(), out ScheduleActionType action)) return;
 
         _draft.ActionType = action;
         _draft.Target = TargetOptions(action).FirstOrDefault() ?? "";
         _draft.Value = ValueOptions(action).FirstOrDefault() ?? "";
     }
 
-    private static List<string> TargetOptions(EScheduleAction action) => action switch
+    private static List<string> TargetOptions(ScheduleActionType action) => action switch
     {
-        EScheduleAction.Device => Enum.GetNames<EDevice>().ToList(),
-        EScheduleAction.Computer => Enum.GetNames<EComputerCommand>().ToList(),
-        EScheduleAction.Raspberry => Enum.GetNames<ERaspberryCommand>().ToList(),
-        EScheduleAction.Setting => Enum.GetNames<ESettings>().ToList(),
-        EScheduleAction.Notify => Enum.GetNames<EMessageCategory>().ToList(),
-        EScheduleAction.Subfunction => Enum.GetNames<ESubFunctionType>().ToList(),
+        ScheduleActionType.SwitchDevice => [.. Enum.GetNames<DeviceId>()],
+        ScheduleActionType.CommandComputer => [.. Enum.GetNames<ComputerCommand>()],
+        ScheduleActionType.CommandRaspberry => [.. Enum.GetNames<RaspberryCommand>()],
+        ScheduleActionType.ChangeSetting => [.. Enum.GetNames<SettingKey>()],
+        ScheduleActionType.SendNotification => [.. Enum.GetNames<NotificationChannel>()],
+        ScheduleActionType.ControlService => [.. Enum.GetNames<ServiceId>()],
         _ => []
     };
 
-    private static List<string> ValueOptions(EScheduleAction action) => action switch
+    private static List<string> ValueOptions(ScheduleActionType action) => action switch
     {
-        EScheduleAction.Device or EScheduleAction.Room => Enum.GetNames<ESwitchAction>().ToList(),
-        EScheduleAction.Subfunction => Enum.GetNames<ESubfunctionAction>().ToList(),
+        ScheduleActionType.SwitchDevice or ScheduleActionType.SwitchRoom
+            or ScheduleActionType.SetSleepMode or ScheduleActionType.SetAutomation => [.. Enum.GetNames<SwitchAction>()],
+        ScheduleActionType.ControlService => [.. Enum.GetNames<ServiceAction>()],
         _ => []
     };
 
@@ -192,19 +206,21 @@
         _busy = true;
         try
         {
-            var request = new PostSchedule(
-                Name: _draft.Name,
-                Trigger: _draft.Trigger.ToString(),
-                ActionType: _draft.ActionType.ToString(),
-                Target: _draft.Target,
-                Value: _draft.Value,
-                At: _draft.Trigger == EScheduleTrigger.Once ? new DateTimeOffset(_draft.At) : null,
-                IntervalSeconds: _draft.IntervalSeconds,
-                Hour: _draft.Time.Hour,
-                Minute: _draft.Time.Minute,
-                Day: _draft.Trigger == EScheduleTrigger.Weekly ? _draft.Day : null,
-                Event: _draft.Trigger == EScheduleTrigger.Event ? _draft.Event.ToString() : null,
-                Owner: "web");
+            var request = new CreateScheduleRequest(
+                _draft.Name,
+                _draft.Trigger,
+                _draft.ActionType,
+                _draft.Target,
+                _draft.Value,
+                _draft.Trigger == ScheduleTrigger.Once ? new DateTimeOffset(_draft.At) : null,
+                _draft.IntervalSeconds,
+                _draft.Time.Hour,
+                _draft.Time.Minute,
+                _draft.Trigger == ScheduleTrigger.Weekly ? _draft.Day : null,
+                _draft.Trigger == ScheduleTrigger.Event ? _draft.Event : null,
+                _draft.Trigger == ScheduleTrigger.Event && _draft.RunOnce,
+                0,
+                "web");
 
             _message = await State.CreateSchedule(request);
             _draft.Name = "";
@@ -221,7 +237,7 @@
         _busy = true;
         try
         {
-            _message = await State.UpdateSchedule(id, command);
+            _message = await State.CommandSchedule(id, command);
             await Reload();
         }
         finally
@@ -244,26 +260,30 @@
         }
     }
 
-    private static string Describe(ScheduleResponse entry)
+    private static bool Spent(ScheduleView entry) => entry.NextRun == null && entry.Schedule.LastRun != null;
+
+    private static string Describe(ScheduleView entry)
     {
-        Schedule s = entry.Schedule;
-        string when = s.Trigger switch
+        Schedule schedule = entry.Schedule;
+        string when = schedule.Trigger switch
         {
-            EScheduleTrigger.Once => $"Once at {s.At:dd MMM HH:mm}",
-            EScheduleTrigger.Interval => $"Every {s.IntervalSeconds}s",
-            EScheduleTrigger.Daily => $"Daily at {s.Hour:00}:{s.Minute:00}",
-            EScheduleTrigger.Weekly => $"{s.Day} at {s.Hour:00}:{s.Minute:00}",
-            EScheduleTrigger.Event => $"On {s.Event}",
+            ScheduleTrigger.Once => $"Once at {schedule.At:dd MMM HH:mm}",
+            ScheduleTrigger.Interval => $"Every {schedule.IntervalSeconds}s",
+            ScheduleTrigger.Daily => $"Daily at {schedule.Hour:00}:{schedule.Minute:00}",
+            ScheduleTrigger.Weekly => $"{schedule.Day} at {schedule.Hour:00}:{schedule.Minute:00}",
+            ScheduleTrigger.Event => $"On {schedule.Event}",
             _ => "Unknown"
         };
 
-        return entry.NextRun == null ? when : $"{when} · next {entry.NextRun:dd MMM HH:mm}";
+        if (entry.NextRun != null) return $"{when} · next {entry.NextRun:dd MMM HH:mm}";
+
+        return entry.Schedule.LastRun != null ? $"{when} · ran {entry.Schedule.LastRun:dd MMM HH:mm}" : when;
     }
 
     private static string ActionText(ScheduleAction action) => action.Type switch
     {
-        EScheduleAction.Room => $"Room {action.Value}",
-        EScheduleAction.Notify => $"Notify {action.Target}: {action.Value}",
+        ScheduleActionType.SwitchRoom => $"Room {action.Value}",
+        ScheduleActionType.SendNotification => $"Notify {action.Target}: {action.Value}",
         _ => string.IsNullOrEmpty(action.Value) ? $"{action.Type} {action.Target}" : $"{action.Type} {action.Target} → {action.Value}"
     };
 }

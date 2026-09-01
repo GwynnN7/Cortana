@@ -1,24 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>CortanaLib</RootNamespace>
+        <LangVersion>preview</LangVersion>
     </PropertyGroup>
 
     <ItemGroup>
-      <Content Include="Storage/**" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="Storage/**" Exclude="Storage/docs/**" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>
       <PackageReference Include="Mono.Unix" Version="7.1.0-final.1.21458.1" />
-      <PackageReference Include="StackExchange.Redis" Version="3.1.0" />
       <PackageReference Include="QRCoder" Version="1.8.0" />
-      <!-- Pinned above the 1.4.0 YoutubeExplode pulls in: GHSA-pgww-w46g-26qg -->
-      <PackageReference Include="AngleSharp" Version="1.7.1" />
-      <PackageReference Include="YoutubeExplode" Version="6.6.0" />
-      <PackageReference Include="YoutubeExplode.Converter" Version="6.6.0" />
     </ItemGroup>
 
 </Project>

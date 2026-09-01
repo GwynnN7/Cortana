@@ -2,7 +2,6 @@
 @attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
 @inject CortanaState State
-@inject NavigationManager Navigation
 
 <PageTitle>@Title</PageTitle>
 
@@ -29,15 +28,13 @@
     private string Title => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Title : "Unknown shortcut";
     private string Icon => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Icon : "❔";
 
-    protected override async Task OnInitializedAsync()
-    {
+    protected override async Task OnInitializedAsync() =>
         _result = Action.ToLowerInvariant() switch
         {
-            "generic" => await State.SwitchDevice(EDevice.Generic, ESwitchAction.Toggle),
-            "lamp" => await State.SwitchDevice(EDevice.Lamp, ESwitchAction.Toggle),
-            "computer" => await State.SwitchDevice(EDevice.Computer, ESwitchAction.Toggle),
-            "sleep" => await State.Sleep(),
+            "generic" => await State.SwitchDevice(DeviceId.Generic, SwitchAction.Toggle),
+            "lamp" => await State.SwitchDevice(DeviceId.Lamp, SwitchAction.Toggle),
+            "computer" => await State.SwitchDevice(DeviceId.Computer, SwitchAction.Toggle),
+            "sleep" => await State.SetSleepMode(SwitchAction.Toggle),
             _ => "That shortcut does not exist."
         };
-    }
 }

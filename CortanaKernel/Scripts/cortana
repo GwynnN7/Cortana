@@ -1,76 +1,113 @@
-#!/usr/bin/zsh
+#!/usr/bin/env bash
+# Cortana control script, installed on the Raspberry Pi.
 
-services=(cortana-kernel cortana-discord cortana-telegram cortana-web)
-script_path="$0"
+set -euo pipefail
 
-if (($# == 1))
-then
-    if [ "$1" = "git" ]
-    then
-      cd ~/Cortana || exit;
-      git fetch --all && git pull;
-    elif [ "$1" = "start" ]
-    then
-      systemctl --user start cortana-kernel;
-      echo "Cortana starting";
-    elif [ "$1" = "stop" ]
-    then
-      systemctl --user stop cortana-kernel;
-      echo "Cortana stopped";
-    elif [ "$1" = "restart" ]
-    then
-      systemctl --user restart cortana-kernel;
-      echo "Cortana restarted";
-    elif [ "$1" = "update" ]
-    then
-      "$script_path" stop;
-      "$script_path" git;
-      "$script_path" start;
-    elif [ "$1" = "status" ]
-    then
-      for svc in "${services[@]}"; do systemctl --user status "$svc" --no-pager; echo ""; done
-    elif [ "$1" = "log" ]
-    then
-      journalctl --user -u "cortana-*" --no-pager -n 50;
-    elif [ "$1" = "install" ]
-    then
-      mkdir -p ~/.config/systemd/user;
-      cd ~/Cortana/CortanaKernel/Scripts || exit;
-      for svc in "${services[@]}"; do cp "$svc.service" ~/.config/systemd/user/; done
-      systemctl --user daemon-reload;
-      systemctl --user enable cortana-kernel;
-      echo "Services installed and enabled";
-    elif [ "$1" = "uninstall" ]
-    then
-      systemctl --user disable --now cortana-kernel;
-      for svc in "${services[@]}"; do rm -f ~/.config/systemd/user/"$svc.service"; done
-      systemctl --user daemon-reload;
-      echo "Services uninstalled";
-    elif [ "$1" = "help" ]
-    then
-      echo "cortana git                  git fetch and pull";
-      echo "cortana start                start cortana (all services)";
-      echo "cortana stop                 stop cortana (all services)";
-      echo "cortana restart              restart cortana (all services)";
-      echo "cortana update               stop, pull, start";
-      echo "cortana status               show all services status";
-      echo "cortana log                  show recent logs";
-      echo "cortana install              install systemd services";
-      echo "cortana uninstall            remove systemd services";
-      echo "";
-      echo "cortana start <service>      start specific service";
-      echo "cortana stop <service>       stop specific service";
-      echo "cortana restart <service>    restart specific service";
-      echo "cortana status <service>     show specific service status";
-      echo "cortana log <service>        show specific service logs";
-    fi
-elif (($# == 2))
-then
-    if [ "$1" = "start" ] || [ "$1" = "stop" ] || [ "$1" = "restart" ] || [ "$1" = "status" ]
-    then
-      systemctl --user "$1" "cortana-$2";
-    elif [ "$1" = "log" ]
-    then
-      journalctl --user -u "cortana-$2" --no-pager -n 50;
-    fi
-fi
+services=(cortana-kernel cortana-telegram cortana-discord cortana-web)
+repo="${CORTANA_REPO:-$HOME/Cortana}"
+self="$0"
+
+usage() {
+	cat <<'USAGE'
+cortana git                  fetch and pull the repository
+cortana start                start Cortana (the Kernel brings up the rest)
+cortana stop                 stop Cortana
+cortana restart              restart Cortana
+cortana update               stop, pull, start
+cortana status               status of every service
+cortana log                  recent logs from every service
+cortana install              install and enable the systemd user units
+cortana uninstall            remove the systemd user units
+cortana flash [port]         compile and upload the ESP32 station firmware
+
+cortana start|stop|restart|status <service>    one service (kernel, telegram, discord, web)
+cortana log <service>                          recent logs of one service
+USAGE
+}
+
+station="$repo/CortanaEmbedded/ESP32Station"
+secret_store="$HOME/.config/cortana/esp32-secrets.h"
+fqbn="${CORTANA_ESP32_FQBN:-esp32:esp32:esp32-poe-iso}"
+
+flash() {
+	local port="${1:-${CORTANA_ESP32_PORT:-/dev/ttyUSB0}}"
+
+	command -v arduino-cli >/dev/null 2>&1 || { echo "arduino-cli is not installed"; exit 1; }
+	[ -d "$station" ] || { echo "No station sketch at $station"; exit 1; }
+
+	if [ -f "$station/secrets.h" ]; then
+		install -Dm600 "$station/secrets.h" "$secret_store"
+	elif [ -f "$secret_store" ]; then
+		echo "Restoring secrets.h from $secret_store"
+		cp "$secret_store" "$station/secrets.h"
+	else
+		echo "No secrets.h in the sketch and none saved at $secret_store."
+		echo "Copy secrets.example.h to secrets.h and fill it in."
+		exit 1
+	fi
+
+	trap 'rm -f "$station/secrets.h"' EXIT
+
+	echo "Compiling for $fqbn"
+	arduino-cli compile --fqbn "$fqbn" "$station" || { echo "Compilation failed, secrets.h removed"; exit 1; }
+
+	echo "Uploading to $port"
+	arduino-cli upload -p "$port" --fqbn "$fqbn" "$station" || { echo "Upload failed, secrets.h removed"; exit 1; }
+
+	echo "Flashed. secrets.h removed from the checkout; the copy at $secret_store is kept."
+}
+
+case "${1:-help}" in
+	git)
+		cd "$repo" && git fetch --all && git pull
+		;;
+	start|stop|restart)
+		if [ $# -eq 2 ]; then
+			systemctl --user "$1" "cortana-$2"
+		else
+			systemctl --user "$1" cortana-kernel
+			echo "Cortana ${1}ed"
+		fi
+		;;
+	status)
+		if [ $# -eq 2 ]; then
+			systemctl --user status "cortana-$2" --no-pager
+		else
+			for service in "${services[@]}"; do
+				printf "  %-18s %s\n" "$service" "$(systemctl --user is-active "$service")"
+			done
+		fi
+		;;
+	log)
+		if [ $# -eq 2 ]; then
+			journalctl --user -u "cortana-$2" --no-pager -n 50
+		else
+			journalctl --user -u "cortana-*" --no-pager -n 50
+		fi
+		;;
+	update)
+		"$self" stop
+		"$self" git
+		"$self" start
+		;;
+	flash)
+		shift
+		flash "$@"
+		;;
+	install)
+		mkdir -p ~/.config/systemd/user
+		cp "$repo"/CortanaKernel/Scripts/cortana-*.service ~/.config/systemd/user/
+		systemctl --user daemon-reload
+		systemctl --user enable cortana-kernel
+		echo "Services installed and enabled"
+		;;
+	uninstall)
+		systemctl --user disable --now cortana-kernel
+		for service in "${services[@]}"; do rm -f ~/.config/systemd/user/"$service.service"; done
+		systemctl --user daemon-reload
+		echo "Services removed"
+		;;
+	*)
+		usage
+		;;
+esac

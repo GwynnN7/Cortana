@@ -1,6 +1,26 @@
 @using System.Globalization
 
-@if (Series is { Samples.Count: > 1 })
+@if (Series is { Samples.Count: 0 })
+{
+    <div class="chart-wrap chart-empty-window">
+        <svg class="chart" viewBox="0 0 @Width @Height" preserveAspectRatio="none" role="img" aria-label="No data in this window">
+            @foreach (double tick in Ticks)
+            {
+                <line x1="0" x2="@Width" y1="@Y(tick).ToString("F1", Invariant)" y2="@Y(tick).ToString("F1", Invariant)"
+                      stroke="var(--border)" stroke-width="1"/>
+            }
+        </svg>
+        <span class="chart-empty-label">Nothing recorded in this window</span>
+    </div>
+
+    <div class="chart-axis">
+        @foreach (DateTimeOffset moment in TimeTicks)
+        {
+            <span>@moment.ToString(Format)</span>
+        }
+    </div>
+}
+else if (Series is { Samples.Count: > 1 })
 {
     <div class="chart-wrap">
         <div class="chart-y">
@@ -32,7 +52,7 @@
     </div>
 
     <div class="chart-axis">
-        @foreach (DateTime moment in TimeTicks)
+        @foreach (DateTimeOffset moment in TimeTicks)
         {
             <span>@moment.ToString(Format)</span>
         }
@@ -57,11 +77,8 @@ else
 @code {
     [Parameter, EditorRequired] public HistorySeries? Series { get; set; }
 
-    /// Fixed axis bounds. Left null the axis follows the data.
     [Parameter] public double? Min { get; set; }
     [Parameter] public double? Max { get; set; }
-
-    /// Renders the axis as Off/On rather than numbers.
     [Parameter] public bool Binary { get; set; }
 
     private const int Width = 600;
@@ -76,10 +93,11 @@ else
 
     private double Span => High - Low < 0.001 ? 1 : High - Low;
 
-    /// Without fixed bounds, widen the data range a little so the line never rides the edge.
     private (double Low, double High) Padded()
     {
-        double low = Series!.Samples.Min(point => point.Value);
+        if (Series!.Samples.Count == 0) return (0, 1);
+
+        double low = Series.Samples.Min(point => point.Value);
         double high = Series!.Samples.Max(point => point.Value);
         double margin = high - low < 0.5 ? 0.5 : (high - low) * 0.1;
 
@@ -95,19 +113,62 @@ else
     private string Value(double value) =>
         Binary ? $"{value * 100:0}% on" : $"{value.ToString("0.#", Invariant)}{Series!.Unit}";
 
-    /// Five evenly spaced sample times, so the x-axis reads as a scale rather than two endpoints.
-    private IEnumerable<DateTime> TimeTicks =>
-        Enumerable.Range(0, 5).Select(step => Series!.Samples[step * (Series.Samples.Count - 1) / 4].At);
+    private IEnumerable<DateTimeOffset> TimeTicks =>
+        Enumerable.Range(0, 5).Select(step => Series!.From + (Series.To - Series.From) * step / 4);
 
-    private string Format =>
-        (Series!.Samples[^1].At - Series.Samples[0].At).TotalHours > 30 ? "dd MMM" : "HH:mm";
+    private string Format => (Series!.To - Series.From).TotalHours > 30 ? "dd MMM" : "HH:mm";
 
-    private double X(int index) => (double)index / (Series!.Samples.Count - 1) * Width;
+    private double X(int index)
+    {
+        double span = (Series!.To - Series.From).TotalSeconds;
+
+        return span <= 0
+            ? (double)index / Math.Max(1, Series.Samples.Count - 1) * Width
+            : Math.Clamp((Series.Samples[index].At - Series.From).TotalSeconds / span, 0, 1) * Width;
+    }
 
     private double Y(double value) => Height - (Math.Clamp(value, Low, High) - Low) / Span * Height;
 
-    private string Line => string.Join(" ", Series!.Samples.Select((point, index) =>
-        $"{(index == 0 ? "M" : "L")}{X(index).ToString("F1", Invariant)},{Y(point.Value).ToString("F1", Invariant)}"));
+    private TimeSpan GapThreshold
+    {
+        get
+        {
+            List<double> deltas = Series!.Samples.Zip(Series.Samples.Skip(1), (a, b) => (b.At - a.At).TotalSeconds).Where(d => d > 0).ToList();
+            if (deltas.Count == 0) return TimeSpan.FromMinutes(15);
 
-    private string Area => $"{Line} L{Width.ToString(Invariant)},{Height.ToString(Invariant)} L0,{Height.ToString(Invariant)} Z";
+            deltas.Sort();
+            double median = deltas[deltas.Count / 2];
+            return TimeSpan.FromSeconds(Math.Max(median * 3, 120));
+        }
+    }
+
+    private List<List<int>> Segments
+    {
+        get
+        {
+            var segments = new List<List<int>>();
+            segments.Add(new List<int>());
+            TimeSpan gap = GapThreshold;
+
+            for (var index = 0; index < Series!.Samples.Count; index++)
+            {
+                if (index > 0 && Series.Samples[index].At - Series.Samples[index - 1].At > gap && segments[^1].Count > 0)
+                    segments.Add(new List<int>());
+
+                segments[^1].Add(index);
+            }
+
+            return segments.Where(segment => segment.Count > 0).ToList();
+        }
+    }
+
+    private string Line => string.Join(" ", Segments.Select(segment =>
+        string.Join(" ", segment.Select((index, position) =>
+            $"{(position == 0 ? "M" : "L")}{X(index).ToString("F1", Invariant)},{Y(Series!.Samples[index].Value).ToString("F1", Invariant)}"))));
+
+    private string Area => string.Join(" ", Segments.Where(segment => segment.Count > 1).Select(segment =>
+        string.Join(" ", segment.Select((index, position) =>
+            $"{(position == 0 ? "M" : "L")}{X(index).ToString("F1", Invariant)},{Y(Series!.Samples[index].Value).ToString("F1", Invariant)}"))
+        + $" L{X(segment[^1]).ToString("F1", Invariant)},{Height.ToString(Invariant)}"
+        + $" L{X(segment[0]).ToString("F1", Invariant)},{Height.ToString(Invariant)} Z"));
 }

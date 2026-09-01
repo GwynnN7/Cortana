@@ -8,35 +8,35 @@
     <div class="brain">
         <label class="brain-label" for="model">Model</label>
         <select id="model" disabled="@_saving" @onchange="OnModel">
-            @foreach (ModelResponse model in _models)
+            @foreach (ModelView model in _models)
             {
                 <option value="@model.Name" selected="@model.Current">@model.Name</option>
             }
         </select>
 
         <label class="brain-label" for="temperature">
-            Temperature <span class="brain-value">@Number(EAiSetting.Temperature).ToString("0.##", CultureInfo.InvariantCulture)</span>
+            Temperature <span class="brain-value">@Number(AiSettingKey.Temperature).ToString("0.##", CultureInfo.InvariantCulture)</span>
         </label>
         <input id="temperature" type="range" min="0" max="2" step="0.1" disabled="@_saving"
-               value="@Number(EAiSetting.Temperature).ToString(CultureInfo.InvariantCulture)"
-               @onchange="args => OnSetting(EAiSetting.Temperature, args)"/>
+               value="@Number(AiSettingKey.Temperature).ToString(CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(AiSettingKey.Temperature, args)"/>
         <small class="note">Low to be precise, high to improvise</small>
 
         <label class="brain-label" for="history">Exchanges remembered</label>
         <input id="history" type="number" min="1" max="40" step="1" disabled="@_saving"
-               value="@Number(EAiSetting.History).ToString("0", CultureInfo.InvariantCulture)"
-               @onchange="args => OnSetting(EAiSetting.History, args)"/>
+               value="@Number(AiSettingKey.RememberedExchanges).ToString("0", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(AiSettingKey.RememberedExchanges, args)"/>
 
         <label class="brain-label" for="discord">Discord session minutes</label>
         <input id="discord" type="number" min="0.5" max="120" step="0.5" disabled="@_saving"
-               value="@Number(EAiSetting.DiscordMinutes).ToString("0.##", CultureInfo.InvariantCulture)"
-               @onchange="args => OnSetting(EAiSetting.DiscordMinutes, args)"/>
+               value="@Number(AiSettingKey.DiscordSessionMinutes).ToString("0.##", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(AiSettingKey.DiscordSessionMinutes, args)"/>
         <small class="note">How long to keep answering in a channel after being tagged</small>
 
         <label class="brain-label" for="notify">Notification hold (seconds)</label>
         <input id="notify" type="number" min="1" max="120" step="1" disabled="@_saving"
-               value="@Number(EAiSetting.NotifySeconds).ToString("0.##", CultureInfo.InvariantCulture)"
-               @onchange="args => OnSetting(EAiSetting.NotifySeconds, args)"/>
+               value="@Number(AiSettingKey.PushEventSeconds).ToString("0.##", CultureInfo.InvariantCulture)"
+               @onchange="args => OnSetting(AiSettingKey.PushEventSeconds, args)"/>
         <small class="note">How long the persistent notification shows an event before falling back to the status line</small>
     </div>
 </section>
@@ -59,23 +59,23 @@
 @code {
     [Parameter] public EventCallback<string> OnResult { get; set; }
 
-    private IReadOnlyList<ModelResponse> _models = [];
-    private IReadOnlyList<AiSettingResponse> _settings = [];
+    private IReadOnlyList<ModelView> _models = [];
+    private IReadOnlyList<AiSettingView> _settings = [];
     private string _prompt = "";
     private bool _saving;
 
-    protected override async Task OnInitializedAsync() => await Load();
+    protected override Task OnInitializedAsync() => Load();
 
     private async Task Load()
     {
-        _models = await State.GetModels();
-        _prompt = await State.GetPrompt();
-        _settings = await State.GetAiSettings();
+        _models = await State.Models();
+        _prompt = await State.Prompt();
+        _settings = await State.AiSettings();
     }
 
-    private double Number(EAiSetting setting)
+    private double Number(AiSettingKey setting)
     {
-        string? value = _settings.FirstOrDefault(entry => entry.Setting == setting.ToString())?.Value;
+        string? value = _settings.FirstOrDefault(entry => entry.Setting == setting)?.Value;
         return double.TryParse(value, CultureInfo.InvariantCulture, out double parsed) ? parsed : 0;
     }
 
@@ -86,18 +86,18 @@
         await Saving(async () =>
         {
             await OnResult.InvokeAsync(await State.SetModel(model));
-            _models = await State.GetModels();
+            _models = await State.Models();
         });
     }
 
-    private async Task OnSetting(EAiSetting setting, ChangeEventArgs args)
+    private async Task OnSetting(AiSettingKey setting, ChangeEventArgs args)
     {
         if (!double.TryParse(args.Value?.ToString(), CultureInfo.InvariantCulture, out double value)) return;
 
         await Saving(async () =>
         {
             await OnResult.InvokeAsync(await State.SetAiSetting(setting, value));
-            _settings = await State.GetAiSettings();
+            _settings = await State.AiSettings();
         });
     }
 
@@ -106,7 +106,7 @@
     private Task ResetPrompt() => Saving(async () =>
     {
         await OnResult.InvokeAsync(await State.ResetPrompt());
-        _prompt = await State.GetPrompt();
+        _prompt = await State.Prompt();
     });
 
     private async Task Saving(Func<Task> action)

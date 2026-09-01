@@ -6,13 +6,13 @@
     </header>
 
     <div class="field-row">
-        <select @bind="_metric" @bind:after="Load" disabled="@_loading">
+        <select @bind="_metric" @bind:after="Reset" disabled="@_loading">
             @foreach (string metric in Metrics)
             {
                 <option value="@metric">@Pretty(metric)</option>
             }
         </select>
-        <select @bind="_hours" @bind:after="Load" disabled="@_loading">
+        <select @bind="_hours" @bind:after="Reset" disabled="@_loading">
             <option value="6">6 hours</option>
             <option value="24">24 hours</option>
             <option value="72">3 days</option>
@@ -21,7 +21,22 @@
         </select>
     </div>
 
-    <HistoryChart Series="_series" Min="Bounds().Low" Max="Bounds().High" Binary="IsBinary"/>
+    <div class="chart-window">@Window</div>
+
+    <div class="chart-nav">
+        <button class="btn btn-small" disabled="@_loading" @onclick="Earlier">◀</button>
+        <button class="btn btn-small" disabled="@(_loading || _offset == 0)" @onclick="Later">▶</button>
+        <button class="btn btn-ghost btn-small" disabled="@(_loading || _offset == 0)" @onclick="Reset">Now</button>
+    </div>
+
+    @if (_series is { Points: 0 } && _offset == 0)
+    {
+        <p class="chart-empty">No data available for this metric yet.</p>
+    }
+    else
+    {
+        <HistoryChart Series="_series" Min="Bounds().Low" Max="Bounds().High" Binary="IsBinary"/>
+    }
 </section>
 
 @code {
@@ -32,6 +47,21 @@
     private int _hours = 24;
     private HistorySeries? _series;
     private bool _loading;
+    private int _offset;
+
+    private DateTimeOffset? Until => _offset == 0 ? null : DateTimeOffset.Now.AddHours(-(double)_hours * _offset);
+
+    private string Window
+    {
+        get
+        {
+            if (_series is not { } series) return "";
+            if (_offset == 0) return $"{series.From:dd MMM HH:mm} → now";
+
+            string to = series.From.Date == series.To.Date ? $"{series.To:HH:mm}" : $"{series.To:dd MMM HH:mm}";
+            return $"{series.From:dd MMM HH:mm} → {to}";
+        }
+    }
 
     private static readonly Dictionary<string, string> Labels = new()
     {
@@ -54,7 +84,6 @@
 
     private bool IsBinary => BinaryMetrics.Contains(_metric);
 
-    /// Fixed axis bounds keep a flat reading readable; null lets the axis follow the data.
     private (double? Low, double? High) Bounds() => _metric switch
     {
         "motion" or "lamp" or "computer" => (0, 1),
@@ -75,6 +104,24 @@
         await Load();
     }
 
+    private Task Earlier()
+    {
+        _offset++;
+        return Load();
+    }
+
+    private Task Later()
+    {
+        _offset = Math.Max(0, _offset - 1);
+        return Load();
+    }
+
+    private Task Reset()
+    {
+        _offset = 0;
+        return Load();
+    }
+
     private async Task Load()
     {
         if (string.IsNullOrEmpty(_metric)) return;
@@ -82,7 +129,7 @@
         _loading = true;
         try
         {
-            _series = await State.History(_metric, _hours);
+            _series = await State.History(_metric, _hours, Until);
         }
         finally
         {

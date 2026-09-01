@@ -10,7 +10,7 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public EAiSetting Setting { get; set; }
+    [Parameter, EditorRequired] public AiSettingKey Setting { get; set; }
     [Parameter, EditorRequired] public string Label { get; set; } = "";
     [Parameter] public double Min { get; set; }
     [Parameter] public double Max { get; set; } = 100;
@@ -20,12 +20,12 @@
     private double _value;
     private bool _busy;
 
-    protected override async Task OnInitializedAsync() => await Reload();
+    protected override Task OnInitializedAsync() => Reload();
 
     private async Task Reload()
     {
-        IReadOnlyList<AiSettingResponse> settings = await State.GetAiSettings();
-        string? raw = settings.FirstOrDefault(entry => entry.Setting == Setting.ToString())?.Value;
+        IReadOnlyList<AiSettingView> settings = await State.AiSettings();
+        string? raw = settings.FirstOrDefault(entry => entry.Setting == Setting)?.Value;
         if (double.TryParse(raw, CultureInfo.InvariantCulture, out double parsed)) _value = parsed;
     }
 

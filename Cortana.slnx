@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="CortanaDesktop/CortanaDesktop.csproj" />
+  <Project Path="CortanaDiscord/CortanaDiscord.csproj" />
+  <Project Path="CortanaKernel/CortanaKernel.csproj" />
+  <Project Path="CortanaLib/CortanaLib.csproj" />
+  <Project Path="CortanaTelegram/CortanaTelegram.csproj" />
+  <Project Path="CortanaWeb/CortanaWeb.csproj" />
+</Solution>

@@ -305,9 +305,12 @@ a:hover { color: var(--accent-strong); }
 }
 
 .quick span { font-size: 1.5rem; }
-.quick:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-dim); }
+/* Hover must not outrank the active state, or a button keeps the hover colour after a click and
+   contradicts the device it represents until the pointer moves away. */
+.quick:hover:not(:disabled):not(.quick-active) { border-color: var(--accent); background: var(--accent-dim); }
 .quick:disabled { opacity: 0.5; cursor: not-allowed; }
-.quick-active { border-color: var(--ok); color: var(--ok); background: var(--ok-dim); }
+.quick.quick-active { border-color: var(--ok); color: var(--ok); background: var(--ok-dim); }
+.quick.quick-active:hover:not(:disabled) { border-color: var(--ok); background: var(--ok-dim); filter: brightness(1.2); }
 
 /* ---------- Inputs ---------- */
 
@@ -441,7 +444,12 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
 
 .switch-on { background: var(--ok-dim); border-color: var(--ok); }
 .switch-on .knob { transform: translateX(22px); background: var(--ok); }
+/* Automation is still enabled, but a manual hold has taken the wheel: the switch says so. */
+.switch-hold { background: var(--bad-dim); border-color: var(--bad); }
+.switch-hold .knob { transform: translateX(22px); background: var(--bad); }
 .switch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.toggle-actions { display: flex; align-items: center; gap: 0.5rem; }
 
 /* ---------- Status indicators ---------- */
 
@@ -626,6 +634,39 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
 
 .quick-run-icon { font-size: 3rem; }
 .quick-run-result { font-family: var(--mono); font-size: 0.95rem; color: var(--text-muted); }
+
+.chart-empty-window { position: relative; }
+.chart-empty-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* The window label gets its own line so it never wraps between the paging buttons. */
+.chart-window {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 0.4rem;
+}
+
+.chart-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    margin-bottom: 0.6rem;
+}
+
+.chart-nav .btn { flex: 0 0 auto; min-width: 3rem; }
 
 /* ---------- Schedules ---------- */
 

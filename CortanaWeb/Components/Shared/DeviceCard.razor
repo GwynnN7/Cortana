@@ -10,32 +10,31 @@
     </header>
 
     <div class="btn-row">
-        <button class="btn btn-on" disabled="@Busy" @onclick="() => Switch(ESwitchAction.On)">On</button>
-        <button class="btn btn-off" disabled="@Busy" @onclick="() => Switch(ESwitchAction.Off)">Off</button>
+        <button class="btn btn-on" disabled="@_busy" @onclick="() => Switch(SwitchAction.On)">On</button>
+        <button class="btn btn-off" disabled="@_busy" @onclick="() => Switch(SwitchAction.Off)">Off</button>
     </div>
-    <button class="btn btn-block" disabled="@Busy" @onclick="() => Switch(ESwitchAction.Toggle)">Toggle</button>
+    <button class="btn btn-block" disabled="@_busy" @onclick="() => Switch(SwitchAction.Toggle)">Toggle</button>
 </article>
 
 @code {
-    [Parameter, EditorRequired] public EDevice Device { get; set; }
+    [Parameter, EditorRequired] public DeviceId Device { get; set; }
     [Parameter] public string Icon { get; set; } = "⏻";
     [Parameter] public EventCallback<string> OnResult { get; set; }
 
-    private bool Busy;
+    private bool _busy;
 
     private bool IsOn => State.IsDeviceOn(Device);
 
-    private async Task Switch(ESwitchAction action)
+    private async Task Switch(SwitchAction action)
     {
-        Busy = true;
+        _busy = true;
         try
         {
-            string result = await State.SwitchDevice(Device, action);
-            await OnResult.InvokeAsync(result);
+            await OnResult.InvokeAsync(await State.SwitchDevice(Device, action));
         }
         finally
         {
-            Busy = false;
+            _busy = false;
         }
     }
 }

@@ -1,231 +1,165 @@
-using System.Globalization;
-using CortanaLib;
-using CortanaLib.Structures;
+using CortanaLib.Client;
+using CortanaLib.Contracts;
+using CortanaLib.Primitives;
 
 namespace CortanaWeb.Services;
 
-public sealed class CortanaState : BackgroundService
+/// The dashboard's view of the Kernel
+public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundService
 {
-		private static readonly TimeSpan FallbackPollInterval = TimeSpan.FromSeconds(3);
+	private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(3);
 	private static readonly TimeSpan ReconnectDelay = TimeSpan.FromSeconds(5);
 
-	private readonly ILogger<CortanaState> _logger;
-	private readonly Lock _subscriberLock = new();
-	private int _subscribers;
-
-	public CortanaState(ILogger<CortanaState> logger) => _logger = logger;
+	private readonly CortanaClient _client = CortanaClient.Default.As(CommandSurface.Web);
 
 	private event Action? Changed;
 
-	public SystemStatusResponse? Snapshot { get; private set; }
+	public CortanaSnapshot? Snapshot { get; private set; }
+
 	public bool Online { get; private set; }
+
 	public DateTimeOffset? LastUpdate { get; private set; }
 
-	public string DeviceStatus(EDevice device) =>
-		Snapshot?.Devices.FirstOrDefault(d => d.Device == device.ToString())?.Status ?? "-";
+	// ---------- projections ----------
 
-	public bool IsDeviceOn(EDevice device) => DeviceStatus(device) == nameof(EStatus.On);
+	public DeviceView? Device(DeviceId device) => Snapshot?.Devices.FirstOrDefault(view => view.Device == device);
 
-	public SensorResponse? Sensor(ESensor sensor) => Snapshot?.Sensors.FirstOrDefault(s => s.Sensor == sensor.ToString());
+	public string DeviceStatus(DeviceId device) => Device(device)?.State.ToString() ?? "-";
 
-	public string SensorValue(ESensor sensor)
+	public bool IsDeviceOn(DeviceId device) => Device(device)?.State == PowerState.On;
+
+	public SensorView? Sensor(SensorId sensor) => Snapshot?.Sensors.FirstOrDefault(view => view.Sensor == sensor);
+
+	public string SensorValue(SensorId sensor)
 	{
-		SensorResponse? reading = Sensor(sensor);
-		if (reading == null || string.IsNullOrEmpty(reading.Value)) return "-";
-		if (sensor != ESensor.Motion) return $"{reading.Value}{reading.Unit}";
-		return reading.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ? "Detected" : "Clear";
+		SensorView? reading = Sensor(sensor);
+		if (reading is not { Available: true } || reading.Value.Length == 0) return "-";
+
+		return sensor == SensorId.Motion
+			? reading.Value == "true" ? "Detected" : "Clear"
+			: $"{reading.Value}{reading.Unit}";
 	}
 
-	public bool MotionDetected() => Sensor(ESensor.Motion)?.Value.Equals("true", StringComparison.OrdinalIgnoreCase) ?? false;
+	public bool SensorsOnline => Snapshot?.Automation.StationOnline ?? false;
 
-		public bool SensorsOnline => Snapshot?.Sensors.Any(s => !string.IsNullOrEmpty(s.Value)) ?? false;
+	public AutomationView Automation => Snapshot?.Automation ??
+		new AutomationView(false, AutomationStatus.Off, TimeContext.Day, false, null, false, null, null, null, false, null, false, false);
 
-	public string SettingValue(ESettings setting) =>
-		Snapshot?.Settings.FirstOrDefault(s => s.Setting == setting.ToString())?.Value ?? "-";
+	public string SettingValue(SettingKey setting) =>
+		Snapshot?.Settings.FirstOrDefault(view => view.Setting == setting)?.Value ?? "-";
 
-	public int SettingNumber(ESettings setting) =>
-		int.TryParse(SettingValue(setting), out int value) ? value : 0;
+	public double SettingDecimal(SettingKey setting) =>
+		double.TryParse(SettingValue(setting), System.Globalization.CultureInfo.InvariantCulture, out double value) ? value : 0;
 
-	public bool SettingEnabled(ESettings setting) => SettingValue(setting) == nameof(EStatus.On);
+	public bool SettingEnabled(SettingKey setting) => SettingValue(setting) == nameof(PowerState.On);
 
-	public string RaspberryInfo(ERaspberryInfo info)
+	public string HostInfo(RaspberryInfo info)
 	{
-		SensorResponse? entry = Snapshot?.Raspberry.FirstOrDefault(r => r.Sensor == info.ToString());
-		if (entry == null || string.IsNullOrEmpty(entry.Value)) return "-";
-		return $"{entry.Value}{entry.Unit}";
+		RaspberryInfoView? entry = Snapshot?.Raspberry.FirstOrDefault(view => view.Info == info);
+		return entry == null || entry.Value.Length == 0 ? "-" : $"{entry.Value}{entry.Unit}";
 	}
 
-	public bool SubfunctionRunning(ESubFunctionType type) =>
-		Snapshot?.Subfunctions.FirstOrDefault(s => s.Subfunction == type.ToString())?.Running ?? false;
+	public bool ServiceRunning(ServiceId service) =>
+		Snapshot?.Services.FirstOrDefault(view => view.Service == service)?.Running ?? false;
 
-	public Task<string> SwitchDevice(EDevice device, ESwitchAction action) =>
-		Act($"{ERoute.Devices}/{device}", new PostAction(action.ToString()));
+	public MetricsView? Computer => Snapshot?.ComputerMetrics;
 
-	public Task<string> SwitchRoom(ESwitchAction action) =>
-		Act($"{ERoute.Devices}/room", new PostAction(action.ToString()));
+	public MetricsView? RaspberryMetrics => Snapshot?.RaspberryMetrics;
 
-	public Task<string> Sleep() => Act($"{ERoute.Devices}/sleep");
+	// ---------- commands ----------
 
-	public Task<string> ComputerCommand(EComputerCommand command, string args = "") =>
-		Act($"{ERoute.Computer}", new PostCommand(command.ToString(), args));
+	public Task<string> SwitchDevice(DeviceId device, SwitchAction action) => Act(() => _client.SwitchDevice(device, action));
 
-	public Task<string> RaspberryCommand(ERaspberryCommand command, string args = "") =>
-		Act($"{ERoute.Raspberry}", new PostCommand(command.ToString(), args));
+	public Task<string> SwitchRoom(SwitchAction action) => Act(() => _client.SwitchRoom(action));
 
-	public Task<string> SetSetting(ESettings setting, int value) =>
-		Act($"{ERoute.Sensors}/settings/{setting}", new PostValue(value));
+	public Task<string> SetAutomation(SwitchAction action) => Act(() => _client.SetAutomation(action));
 
-	public Task<string> Subfunction(ESubFunctionType type, ESubfunctionAction action) =>
-		Act($"{ERoute.SubFunctions}/{type}", new PostAction(action.ToString()));
+	public Task<string> SetSleepMode(SwitchAction action) => Act(() => _client.SetSleepMode(action));
 
-	public Task<string> Broadcast(EMessageCategory category, string message) =>
-		Act($"{ERoute.SubFunctions}", new PostCommand(category.ToString(), message));
+	public Task<string> ReleaseHolds() => Act(() => _client.ReleaseHolds());
 
-	public async Task<IReadOnlyList<LogEntry>> GetLogs(int limit = 200)
-	{
-		IOption<LogListResponse> list = await ApiHandler.Get<LogListResponse>($"{ERoute.Logs}?limit={limit}");
-		return list.Match(value => value.Entries, () => []);
-	}
+	public Task<string> SetSetting(SettingKey setting, string value) => Act(() => _client.SetSetting(setting, value));
 
-	public Task<string> ClearLogs() => ApiHandler.Delete($"{ERoute.Logs}");
+	public Task<string> ComputerCommand(ComputerCommand command, string argument = "") => Act(() => _client.Computer(command, argument));
 
-	public MetricsResponse? RaspberryMetrics => Snapshot?.RaspberryMetrics;
+	public Task<string> RaspberryCommand(RaspberryCommand command, string argument = "") => Act(() => _client.Raspberry(command, argument));
 
-	public async Task<HistorySeries?> History(string metric, int hours)
-	{
-		IOption<HistorySeries> series = await ApiHandler.Get<HistorySeries>($"{ERoute.History}/{metric}?hours={hours}");
-		return series.Match(HistorySeries? (found) => found, () => null);
-	}
+	public Task<string> ControlService(ServiceId service, ServiceAction action) => Act(() => _client.ControlService(service, action));
 
-	public Task<string> Journal(ESubFunctionType type, int lines = 100) =>
-		ApiHandler.Get($"{ERoute.SubFunctions}/{type}/journal?lines={lines}");
+	public Task<string> Journal(ServiceId service, int lines) => Text(_client.Journal(service, lines));
 
-	public Task<string> PushKey() => ApiHandler.Get($"{ERoute.Push}/key");
+	public Task<string> Notify(NotificationChannel channel, string message) =>
+		Text(_client.Notify(new NotifyRequest(message, NotificationSource.Kernel, NotificationLevel.Info, channel)));
 
-	public Task<string> PushSubscribe(PostPushDevice device) => ApiHandler.Post($"{ERoute.Push}", device);
+	public async Task<IReadOnlyList<NotificationEntry>> Notifications(int limit = 200) =>
+		(await _client.Notifications(limit)).Match(list => list.Entries, _ => []);
 
-	public Task<string> PushUnsubscribe(string endpoint) =>
-		ApiHandler.Delete($"{ERoute.Push}", new PostPushDevice(endpoint, "", ""));
-
-	public Task<string> PushTest() => ApiHandler.Post($"{ERoute.Push}/test");
-
-	public MetricsResponse? Computer => Snapshot?.Computer;
-
-	public string AutomationState => Snapshot?.Automation.State ?? nameof(EAutomationState.Automatic);
-
-	public int ManualMinutesLeft => Snapshot?.Automation.ManualMinutesLeft ?? 0;
-
-	public bool AutomationRunning => AutomationState != nameof(EAutomationState.Manual);
+	public Task<string> ClearNotifications() => Text(_client.ClearNotifications());
 
 	public Task<string> Ask(string message, string conversation) =>
-		ApiHandler.Post($"{ERoute.AI}", new PostChat(message, conversation, "Web"));
+		Text(_client.Ask(message, conversation, "Web"));
 
-	public Task<string> ResetChat(string conversation) =>
-		ApiHandler.Delete($"{ERoute.AI}/{conversation}");
+	public Task<string> ResetChat(string conversation) => Text(_client.ResetConversation(conversation));
 
-	public async Task<IReadOnlyList<ModelResponse>> GetModels()
+	public async Task<IReadOnlyList<ModelView>> Models() => (await _client.Models()).Match(list => list.Models, _ => []);
+
+	public Task<string> SetModel(string model) => Text(_client.SetModel(model));
+
+	public Task<string> Prompt() => Text(_client.Prompt());
+
+	public Task<string> SetPrompt(string prompt) => Text(_client.SetPrompt(prompt));
+
+	public Task<string> ResetPrompt() => Text(_client.ResetPrompt());
+
+	public async Task<IReadOnlyList<AiSettingView>> AiSettings() => (await _client.AiSettings()).Match(list => list.Settings, _ => []);
+
+	public Task<string> SetAiSetting(AiSettingKey setting, double value) => Text(_client.SetAiSetting(setting, value));
+
+	public async Task<IReadOnlyList<ScheduleView>> Schedules() => (await _client.Schedules()).Match(list => list.Schedules, _ => []);
+
+	public Task<string> CreateSchedule(CreateScheduleRequest request) => Text(_client.CreateSchedule(request));
+
+	public Task<string> CommandSchedule(string id, string command) => Text(_client.CommandSchedule(id, command));
+
+	public Task<string> DeleteSchedule(string id) => Text(_client.DeleteSchedule(id));
+
+	public async Task<HistorySeries?> History(string metric, int hours, DateTimeOffset? until = null) =>
+		(await _client.History(metric, hours, until)).Match(HistorySeries? (series) => series, _ => null);
+
+	public Task<string> PushKey() => Text(_client.PushKey());
+
+	public Task<string> PushSubscribe(PushDeviceRequest device) => Text(_client.PushSubscribe(device));
+
+	public Task<string> PushUnsubscribe(string endpoint) => Text(_client.PushUnsubscribe(endpoint));
+
+	public Task<string> PushTest() => Text(_client.PushTest());
+
+	private static async Task<string> Text(Task<Result<string>> call) => (await call).Match(value => value, error => error);
+
+	private async Task<string> Act(Func<Task<Result<string>>> call)
 	{
-		IOption<ModelListResponse> models = await ApiHandler.Get<ModelListResponse>($"{ERoute.AI}/models");
-		return models.Match(list => list.Models, IReadOnlyList<ModelResponse> () => []);
-	}
-
-	public Task<string> SetModel(string model) =>
-		ApiHandler.Post($"{ERoute.AI}/model", new PostModel(model));
-
-	public Task<string> GetPrompt() => ApiHandler.Get($"{ERoute.AI}/prompt");
-
-	public Task<string> SetPrompt(string prompt) =>
-		ApiHandler.Post($"{ERoute.AI}/prompt", new PostPrompt(prompt));
-
-	public Task<string> ResetPrompt() => ApiHandler.Delete($"{ERoute.AI}/prompt");
-
-	public async Task<IReadOnlyList<AiSettingResponse>> GetAiSettings()
-	{
-		IOption<AiSettingsListResponse> settings = await ApiHandler.Get<AiSettingsListResponse>($"{ERoute.AI}/settings");
-		return settings.Match(list => list.Settings, IReadOnlyList<AiSettingResponse> () => []);
-	}
-
-	public Task<string> SetAiSetting(EAiSetting setting, double value) =>
-		ApiHandler.Post($"{ERoute.AI}/settings/{setting}", new PostNumber(value));
-
-	public async Task<IReadOnlyList<ScheduleResponse>> GetSchedules()
-	{
-		IOption<ScheduleListResponse> list = await ApiHandler.Get<ScheduleListResponse>($"{ERoute.Schedules}");
-		return list.Match(value => value.Schedules, () => []);
-	}
-
-	public Task<string> CreateSchedule(PostSchedule schedule) =>
-		ApiHandler.Post($"{ERoute.Schedules}", schedule);
-
-	public Task<string> UpdateSchedule(string id, string command) =>
-		ApiHandler.Post($"{ERoute.Schedules}/{id}", new PostScheduleUpdate(command));
-
-	public Task<string> DeleteSchedule(string id) =>
-		ApiHandler.Delete($"{ERoute.Schedules}/{id}");
-
-	private async Task<string> Act(string route, object? body = null)
-	{
-		string result = await ApiHandler.Post(route, body);
-		await RefreshAsync();
+		string result = await Text(call());
+		await Refresh();
 		return result;
 	}
+
+	// ---------- live state ----------
 
 	public IDisposable Subscribe(Action onChanged)
 	{
 		Changed += onChanged;
-		lock (_subscriberLock) _subscribers++;
 		return new Subscription(this, onChanged);
 	}
 
-	private void Unsubscribe(Action onChanged)
+	public async Task Refresh(CancellationToken token = default)
 	{
-		Changed -= onChanged;
-		lock (_subscriberLock) _subscribers = Math.Max(0, _subscribers - 1);
-	}
+		Result<CortanaSnapshot> snapshot = await _client.Snapshot(token);
 
-	public int ViewerCount
-	{
-		get { lock (_subscriberLock) return _subscribers; }
-	}
-
-	public async Task RefreshAsync(CancellationToken token = default)
-	{
-		IOption<SystemStatusResponse> status = await ApiHandler.Get<SystemStatusResponse>("status", token);
-
-		status.Match<object?>(
-			snapshot =>
-			{
-				Apply(snapshot);
-				return null;
-			},
-			() =>
-			{
-				Online = false;
-				NotifySubscribers();
-				return null;
-			});
-	}
-
-	private void Apply(SystemStatusResponse snapshot)
-	{
-		Snapshot = snapshot;
-		Online = true;
-		LastUpdate = DateTimeOffset.Now;
-		NotifySubscribers();
-	}
-
-	private void NotifySubscribers()
-	{
-		foreach (Action handler in Changed?.GetInvocationList().Cast<Action>() ?? [])
+		if (snapshot.IsOk) Apply(snapshot.Value);
+		else
 		{
-			try
-			{
-				handler();
-			}
-			catch (Exception ex)
-			{
-				_logger.LogDebug("Subscriber notification failed: {Message}", ex.Message);
-			}
+			Online = false;
+			Notify();
 		}
 	}
 
@@ -235,7 +169,7 @@ public sealed class CortanaState : BackgroundService
 		{
 			try
 			{
-				await ConsumeEventStream(stoppingToken);
+				await foreach (CortanaSnapshot snapshot in _client.SnapshotStream(stoppingToken)) Apply(snapshot);
 			}
 			catch (OperationCanceledException)
 			{
@@ -243,22 +177,14 @@ public sealed class CortanaState : BackgroundService
 			}
 			catch (Exception ex)
 			{
-				_logger.LogInformation("Event stream unavailable ({Message}), falling back to polling", ex.Message);
+				logger.LogInformation("The event stream is unavailable ({Message}), falling back to polling", ex.Message);
 			}
 
-			if (!await PollUntilStreamRetry(stoppingToken)) return;
+			if (!await PollUntilRetry(stoppingToken)) return;
 		}
 	}
 
-	private async Task ConsumeEventStream(CancellationToken token)
-	{
-		await foreach (SystemStatusResponse snapshot in ApiHandler.Stream<SystemStatusResponse>("events", token))
-		{
-			Apply(snapshot);
-		}
-	}
-
-		private async Task<bool> PollUntilStreamRetry(CancellationToken token)
+	private async Task<bool> PollUntilRetry(CancellationToken token)
 	{
 		DateTime retryAt = DateTime.UtcNow.Add(ReconnectDelay);
 
@@ -266,8 +192,8 @@ public sealed class CortanaState : BackgroundService
 		{
 			try
 			{
-				await RefreshAsync(token);
-				await Task.Delay(FallbackPollInterval, token);
+				await Refresh(token);
+				await Task.Delay(PollInterval, token);
 			}
 			catch (OperationCanceledException)
 			{
@@ -275,12 +201,37 @@ public sealed class CortanaState : BackgroundService
 			}
 			catch (Exception ex)
 			{
-				_logger.LogWarning("Status refresh failed: {Message}", ex.Message);
+				logger.LogWarning("Refresh failed: {Message}", ex.Message);
 			}
 		}
 
 		return true;
 	}
+
+	private void Apply(CortanaSnapshot snapshot)
+	{
+		Snapshot = snapshot;
+		Online = true;
+		LastUpdate = DateTimeOffset.Now;
+		Notify();
+	}
+
+	private void Notify()
+	{
+		foreach (Action handler in Changed?.GetInvocationList().Cast<Action>() ?? [])
+		{
+			try
+			{
+				handler();
+			}
+			catch (Exception ex)
+			{
+				logger.LogDebug("A subscriber threw: {Message}", ex.Message);
+			}
+		}
+	}
+
+	private void Unsubscribe(Action onChanged) => Changed -= onChanged;
 
 	private sealed class Subscription(CortanaState state, Action handler) : IDisposable
 	{

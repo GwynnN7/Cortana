@@ -1,6 +1,6 @@
 [Unit]
 Description=Cortana Telegram Bot
-After=network.target redis.service cortana-kernel.service
+After=network.target cortana-kernel.service
 Requires=cortana-kernel.service
 PartOf=cortana-kernel.service
 
@@ -19,3 +19,4 @@ KillSignal=SIGTERM
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=CortanaTelegram
+

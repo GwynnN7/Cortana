@@ -1,305 +1,241 @@
-#!/usr/bin/python3
-import os
-import sys
-import re
-import shlex
-import subprocess
-import requests
-import argparse
-import time
+#!/usr/bin/env bash
+# Cortana wrapper for the desktop: the agent, the API, deployment to the Pi, and notifications
 
-# --- Configuration ---
-BASE_PATH = os.environ.get("CORTANA_PATH")
-API_URL = os.environ.get("CORTANA_API")
-API_KEY = os.environ.get("CORTANA_API_KEY")  # required by every route except / and /health
-SERVICE_NAME = "cortana-desktop"
-PI = os.environ.get("CORTANA_PI", "cortana@192.168.1.117")
-PI_PATH = os.environ.get("CORTANA_PI_PATH", "~/Cortana/")
-SERVICES = ["kernel", "telegram", "discord", "web"]
-AGENT_COMMANDS = ("chat", "ask", "monitor", "status", "pc")
+set -uo pipefail
 
-# ANSI Colors
-BLUE = "\033[1;34m"
-RESET = "\033[0m"
+BASE_PATH="${CORTANA_PATH:-$HOME/Projects/Cortana}"
+API_URL="${CORTANA_API:-}"
+API_KEY="${CORTANA_API_KEY:-}"
+PI="${CORTANA_PI:-cortana@192.168.1.117}"
+PI_PATH="${CORTANA_PI_PATH:-~/Cortana/}"
+SERVICE="cortana-desktop"
+AGENT="$BASE_PATH/CortanaDesktop/out/CortanaDesktop"
+SERVICES=(kernel telegram discord web)
 
-# --- Validation ---
-if not BASE_PATH or not API_URL:
-    print(f"{BLUE}Error: CORTANA_PATH or CORTANA_API not set.{RESET}")
-    print("Set them in ~/.config/environment.d/cortana.conf")
-    sys.exit(1)
+BLUE=$'\033[1;34m'
+RESET=$'\033[0m'
 
-# --- Helpers ---
-def print_blue(msg):
-    print(f"{BLUE}{msg}{RESET}")
+say() { printf '%s%s%s\n' "$BLUE" "$*" "$RESET"; }
+die() { say "$*"; exit 1; }
 
-def run_cmd(command, shell=False):
-    """Runs a command and returns True if successful."""
-    try:
-        if isinstance(command, str) and not shell:
-            command = command.split()
-        subprocess.run(command, shell=shell, check=True, text=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        print_blue(f"Error: {e}")
-        return False
+usage() {
+	cat <<'USAGE'
+cortana chat                      interactive persistent conversation
+cortana chat <message>            one message through that same conversation
+cortana ask <question>            one-shot question, never stored in any conversation
+cortana monitor [--watch]         this machine's performance and temperatures
+cortana pc                        what the Kernel last heard from this machine
+cortana status                    house, sensors, automation, services
 
-def api_call(method, route="", json_data=None, timeout=15):
-    """Handles API communication."""
-    url = f"{API_URL.rstrip('/')}/{route.strip('/')}".rstrip("/")
-    headers = {'Accept': 'text/plain', 'Accept-Charset': 'utf-8'}
-    if API_KEY:
-        headers['X-Api-Key'] = API_KEY
+cortana service [start|stop|restart|build]     the resident agent
+cortana git status|update [message]            version control, then tell the Kernel to update
+cortana api [route] [-act|-cmd|-val|-msg X]    talk to the API directly
+cortana deploy [service...] [-n|-s|-l]         sync this tree to the Pi and restart
+cortana notify [-t Title]                      send piped input as a desktop notification
+USAGE
+}
 
-    try:
-        if method.lower() == 'get':
-            req = requests.get(url, headers=headers, timeout=timeout)
-        else:
-            req = requests.post(url, headers=headers, json=json_data, timeout=timeout)
-        req.encoding = 'utf-8'
-        body = req.text.strip()
+# --- agent -------------------------------------------------------------------
 
-        # The API explains refusals in the body; surface that instead of a bare status code.
-        if req.status_code == 401:
-            return body or "Unauthorized: set CORTANA_API_KEY"
-        if req.status_code >= 400:
-            return body or f"HTTP Error: {req.status_code}"
-        return body
-    except requests.exceptions.RequestException:
-        return "Cortana Offline"
+build_agent() {
+	local out="$BASE_PATH/CortanaDesktop/out"
+	dotnet build "$BASE_PATH/CortanaDesktop" -o "$out" --artifacts-path "$out/lib"
+}
 
-# --- Module: Service ---
-def handle_service(args):
-    """Handles systemd user service interactions."""
-    if not args.action:
-        res = run_cmd(f"systemctl --user status {SERVICE_NAME}")
-        exit(0 if res else 1)
+dispatch_agent() {
+	if [ ! -x "$AGENT" ]; then
+		say "Building the desktop agent..."
+		build_agent || exit 1
+	fi
+	exec "$AGENT" "$@"
+}
 
-    action = args.action
-    
-    if action == "build":
-        print_blue("Building CortanaDesktop...")
-        out = f"{BASE_PATH}/CortanaDesktop/out"
-        if run_cmd(f'dotnet build "{BASE_PATH}/CortanaDesktop" -o "{out}" --artifacts-path "{out}/lib"', shell=True):
-            print_blue("Build complete.")
-        return
+handle_service() {
+	case "${1:-}" in
+		"")        systemctl --user status "$SERVICE" ;;
+		build)     say "Building CortanaDesktop..."; build_agent && say "Build complete." ;;
+		start|stop|restart)
+			say "${1^}ing the service..."
+			systemctl --user "$1" "$SERVICE" && say "Done."
+			;;
+		*) die "Unknown service action '$1'" ;;
+	esac
+}
 
-    if action in ["start", "stop", "restart"]:
-        action_verb = "Start" if action == "start" else "Stopp" if action == "stop" else "Restart"
-        print_blue(f"Service {action_verb}ing...")
-        if run_cmd(f"systemctl --user {action} {SERVICE_NAME}"):
-            print_blue(f"Service {action_verb}ed.")
+# --- api ---------------------------------------------------------------------
 
-def agent_binary():
-    return f"{BASE_PATH}/CortanaDesktop/out/CortanaDesktop"
+# api <method> <route> [json body]
+api() {
+	[ -n "$API_URL" ] || { echo "CORTANA_API is not set"; return 1; }
 
-def build_agent():
-    out = f"{BASE_PATH}/CortanaDesktop/out"
-    return run_cmd(f'dotnet build "{BASE_PATH}/CortanaDesktop" -o "{out}" --artifacts-path "{out}/lib"', shell=True)
+	local method="$1" route="$2" body="${3:-}"
+	local url="${API_URL%/}/${route#/}"
+	local args=(--silent --show-error --max-time 30
+		-H 'Accept: text/plain' -H 'X-Cortana-Surface: Desktop'
+		-X "${method^^}" -w '\n%{http_code}')
 
-def dispatch_agent(argv):
-    binary = agent_binary()
-    if not os.path.exists(binary):
-        print_blue("Building desktop agent...")
-        if not build_agent():
-            sys.exit(1)
-    os.execv(binary, [binary] + argv)
+	[ -n "$API_KEY" ] && args+=(-H "X-Api-Key: $API_KEY")
+	[ -n "$body" ] && args+=(-H 'Content-Type: application/json' -d "$body")
 
-# --- Module: Git ---
-def handle_git(args):
-    """Handles Git operations."""
-    action = args.action
-    
-    if action == "update":
-        commit_msg = " ".join(args.extra) if args.extra else "Update"
-        print_blue(f"Git: Committing with message '{commit_msg}'...")
-        
-        # Git commands
-        git_cmd = f'cd "{BASE_PATH}" && git add . && git commit -m "{commit_msg}" && git push'
-        if run_cmd(git_cmd, shell=True):
-            print_blue("Code updated. Notifying Kernel...")
-            time.sleep(1)
-            # Notify API
-            res = api_call("post", "subfunctions/CortanaKernel", json_data={"action": "update", "args": ""})
-            print_blue(res)
-            
-    elif action == "status":
-        run_cmd(f'cd "{BASE_PATH}" && git status', shell=True)
+	local response status
+	response="$(curl "${args[@]}" "${url%/}" 2>/dev/null)" || { echo "Cortana is offline"; return 1; }
 
-# --- Module: API ---
-def handle_api(args):
-    """Handles API requests."""
-    if not args.route:
-        status = api_call("get", "")
-        if status in ("Cortana Offline",) or status.startswith("HTTP Error"):
-            print("Cortana Offline")
-            sys.exit(1)
-        else:
-            cpu = api_call("get", "raspberry/temperature")
-            print_blue(f"{status} ~ {cpu}")
-        return
+	status="${response##*$'\n'}"
+	response="${response%$'\n'*}"
 
-    route = "/".join(args.route.split(" "))
-    
-    json_data = {"args": args.arg}
-    if args.action:
-        json_data["action"] = args.action
-        res = api_call("post", route, json_data)
-    elif args.command:
-        json_data["command"] = args.command
-        res = api_call("post", route, json_data)
-    elif args.value:
-        json_data["value"] = args.value
-        res = api_call("post", route, json_data)
-    else:
-        res = api_call("get", route)
+	# The API explains refusals in the body, so prefer that over a bare status code.
+	if [ "$status" -ge 400 ] 2>/dev/null; then
+		[ -n "$response" ] && echo "$response" || echo "HTTP error $status"
+		return 1
+	fi
 
-    print_blue(res)
+	echo "$response"
+}
 
-# --- Module: Deploy ---
-def started_at(service):
-    """systemd's ActiveEnterTimestamp, so we can tell a real restart from a still-running old process."""
-    probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
-                            f"systemctl --user show {service} -p ActiveEnterTimestamp --value"],
-                           capture_output=True, text=True)
-    return probe.stdout.strip()
+handle_api() {
+	if [ $# -eq 0 ]; then
+		local identity
+		identity="$(api get '')" || { echo "Cortana is offline"; exit 1; }
+		say "$identity ~ $(api get raspberry/Temperature)"
+		return
+	fi
 
-def is_active(service):
-    probe = subprocess.run(["ssh", "-o", "ConnectTimeout=10", PI,
-                            f"systemctl --user is-active --quiet {service}"], capture_output=True)
-    return probe.returncode == 0
+	local route="$1" field="" value="" body=""
+	shift
 
-def handle_deploy(args):
-    """Mirrors the local working tree onto the Pi and restarts what changed."""
-    if not BASE_PATH:
-        print_blue("CORTANA_PATH is not set.")
-        sys.exit(1)
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			-act) field="action" ;;
+			-cmd) field="command" ;;
+			-val) field="value" ;;
+			-msg) field="message" ;;
+			*) die "Unknown option '$1'" ;;
+		esac
+		shift
+		value="${1:-}"
+		shift || true
+		body="${body:+$body,}\"$field\":\"$value\""
+	done
 
-    excludes = [".git/", "bin/", "obj/", "out/", ".claude/", ".vscode/", "*.user"]
-    rsync = ["rsync", "-az", "--delete", "--info=stats1"]
-    if args.dry_run:
-        rsync.append("--dry-run")
-    for pattern in excludes:
-        rsync += ["--exclude", pattern]
-    rsync += ["-e", "ssh -o ConnectTimeout=10", f"{BASE_PATH.rstrip('/')}/", f"{PI}:{PI_PATH}"]
+	if [ -n "$body" ]; then
+		say "$(api post "$route" "{$body}")"
+	else
+		say "$(api get "$route")"
+	fi
+}
 
-    print_blue(f"Syncing {BASE_PATH} -> {PI}:{PI_PATH}")
-    if not run_cmd(rsync):
-        sys.exit(1)
+# --- git ---------------------------------------------------------------------
 
-    if args.dry_run:
-        print_blue("Dry run, nothing changed.")
-        return
-    if args.no_restart:
-        print_blue("Synced, services untouched.")
-        return
+handle_git() {
+	case "${1:-status}" in
+		status)
+			git -C "$BASE_PATH" status
+			;;
+		update)
+			shift
+			local message="${*:-Update}"
+			say "Committing with message '$message'..."
+			git -C "$BASE_PATH" add . && git -C "$BASE_PATH" commit -m "$message" && git -C "$BASE_PATH" push || return 1
+			say "Pushed. Telling the Kernel to update..."
+			sleep 1
+			say "$(api post services/Kernel '{"action":"Update"}')"
+			;;
+		*) die "Unknown git action '$1'" ;;
+	esac
+}
 
-    targets = [f"cortana-{s}" for s in (args.services or ["kernel"])]
+# --- deploy ------------------------------------------------------------------
 
-    print_blue("Reinstalling unit files")
-    run_cmd(["ssh", "-o", "ConnectTimeout=10", PI,
-             "cp ~/Cortana/CortanaKernel/Scripts/*.service ~/.config/systemd/user/ && systemctl --user daemon-reload"])
+remote() { ssh -o ConnectTimeout=10 "$PI" "$1"; }
 
-    started_before = {svc: started_at(svc) for svc in targets}
+started_at() { remote "systemctl --user show $1 -p ActiveEnterTimestamp --value" 2>/dev/null | tr -d '\r'; }
 
-    for svc in targets:
-        print_blue(f"Restarting {svc} (clean publish, this takes a while)")
-        run_cmd(["ssh", "-o", "ConnectTimeout=10", PI, f"systemctl --user restart {svc} --no-block"])
+handle_deploy() {
+	local dry="" restart=1 follow="" targets=()
 
-    print_blue("Waiting for the new build to come up")
-    for svc in targets:
-        for _ in range(90):
-            now = started_at(svc)
-            if now and now != started_before[svc] and is_active(svc):
-                break
-            time.sleep(10)
-        else:
-            print_blue(f"WARNING: {svc} did not come back up, the old build may still be running")
+	while [ $# -gt 0 ]; do
+		case "$1" in
+			-n|--dry-run)    dry="--dry-run" ;;
+			-s|--no-restart) restart=0 ;;
+			-l|--logs)       follow=1 ;;
+			*)
+				[[ " ${SERVICES[*]} " == *" $1 "* ]] || die "Unknown service '$1'"
+				targets+=("cortana-$1")
+				;;
+		esac
+		shift
+	done
 
-    status = ('for s in cortana-kernel cortana-telegram cortana-discord cortana-web; do '
-              'printf "  %-18s %s\n" "$s" "$(systemctl --user is-active $s)"; done')
-    run_cmd(["ssh", "-o", "ConnectTimeout=10", PI, f"bash -lc {shlex.quote(status)}"])
+	[ ${#targets[@]} -eq 0 ] && targets=(cortana-kernel)
 
-    if args.logs:
-        print_blue(f"Following {targets[0]}")
-        run_cmd(["ssh", "-t", PI, f"journalctl --user -u {targets[0]} -f -n 30"])
+	say "Syncing $BASE_PATH -> $PI:$PI_PATH"
+	rsync -az --delete --info=stats1 $dry \
+		--exclude '.git/' --exclude 'bin/' --exclude 'obj/' --exclude 'out/' \
+		--exclude '.claude/' --exclude '.vscode/' --exclude '*.user' \
+		-e "ssh -o ConnectTimeout=10" "${BASE_PATH%/}/" "$PI:$PI_PATH" || exit 1
 
-# --- Module: Notify ---
-def handle_notify(args):
-    """Reads piped input and sends a desktop notification."""
-    if sys.stdin.isatty():
-        print_blue("Error: 'notify' expects piped input (e.g. cortana api xxx | cortana notify)")
-        sys.exit(1)
-    message = sys.stdin.read().strip()
-    message = re.sub(r'\033\[[0-9;]*m', '', message)
-    if not message:
-        print_blue("Error: No input received.")
-        sys.exit(1)
-    title = args.title or "Cortana Service"
-    run_cmd(["notify-send", "-i", f"{BASE_PATH}/CortanaLib/Storage/cortana.jpg", "-u", "low", "-a", "cortana", title, message])
+	[ -n "$dry" ] && { say "Dry run, nothing changed."; return; }
+	[ "$restart" -eq 0 ] && { say "Synced, services untouched."; return; }
 
-# --- Main ---
-def main():
-    if len(sys.argv) > 1 and sys.argv[1] in AGENT_COMMANDS:
-        dispatch_agent(sys.argv[1:])
+	say "Reinstalling the unit files"
+	remote "cp ${PI_PATH}CortanaKernel/Scripts/*.service ~/.config/systemd/user/ && systemctl --user daemon-reload"
 
-    parser = argparse.ArgumentParser(
-        description="Cortana Control Interface",
-        epilog=(
-            "agent commands (handled by CortanaDesktop):\n"
-            "  chat                  interactive conversation, /reset clears it\n"
-            "  ask <question>        one-shot question, left out of the conversation\n"
-            "  monitor [--watch]     this machine's performance and temperatures\n"
-            "  pc                    what the Kernel last heard from this machine\n"
-            "  status                house, sensors, services and this computer"),
-        formatter_class=argparse.RawDescriptionHelpFormatter)
-    subparsers = parser.add_subparsers(dest="category", required=True)
+	local -A before
+	for service in "${targets[@]}"; do before[$service]="$(started_at "$service")"; done
 
-    # 1. Service Command
-    # Usage: cortana service [start|stop|restart|build]
-    svc_parser = subparsers.add_parser("service", help="Manage Systemd Service")
-    svc_parser.add_argument("action", nargs="?", choices=["start", "stop", "restart", "build"], help="Action to perform")
+	for service in "${targets[@]}"; do
+		say "Restarting $service (it publishes from scratch, so this takes a while)"
+		remote "systemctl --user restart $service --no-block"
+	done
 
-    # 2. Git Command
-    # Usage: cortana git update "message"
-    git_parser = subparsers.add_parser("git", help="Manage Version Control")
-    git_parser.add_argument("action", choices=["update", "status"], help="Git action")
-    git_parser.add_argument("extra", nargs="*", help="Commit message or extra args")
+	say "Waiting for the new build to come up"
+	for service in "${targets[@]}"; do
+		local ready=0
+		for _ in $(seq 90); do
+			local now
+			now="$(started_at "$service")"
+			if [ -n "$now" ] && [ "$now" != "${before[$service]}" ] && remote "systemctl --user is-active --quiet $service"; then
+				ready=1
+				break
+			fi
+			sleep 10
+		done
+		[ "$ready" -eq 1 ] || say "WARNING: $service did not come back up, the old build may still be running"
+	done
 
-    # 3. API Command
-    # Usage: cortana api [route] [-act action] [-val value]
-    api_parser = subparsers.add_parser("api", help="Direct API Interface")
-    api_parser.add_argument("route", nargs="?", default="", help="API Route (leave empty for dashboard)")
-    api_parser.add_argument("-act", dest="action", help="Action param")
-    api_parser.add_argument("-cmd", dest="command", help="Command param")
-    api_parser.add_argument("-val", dest="value", help="Value param")
-    api_parser.add_argument("-arg", dest="arg", default="", help="Extra args")
+	remote 'for s in cortana-kernel cortana-telegram cortana-discord cortana-web; do printf "  %-18s %s\n" "$s" "$(systemctl --user is-active $s)"; done'
 
-    # 4. Deploy Command
-    # Usage: cortana deploy [discord ...] [-n] [-s] [-l]
-    dep_parser = subparsers.add_parser("deploy", help="Sync this tree to the Pi and restart services")
-    dep_parser.add_argument("services", nargs="*", choices=SERVICES, default=[],
-                            help="Which services to restart (default: kernel, which cascades)")
-    dep_parser.add_argument("-n", "--dry-run", action="store_true", help="Preview the transfer")
-    dep_parser.add_argument("-s", "--no-restart", action="store_true", help="Sync only")
-    dep_parser.add_argument("-l", "--logs", action="store_true", help="Follow the journal afterwards")
+	[ -n "$follow" ] && ssh -t "$PI" "journalctl --user -u ${targets[0]} -f -n 30"
+}
 
-    # 5. Notify Command
-    # Usage: command | cortana notify [-t "Title"]
-    notify_parser = subparsers.add_parser("notify", help="Send piped output as a desktop notification")
-    notify_parser.add_argument("-t", dest="title", default="Cortana", help="Notification title")
+# --- notify ------------------------------------------------------------------
 
-    args = parser.parse_args()
+handle_notify() {
+	local title="Cortana"
+	[ "${1:-}" = "-t" ] && { title="${2:-Cortana}"; shift 2; }
 
-    if args.category == "service":
-        handle_service(args)
-    elif args.category == "git":
-        handle_git(args)
-    elif args.category == "api":
-        handle_api(args)
-    elif args.category == "deploy":
-        handle_deploy(args)
-    elif args.category == "notify":
-        handle_notify(args)
+	[ -t 0 ] && die "'notify' expects piped input, for example: cortana api sensors | cortana notify"
 
-if __name__ == "__main__":
-    main()
+	local message
+	message="$(sed -e 's/\x1b\[[0-9;]*m//g')"
+	message="${message#"${message%%[![:space:]]*}"}"
+	message="${message%"${message##*[![:space:]]}"}"
+	[ -n "$message" ] || die "Nothing was piped in."
+
+	notify-send -i "$BASE_PATH/CortanaLib/Storage/cortana.jpg" -u low -a cortana "$title" "$message"
+}
+
+# --- entry point -------------------------------------------------------------
+
+command="${1:-help}"
+[ $# -gt 0 ] && shift
+
+case "$command" in
+	chat|ask|monitor|status|pc) dispatch_agent "$command" "$@" ;;
+	service)                    handle_service "$@" ;;
+	git)                        handle_git "$@" ;;
+	api)                        handle_api "$@" ;;
+	deploy)                     handle_deploy "$@" ;;
+	notify)                     handle_notify "$@" ;;
+	*)                          usage ;;
+esac

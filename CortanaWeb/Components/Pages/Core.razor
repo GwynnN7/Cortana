@@ -1,0 +1,197 @@
+@page "/core"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Core</PageTitle>
+
+<h1>Core</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Raspberry</h2>
+    </header>
+
+    <div class="tiles">
+        <StatTile Icon="📍" Label="Location" Value="@State.HostInfo(RaspberryInfo.Location)"/>
+        <StatTile Icon="📬" Label="Public IP" Value="@State.HostInfo(RaspberryInfo.PublicIp)"/>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Services</h2>
+    </header>
+
+    <div class="card-grid">
+        @foreach (ServiceId service in Enum.GetValues<ServiceId>())
+        {
+            bool running = State.ServiceRunning(service);
+            <article class="card service-card @(running ? "is-on" : "is-off")">
+                <header>
+                    <span class="device-icon" aria-hidden="true">@Icons[service]</span>
+                    <div>
+                        <h3>@service</h3>
+                        <p class="device-state">@(running ? "Running" : "Stopped")</p>
+                    </div>
+                </header>
+
+                <div class="btn-row wrap">
+                    <button class="btn btn-on btn-small" disabled="@_busy" @onclick="() => Control(service, ServiceAction.Start)">Start</button>
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Control(service, ServiceAction.Restart)">Restart</button>
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Control(service, ServiceAction.Update)">Update</button>
+                    <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Control(service, ServiceAction.Stop)">Stop</button>
+                </div>
+
+                @if (service == ServiceId.Kernel)
+                {
+                    <p class="note">Stopping the Kernel stops every other service</p>
+                }
+            </article>
+        }
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Broadcast</h2>
+        <p class="section-hint">Send a message through one channel</p>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_channel" disabled="@_busy">
+            @foreach (NotificationChannel channel in Enum.GetValues<NotificationChannel>())
+            {
+                <option value="@channel">@channel</option>
+            }
+        </select>
+        <input type="text" placeholder="Message" @bind="_broadcast" @bind:event="oninput" disabled="@_busy"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_broadcast))" @onclick="SendBroadcast">Send</button>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Shell</h2>
+        <p class="section-hint">Execute a command on the Raspberry Pi</p>
+    </header>
+
+    <div class="field-row">
+        <input type="text" placeholder="e.g. df -h" @bind="_command" @bind:event="oninput" disabled="@_busy" @onkeydown="OnEnter"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_command))" @onclick="RunCommand">Run</button>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_output))
+    {
+        <pre class="console">@_output</pre>
+    }
+</section>
+
+<section class="section section-danger">
+    <header class="section-head">
+        <h2>Power</h2>
+        <p class="section-hint">These take Cortana offline until the Pi restarts</p>
+    </header>
+
+    @if (_confirming == null)
+    {
+        <div class="btn-row wrap">
+            <button class="btn btn-off" @onclick="@(() => _confirming = RaspberryCommand.Reboot)">Reboot</button>
+            <button class="btn btn-off" @onclick="@(() => _confirming = RaspberryCommand.Shutdown)">Shutdown</button>
+        </div>
+    }
+    else
+    {
+        <div class="confirm">
+            <p>Really <strong>@(_confirming.ToString()!.ToLower())</strong> the Raspberry Pi?</p>
+            <div class="btn-row">
+                <button class="btn btn-off" disabled="@_busy" @onclick="ConfirmPower">Yes, @(_confirming.ToString()!.ToLower())</button>
+                <button class="btn btn-ghost" disabled="@_busy" @onclick="@(() => _confirming = null)">Cancel</button>
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private static readonly Dictionary<ServiceId, string> Icons = new()
+    {
+        { ServiceId.Kernel, "🧠" },
+        { ServiceId.Telegram, "✈️" },
+        { ServiceId.Discord, "💬" },
+        { ServiceId.Web, "🌐" }
+    };
+
+    private IDisposable? _subscription;
+    private string? _message;
+    private string _broadcast = "";
+    private NotificationChannel _channel = NotificationChannel.Telegram;
+    private string _command = "";
+    private string? _output;
+    private bool _busy;
+    private RaspberryCommand? _confirming;
+
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private async Task Control(ServiceId service, ServiceAction action)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.ControlService(service, action);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SendBroadcast()
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.Notify(_channel, _broadcast);
+            _broadcast = "";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task OnEnter(KeyboardEventArgs args) => args.Key == "Enter" ? RunCommand() : Task.CompletedTask;
+
+    private async Task RunCommand()
+    {
+        _busy = true;
+        try
+        {
+            _output = await State.RaspberryCommand(RaspberryCommand.RunShellCommand, _command);
+            _command = "";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ConfirmPower()
+    {
+        if (_confirming == null) return;
+
+        _busy = true;
+        try
+        {
+            _message = await State.RaspberryCommand(_confirming.Value);
+            _confirming = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

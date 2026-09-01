@@ -28,7 +28,7 @@
 }
 
 @code {
-    [Parameter] public MetricsResponse? Metrics { get; set; }
+    [Parameter] public MetricsView? Metrics { get; set; }
 
     private static double Ratio(double used, double total) => total > 0 ? used / total * 100 : 0;
 }

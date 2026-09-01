@@ -39,12 +39,12 @@
     </header>
 
     <div class="field-row">
-        <input type="text" placeholder="YouTube URL or search terms" @bind="_mediaQuery" @bind:event="oninput"/>
+        <input type="text" placeholder="YouTube URL or search terms" @bind="_query" @bind:event="oninput"/>
     </div>
 
     <div class="field-row">
         <select @bind="_quality">
-            @foreach (EVideoQuality quality in Enum.GetValues<EVideoQuality>())
+            @foreach (VideoQuality quality in Enum.GetValues<VideoQuality>())
             {
                 <option value="@quality">@Readable(quality)</option>
             }
@@ -60,21 +60,21 @@
     private bool _qrClassic;
     private string? _qrUrl;
 
-    private string _mediaQuery = "";
-    private EVideoQuality _quality = EVideoQuality.Balanced;
+    private string _query = "";
+    private VideoQuality _quality = VideoQuality.Balanced;
 
-    private string Disabled => string.IsNullOrWhiteSpace(_mediaQuery) ? "btn-disabled" : "";
+    private string Disabled => string.IsNullOrWhiteSpace(_query) ? "btn-disabled" : "";
 
-    private string AudioUrl => $"/media/audio?url={Uri.EscapeDataString(_mediaQuery)}";
-    private string VideoUrl => $"/media/video?url={Uri.EscapeDataString(_mediaQuery)}&quality={_quality}";
+    private string AudioUrl => $"/media/audio?url={Uri.EscapeDataString(_query)}";
+    private string VideoUrl => $"/media/video?url={Uri.EscapeDataString(_query)}&quality={_quality}";
 
     private void RenderQr() =>
         _qrUrl = $"/media/qr?content={Uri.EscapeDataString(_qrContent)}&border={_qrBorder.ToString().ToLower()}&classic={_qrClassic.ToString().ToLower()}";
 
-    private static string Readable(EVideoQuality quality) => quality switch
+    private static string Readable(VideoQuality quality) => quality switch
     {
-        EVideoQuality.BestVideo => "Prioritise video quality",
-        EVideoQuality.BestAudio => "Prioritise audio quality",
+        VideoQuality.BestVideo => "Prioritise video quality",
+        VideoQuality.BestAudio => "Prioritise audio quality",
         _ => "Balanced"
     };
 }

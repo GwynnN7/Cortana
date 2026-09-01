@@ -49,8 +49,7 @@
 
     private record Turn(string Text, bool Mine);
 
-
-
+    /// The conversation id lives in the browser, so a reload continues the same persistent chat
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
@@ -99,8 +98,7 @@
 
         try
         {
-            string reply = await State.Ask(question, _conversation);
-            _turns.Add(new Turn(reply, false));
+            _turns.Add(new Turn(await State.Ask(question, _conversation), false));
         }
         catch (Exception ex)
         {
@@ -119,12 +117,6 @@
         if (!string.IsNullOrEmpty(_conversation)) await State.ResetChat(_conversation);
         _conversation = await NewConversation();
     }
-
-
-
-
-
-
 
     private async Task Scroll()
     {

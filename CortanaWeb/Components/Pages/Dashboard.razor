@@ -23,10 +23,10 @@
     </header>
 
     <div class="chips">
-        @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+        @foreach (ServiceId service in Enum.GetValues<ServiceId>())
         {
-            <span class="chip @(State.SubfunctionRunning(type) ? "chip-ok" : "chip-bad")">
-                <span class="dot"></span>@type.ToString().Replace("Cortana", "")
+            <span class="chip @(State.ServiceRunning(service) ? "chip-ok" : "chip-bad")">
+                <span class="dot"></span>@service
             </span>
         }
     </div>
@@ -45,22 +45,28 @@
     </header>
 
     <div class="tiles tiles-6">
-        <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(ESensor.Temperature)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(ESensor.Humidity)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(ESensor.Light)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(ESensor.Motion)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(ESensor.CO2)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(ESensor.Tvoc)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🖲" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
+        <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
     </div>
 
     <div class="toggle-row">
         <div>
-            <strong>Automatic mode</strong>
+            <strong>Automation</strong>
             <small>@AutomationHint</small>
         </div>
-        <button class="switch @(State.AutomationRunning ? "switch-on" : "")"
-                role="switch" aria-checked="@(State.AutomationRunning ? "true" : "false")"
-                aria-label="Automatic mode" disabled="@_busy" @onclick="ToggleAutomatic"><span class="knob"></span></button>
+        <div class="toggle-actions">
+            @if (State.Automation.Status == AutomationStatus.Holding)
+            {
+                <button class="btn btn-small" disabled="@_busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
+            }
+            <button class="switch @SwitchClass"
+                    role="switch" aria-checked="@(State.Automation.Enabled ? "true" : "false")"
+                    aria-label="Automation" disabled="@_busy" @onclick="() => Run(() => State.SetAutomation(SwitchAction.Toggle))"><span class="knob"></span></button>
+        </div>
     </div>
 </section>
 
@@ -70,14 +76,15 @@
     </header>
 
     <div class="quick-grid">
-        <button class="quick" disabled="@_busy" @onclick="() => Run(State.Sleep)">
+        <button class="quick @(State.Automation.SleepMode ? "quick-active" : "")" disabled="@_busy"
+                @onclick="() => Run(() => State.SetSleepMode(SwitchAction.Toggle))">
             <span class="quick-emoji" aria-hidden="true">🛌</span> Sleep
-            <small>Mode</small>
+            <small>@(State.Automation.SleepMode ? "Active" : "Off")</small>
         </button>
-        @foreach ((EDevice device, string emoji, bool compact) in QuickDevices)
+        @foreach ((DeviceId device, string emoji, bool compact) in QuickDevices)
         {
             <button class="quick @(State.IsDeviceOn(device) ? "quick-active" : "") @(compact ? "" : "quick-wide")"
-                    disabled="@_busy" @onclick="() => Run(() => State.SwitchDevice(device, ESwitchAction.Toggle))">
+                    disabled="@_busy" @onclick="() => Run(() => State.SwitchDevice(device, SwitchAction.Toggle))">
                 <span class="quick-emoji" aria-hidden="true">@emoji</span> @device
                 <small>@State.DeviceStatus(device)</small>
             </button>
@@ -95,7 +102,7 @@
     </header>
 
     <div class="quick-grid">
-        <a class="quick" href="/raspberry"><span aria-hidden="true">🧠</span> Core</a>
+        <a class="quick" href="/core"><span aria-hidden="true">🧠</span> Core</a>
         <a class="quick" href="/utility"><span aria-hidden="true">🧰</span> Utility</a>
         <a class="quick" href="/logs"><span aria-hidden="true">📜</span> Logs</a>
         <a class="quick" href="/settings"><span aria-hidden="true">⚙️</span> Settings</a>
@@ -103,45 +110,43 @@
 </section>
 
 @code {
-    private static readonly (EDevice Device, string Emoji, bool Compact)[] QuickDevices =
+    private static readonly (DeviceId Device, string Emoji, bool Compact)[] QuickDevices =
     [
-        (EDevice.Lamp, "💡", true),
-        (EDevice.Generic, "🔌", true),
-        (EDevice.Computer, "🖥️", true),
-        (EDevice.Power, "⚡", false)
+        (DeviceId.Lamp, "💡", true),
+        (DeviceId.Generic, "🔌", true),
+        (DeviceId.Computer, "🖥️", true),
+        (DeviceId.Power, "⚡", false)
     ];
 
     private ChatPanel? _chat;
     private bool _chatOpen;
+    private IDisposable? _subscription;
+    private string? _message;
+    private bool _busy;
+
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
 
     private async Task ClearChat()
     {
         if (_chat != null) await _chat.ClearAsync();
     }
 
-    private IDisposable? _subscription;
-    private string? _message;
-    private bool _busy;
-
-    protected override void OnInitialized() =>
-        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
-
-    public void Dispose() => _subscription?.Dispose();
-
-    private string AutomationHint => State.AutomationState switch
+    private string SwitchClass => State.Automation.Status switch
     {
-        nameof(EAutomationState.Night) => "Night mode until morning",
-        nameof(EAutomationState.Manual) when State.ManualMinutesLeft > 0 =>
-            $"Manual hold, back to automatic in {State.ManualMinutesLeft} min",
-        nameof(EAutomationState.Manual) => "Manual control only",
-        _ => "Motion controls the lamp"
+        AutomationStatus.Holding => "switch-hold",
+        AutomationStatus.Active => "switch-on",
+        _ => ""
     };
 
-    private Task ToggleAutomatic()
+    private string AutomationHint => State.Automation switch
     {
-        EStatus target = State.AutomationRunning ? EStatus.Off : EStatus.On;
-        return Run(() => State.SetSetting(ESettings.AutomaticMode, (int)target));
-    }
+        { Status: AutomationStatus.Off } => "Manual control only",
+        { Status: AutomationStatus.Holding, HoldingUntil: { } until } => $"Holding until {until:HH:mm}",
+        { SleepMode: true } => "Sleep rules are active",
+        _ => "Motion controls the lamp"
+    };
 
     private async Task Run(Func<Task<string>> action)
     {

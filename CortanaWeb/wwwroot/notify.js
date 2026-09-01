@@ -34,7 +34,7 @@ window.cortanaNotify = (() => {
         show: async (title, body) => {
             if (!supported() || Notification.permission !== 'granted' || !read()) return;
 
-            const options = { body, icon: '/icon-192x192.png', badge: '/badge-96x96.png', tag: 'cortana-log' };
+            const options = { body, icon: '/icon-192x192.png', badge: '/badge.png', tag: 'cortana-log' };
 
             if ('serviceWorker' in navigator) {
                 try {

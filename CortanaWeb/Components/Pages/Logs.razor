@@ -3,7 +3,7 @@
 @rendermode InteractiveServer
 @inject CortanaState State
 @inject IJSRuntime Js
-@implements IAsyncDisposable
+@implements IDisposable
 
 <PageTitle>Logs</PageTitle>
 
@@ -16,7 +16,7 @@
         <div class="log-controls">
             <select @bind="_filter">
                 <option value="">All sources</option>
-                @foreach (ELogSource source in Enum.GetValues<ELogSource>())
+                @foreach (NotificationSource source in Enum.GetValues<NotificationSource>())
                 {
                     <option value="@source">@source</option>
                 }
@@ -33,7 +33,7 @@
     else
     {
         <ol class="log-list">
-            @foreach (LogEntry entry in Visible)
+            @foreach (NotificationEntry entry in Visible)
             {
                 <li class="log-row log-@entry.Level.ToString().ToLower()">
                     <time>@entry.Timestamp.ToString("dd MMM HH:mm:ss")</time>
@@ -48,14 +48,14 @@
 <section class="section">
     <header class="section-head">
         <h2>Service journal</h2>
-        <p class="section-hint">Journal of systemd output from the Pi</p>
+        <p class="section-hint">systemd output from the Pi</p>
     </header>
 
     <div class="field-row">
         <select @bind="_journalService" disabled="@_journalBusy">
-            @foreach (ESubFunctionType type in Enum.GetValues<ESubFunctionType>())
+            @foreach (ServiceId service in Enum.GetValues<ServiceId>())
             {
-                <option value="@type">@type.ToString().Replace("Cortana", "")</option>
+                <option value="@service">@service</option>
             }
         </select>
         <select @bind="_journalLines" disabled="@_journalBusy">
@@ -76,7 +76,7 @@
 <section class="section">
     <header class="section-head">
         <h2>Notifications</h2>
-        <p class="section-hint">Shows a push notification when a new entry arrives</p>
+        <p class="section-hint">One persistent notification that always shows the newest state</p>
     </header>
 
     <div class="toggle-row">
@@ -90,13 +90,12 @@
     </div>
 
     <div class="options">
-        <label><input type="checkbox" checked="@_notifyAlertsOnly" @onchange="OnAlertsOnly"/> Only warnings and alerts</label>
+        <label><input type="checkbox" checked="@_alertsOnly" @onchange="OnAlertsOnly"/> Only warnings and alerts</label>
     </div>
 
     <div class="toggle-row">
         <div>
-            <strong>Persistent notification</strong>
-            <small>One status notification that shows the latest event</small>
+            <strong>Persistent status notification</strong>
         </div>
         <button class="switch @(_sticky ? "switch-on" : "")" role="switch"
                 aria-checked="@(_sticky ? "true" : "false")" aria-label="Persistent notification"
@@ -106,16 +105,15 @@
     <div class="toggle-row">
         <div>
             <strong>Vibrate on events</strong>
-            <small>A short pulse when a log arrives, silent otherwise</small>
         </div>
         <button class="switch @(_vibrate ? "switch-on" : "")" role="switch"
                 aria-checked="@(_vibrate ? "true" : "false")" aria-label="Vibrate on events"
                 disabled="@(_busy || !_notify)" @onclick="ToggleVibrate"><span class="knob"></span></button>
     </div>
 
-    <p class="brain-label">Sources to notify</p>
+    <p class="brain-label">Events that interrupt the status line</p>
     <div class="source-grid">
-        @foreach (ELogSource source in Enum.GetValues<ELogSource>())
+        @foreach (NotificationSource source in Enum.GetValues<NotificationSource>())
         {
             <label>
                 <input type="checkbox" checked="@_sources.Contains(source)" @onchange="args => OnSource(source, args)"/> @source
@@ -132,41 +130,39 @@
 </section>
 
 @code {
-    private readonly HashSet<ELogSource> _sources = [.. Enum.GetValues<ELogSource>()];
-    private bool _sticky;
-    private bool _vibrate = true;
-
-    private ESubFunctionType _journalService = ESubFunctionType.CortanaKernel;
-    private int _journalLines = 100;
-    private string? _journal;
-    private bool _journalBusy;
+    private readonly HashSet<NotificationSource> _sources = [.. Enum.GetValues<NotificationSource>()];
 
     private IDisposable? _subscription;
-    private IReadOnlyList<LogEntry> _entries = [];
+    private IReadOnlyList<NotificationEntry> _entries = [];
     private string _filter = "";
     private string? _message;
     private bool _busy;
 
-    private bool _notify;
-    private bool _notifyAlertsOnly = true;
-    private string _permissionLabel = "Off";
-    private DateTimeOffset _lastSeen = DateTimeOffset.MinValue;
-    private bool _ready;
+    private ServiceId _journalService = ServiceId.Kernel;
+    private int _journalLines = 100;
+    private string? _journal;
+    private bool _journalBusy;
 
-    private IReadOnlyList<LogEntry> Visible =>
-        string.IsNullOrEmpty(_filter) ? _entries : _entries.Where(e => e.Source.ToString() == _filter).ToList();
+    private bool _notify;
+    private bool _alertsOnly = true;
+    private bool _sticky;
+    private bool _vibrate = true;
+    private string _permissionLabel = "Off";
+
+    private IReadOnlyList<NotificationEntry> Visible =>
+        string.IsNullOrEmpty(_filter) ? _entries : [.. _entries.Where(entry => entry.Source.ToString() == _filter)];
 
     protected override async Task OnInitializedAsync()
     {
         _subscription = State.Subscribe(() => InvokeAsync(OnStateChanged));
         await Reload();
-        _lastSeen = _entries.Count > 0 ? _entries[0].Timestamp : DateTimeOffset.Now;
     }
+
+    public void Dispose() => _subscription?.Dispose();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _ready = true;
 
         try
         {
@@ -178,14 +174,14 @@
             {
                 _sources.Clear();
                 foreach (string name in saved)
-                    if (Enum.TryParse(name, out ELogSource parsed)) _sources.Add(parsed);
+                    if (Enum.TryParse(name, out NotificationSource parsed)) _sources.Add(parsed);
             }
 
-            _notifyAlertsOnly = await Js.InvokeAsync<bool>("cortanaNotify.alertsOnly");
+            _alertsOnly = await Js.InvokeAsync<bool>("cortanaNotify.alertsOnly");
             _sticky = await Js.InvokeAsync<bool>("cortanaNotify.sticky");
             _vibrate = await Js.InvokeAsync<bool>("cortanaNotify.vibrate");
         }
-        catch
+        catch (JSException)
         {
             _permissionLabel = "Not supported by this browser";
         }
@@ -196,87 +192,51 @@
     private async Task OnStateChanged()
     {
         await Reload();
-        await PushNew();
         StateHasChanged();
     }
 
-    private async Task Reload() => _entries = await State.GetLogs();
+    private async Task Reload() => _entries = await State.Notifications();
 
-    private async Task PushNew()
+    private async Task ToggleVibrate() => await Preference(async () =>
     {
-        if (!_notify || !_ready || _entries.Count == 0) return;
+        _vibrate = !_vibrate;
+        await Js.InvokeVoidAsync("cortanaNotify.setVibrate", _vibrate);
+    });
 
-        List<LogEntry> fresh = _entries
-            .Where(e => e.Timestamp > _lastSeen)
-            .Where(e => !_notifyAlertsOnly || e.Level != ELogLevel.Info)
-            .ToList();
-
-        _lastSeen = _entries[0].Timestamp;
-        if (fresh.Count == 0) return;
-
-        LogEntry latest = fresh[0];
-        try
-        {
-            await Js.InvokeVoidAsync("cortanaNotify.show", $"Cortana · {latest.Source}", latest.Message);
-        }
-        catch
-        {
-        }
-    }
-
-    private async Task ToggleVibrate()
+    private async Task ToggleSticky() => await Preference(async () =>
     {
-        _busy = true;
-        try
-        {
-            _vibrate = !_vibrate;
-            await Js.InvokeVoidAsync("cortanaNotify.setVibrate", _vibrate);
-            await Resubscribe();
-        }
-        catch (JSException)
-        {
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
+        _sticky = !_sticky;
+        await Js.InvokeVoidAsync("cortanaNotify.setSticky", _sticky);
+    });
 
-    private async Task ToggleSticky()
+    private async Task OnAlertsOnly(ChangeEventArgs args) => await Preference(async () =>
     {
-        _busy = true;
-        try
-        {
-            _sticky = !_sticky;
-            await Js.InvokeVoidAsync("cortanaNotify.setSticky", _sticky);
-            await Resubscribe();
-        }
-        catch (JSException)
-        {
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
+        _alertsOnly = args.Value is true;
+        await Js.InvokeVoidAsync("cortanaNotify.setAlertsOnly", _alertsOnly);
+    });
 
-    private async Task OnSource(ELogSource source, ChangeEventArgs args)
+    private async Task OnSource(NotificationSource source, ChangeEventArgs args) => await Preference(async () =>
     {
         if (args.Value is true) _sources.Add(source);
         else _sources.Remove(source);
 
-        await SaveSources();
-    }
+        await Js.InvokeVoidAsync("cortanaNotify.setSources", _sources.Select(entry => entry.ToString()).ToArray());
+    });
 
-    private async Task SaveSources()
+    private async Task Preference(Func<Task> change)
     {
+        _busy = true;
         try
         {
-            await Js.InvokeVoidAsync("cortanaNotify.setSources", _sources.Select(source => source.ToString()).ToArray());
+            await change();
             await Resubscribe();
         }
         catch (JSException)
         {
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 
@@ -284,32 +244,17 @@
     {
         if (!_notify) return;
 
-        var device = await Js.InvokeAsync<PostPushDevice?>("cortanaPush.subscribe", (await State.PushKey()).Trim());
+        var device = await Js.InvokeAsync<PushDeviceRequest?>("cortanaPush.subscribe", (await State.PushKey()).Trim());
         if (device != null) _message = await State.PushSubscribe(Describe(device));
     }
 
-    private PostPushDevice Describe(PostPushDevice device) => device with
+    private PushDeviceRequest Describe(PushDeviceRequest device) => device with
     {
-        Sticky = _sticky,
+        StatusNotification = _sticky,
         Vibrate = _vibrate,
-        AlertsOnly = _notifyAlertsOnly,
-        Sources = _sources.Count == Enum.GetValues<ELogSource>().Length ? [] : _sources.Select(source => source.ToString()).ToList()
+        AlertsOnly = _alertsOnly,
+        Sources = _sources.Count == Enum.GetValues<NotificationSource>().Length ? [] : [.. _sources.Select(source => source.ToString())]
     };
-
-    private async Task OnAlertsOnly(ChangeEventArgs args)
-    {
-        _notifyAlertsOnly = args.Value is true;
-
-        try
-        {
-            await Js.InvokeVoidAsync("cortanaNotify.setAlertsOnly", _notifyAlertsOnly);
-
-            await Resubscribe();
-        }
-        catch (JSException)
-        {
-        }
-    }
 
     private async Task ToggleNotifications()
     {
@@ -332,9 +277,7 @@
                     return;
                 }
 
-                string key = (await State.PushKey()).Trim();
-                var device = await Js.InvokeAsync<PostPushDevice?>("cortanaPush.subscribe", key);
-
+                var device = await Js.InvokeAsync<PushDeviceRequest?>("cortanaPush.subscribe", (await State.PushKey()).Trim());
                 if (device == null)
                 {
                     _permissionLabel = "Permission denied";
@@ -347,7 +290,6 @@
             }
 
             _permissionLabel = await Js.InvokeAsync<string>("cortanaNotify.permission");
-            _lastSeen = _entries.Count > 0 ? _entries[0].Timestamp : DateTimeOffset.Now;
         }
         catch (Exception ex)
         {
@@ -386,39 +328,17 @@
         }
     }
 
-    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
-
-    private async Task Toggle(ESettings setting)
-    {
-        _busy = true;
-        try
-        {
-            EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
-            _message = await State.SetSetting(setting, (int)target);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
     private async Task Clear()
     {
         _busy = true;
         try
         {
-            _message = await State.ClearLogs();
+            _message = await State.ClearNotifications();
             await Reload();
         }
         finally
         {
             _busy = false;
         }
-    }
-
-    public ValueTask DisposeAsync()
-    {
-        _subscription?.Dispose();
-        return ValueTask.CompletedTask;
     }
 }

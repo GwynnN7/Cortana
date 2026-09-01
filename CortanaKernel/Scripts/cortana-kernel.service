@@ -1,7 +1,7 @@
 [Unit]
 Description=Cortana Kernel
-After=network.target redis.service
-Wants=redis.service cortana-web.service cortana-discord.service cortana-telegram.service
+After=network.target
+Wants=cortana-web.service cortana-discord.service cortana-telegram.service
 
 [Service]
 Type=simple
@@ -21,3 +21,4 @@ SyslogIdentifier=CortanaKernel
 
 [Install]
 WantedBy=default.target
+

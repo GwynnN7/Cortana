@@ -11,25 +11,25 @@
 
 <section class="section">
     <div class="card-grid">
-        <DeviceCard Device="EDevice.Lamp" Icon="💡" OnResult="Report"/>
-        <DeviceCard Device="EDevice.Generic" Icon="🔌" OnResult="Report"/>
-        <DeviceCard Device="EDevice.Computer" Icon="💻" OnResult="Report"/>
-        <DeviceCard Device="EDevice.Power" Icon="⚡" OnResult="Report"/>
+        <DeviceCard Device="DeviceId.Lamp" Icon="💡" OnResult="Report"/>
+        <DeviceCard Device="DeviceId.Generic" Icon="🔌" OnResult="Report"/>
+        <DeviceCard Device="DeviceId.Computer" Icon="💻" OnResult="Report"/>
+        <DeviceCard Device="DeviceId.Power" Icon="⚡" OnResult="Report"/>
     </div>
 </section>
 
 <section class="section">
     <header class="section-head">
         <h2>Room</h2>
-        <p class="section-hint">Switches the entire room and and off</p>
+        <p class="section-hint">Switches the entire room on and off</p>
     </header>
 
     <div class="room">
         <div class="btn-row">
-            <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.On))">
+            <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(SwitchAction.On))">
                 <span class="btn-emoji" aria-hidden="true">🏠</span> Room on
             </button>
-            <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(ESwitchAction.Off))">
+            <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(SwitchAction.Off))">
                 <span class="btn-emoji" aria-hidden="true">🌙</span> Room off
             </button>
         </div>
@@ -39,45 +39,50 @@
 <section class="section">
     <header class="section-head">
         <h2>Computer</h2>
-        <p class="section-hint">Execute a command to the connected desktop</p>
-        <span class="badge @(State.IsDeviceOn(EDevice.Computer) ? "badge-ok" : "badge-bad")">
-            @(State.IsDeviceOn(EDevice.Computer) ? "Connected" : "Not connected")
+        <p class="section-hint">Execute a command on the connected desktop</p>
+        <span class="badge @(State.IsDeviceOn(DeviceId.Computer) ? "badge-ok" : "badge-bad")">
+            @(State.IsDeviceOn(DeviceId.Computer) ? "Connected" : "Not connected")
         </span>
     </header>
 
     <div class="btn-row wrap">
-        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Shutdown)">Shutdown</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Reboot)">Reboot</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.Suspend)">Suspend</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(EComputerCommand.System)">Switch OS</button>
+        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Shutdown)">Shutdown</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Reboot)">Reboot</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Suspend)">Suspend</button>
+        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.BootIntoOtherOperatingSystem)">Other OS</button>
     </div>
 
     <div class="stack">
         <div class="field-row">
             <input type="text" placeholder="Notification text" @bind="_notification" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, SendNotification))"/>
+                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, SendNotification))"/>
             <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_notification))" @onclick="SendNotification">Notify</button>
         </div>
 
         <div class="field-row">
             <input type="text" placeholder="Application to launch" @bind="_launch" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, LaunchApp))"/>
+                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, LaunchApp))"/>
             <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_launch))" @onclick="LaunchApp">Launch</button>
         </div>
 
         <div class="field-row">
+            <input type="text" placeholder="Application to close" @bind="_close" @bind:event="oninput"
+                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, CloseApp))"/>
+            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_close))" @onclick="CloseApp">Close</button>
+        </div>
+
+        <div class="field-row">
             <input type="text" placeholder="Shell command" @bind="_command" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(e => OnEnter(e, SendCommand))"/>
+                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, SendCommand))"/>
             <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_command))" @onclick="SendCommand">Run</button>
         </div>
     </div>
 
-    @if (!string.IsNullOrEmpty(_commandOutput))
+    @if (!string.IsNullOrEmpty(_output))
     {
-        <pre class="console">@_commandOutput</pre>
+        <pre class="console">@_output</pre>
     }
 </section>
-
 
 @code {
     private IDisposable? _subscription;
@@ -85,27 +90,26 @@
     private string _notification = "";
     private string _command = "";
     private string _launch = "";
-    private string? _commandOutput;
+    private string _close = "";
+    private string? _output;
     private bool _busy;
 
-    private bool ComputerBusy => _busy || !State.IsDeviceOn(EDevice.Computer);
+    private bool ComputerBusy => _busy || !State.IsDeviceOn(DeviceId.Computer);
 
-    protected override void OnInitialized() =>
-        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
 
     public void Dispose() => _subscription?.Dispose();
 
     private void Report(string result) => _message = result;
 
-    private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) =>
-        args.Key == "Enter" ? action() : Task.CompletedTask;
+    private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) => args.Key == "Enter" ? action() : Task.CompletedTask;
 
-    private async Task RunPc(EComputerCommand command, string args = "")
+    private async Task RunPc(ComputerCommand command, string argument = "")
     {
         _busy = true;
         try
         {
-            _commandOutput = await State.ComputerCommand(command, args);
+            _output = await State.ComputerCommand(command, argument);
         }
         finally
         {
@@ -115,20 +119,25 @@
 
     private async Task LaunchApp()
     {
-        await RunPc(EComputerCommand.Launch, _launch);
+        await RunPc(ComputerCommand.LaunchApplication, _launch);
         _launch = "";
+    }
+
+    private async Task CloseApp()
+    {
+        await RunPc(ComputerCommand.CloseApplication, _close);
+        _close = "";
     }
 
     private async Task SendNotification()
     {
-        await RunPc(EComputerCommand.Notify, _notification);
+        await RunPc(ComputerCommand.Notify, _notification);
         _notification = "";
     }
 
     private async Task SendCommand()
     {
-        string command = _command;
-        await RunPc(EComputerCommand.Command, command);
+        await RunPc(ComputerCommand.RunShellCommand, _command);
         _command = "";
     }
 

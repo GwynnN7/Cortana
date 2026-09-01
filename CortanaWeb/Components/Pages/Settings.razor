@@ -16,46 +16,68 @@
     }
 </div>
 
-@if (_tab == "sensors")
+@if (_tab == "automation")
 {
     <section class="section">
         <header class="section-head">
-            <h2>Sensors</h2>
+            <h2>Automation</h2>
         </header>
 
         <div class="toggle-row">
             <div>
-                <strong>Automatic mode</strong>
-                <small>@(State.AutomationRunning ? "Cortana controls the lamp" : "Manual control only")</small>
+                <strong>Automation</strong>
+                <small>@AutomationHint</small>
             </div>
-            <button class="switch @(State.AutomationRunning ? "switch-on" : "")"
-                    role="switch" aria-checked="@(State.AutomationRunning ? "true" : "false")" aria-label="Automatic mode"
-                    disabled="@_busy" @onclick="ToggleAutomatic">
-                <span class="knob"></span>
-            </button>
+            <div class="toggle-actions">
+                @if (State.Automation.Status == AutomationStatus.Holding)
+                {
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
+                }
+                <button class="switch @SwitchClass"
+                        role="switch" aria-checked="@(State.Automation.Enabled ? "true" : "false")" aria-label="Automation"
+                        disabled="@_busy" @onclick="ToggleAutomation">
+                    <span class="knob"></span>
+                </button>
+            </div>
         </div>
 
         <div class="toggle-row">
             <div>
-                <strong>Lamp is a toggle relay</strong>
+                <strong>Lamp is a pulse relay</strong>
                 <small>Pulse the pin instead of holding a level</small>
             </div>
-            <button class="switch @(State.SettingEnabled(ESettings.LampToggle) ? "switch-on" : "")"
-                    role="switch" aria-checked="@Aria(ESettings.LampToggle)" aria-label="Lamp is a toggle relay"
-                    disabled="@_busy" @onclick="() => Toggle(ESettings.LampToggle)">
+            <button class="switch @(State.SettingEnabled(SettingKey.LampUsesPulseRelay) ? "switch-on" : "")"
+                    role="switch" aria-checked="@Aria(SettingKey.LampUsesPulseRelay)" aria-label="Lamp is a pulse relay"
+                    disabled="@_busy" @onclick="() => Toggle(SettingKey.LampUsesPulseRelay)">
                 <span class="knob"></span>
             </button>
         </div>
 
         <div class="settings-grid">
-            <NumberSetting Setting="ESettings.LightThreshold" Label="Light threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.MorningHour" Label="Morning hour" Hint="0-23, when automatic mode resumes" Icon="🕒" Max="23" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.NightHour" Label="Night hour" Hint="0-23, when night mode starts" Icon="🌙" Max="23" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.ManualModeMinutes" Label="Manual hold (min)" Hint="minutes a hand switch pauses automation" Icon="✋" Max="1440" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.MotionOffMin" Label="Motion timeout (min)" Hint="seconds, computer off" Icon="⏳" Max="3600" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.MotionOffMax" Label="Motion timeout (max)" Hint="seconds, computer on" Icon="⏳" Max="3600" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.CO2Threshold" Label="CO₂ threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
-            <NumberSetting Setting="ESettings.TvocThreshold" Label="TVOC threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.LightThreshold" Label="Light Threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.MorningHour" Label="Morning Hour" Hint="0-23, when the night ends" Icon="🌅" Max="23" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.NightHour" Label="Night Hour" Hint="0-23, when the night begins" Icon="🌇" Max="23" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.MotionTimeoutComputerOffSeconds" Label="Motion Timeout" Hint="seconds of inactivity before the lamp goes off" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.MotionTimeoutComputerOnSeconds" Label="Motion Timeout, PC ON" Hint="second of inactivity, when pc is on" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.TemperatureOffset" Label="Temperature Offset" Hint="°C summed to the reading, to threshold the sensor" Icon="🌡" Min="-10" Max="10" Step="0.1" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.Co2Threshold" Label="CO₂ Threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.TvocThreshold" Label="TVOC Threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.ComputerShutdownGraceSeconds" Label="Shutdown Hold" Hint="seconds after pc is off before cutting power" Icon="⚡" Max="600" OnResult="Report"/>
+        </div>
+    </section>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>Sleep and overrides</h2>
+            <p class="section-hint">How long a manual touch or a sleep session lasts</p>
+        </header>
+
+        <div class="settings-grid">
+            <NumberSetting Setting="SettingKey.ManualOverrideMinutes" Label="Manual Override" Hint="minutes the day hold pauses automation" Icon="✋" Min="1" Max="720" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.SleepManualOverrideMinutes" Label="Sleep Override" Hint="minutes the night hold pauses automation" Icon="🌙" Min="1" Max="720" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.SleepEntryDelayMinutes" Label="Sleep Delay" Hint="minutes between the night starting and sleep mode" Icon="⏱" Max="720" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.SleepHoldMinutes" Label="Sleep Hold" Hint="minutes automatic sleep stays suppressed after manual override" Icon="🚫" Min="1" Max="720" OnResult="Report"/>
+            <NumberSetting Setting="SettingKey.DaySleepMinutes" Label="Daytime Sleep" Hint="minutes a daytime sleep mode lasts" Icon="🛌" Min="1" Max="1440" OnResult="Report"/>
         </div>
     </section>
 }
@@ -63,14 +85,14 @@ else if (_tab == "ai")
 {
     <AiSettingsPanel OnResult="Report"/>
 }
-else if (_tab == "logging")
+else if (_tab == "notifications")
 {
     <section class="section">
         <header class="section-head">
-            <h2>Where to send logs</h2>
+            <h2>Where to send notifications</h2>
         </header>
 
-        @foreach ((ESettings setting, string title, string hint) in Destinations)
+        @foreach ((SettingKey setting, string title, string hint) in Destinations)
         {
             <div class="toggle-row">
                 <div>
@@ -90,54 +112,59 @@ else if (_tab == "logging")
             <p class="section-hint">How often readings are recorded and how long they are kept</p>
         </header>
 
-        <AiNumberSetting Setting="EAiSetting.HistoryMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
-        <AiNumberSetting Setting="EAiSetting.HistoryDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.HistorySampleMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.HistoryRetentionDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
     </section>
 }
 
 @code {
     private static readonly (string Key, string Label)[] Tabs =
-        [("sensors", "Sensors"), ("ai", "AI"), ("logging", "Logging")];
+        [("automation", "Automation"), ("ai", "AI"), ("notifications", "Notifications")];
 
-    private static readonly (ESettings Setting, string Title, string Hint)[] Destinations =
+    private static readonly (SettingKey Setting, string Title, string Hint)[] Destinations =
     [
-        (ESettings.LogToWeb, "Send in the dashboard", "This page"),
-        (ESettings.LogToTelegram, "Send to Telegram", "Log topic in the home group"),
-        (ESettings.LogToDiscord, "Send to Discord", "Log channel")
+        (SettingKey.NotifyWeb, "Browser notification", "The persistent status notification"),
+        (SettingKey.NotifyTelegram, "Telegram", "The log topic in the home group"),
+        (SettingKey.NotifyDiscord, "Discord", "The log channel")
     ];
 
-    private string _tab = "sensors";
+    private string SwitchClass => State.Automation.Status switch
+    {
+        AutomationStatus.Holding => "switch-hold",
+        AutomationStatus.Active => "switch-on",
+        _ => ""
+    };
+
+    private string AutomationHint => State.Automation switch
+    {
+        { Status: AutomationStatus.Off } => "Manual control only",
+        { Status: AutomationStatus.Holding, HoldingUntil: { } until } => $"Holding until {until:HH:mm}",
+        _ => "Cortana controls the lamp"
+    };
+
+    private string _tab = "automation";
     private IDisposable? _subscription;
     private string? _message;
     private bool _busy;
 
-    protected override void OnInitialized() =>
-        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
 
     public void Dispose() => _subscription?.Dispose();
 
     private void Report(string result) => _message = result;
 
-    private string Aria(ESettings setting) => State.SettingEnabled(setting) ? "true" : "false";
+    private string Aria(SettingKey setting) => State.SettingEnabled(setting) ? "true" : "false";
 
-    private Task ToggleAutomatic()
-    {
-        EStatus target = State.AutomationRunning ? EStatus.Off : EStatus.On;
-        return Apply(ESettings.AutomaticMode, (int)target);
-    }
+    private Task ToggleAutomation() => Run(() => State.SetAutomation(SwitchAction.Toggle));
 
-    private Task Toggle(ESettings setting)
-    {
-        EStatus target = State.SettingEnabled(setting) ? EStatus.Off : EStatus.On;
-        return Apply(setting, (int)target);
-    }
+    private Task Toggle(SettingKey setting) => Run(() => State.SetSetting(setting, "Toggle"));
 
-    private async Task Apply(ESettings setting, int value)
+    private async Task Run(Func<Task<string>> action)
     {
         _busy = true;
         try
         {
-            _message = await State.SetSetting(setting, value);
+            _message = await action();
         }
         finally
         {

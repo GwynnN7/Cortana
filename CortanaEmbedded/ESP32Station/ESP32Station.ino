@@ -70,9 +70,11 @@ void loop()
       tcpTime = millis(); 
     }
 
-    char buff[200]; 
-    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc);
-    
+    // temperature/humidity are the SHT4x, the room sensor. airQualityTemperature is the AHT20,
+    // which exists to compensate the ENS160; it is reported only so the two can be compared.
+    char buff[240];
+    snprintf(buff, 240, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u, \"airQualityTemperature\": %.2f }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc, temp);
+
     client.print(buff);
     lastSentLedState = currentMotion;
   }
@@ -100,7 +102,7 @@ void readSensors()
 
   sensors_event_t shtHumidity, shtTemp;
   sht4.getEvent(&shtHumidity, &shtTemp);
-  
+
   roomTemp = shtTemp.temperature; // Degrees Celsius
   roomHumidity = shtHumidity.relative_humidity; // Percent Relative Humidity
 }
@@ -135,7 +137,8 @@ void connectToWiFi()
     }
     WiFi.disconnect();
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    WiFi.setSleep(false);
+
+    WiFi.setSleep(true);
 
     tryCount++;
     delay(1500);
