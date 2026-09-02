@@ -32,6 +32,21 @@ public static class HistoryEndpoints
 				ApiResults.From(request, history.CompareToUsual(metric, days ?? 21), result => result.Summary))
 			.Access(ApiAccess.ReadOnly).WithTags("History").WithSummary("How the latest reading compares with this hour's usual range");
 
+		group.MapGet("/{metric}/against/{other}", (string metric, string other, int? hours, HistoryService history, HttpRequest request) =>
+				ApiResults.From(request, history.Correlate(metric, other, hours ?? 24), result => result.Summary))
+			.Access(ApiAccess.ReadOnly).WithSummary("How two recorded metrics move together");
+
+		group.MapGet("/{metric}/during/{category}", (string metric, string category, int? hours, HistoryService history, HttpRequest request) =>
+				!Enum.TryParse(category, true, out ActivityCategory parsed)
+					? ApiResults.Problem(request, StatusCodes.Status400BadRequest, "Bad request",
+						$"Unknown activity '{category}'. Valid: {string.Join(", ", Enum.GetNames<ActivityCategory>())}")
+					: ApiResults.From(request, history.DuringActivity(metric, parsed, hours ?? 72), result => result.Summary))
+			.Access(ApiAccess.ReadOnly).WithSummary("A room metric while the desktop is doing one thing, against everything else");
+
+		group.MapGet("/{metric}/session", (string metric, int? hours, HistoryService history, HttpRequest request) =>
+				ApiResults.From(request, history.ThisSession(metric, hours ?? 12), result => result.Summary))
+			.Access(ApiAccess.ReadOnly).WithSummary("How a room metric has moved since the current desktop session began");
+
 		group.MapPost("/analysis", (AnalysisRequest body, HistoryService history, HttpRequest request) =>
 				ApiResults.From(request, history.Analyse(body), result => result.Summary))
 			.Access(ApiAccess.ReadOnly)

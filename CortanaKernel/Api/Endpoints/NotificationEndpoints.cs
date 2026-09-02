@@ -1,3 +1,4 @@
+using CortanaLib.Primitives;
 using CortanaKernel.Application;
 using CortanaKernel.Infrastructure.Push;
 using CortanaLib.Contracts;
@@ -58,9 +59,12 @@ public static class NotificationEndpoints
 
 		push.MapPost("/test", async (PushService service, HttpRequest request) =>
 			{
-				await service.RefreshStatus();
-				return ApiResults.Message(request, $"Status sent to {service.DeviceCount} browser(s)");
+				await service.RefreshStatus(force: true);
+				await service.ShowMessage(new NotificationEntry(DateTimeOffset.Now, NotificationSource.Cortana,
+					NotificationLevel.Info, "Reading you loud and clear.", "you asked for a test"));
+
+				return ApiResults.Message(request, $"Sent to {service.DeviceCount} browser(s)");
 			})
-			.Access(ApiAccess.Sensitive).WithSummary("Pushes the current status line to every registered browser.");
+			.Access(ApiAccess.Sensitive).WithSummary("Pushes the status line and a test message to every registered browser.");
 	}
 }

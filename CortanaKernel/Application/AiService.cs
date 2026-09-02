@@ -13,6 +13,8 @@ public sealed class AiService(
 	IConversationRepository conversations,
 	CapabilityRegistry capabilities,
 	AiSettingsStore settings,
+	MemoryStore memories,
+	Lazy<SnapshotService> snapshots,
 	NotificationService notifications,
 	IEventBus bus)
 {
@@ -83,9 +85,46 @@ public sealed class AiService(
 		bus.Publish(new ConversationUpdated(conversation, DateTimeOffset.Now));
 	}
 
-	public string Mood { get; set; } = "";
 
-	public string Activity { get; set; } = "";
+	public IReadOnlyList<MemoryEntry> Memories() => memories.All();
+
+	public Result<MemoryEntry> Remember(string text, MemoryKind kind, string source) =>
+		memories.Remember(text, kind, source, StateLifetime);
+
+	public TimeSpan StateLifetime => TimeSpan.FromHours(Math.Clamp(settings.Number(AiSettingKey.MemoryStateHours), 1, 168));
+
+	public Result<string> ForgetMemory(string id) => memories.Forget(id);
+
+	private string Recollection(string message)
+	{
+		var depth = (int)settings.Number(AiSettingKey.MemoryDepth);
+		if (depth <= 0) return "";
+
+		IReadOnlyList<MemoryEntry> recalled = memories.Recall(message, depth);
+		return string.Join("\n", recalled.Select(memory => $"- ({memory.Kind.ToString().ToLowerInvariant()}) {memory.Text}"));
+	}
+
+	/// Phrase something in her own voice, falling back to a plain line when no model can answer
+	public async Task<string> Compose(string brief, string fallback, int limit = 240, CancellationToken token = default)
+	{
+		if (!provider.IsConfigured) return fallback;
+
+		try
+		{
+			Result<string> reply = await Ask(new AskRequest(brief, "cortana", "gwynn7", Remember: false), CommandOrigin.Internal, token);
+			if (!reply.IsOk) return fallback;
+
+			string spoken = reply.Value.ReplaceLineEndings(" ").Trim();
+			if (spoken.Length == 0) return fallback;
+
+			return spoken.Length <= limit ? spoken : string.Concat(spoken.AsSpan(0, limit - 1), "…");
+		}
+		catch (Exception ex)
+		{
+			Log.Error("Ai", $"Could not compose a line: {ex.Message}");
+			return fallback;
+		}
+	}
 
 	public async Task<Result<string>> Ask(AskRequest request, CommandOrigin origin, CancellationToken token = default)
 	{
@@ -116,8 +155,12 @@ public sealed class AiService(
 		Conversation? conversation = request.Remember ? conversations.Load(request.Conversation) : null;
 		IReadOnlyCollection<AiCapability> tools = capabilities.For(request.Trusted);
 
-		string mood = string.IsNullOrEmpty(Mood) ? "" : $"\n- Current mood: {Mood}.";
-		if (!string.IsNullOrEmpty(Activity)) mood += $"\n- {Activity}";
+		SnapshotService snapshot = snapshots.Value;
+		string mood = $"\n- Current mood: {await snapshot.Mood(token)}, because {await snapshot.MoodReason(token)}.";
+		if (snapshot.Doing() is { Length: > 0 } doing) mood += $"\n- {doing}";
+
+		if (request.Trusted && Recollection(request.Message) is { Length: > 0 } known)
+			mood += $"\n\nWhat you know about gwynn7:\n{known}";
 
 		string instructions = SystemPrompt + mood + "\n" + (request.Trusted
 			? OwnerNote

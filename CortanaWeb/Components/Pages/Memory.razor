@@ -1,0 +1,108 @@
+@page "/memory"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+
+<PageTitle>Memory</PageTitle>
+
+<h1>Memory</h1>
+<Toast @bind-Message="_message"/>
+
+<section class="section">
+    <header class="section-head">
+        <h2>What she knows about you</h2>
+        <span class="badge">@_memories.Count</span>
+    </header>
+
+    <p class="section-hint">Facts, preferences and events are kept until you delete them. A state is short-term — where you are or what you are doing — and expires on its own.</p>
+
+    @if (_memories.Count == 0)
+    {
+        <p class="section-hint">@(_loading ? "Reading" : "She has not been told anything yet")</p>
+    }
+    else
+    {
+        <div class="memory-list">
+            @foreach (MemoryEntry memory in _memories)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@memory.Text</span>
+                        <span class="memory-meta">
+                            <span class="memory-kind memory-@memory.Kind.ToString().ToLower()">@memory.Kind.ToString().ToLower()</span>
+                            @(memory.ExpiresAt is null ? $"learned {memory.CreatedAt:dd MMM}" : Expiry(memory))
+                            @if (memory.Uses > 0)
+                            {
+                                <text> · recalled @memory.Uses×</text>
+                            }
+                            @if (memory.Source.Length > 0)
+                            {
+                                <text> · via @memory.Source</text>
+                            }
+                        </span>
+                    </div>
+                    <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Forget(memory)">Forget</button>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Tell her something</h2>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_kind" disabled="@_busy">
+            @foreach (MemoryKind kind in Enum.GetValues<MemoryKind>())
+            {
+                <option value="@kind">@kind</option>
+            }
+        </select>
+        <input type="text" placeholder="One sentence worth keeping" @bind="_draft" @bind:event="oninput" disabled="@_busy"/>
+        <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" @onclick="Remember">Remember</button>
+    </div>
+</section>
+
+@code {
+    private IReadOnlyList<MemoryEntry> _memories = [];
+    private MemoryKind _kind = MemoryKind.Fact;
+    private string _draft = "";
+    private string? _message;
+    private bool _busy;
+    private bool _loading = true;
+
+    private static string Expiry(MemoryEntry memory)
+    {
+        TimeSpan left = memory.ExpiresAt!.Value - DateTimeOffset.Now;
+        return left <= TimeSpan.Zero
+            ? "expired"
+            : left.TotalHours >= 1 ? $"expires in {left.TotalHours:F0}h" : $"expires in {left.TotalMinutes:F0}m";
+    }
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
+    {
+        _memories = await State.Memories();
+        _loading = false;
+    }
+
+    private async Task Remember()
+    {
+        _busy = true;
+        _message = await State.Remember(_draft, _kind);
+        _draft = "";
+        await Reload();
+        _busy = false;
+    }
+
+    private async Task Forget(MemoryEntry memory)
+    {
+        _busy = true;
+        _message = await State.Forget(memory.Id);
+        await Reload();
+        _busy = false;
+    }
+}

@@ -3,7 +3,8 @@
 
 set -uo pipefail
 
-BASE_PATH="${CORTANA_PATH:-$HOME/Projects/Cortana}"
+SCRIPT_ROOT="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")/../.." && pwd)"
+BASE_PATH="${CORTANA_PATH:-$SCRIPT_ROOT}"
 API_URL="${CORTANA_API:-}"
 API_KEY="${CORTANA_API_KEY:-}"
 PI="${CORTANA_PI:-cortana@192.168.1.117}"
@@ -160,6 +161,16 @@ remote() { ssh -o ConnectTimeout=10 "$PI" bash -s <<< "$1"; }
 started_at() { remote "systemctl --user show $1 -p ActiveEnterTimestamp --value" 2>/dev/null | tr -d '\r'; }
 
 handle_deploy() {
+	[ -f "$BASE_PATH/Cortana.slnx" ] || die "CORTANA_PATH is '$BASE_PATH', which is not a Cortana checkout. Refusing to sync."
+
+	if [ "$BASE_PATH" != "$SCRIPT_ROOT" ] && [ -z "${CORTANA_DEPLOY_FOREIGN:-}" ]; then
+		echo "CORTANA_PATH points at $BASE_PATH"
+		echo "but this script lives in    $SCRIPT_ROOT"
+		echo
+		echo "Deploy syncs with --delete, so the wrong tree overwrites the Pi."
+		die "Fix CORTANA_PATH, or set CORTANA_DEPLOY_FOREIGN=1 if you meant it."
+	fi
+
 	local dry="" restart=1 follow="" targets=()
 
 	while [ $# -gt 0 ]; do

@@ -22,7 +22,9 @@ public sealed class AiSettingsStore(IAiSettingsRepository repository)
 			[AiSettingKey.DiscordSessionMinutes] = (1, 0.5, 120),
 			[AiSettingKey.HistorySampleMinutes] = (5, 1, 60),
 			[AiSettingKey.HistoryRetentionDays] = (180, 1, 3650),
-			[AiSettingKey.PushEventSeconds] = (5, 1, 120)
+			[AiSettingKey.PushEventSeconds] = (5, 1, 120),
+			[AiSettingKey.MemoryDepth] = (12, 0, 60),
+			[AiSettingKey.MemoryStateHours] = (8, 1, 168)
 		};
 
 	private readonly Dictionary<AiSettingKey, double> _values = Initialise(repository);

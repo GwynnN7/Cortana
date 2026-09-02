@@ -104,6 +104,17 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 
 	public Task<string> ClearNotifications() => Text(_client.ClearNotifications());
 
+	public async Task<SessionInsight?> Session(string metric, int hours = 12) =>
+		(await _client.Session(metric, hours)).Match(SessionInsight? (insight) => insight, _ => null);
+
+	public async Task<IReadOnlyList<MemoryEntry>> Memories() =>
+		(await _client.Memories()).Match(list => list.Memories, _ => []);
+
+	public Task<string> Remember(string text, MemoryKind kind) =>
+		Text(_client.Remember(new RememberRequest(text, kind, "Web")));
+
+	public Task<string> Forget(string id) => Text(_client.Forget(id));
+
 	public Task<string> Ask(string message, string conversation) =>
 		Text(_client.Ask(message, conversation, "Web"));
 

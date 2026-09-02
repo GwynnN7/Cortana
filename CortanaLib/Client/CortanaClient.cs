@@ -158,6 +158,18 @@ public sealed class CortanaClient
 	public Task<Result<AnalysisResult>> Analyse(AnalysisRequest request) =>
 		PostJson<AnalysisResult>("history/analysis", request);
 
+	public Task<Result<SessionInsight>> Session(string metric, int hours = 12) =>
+		GetJson<SessionInsight>($"history/{metric}/session?hours={hours}");
+
+	public Task<Result<CorrelationResult>> Correlate(string metric, string against, int hours = 24) =>
+		GetJson<CorrelationResult>($"history/{metric}/against/{against}?hours={hours}");
+
+	public Task<Result<MemoryListResponse>> Memories() => GetJson<MemoryListResponse>("ai/memory");
+
+	public Task<Result<string>> Remember(RememberRequest request) => PostText("ai/memory", request);
+
+	public Task<Result<string>> Forget(string id) => DeleteText($"ai/memory/{id}");
+
 	// ---------- notifications and push ----------
 
 	public Task<Result<NotificationListResponse>> Notifications(int limit = 200) =>

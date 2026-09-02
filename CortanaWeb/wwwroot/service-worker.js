@@ -1,6 +1,6 @@
 // Caches the shell for instant startup and serves an offline page when the Pi is down
 
-const CACHE = 'cortana-shell-v11';
+const CACHE = 'cortana-shell-v12';
 const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192x192.png', '/icon-144x144.png', '/icon-72x72.png', '/icon-512x512.png', '/manifest.webmanifest', '/offline.html',
     '/badge.png'];
 
@@ -90,16 +90,19 @@ self.addEventListener('push', event => {
         }
     }
 
+    const message = tag === 'cortana-message';
+
     const options = {
         body,
         tag,
         silent,
         renotify: !silent,
-        requireInteraction: ongoing,
+        requireInteraction: ongoing || message,
         icon: '/badge.png',
         badge: '/badge.png',
         data: { url }
     };
+
 
     if (timestamp !== undefined) options.timestamp = timestamp;
 

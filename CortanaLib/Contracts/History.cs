@@ -59,3 +59,20 @@ public sealed record BaselineResult(
 	double? Deviation,
 	int Samples,
 	string Summary);
+
+public sealed record CorrelationResult(
+	string Metric,
+	string Against,
+	int Samples,
+	double? Coefficient,
+	string Summary);
+
+public sealed record SessionInsight(
+	ActivityCategory Category,
+	DateTimeOffset Since,
+	TimeSpan Length,
+	string Metric,
+	double? Start,
+	double? Current,
+	double? Delta,
+	string Summary);

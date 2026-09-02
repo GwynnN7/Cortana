@@ -18,6 +18,7 @@ namespace CortanaKernel.Infrastructure.Push;
 public sealed class PushService : BackgroundService
 {
 	private const string StatusTag = "cortana-status";
+	private const string MessageTag = "cortana-message";
 	private const string Subject = "mailto:cortana@localhost";
 
 	private static readonly TimeSpan Safeguard = TimeSpan.FromMinutes(5);
@@ -41,6 +42,8 @@ public sealed class PushService : BackgroundService
 
 	private readonly SemaphoreSlim _pending = new(0, 1);
 	private DateTimeOffset _overlayUntil = DateTimeOffset.MinValue;
+	private readonly Lock _statusGate = new();
+	private string _lastStatus = "";
 
 	public PushService(
 		DeviceRegistry devices,
@@ -136,7 +139,28 @@ public sealed class PushService : BackgroundService
 		return single.Length <= MaxOverlayLength ? single : string.Concat(single.AsSpan(0, MaxOverlayLength - 1), "…");
 	}
 
-	public async Task RefreshStatus() => await Deliver("", await StatusLine(), device => device.StatusNotification, StatusTag, _ => false, "/");
+	public async Task RefreshStatus(bool force = false)
+	{
+		string line = await StatusLine();
+
+		lock (_statusGate)
+		{
+			if (!force && line == _lastStatus) return;
+			_lastStatus = line;
+		}
+
+		await Deliver("", line, device => device.StatusNotification, StatusTag, _ => false, "/");
+	}
+
+	public async Task ShowMessage(NotificationEntry entry)
+	{
+		bool Wants(PushDeviceRequest device) =>
+			device.StatusNotification &&
+			(!device.AlertsOnly || entry.Level != NotificationLevel.Info) &&
+			(device.Sources is not { Count: > 0 } sources || sources.Contains(entry.Source.ToString()));
+
+		await Deliver("Cortana", entry.Message, Wants, MessageTag, device => device.Vibrate, "/logs");
+	}
 
 	/// An accepted event replaces the status body for a configured moment, then the newest status is rebuilt from live state
 	public async Task ShowEvent(NotificationEntry entry)
@@ -270,7 +294,8 @@ public sealed class WebPushSink(Lazy<PushService> push) : INotificationSink
 {
 	public NotificationChannel Channel => NotificationChannel.Web;
 
-	public Task Deliver(NotificationEntry entry, CancellationToken token = default) => push.Value.ShowEvent(entry);
+	public Task Deliver(NotificationEntry entry, CancellationToken token = default) =>
+		entry.Source == NotificationSource.Cortana ? push.Value.ShowMessage(entry) : push.Value.ShowEvent(entry);
 }
 
 /// Telegram and Discord run in their own processes, so their notifications go out over the event stream

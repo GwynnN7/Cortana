@@ -15,6 +15,7 @@ public sealed class HistoryService(
 	DeviceService devices,
 	MetricsRegistry metrics,
 	ActivityRegistry activity,
+	MemoryStore memories,
 	AiSettingsStore aiSettings) : BackgroundService
 {
 	private const int MaxSamples = 240;
@@ -90,7 +91,12 @@ public sealed class HistoryService(
 			{
 				repository.Append(Sample());
 				if (DateTimeOffset.Now.Hour == 0 && DateTimeOffset.Now.Minute < every.TotalMinutes)
+				{
 					repository.Prune(aiSettings.Integer(AiSettingKey.HistoryRetentionDays));
+
+					int forgotten = memories.Prune();
+					if (forgotten > 0) Log.Write("Memory", $"Let go of {forgotten} unused memor{(forgotten == 1 ? "y" : "ies")}");
+				}
 			}
 			catch (Exception ex)
 			{
@@ -113,6 +119,62 @@ public sealed class HistoryService(
 
 		return Result.Ok(HistoryBaseline.Build(wanted, points, current, moment.Hour));
 	}
+
+	public Result<CorrelationResult> Correlate(string metric, string against, int hours = 24)
+	{
+		if (Resolve(metric) is not { } left) return Result.Fail<CorrelationResult>(Unknown(metric));
+		if (Resolve(against) is not { } right) return Result.Fail<CorrelationResult>(Unknown(against));
+
+		DateTimeOffset now = DateTimeOffset.Now;
+		DateTimeOffset from = now.AddHours(-Math.Clamp(hours, 1, 720));
+
+		return Result.Ok(HistoryCorrelation.Correlate(left, right,
+			repository.Read(left, from, now), repository.Read(right, from, now)));
+	}
+
+	public Result<CorrelationResult> DuringActivity(string metric, ActivityCategory category, int hours = 72)
+	{
+		if (Resolve(metric) is not { } wanted) return Result.Fail<CorrelationResult>(Unknown(metric));
+
+		DateTimeOffset now = DateTimeOffset.Now;
+		DateTimeOffset from = now.AddHours(-Math.Clamp(hours, 1, 720));
+
+		return Result.Ok(HistoryCorrelation.Split(wanted, "activity", (int)category,
+			repository.Read(wanted, from, now), repository.Read("activity", from, now),
+			category.ToString().ToLowerInvariant()));
+	}
+
+	/// How a room metric has moved since the current stretch of desktop activity began
+	public Result<SessionInsight> ThisSession(string metric, int hours = 12)
+	{
+		if (Resolve(metric) is not { } wanted) return Result.Fail<SessionInsight>(Unknown(metric));
+
+		DateTimeOffset now = DateTimeOffset.Now;
+		DateTimeOffset from = now.AddHours(-Math.Clamp(hours, 1, 720));
+
+		IReadOnlyList<HistoryPoint> activity = repository.Read("activity", from, now);
+		if (activity.Count == 0) return Result.Fail<SessionInsight>("Nothing has been recorded about the desktop yet");
+
+		var category = (ActivityCategory)(int)activity[^1].Value;
+		DateTimeOffset since = activity[^1].At;
+
+		for (int i = activity.Count - 1; i >= 0; i--)
+		{
+			if ((int)activity[i].Value != (int)category) break;
+			since = activity[i].At;
+		}
+
+		return Result.Ok(HistoryCorrelation.Session(wanted, category, since, repository.Read(wanted, from, now)));
+	}
+
+	private string? Resolve(string metric)
+	{
+		string wanted = metric.Trim().ToLowerInvariant();
+		return repository.Metrics.Contains(wanted) ? wanted : null;
+	}
+
+	private string Unknown(string metric) =>
+		$"Unknown metric '{metric}'. Valid metrics: {string.Join(", ", repository.Metrics)}";
 
 	private HistorySample Sample()
 	{

@@ -1,6 +1,7 @@
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Scheduling;
 using CortanaKernel.Domain.Settings;
+using CortanaKernel.Domain.Volition;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
@@ -107,4 +108,22 @@ public sealed class JsonConversationRepository : IConversationRepository
 	private static string PathFor(string id) =>
 		System.IO.Path.Combine(Folder, string.Concat(id.Select(character =>
 			char.IsLetterOrDigit(character) || character is '-' or '_' ? character : '_')) + ".json");
+}
+
+public sealed class JsonMemoryRepository : IMemoryRepository
+{
+	private static readonly string Store = KernelFiles.Path("Memory.json");
+
+	public IReadOnlyList<MemoryEntry> Load() => JsonStore.Read<List<MemoryEntry>>(Store) ?? [];
+
+	public void Save(IReadOnlyList<MemoryEntry> memories) => JsonStore.Write(Store, memories);
+}
+
+public sealed class JsonVolitionRepository : IVolitionRepository
+{
+	private static readonly string Store = KernelFiles.Path("Volition.json");
+
+	public VolitionState Load() => JsonStore.Read<VolitionState>(Store) ?? new VolitionState();
+
+	public void Save(VolitionState state) => JsonStore.Write(Store, state);
 }

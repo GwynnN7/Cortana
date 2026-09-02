@@ -111,6 +111,8 @@ else if (_tab == "notifications")
             <p class="section-hint">How often readings are recorded and how long they are kept</p>
         </header>
 
+        <AiNumberSetting Setting="AiSettingKey.MemoryDepth" Label="Memories in prompt" Min="0" Max="60" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.MemoryStateHours" Label="Short memory lasts (h)" Min="1" Max="168" Step="1" OnResult="Report"/>
         <AiNumberSetting Setting="AiSettingKey.HistorySampleMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
         <AiNumberSetting Setting="AiSettingKey.HistoryRetentionDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
     </section>

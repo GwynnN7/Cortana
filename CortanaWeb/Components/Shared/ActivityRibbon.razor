@@ -26,6 +26,11 @@
             }
         </div>
 
+        @if (_insight is { Delta: not null, Summary.Length: > 0 })
+        {
+            <p class="ribbon-insight">@_insight.Summary</p>
+        }
+
         <div class="ribbon-legend">
             @foreach (ActivityCategory category in _segments.Select(segment => segment.Category).Distinct())
             {
@@ -44,6 +49,7 @@
     private bool _loading = true;
     private int _hours = 12;
     private double _total;
+    private SessionInsight? _insight;
 
     private sealed record Segment(ActivityCategory Category, DateTimeOffset From, DateTimeOffset To, double Weight);
 
@@ -64,6 +70,8 @@
         if (series is { Samples.Count: > 1 })
         {
             List<HistoryPoint> samples = [.. series.Samples];
+            double gap = Gap(samples);
+
             var runFrom = samples[0].At;
             var runCategory = (ActivityCategory)(int)samples[0].Value;
 
@@ -71,19 +79,22 @@
             {
                 bool last = i == samples.Count;
                 var category = last ? runCategory : (ActivityCategory)(int)samples[i].Value;
-                if (!last && category == runCategory) continue;
+                bool broke = !last && (samples[i].At - samples[i - 1].At).TotalSeconds > gap;
+                if (!last && !broke && category == runCategory) continue;
 
-                DateTimeOffset until = last ? samples[^1].At : samples[i].At;
+                DateTimeOffset until = broke ? samples[i - 1].At : last ? samples[^1].At : samples[i].At;
                 double seconds = (until - runFrom).TotalSeconds;
                 if (seconds > 0) _segments.Add(new Segment(runCategory, runFrom, until, seconds));
 
                 if (last) break;
                 runCategory = category;
-                runFrom = until;
+                runFrom = samples[i].At;
             }
 
             _total = _segments.Sum(segment => segment.Weight);
         }
+
+        _insight = await State.Session("co2");
 
         _loading = false;
         StateHasChanged();
@@ -96,6 +107,12 @@
     {
         double seconds = _segments.Where(segment => segment.Category == category).Sum(segment => segment.Weight);
         return _total > 0 ? $"{seconds / _total * 100:F0}%" : "";
+    }
+
+    private static double Gap(List<HistoryPoint> samples)
+    {
+        double[] steps = [.. samples.Zip(samples.Skip(1), (a, b) => (b.At - a.At).TotalSeconds).Order()];
+        return steps.Length == 0 ? double.MaxValue : steps[steps.Length / 2] * 3;
     }
 
     private static string Length(double seconds) =>

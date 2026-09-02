@@ -22,7 +22,10 @@ public sealed class CapabilityRegistry
 		MetricsService metrics,
 		ServiceControlService services,
 		SnapshotService snapshot,
-		NotificationService notifications)
+		NotificationService notifications,
+		MemoryStore memories,
+		Lazy<VolitionService> volition,
+		Lazy<AiService> ai)
 	{
 		var list = new List<AiCapability>
 		{
@@ -84,6 +87,63 @@ public sealed class CapabilityRegistry
 				},
 				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
 				new AiToolParameter("hours", "How many hours back to look, 1 to 720", AiParameterType.Integer, false)),
+
+			Management("Quiet",
+				"Stop yourself speaking unprompted for a while, when gwynn7 asks to be left alone. This does not silence answers to what he asks, only anything you would have said on your own.",
+				(arguments, _, _) => Task.FromResult(volition.Value.Quiet(arguments.Integer("minutes", 120)).Match(value => value, error => error)),
+				new AiToolParameter("minutes", "How long to stay quiet, 1 to 1440", AiParameterType.Integer, false)),
+
+			Management("Unquiet",
+				"Undo a quiet period and allow yourself to speak unprompted again.",
+				(_, _, _) => Task.FromResult(volition.Value.Speak().Match(value => value, error => error))),
+
+			Management("Remember",
+				"Keep one short thing about gwynn7. Fact, Preference and Event are permanent and are for what is still true in a month, so use them for who he is and what he likes. State is for where he is or what he is doing right now, such as going out or being busy: it replaces any previous state, expires on its own, and is what you should use for anything he did not explicitly ask you to remember. Tell him plainly when you store something permanent.",
+				(arguments, origin, _) => Task.FromResult(
+					memories.Remember(arguments.Text("text"),
+						arguments.TryEnum("kind", out MemoryKind kind) ? kind : MemoryKind.Fact,
+						origin.Surface.ToString(), ai.Value.StateLifetime).Match(memory => $"Remembered: {memory.Text}", error => error)),
+				new AiToolParameter("text", "One sentence, in your own words", AiParameterType.String, true),
+				new AiToolParameter("kind", $"One of: {string.Join(", ", Enum.GetNames<MemoryKind>())}", AiParameterType.String, false)),
+
+			Management("Forget",
+				"Drop one thing you remembered about gwynn7, by its id. Use this whenever he asks you to forget something, and also to clear a State once it stops being true, such as when he says he is back.",
+				(arguments, _, _) => Task.FromResult(memories.Forget(arguments.Text("id")).Match(value => value, error => error)),
+				new AiToolParameter("id", "The id shown next to the memory", AiParameterType.String, true)),
+
+			Management("Recall",
+				"List everything you currently remember about gwynn7, with the id of each so you can forget one.",
+				(_, _, _) => Task.FromResult(memories.All() is { Count: > 0 } stored
+					? string.Join("\n", stored.Select(memory => $"[{memory.Id}] ({memory.Kind}) {memory.Text}"))
+					: "Nothing stored yet")),
+
+			Analysis("CorrelateRoomAndDesk",
+				"Compare two recorded metrics against each other over a window, for example CO2 against GPU load or room temperature against desktop load. Returns a real correlation computed from history, never a guess.",
+				(arguments, _, _) => Task.FromResult(
+					history.Correlate(arguments.Text("metric"), arguments.Text("against"), arguments.Integer("hours", 24))
+						.Match(result => result.Summary, error => error)),
+				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
+				new AiToolParameter("against", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
+				new AiToolParameter("hours", "How many hours back to compare, 1 to 720", AiParameterType.Integer, false)),
+
+			Analysis("CompareDuringActivity",
+				"What a room metric looks like while the computer is being used for one thing, against every other time. Use this for questions like whether the air gets worse while gaming.",
+				(arguments, _, _) => Task.FromResult(
+					arguments.TryEnum("category", out ActivityCategory category)
+						? history.DuringActivity(arguments.Text("metric"), category, arguments.Integer("hours", 72))
+							.Match(result => result.Summary, error => error)
+						: $"Unknown activity. Valid: {string.Join(", ", Enum.GetNames<ActivityCategory>())}"),
+				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
+				new AiToolParameter("category", $"One of: {string.Join(", ", Enum.GetNames<ActivityCategory>())}", AiParameterType.String, true),
+				new AiToolParameter("hours", "How many hours back to look, 1 to 720", AiParameterType.Integer, false)),
+
+			Analysis("ThisSession",
+				"How long the current stretch of desktop activity has been going and what it has done to a room metric since it started. This is how you notice the air going off during a long session.",
+				(arguments, _, _) => Task.FromResult(
+					history.ThisSession(arguments.Text("metric"), arguments.Integer("hours", 12))
+						.Match(result => result.Summary, error => error)),
+				new AiToolParameter("metric", $"One of: {string.Join(", ", history.Metrics)}", AiParameterType.String, true),
+				new AiToolParameter("hours", "How far back to look for the start of the session, 1 to 720", AiParameterType.Integer, false)),
 
 			Analysis("CompareToUsual",
 				"Say whether a reading is normal for this time of day, by comparing the latest value with the median and spread for the same hour over the past few weeks. Use this instead of a fixed threshold whenever you want to know if something is unusual rather than merely high.",

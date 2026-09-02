@@ -125,7 +125,8 @@ public enum NotificationSource
 	Sleep,
 	Schedule,
 	Service,
-	Ai
+	Ai,
+	Cortana
 }
 
 public enum NotificationChannel

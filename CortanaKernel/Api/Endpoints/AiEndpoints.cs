@@ -9,12 +9,9 @@ public static class AiEndpoints
 	{
 		RouteGroupBuilder group = app.MapGroup("/ai").WithTags("AI");
 
-		group.MapPost("", async (AskRequest body, AiService ai, SnapshotService snapshots, HttpRequest request, CancellationToken token) =>
+		group.MapPost("", async (AskRequest body, AiService ai, HttpRequest request, CancellationToken token) =>
 			{
 				if (!ai.IsConfigured) return ApiResults.Unavailable(request, "No language model is configured");
-
-				ai.Mood = $"{await snapshots.Mood(token)}, because {await snapshots.MoodReason(token)}";
-				ai.Activity = snapshots.Doing();
 
 				return ApiResults.From(request, await ai.Ask(body, RequestOrigin.From(request), token),
 					reply => (reply, new AskResponse(reply, body.Conversation)));
@@ -32,6 +29,39 @@ public static class AiEndpoints
 
 		group.MapGet("/prompt", (AiService ai, HttpRequest request) => ApiResults.Message(request, ai.SystemPrompt))
 			.Access(ApiAccess.ReadOnly).WithSummary("The system prompt currently in use.");
+
+		group.MapGet("/memory", (AiService ai, HttpRequest request) =>
+			{
+				IReadOnlyList<MemoryEntry> memories = ai.Memories();
+				string text = memories.Count == 0
+					? "I have not been told anything about you yet"
+					: string.Join("\n", memories.Select(memory => $"[{memory.Id}] ({memory.Kind}) {memory.Text}"));
+
+				return ApiResults.Ok(request, text, new MemoryListResponse(memories));
+			})
+			.Access(ApiAccess.ReadOnly).WithSummary("Everything Cortana remembers about the owner").Produces<MemoryListResponse>();
+
+		group.MapPost("/memory", (RememberRequest body, AiService ai, HttpRequest request) =>
+				ApiResults.From(request, ai.Remember(body.Text, body.Kind, body.Source), memory => $"Remembered: {memory.Text}"))
+			.Access(ApiAccess.Sensitive).WithSummary("Tell Cortana something worth keeping");
+
+		group.MapDelete("/memory/{id}", (string id, AiService ai, HttpRequest request) =>
+				ApiResults.From(request, ai.ForgetMemory(id)))
+			.Access(ApiAccess.Sensitive).WithSummary("Make Cortana forget one thing");
+
+		group.MapGet("/quiet", (VolitionService volition, HttpRequest request) =>
+				ApiResults.Message(request, volition.State.QuietUntil is { } until && until > DateTimeOffset.Now
+					? $"Quiet until {until:HH:mm}"
+					: "Not quiet"))
+			.Access(ApiAccess.ReadOnly).WithSummary("Whether Cortana is holding her tongue, and until when");
+
+		group.MapPost("/quiet", (QuietRequest body, VolitionService volition, HttpRequest request) =>
+				ApiResults.From(request, volition.Quiet(body.Minutes)))
+			.Access(ApiAccess.Sensitive).WithSummary("Stop Cortana speaking unprompted for a while");
+
+		group.MapDelete("/quiet", (VolitionService volition, HttpRequest request) =>
+				ApiResults.From(request, volition.Speak()))
+			.Access(ApiAccess.Sensitive).WithSummary("Let Cortana speak unprompted again");
 
 		group.MapPost("/prompt", (PromptRequest body, AiService ai, HttpRequest request) => ApiResults.From(request, ai.SetPrompt(body.Prompt)))
 			.Access(ApiAccess.Sensitive).WithSummary("Replaces the system prompt.");

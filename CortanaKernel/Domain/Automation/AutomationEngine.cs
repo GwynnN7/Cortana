@@ -190,7 +190,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 			SetSleepMode(false, CommandOrigin.User(CommandSurface.Internal), automatic: false);
 		}
 
-		if (!Enabled) return;
+		if (!Enabled || !Managed.Contains(device)) return;
 
 		TimeSpan duration = SleepMode
 			? settings.Minutes(SettingKey.SleepManualOverrideMinutes)
@@ -422,6 +422,8 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		effects.SwitchDevice(DeviceId.Lamp, target, decision.Reason);
 		effects.Notify(NotificationSource.Automation, $"Lamp {target.ToString().ToLowerInvariant()}", reason: decision.Reason);
 	}
+
+	private static readonly DeviceId[] Managed = [DeviceId.Lamp];
 
 	private bool MotionActive(DateTimeOffset now) => AutomationRules.Present(
 		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds), world.DeskActive);

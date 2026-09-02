@@ -13,6 +13,7 @@ using CortanaKernel.Domain.Scheduling;
 using CortanaKernel.Domain.Sensors;
 using CortanaKernel.Domain.Services;
 using CortanaKernel.Domain.Settings;
+using CortanaKernel.Domain.Volition;
 using CortanaKernel.Infrastructure.Ai;
 using CortanaKernel.Infrastructure.Gpio;
 using CortanaKernel.Infrastructure.Network;
@@ -48,6 +49,11 @@ builder.Services.AddSingleton<DeviceRegistry>();
 builder.Services.AddSingleton<SensorRegistry>();
 builder.Services.AddSingleton<MetricsRegistry>();
 builder.Services.AddSingleton<ActivityRegistry>();
+builder.Services.AddSingleton<IMemoryRepository, JsonMemoryRepository>();
+builder.Services.AddSingleton<MemoryStore>();
+builder.Services.AddSingleton<IVolitionRepository, JsonVolitionRepository>();
+builder.Services.AddSingleton<VolitionStore>();
+builder.Services.AddSingleton<VolitionService>();
 builder.Services.AddSingleton<NotificationLog>();
 builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<AiSettingsStore>();
@@ -72,6 +78,8 @@ builder.Services.AddSingleton<PushService>();
 builder.Services.AddSingleton(provider => new Lazy<PushService>(provider.GetRequiredService<PushService>));
 builder.Services.AddSingleton(provider => new Lazy<SnapshotService>(provider.GetRequiredService<SnapshotService>));
 builder.Services.AddSingleton(provider => new Lazy<ScheduleService>(provider.GetRequiredService<ScheduleService>));
+builder.Services.AddSingleton(provider => new Lazy<VolitionService>(provider.GetRequiredService<VolitionService>));
+builder.Services.AddSingleton(provider => new Lazy<AiService>(provider.GetRequiredService<AiService>));
 
 // ---------- application ----------
 builder.Services.AddSingleton<StateBroadcaster>();
@@ -105,6 +113,7 @@ builder.Services.AddHostedService(provider => provider.GetRequiredService<Schedu
 builder.Services.AddHostedService(provider => provider.GetRequiredService<HistoryService>());
 builder.Services.AddHostedService(provider => provider.GetRequiredService<ModelCatalogue>());
 builder.Services.AddHostedService(provider => provider.GetRequiredService<PushService>());
+builder.Services.AddHostedService(provider => provider.GetRequiredService<VolitionService>());
 builder.Services.AddHostedService<ConnectionServer>();
 
 WebApplication app = builder.Build();

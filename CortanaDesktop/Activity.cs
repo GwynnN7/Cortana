@@ -210,7 +210,7 @@ internal static class Activity
 		if (IdleInhibited()) return Unknown;
 
 		string path = Path.Combine(CortanaEnvironment.Read("XDG_RUNTIME_DIR", "/tmp"), "cortana", "idle");
-		if (!File.Exists(path)) return Unknown;
+		if (!File.Exists(path)) return 0;
 
 		try
 		{
@@ -401,13 +401,27 @@ internal static class Activity
 		return (ActivityCategory.Browsing, false);
 	}
 
-	private static bool Hyprland
+	private static bool Hyprland => Socket2() is not null;
+
+	private static string? Socket2()
 	{
-		get
+		string runtime = CortanaEnvironment.Read("XDG_RUNTIME_DIR", "");
+		if (runtime.Length == 0) return null;
+
+		if (CortanaEnvironment.Read("HYPRLAND_INSTANCE_SIGNATURE") is { Length: > 0 } signature)
 		{
-			string? signature = CortanaEnvironment.Read("HYPRLAND_INSTANCE_SIGNATURE");
-			return signature is { Length: > 0 };
+			string named = Path.Combine(runtime, "hypr", signature, ".socket2.sock");
+			if (File.Exists(named)) return named;
 		}
+
+		string root = Path.Combine(runtime, "hypr");
+		if (!Directory.Exists(root)) return null;
+
+		return Directory.EnumerateDirectories(root)
+			.Select(instance => Path.Combine(instance, ".socket2.sock"))
+			.Where(File.Exists)
+			.OrderByDescending(File.GetLastWriteTimeUtc)
+			.FirstOrDefault();
 	}
 
 	private static (string? Window, bool Fullscreen) SessionWindow()
@@ -422,7 +436,8 @@ internal static class Activity
 
 	private static (string? Window, bool Fullscreen) ActiveWindow()
 	{
-		string json = Run("hyprctl", "-j activewindow");
+		string instance = Socket2() is { } socket ? Path.GetFileName(Path.GetDirectoryName(socket)) ?? "" : "";
+		string json = Run("hyprctl", instance.Length > 0 ? $"-i {instance} -j activewindow" : "-j activewindow");
 		if (json is not { Length: > 2 }) return (null, false);
 
 		using JsonDocument document = JsonDocument.Parse(json);

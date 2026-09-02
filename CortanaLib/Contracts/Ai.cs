@@ -32,7 +32,9 @@ public enum AiSettingKey
 	DiscordSessionMinutes,
 	HistorySampleMinutes,
 	HistoryRetentionDays,
-	PushEventSeconds
+	PushEventSeconds,
+	MemoryDepth,
+	MemoryStateHours
 }
 
 public sealed record AiSettingView(AiSettingKey Setting, string Value);
@@ -40,3 +42,10 @@ public sealed record AiSettingView(AiSettingKey Setting, string Value);
 public sealed record AiSettingListResponse(IReadOnlyList<AiSettingView> Settings);
 
 public sealed record NumberRequest(double Value);
+
+public sealed record VolitionState(
+	DateTimeOffset? QuietUntil = null,
+	DateOnly? LastGreeted = null,
+	DateTimeOffset? LastSpokeAt = null);
+
+public sealed record QuietRequest(int Minutes);
