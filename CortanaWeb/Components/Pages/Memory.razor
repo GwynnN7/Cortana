@@ -8,6 +8,15 @@
 <h1>Memory</h1>
 <Toast @bind-Message="_message"/>
 
+@if (!State.FeatureOn("memory"))
+{
+    <section class="section">
+        <p class="section-hint">Memory is switched off. Turn it back on from <a href="/core">Core</a></p>
+    </section>
+}
+else
+{
+
 <section class="section">
     <header class="section-head">
         <h2>What she knows about you</h2>
@@ -64,6 +73,8 @@
         <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft))" @onclick="Remember">Remember</button>
     </div>
 </section>
+
+}
 
 @code {
     private IReadOnlyList<MemoryEntry> _memories = [];

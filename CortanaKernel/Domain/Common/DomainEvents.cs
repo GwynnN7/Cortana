@@ -8,7 +8,7 @@ public interface IDomainEvent
 	DateTimeOffset At { get; }
 }
 
-public sealed record DeviceStateChanged(DeviceId Device, PowerState State, CommandOrigin Origin, DateTimeOffset At) : IDomainEvent;
+public sealed record DeviceStateChanged(string Device, PowerState State, CommandOrigin Origin, DateTimeOffset At) : IDomainEvent;
 
 public sealed record MotionDetected(DateTimeOffset At) : IDomainEvent;
 
@@ -24,9 +24,9 @@ public sealed record AutomationEnabledChanged(bool Enabled, CommandOrigin Origin
 
 public sealed record TimeContextChanged(TimeContext Context, DateTimeOffset At) : IDomainEvent;
 
-public sealed record AirQualityWarningChanged(bool Warning, DateTimeOffset At) : IDomainEvent;
+public sealed record WarningStateChanged(string Warning, bool Active, DateTimeOffset At) : IDomainEvent;
 
-public sealed record DeviceHoldChanged(DeviceId Device, DateTimeOffset? Until, DateTimeOffset At) : IDomainEvent;
+public sealed record DeviceHoldChanged(string Device, DateTimeOffset? Until, DateTimeOffset At) : IDomainEvent;
 
 public sealed record DesktopActivityChanged(DesktopActivity Activity, DateTimeOffset At) : IDomainEvent;
 

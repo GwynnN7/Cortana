@@ -1,0 +1,51 @@
+@if (Source is { } machine)
+{
+    <section class="section @(machine.State == SourceState.Online ? "" : "section-stale")">
+        <header class="section-head">
+            <h2>@Name(machine)</h2>
+            @if (machine.State == SourceState.Online && Activity is { Category: not ActivityCategory.Idle } doing)
+            {
+                <span class="badge activity activity-@doing.Category.ToString().ToLower()">@Describe(doing)</span>
+            }
+            else
+            {
+                <span class="badge @(machine.State == SourceState.Online ? "badge-ok" : "badge-bad")">
+                    @(machine.State == SourceState.Online ? "Online" : machine.LastSeen is { } seen ? $"last seen {seen:HH:mm}" : "Offline")
+                </span>
+            }
+        </header>
+
+        <SensorGrid Sensors="Sensors"/>
+
+        <MachineFooter Facts="Detail(machine)" Activity="Activity"/>
+
+        @if (Activity is not null)
+        {
+            <ActivityRibbon/>
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public SourceView? Source { get; set; }
+
+    [Parameter] public DesktopActivity? Activity { get; set; }
+
+    [Parameter] public IReadOnlyList<SensorView> Sensors { get; set; } = [];
+
+    /// A source names itself if it can, otherwise it is known by its id
+    private static string Name(SourceView source) =>
+        source.Facts.FirstOrDefault(fact => fact.Key == "name")?.Value ?? source.Id;
+
+    private static IReadOnlyList<SourceFact> Detail(SourceView source) =>
+        [.. source.Facts.Where(fact => fact.Key != "name")];
+
+    private static string Describe(DesktopActivity activity) => activity switch
+    {
+        { Locked: true } => "locked",
+        { Category: ActivityCategory.Gaming, Fullscreen: true } => "gaming · do not disturb",
+        { Category: ActivityCategory.Media, Fullscreen: true } => "watching · do not disturb",
+        { Subject.Length: > 0 } named => $"{named.Category.ToString().ToLower()} · {named.Subject}",
+        _ => activity.Category.ToString().ToLower()
+    };
+}

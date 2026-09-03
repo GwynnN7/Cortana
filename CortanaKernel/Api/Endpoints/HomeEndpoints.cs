@@ -17,7 +17,7 @@ public static class HomeEndpoints
 			.Access(ApiAccess.Public).WithTags("Home").WithSummary("Identifies the service. Reachable without an API key");
 
 		app.MapGet("/health", (HttpRequest request) => ApiResults.Message(request, "OK"))
-			.Access(ApiAccess.Public).WithTags("Home").WithSummary("Liveness probe. Reachable without an API ke.");
+			.Access(ApiAccess.Public).WithTags("Home").WithSummary("Liveness probe. Reachable without an API key");
 
 		app.MapGet("/snapshot", async (SnapshotService snapshots, HttpRequest request, CancellationToken token) =>
 				ApiResults.Ok(request, "Cortana is Online", await snapshots.Build(token)))

@@ -1,11 +1,11 @@
 @inject CortanaState State
 
-<article class="card device-card @(IsOn ? "is-on" : "is-off")">
+<article class="card device-card @(Partial ? "is-partial" : IsOn ? "is-on" : "is-off")">
     <header>
-        <span class="device-icon" aria-hidden="true">@Icon</span>
+        <span class="device-icon" aria-hidden="true">@Glyph</span>
         <div>
-            <h3>@Device</h3>
-            <p class="device-state">@State.DeviceStatus(Device)</p>
+            <h3>@Name</h3>
+            <p class="device-state">@(Partial ? "Partly on" : State.DeviceStatus(Device))</p>
         </div>
     </header>
 
@@ -17,13 +17,19 @@
 </article>
 
 @code {
-    [Parameter, EditorRequired] public DeviceId Device { get; set; }
+    [Parameter, EditorRequired] public string Device { get; set; }
     [Parameter] public string Icon { get; set; } = "⏻";
     [Parameter] public EventCallback<string> OnResult { get; set; }
 
     private bool _busy;
 
     private bool IsOn => State.IsDeviceOn(Device);
+
+    private bool Partial => State.Device(Device)?.Partial ?? false;
+
+    private string Name => State.Device(Device)?.Name ?? Device;
+
+    private string Glyph => State.Device(Device)?.Icon ?? Icon;
 
     private async Task Switch(SwitchAction action)
     {

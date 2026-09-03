@@ -38,7 +38,7 @@ public static class HistoryCorrelation
 			$"{metric} and {against} {Strength(r)} across {xs.Count} samples (r={r:F2})");
 	}
 
-	public static CorrelationResult Split(string metric, string against, double state,
+	public static CorrelationResult Split(string metric, string unit, string against, double state,
 		IReadOnlyList<HistoryPoint> values, IReadOnlyList<HistoryPoint> states, string stateName)
 	{
 		Dictionary<DateTimeOffset, double> when = states.GroupBy(point => point.At)
@@ -50,8 +50,6 @@ public static class HistoryCorrelation
 		foreach (HistoryPoint point in values)
 			if (when.TryGetValue(point.At, out double flag))
 				(Math.Abs(flag - state) < 0.5 ? inside : outside).Add(point.Value);
-
-		string unit = Units.ForMetric(metric);
 
 		if (inside.Count < 3)
 			return new CorrelationResult(metric, against, inside.Count, null,
@@ -71,10 +69,9 @@ public static class HistoryCorrelation
 			$"{Units.Number(Math.Abs(delta))}{unit} {(delta >= 0 ? "higher" : "lower")} ({inside.Count} vs {outside.Count} samples)");
 	}
 
-	public static SessionInsight Session(string metric, ActivityCategory category,
+	public static SessionInsight Session(string metric, string unit, ActivityCategory category,
 		DateTimeOffset since, IReadOnlyList<HistoryPoint> values)
 	{
-		string unit = Units.ForMetric(metric);
 		TimeSpan length = DateTimeOffset.Now - since;
 
 		if (category is ActivityCategory.Idle or ActivityCategory.Away or ActivityCategory.Locked)

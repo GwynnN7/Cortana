@@ -1,0 +1,60 @@
+<div class="field-row">
+    <select @bind="Draft.Sensor" @bind:after="Suggest" disabled="@Busy">
+        @foreach (VirtualSensor sensor in Sensors)
+        {
+            <option value="@sensor.Id">@sensor.Name</option>
+        }
+    </select>
+    <select @bind="Draft.Kind" disabled="@Busy">
+        @foreach (TriggerKind kind in Kinds)
+        {
+            <option value="@kind">@TriggerText.Kind(kind)</option>
+        }
+    </select>
+    @if (Needs(Draft.Kind) > 0)
+    {
+        <input type="text" class="icon-field" disabled="@Busy"
+               placeholder="@(Draft.Kind == TriggerKind.Outside ? "Low" : "Threshold")"
+               @bind="Draft.Low" @bind:event="oninput"/>
+    }
+    @if (Needs(Draft.Kind) > 1)
+    {
+        <input type="text" class="icon-field" placeholder="High" disabled="@Busy"
+               @bind="Draft.High" @bind:event="oninput"/>
+    }
+    <label class="inline-check" title="Off means it only has to be true once, to switch it on">
+        <input type="checkbox" @bind="Draft.Sustains" disabled="@Busy"/> @SustainLabel
+    </label>
+    <button class="btn" disabled="@(Busy || Draft.Sensor.Length == 0)" @onclick="OnAdd">@Label</button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public TriggerDraft Draft { get; set; } = new();
+    [Parameter, EditorRequired] public IReadOnlyList<VirtualSensor> Sensors { get; set; } = [];
+    [Parameter] public EventCallback OnAdd { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public string Label { get; set; } = "Add";
+    [Parameter] public string SustainLabel { get; set; } = "Must stay true";
+
+    /// Any kind works on any sensor — a number is true above 0.5, a boolean compares as 0 or 1 —
+    /// so this only moves to the kind that usually fits, and never takes the others away
+    private void Suggest()
+    {
+        if (Sensors.FirstOrDefault(sensor => sensor.Id == Draft.Sensor) is not { } picked) return;
+
+        bool boolean = picked.Kind == ReadingKind.Boolean;
+        bool matches = boolean == Draft.Kind is TriggerKind.IsTrue or TriggerKind.IsFalse;
+
+        if (!matches) Draft.Kind = boolean ? TriggerKind.IsTrue : TriggerKind.Above;
+    }
+
+    private static readonly TriggerKind[] Kinds =
+        [TriggerKind.IsTrue, TriggerKind.IsFalse, TriggerKind.Above, TriggerKind.Below, TriggerKind.Outside];
+
+    private static int Needs(TriggerKind kind) => kind switch
+    {
+        TriggerKind.Below or TriggerKind.Above => 1,
+        TriggerKind.Outside => 2,
+        _ => 0
+    };
+}

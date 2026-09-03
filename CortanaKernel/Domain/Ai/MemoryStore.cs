@@ -23,7 +23,7 @@ public sealed class MemoryStore(IMemoryRepository repository)
 
 	public Result<MemoryEntry> Remember(string text, MemoryKind kind, string source, TimeSpan stateLifetime)
 	{
-		string trimmed = text.ReplaceLineEndings(" ").Trim();
+		string trimmed = (text ?? "").ReplaceLineEndings(" ").Trim();
 		if (trimmed.Length == 0) return Result.Fail<MemoryEntry>("Nothing to remember");
 		if (trimmed.Length > 400) return Result.Fail<MemoryEntry>("That is too long to remember, keep it to a sentence");
 

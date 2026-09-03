@@ -1,7 +1,7 @@
 using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Devices;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Services;
 using CortanaKernel.Domain.Settings;
 using CortanaLib.Contracts;
@@ -10,13 +10,13 @@ using CortanaLib.Runtime;
 
 namespace CortanaKernel.Application;
 
-public sealed record UserDeviceActionPerformed(DeviceId Device, SwitchAction Action, CommandOrigin Origin, DateTimeOffset At) : IDomainEvent;
+public sealed record UserDeviceActionPerformed(string Device, SwitchAction Action, CommandOrigin Origin, DateTimeOffset At) : IDomainEvent;
 
 /// The one place device commands are executed
 public sealed class DeviceService(
-	DeviceRegistry devices,
+	Fabric devices,
 	AutomationEngine automation,
-	ILocalDeviceController controller,
+	IEnumerable<IChannelWriter> writers,
 	IComputerEndpoint computer,
 	IHostMachine host,
 	SettingsStore settings,
@@ -24,18 +24,35 @@ public sealed class DeviceService(
 	ActivityRegistry activity,
 	IEventBus bus)
 {
-	public IReadOnlyList<DeviceView> All() => devices.All(automation.OverrideUntil);
+	public IReadOnlyList<DeviceView> All() => devices.Devices(automation.OverrideUntil);
 
-	public PowerState State(DeviceId device) => devices.State(device);
+	public PowerState State(string device) => devices.State(device);
 
-	public Result<string> Switch(DeviceId device, SwitchAction action, CommandOrigin origin)
+	public DeviceView? Describe(string device) =>
+		devices.Device(device) is { } registered
+			? All().FirstOrDefault(view => view.Device.Equals(registered.Id, StringComparison.OrdinalIgnoreCase))
+			: null;
+
+	public bool Known(string device) => devices.Device(device) is not null;
+
+	/// The id behind whatever the caller said, so the rest of the pipeline only ever sees ids
+	public string Resolve(string device) => devices.Device(device)?.Id ?? device;
+
+	/// The desktop, as the registrations declare it rather than by a fixed name
+	public DeviceView? Machine => devices.Machine is { } machine ? Describe(machine.Id) : null;
+
+	private IChannelWriter? Writer(ChannelRef channel) =>
+		writers.FirstOrDefault(writer => writer.Handles(channel.Source) && writer.Controls(channel.Channel));
+
+	public Result<string> Switch(string wanted, SwitchAction action, CommandOrigin origin)
 	{
+		string device = Resolve(wanted);
 		SwitchAction resolved = devices.Resolve(device, action);
 
 		Result<string> result = device switch
 		{
-			DeviceId.Computer => SwitchComputer(resolved),
-			DeviceId.Power => SwitchPower(resolved),
+			_ when device.Equals(devices.Machine?.Id, StringComparison.OrdinalIgnoreCase) => SwitchComputer(resolved),
+			_ when device.Equals(Supply, StringComparison.OrdinalIgnoreCase) => SwitchPower(resolved),
 			_ => Apply(device, resolved == SwitchAction.On ? PowerState.On : PowerState.Off, origin)
 		};
 
@@ -45,51 +62,71 @@ public sealed class DeviceService(
 		return result;
 	}
 
-	public Result<string> SwitchRoom(SwitchAction action, CommandOrigin origin)
-	{
-		bool on = devices.Resolve(DeviceId.Power, action) == SwitchAction.On;
-
-		if (!on)
-		{
-			Switch(DeviceId.Lamp, SwitchAction.Off, origin);
-			Result<string> power = Switch(DeviceId.Power, SwitchAction.Off, origin);
-			return power.IsOk ? Result.Ok("Room off") : power;
-		}
-
-		Result<string> supply = Switch(DeviceId.Power, SwitchAction.On, origin);
-		if (!supply.IsOk) return supply;
-
-		if (!settings.Flag(SettingKey.AutomationEnabled)) Switch(DeviceId.Lamp, SwitchAction.On, origin);
-
-		return Result.Ok(settings.Flag(SettingKey.AutomationEnabled)
-			? "Room on, the lamp is left to automation"
-			: "Room on");
-	}
-
-	public Result<string> ApplyAutomatic(DeviceId device, PowerState state, string reason) =>
+	public Result<string> ApplyAutomatic(string device, PowerState state, string reason) =>
 		Apply(device, state, CommandOrigin.Automation with { Reason = reason });
 
-	private Result<string> Apply(DeviceId device, PowerState state, CommandOrigin origin)
+	/// An output cannot be read back, so a restart writes the last known state onto the hardware again
+	public void Restore()
 	{
-		if (!controller.Controls(device)) return Result.Fail<string>($"{device} has no local output");
+		foreach ((string key, PowerState state) in devices.Written)
+		{
+			string[] parts = key.Split('/');
+			if (parts.Length != 2) continue;
 
-		Result<string> written = controller.Apply(device, state);
-		if (!written.IsOk) return written;
+			var channel = new ChannelRef(parts[0], parts[1]);
+			if (Writer(channel) is not { } writer) continue;
 
-		foreach (DeviceId linked in controller.Linked(device))
-			if (devices.Set(linked, state))
-				bus.Publish(new DeviceStateChanged(linked, state, origin, DateTimeOffset.Now));
+			writer.Apply(channel.Channel, state, false);
+			Log.Write("Devices", $"Restored {key} to {state.ToString().ToLowerInvariant()}");
+		}
+	}
+
+	private Result<string> Apply(string device, PowerState state, CommandOrigin origin)
+	{
+		if (devices.Device(device) is not { } registered) return Result.Fail<string>($"'{device}' is not registered");
+
+		(ChannelRef Channel, IChannelWriter Writer)[] channels =
+		[
+			.. registered.Channels
+				.Select(channel => (Channel: channel, Writer: Writer(channel)))
+				.Where(entry => entry.Writer is not null)
+				.Select(entry => (entry.Channel, Writer: entry.Writer!))
+		];
+
+		if (channels.Length == 0) return Result.Fail<string>($"{registered.Name} has no output anything can drive");
+
+		foreach ((ChannelRef channel, IChannelWriter writer) in channels)
+		{
+			Result<string> written = writer.Apply(channel.Channel, state, registered.Pulse);
+			if (!written.IsOk) return written;
+		}
+
+		ChannelRef[] moved =
+		[
+			.. channels.SelectMany(entry => entry.Writer.Linked(entry.Channel.Channel)
+				.Select(linked => entry.Channel with { Channel = linked }))
+		];
+
+		Log.Write("Devices", $"{registered.Name} {state.ToString().ToLowerInvariant()} " +
+			$"({string.Join(", ", channels.Select(entry => entry.Channel.Channel))}) by {origin.Actor} via {origin.Surface}" +
+			$"{(origin.Reason.Length > 0 ? $": {origin.Reason}" : "")}");
+
+		foreach ((string touched, PowerState now) in devices.SetChannels(moved, state))
+			bus.Publish(new DeviceStateChanged(touched, now, origin, DateTimeOffset.Now));
 
 		return Result.Ok(state.ToString());
 	}
+
+	/// The device that feeds the computer, as its registration declares it
+	private string? Supply => devices.Machine?.PoweredBy;
 
 	private Result<string> SwitchComputer(SwitchAction action)
 	{
 		if (action == SwitchAction.On)
 		{
-			if (devices.State(DeviceId.Power) == PowerState.Off)
+			if (Supply is { } supplied && devices.State(supplied) == PowerState.Off)
 			{
-				Result<string> supply = Apply(DeviceId.Power, PowerState.On, CommandOrigin.Internal);
+				Result<string> supply = Apply(supplied, PowerState.On, CommandOrigin.Internal);
 				if (!supply.IsOk) return supply;
 			}
 
@@ -109,7 +146,9 @@ public sealed class DeviceService(
 	{
 		if (action == SwitchAction.On) return SwitchComputer(SwitchAction.On);
 
-		if (!computer.Connected) return Apply(DeviceId.Power, PowerState.Off, CommandOrigin.Internal);
+		if (Supply is not { } supply) return Result.Fail<string>("The computer declares no supply to cut");
+		if (!computer.Connected) return Apply(supply, PowerState.Off, CommandOrigin.Internal);
+
 
 		_ = Task.Run(async () =>
 		{
@@ -117,7 +156,7 @@ public sealed class DeviceService(
 			{
 				await computer.Send(ComputerCommand.Shutdown, "");
 				await computer.WaitUntilPoweredOff(settings.Seconds(SettingKey.ComputerShutdownGraceSeconds));
-				Apply(DeviceId.Power, PowerState.Off, CommandOrigin.Internal);
+				Apply(supply, PowerState.Off, CommandOrigin.Internal);
 				notifications.Raise(NotificationSource.Computer, "Computer off, power cut",
 					reason: $"the desktop went quiet, then a {settings.Seconds(SettingKey.ComputerShutdownGraceSeconds).TotalSeconds:0}s grace period elapsed");
 			}
@@ -144,7 +183,7 @@ public sealed class DeviceService(
 		Result<string> result = await computer.Send(command, argument, token);
 
 		if (result.IsOk && origin.IsUser)
-			bus.Publish(new UserDeviceActionPerformed(DeviceId.Computer, SwitchAction.Toggle, origin, DateTimeOffset.Now));
+			bus.Publish(new UserDeviceActionPerformed(devices.Machine?.Id ?? DeviceIds.Computer, SwitchAction.Toggle, origin, DateTimeOffset.Now));
 
 		return result;
 	}

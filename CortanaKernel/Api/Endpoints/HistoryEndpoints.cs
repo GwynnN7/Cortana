@@ -1,4 +1,5 @@
 using CortanaKernel.Application;
+using CortanaKernel.Domain.History;
 using CortanaLib.Contracts;
 
 namespace CortanaKernel.Api.Endpoints;
@@ -17,15 +18,44 @@ public static class HistoryEndpoints
 
 				return ApiResults.Ok(request, text, info);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Which metrics are recorded, how often and for how long.")
+			.Access(ApiAccess.ReadOnly).WithSummary("Which metrics are recorded, how often and for how long")
 			.Produces<HistoryInfoResponse>();
+
+		group.MapGet("/days", (int? days, HistoryService history, HttpRequest request) =>
+			{
+				IReadOnlyList<DaySummary> all = history.Days(days ?? 30);
+
+				string text = all.Count == 0
+					? "No day has been summarised yet"
+					: string.Join("\n", all.Select(day =>
+						$"{day.Day:ddd dd MMM}: up {DayRhythm.Spell(day.FirstPresence)}, " +
+						$"pc {DayRhythm.Spell(day.ComputerOn)}-{DayRhythm.Spell(day.ComputerOff)}, " +
+						$"{day.ComputerMinutes / 60:0.#}h at it"));
+
+				return ApiResults.Ok(request, text, new DaySummaryListResponse(all));
+			})
+			.Access(ApiAccess.ReadOnly).WithSummary("One row per day: the numbers a rhythm is made of")
+			.Produces<DaySummaryListResponse>();
+
+		group.MapPost("/days", (int? days, HistoryService history, HttpRequest request) =>
+				ApiResults.Message(request, $"{history.Backfill(days ?? 60)} day(s) summarised from what is on disk"))
+			.Access(ApiAccess.Sensitive).WithSummary("Summarises the days already recorded, for a rhythm to learn from");
+
+		group.MapGet("/rhythm/{metric}", (string metric, int? weeks, HistoryService history, HttpRequest request) =>
+			{
+				RhythmView view = history.Rhythm(metric, weeks ?? 8);
+				return ApiResults.Ok(request, view.Summary, view);
+			})
+			.Access(ApiAccess.ReadOnly)
+			.WithSummary("Today against the usual for this weekday: up, bed, computerOn, computerOff or sleep")
+			.Produces<RhythmView>();
 
 		group.MapGet("/{metric}", (string metric, int? hours, DateTimeOffset? until, HistoryService history, HttpRequest request) =>
 				ApiResults.From(request, history.Series(metric, hours ?? 24, until), series =>
 					$"{series.Metric} over {hours ?? 24}h: minimum {series.Min}{series.Unit}, maximum {series.Max}{series.Unit}, " +
 					$"average {series.Average}{series.Unit} ({series.Points} samples)"))
 			.Access(ApiAccess.ReadOnly)
-			.WithSummary("Recorded values for one metric. 'until' pages the window back through time.")
+			.WithSummary("Recorded values for one metric. 'until' pages the window back through time")
 			.Produces<HistorySeries>();
 
 		group.MapGet("/{metric}/usual", (string metric, int? days, HistoryService history, HttpRequest request) =>
@@ -50,7 +80,7 @@ public static class HistoryEndpoints
 		group.MapPost("/analysis", (AnalysisRequest body, HistoryService history, HttpRequest request) =>
 				ApiResults.From(request, history.Analyse(body), result => result.Summary))
 			.Access(ApiAccess.ReadOnly)
-			.WithSummary("Runs a deterministic calculation over recorded data: averages, extremes, trends, durations, worst periods and comparisons.")
+			.WithSummary("Answers a question about recorded data exactly, so nothing has to be estimated")
 			.Produces<AnalysisResult>();
 	}
 }

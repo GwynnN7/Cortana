@@ -42,41 +42,20 @@
     [Parameter] public bool ShowHeader { get; set; } = true;
 
     private readonly List<Turn> _turns = [];
-    private string _conversation = "";
+    private readonly string _conversation = Conversations.Web;
     private string _draft = "";
     private string? _message;
     private bool _busy;
 
     private record Turn(string Text, bool Mine);
 
-    /// The conversation id lives in the browser, so a reload continues the same persistent chat
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    /// One conversation for every browser, so a reload shows what was said and Cortana can speak into it
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload()
     {
-        if (!firstRender) return;
-
-        try
-        {
-            _conversation = await Js.InvokeAsync<string?>("cortanaChatId.load") ?? await NewConversation();
-        }
-        catch (JSException)
-        {
-            _conversation = $"web:{Guid.NewGuid():N}";
-        }
-    }
-
-    private async Task<string> NewConversation()
-    {
-        var id = $"web:{Guid.NewGuid():N}";
-
-        try
-        {
-            await Js.InvokeVoidAsync("cortanaChatId.save", id);
-        }
-        catch (JSException)
-        {
-        }
-
-        return id;
+        _turns.Clear();
+        foreach (ChatTurn turn in await State.ChatHistory(_conversation)) _turns.Add(new Turn(turn.Text, turn.Mine));
     }
 
     private async Task OnKey(KeyboardEventArgs args)
@@ -88,8 +67,6 @@
     {
         string question = _draft.Trim();
         if (_busy || question.Length == 0) return;
-
-        if (string.IsNullOrEmpty(_conversation)) _conversation = await NewConversation();
 
         _draft = "";
         _busy = true;
@@ -114,8 +91,8 @@
     public async Task ClearAsync()
     {
         _turns.Clear();
-        if (!string.IsNullOrEmpty(_conversation)) await State.ResetChat(_conversation);
-        _conversation = await NewConversation();
+        _message = await State.ResetChat(_conversation);
+        StateHasChanged();
     }
 
     private async Task Scroll()

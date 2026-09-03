@@ -27,25 +27,24 @@ public static class MachineMetrics
 			Temperature(GpuHwmon),
 			disk.used,
 			disk.total,
-			Uptime());
+			Uptime(),
+			GpuWatts());
 	}
 
-	public static string Render(MetricsView metrics)
+	public static string Render(MachineSample sample)
 	{
 		var lines = new List<string>
 		{
-			$"{metrics.Host} ({metrics.Os})",
-			$"CPU: {metrics.CpuLoad:F0}%{(metrics.CpuTemp > 0 ? $" - {metrics.CpuTemp:F0}°C" : "")}",
-			$"RAM: {metrics.MemoryUsed:F1}/{metrics.MemoryTotal:F1} GB"
+			$"{sample.Host} ({sample.Os})",
+			$"CPU: {sample.CpuLoad:F0}%{(sample.CpuTemp > 0 ? $" - {sample.CpuTemp:F0}°C" : "")}",
+			$"RAM: {sample.MemoryUsed:F1}/{sample.MemoryTotal:F1} GB"
 		};
 
-		if (metrics.GpuTemp > 0 || metrics.GpuLoad > 0)
-			lines.Add($"GPU: {metrics.GpuLoad:F0}%{(metrics.GpuTemp > 0 ? $" - {metrics.GpuTemp:F0}°C" : "")}");
+		if (sample.GpuTemp > 0 || sample.GpuLoad > 0)
+			lines.Add($"GPU: {sample.GpuLoad:F0}%{(sample.GpuTemp > 0 ? $" - {sample.GpuTemp:F0}°C" : "")}{(sample.GpuPower > 0 ? $" - {sample.GpuPower:F0}W" : "")}");
 
-		lines.Add($"Disk: {metrics.DiskUsed:F0}/{metrics.DiskTotal:F0} GB");
-		lines.Add($"Uptime: {TimeSpan.FromSeconds(metrics.Uptime):d\\d\\ hh\\:mm}");
-
-		if (metrics.Stale) lines.Add($"(stale, last seen {metrics.Timestamp:HH:mm})");
+		lines.Add($"Disk: {sample.DiskUsed:F0}/{sample.DiskTotal:F0} GB");
+		lines.Add($"Uptime: {Units.Elapsed(TimeSpan.FromSeconds(sample.Uptime))}");
 
 		return string.Join("\n", lines);
 	}
@@ -174,6 +173,25 @@ public static class MachineMetrics
 		}
 
 		return highest;
+	}
+
+	private static double GpuWatts()
+	{
+		try
+		{
+			foreach (string card in Directory.EnumerateDirectories("/sys/class/drm", "card?"))
+			{
+				string hwmon = Path.Combine(card, "device", "hwmon");
+				if (!Directory.Exists(hwmon)) continue;
+
+				string sensors = Directory.EnumerateDirectories(hwmon, "hwmon*").FirstOrDefault() ?? "";
+				if (sensors.Length > 0 && ReadNumber(Path.Combine(sensors, "power1_average")) is { } microwatts)
+					return Math.Round(microwatts / 1_000_000, 1);
+			}
+		}
+		catch (Exception) { }
+
+		return 0;
 	}
 
 	private static double GpuBusy()

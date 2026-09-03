@@ -1,6 +1,9 @@
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Scheduling;
 using CortanaKernel.Domain.Settings;
+using CortanaKernel.Domain.Fabric;
+using CortanaKernel.Domain.History;
+using CortanaKernel.Domain.Notes;
 using CortanaKernel.Domain.Volition;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
@@ -17,8 +20,17 @@ public sealed class JsonSettingsRepository : ISettingsRepository
 {
 	private static readonly string File = KernelFiles.Path("Settings.json");
 
-	public IReadOnlyDictionary<SettingKey, string> Load() =>
-		JsonStore.Read<Dictionary<SettingKey, string>>(File) ?? new Dictionary<SettingKey, string>();
+	public IReadOnlyDictionary<SettingKey, string> Load()
+	{
+		Dictionary<string, string> stored = JsonStore.Read<Dictionary<string, string>>(File) ?? [];
+		var values = new Dictionary<SettingKey, string>();
+
+		foreach ((string name, string value) in stored)
+			if (Enum.TryParse(name, true, out SettingKey key)) values[key] = value;
+			else Log.Write("Settings", $"Ignoring '{name}', it is no longer a setting");
+
+		return values;
+	}
 
 	public void Save(IReadOnlyDictionary<SettingKey, string> values) => JsonStore.Write(File, values);
 }
@@ -27,17 +39,27 @@ public sealed class JsonAiSettingsRepository : IAiSettingsRepository
 {
 	private static readonly string File = KernelFiles.Path("Ai.json");
 
-	private sealed record Stored(Dictionary<AiSettingKey, double> Values, string Model)
+	private sealed record Stored(Dictionary<string, double> Values, string Model)
 	{
 		public Stored() : this([], nameof(LlmFamily.FlashLite)) { }
 	}
 
-	public IReadOnlyDictionary<AiSettingKey, double> Load() => JsonStore.ReadOrNew<Stored>(File).Values;
+	/// Keys are read one by one: a setting that no longer exists is skipped, never taking the file with it
+	public IReadOnlyDictionary<AiSettingKey, double> Load()
+	{
+		var values = new Dictionary<AiSettingKey, double>();
+
+		foreach ((string name, double value) in JsonStore.ReadOrNew<Stored>(File).Values)
+			if (Enum.TryParse(name, out AiSettingKey key)) values[key] = value;
+			else Log.Write("Settings", $"Ignoring '{name}', which is no longer an AI setting");
+
+		return values;
+	}
 
 	public string LoadModel() => JsonStore.ReadOrNew<Stored>(File).Model;
 
 	public void Save(IReadOnlyDictionary<AiSettingKey, double> values, string model) =>
-		JsonStore.Write(File, new Stored(values.ToDictionary(entry => entry.Key, entry => entry.Value), model));
+		JsonStore.Write(File, new Stored(values.ToDictionary(entry => entry.Key.ToString(), entry => entry.Value), model));
 }
 
 public sealed class JsonScheduleRepository : IScheduleRepository
@@ -119,6 +141,46 @@ public sealed class JsonMemoryRepository : IMemoryRepository
 	public void Save(IReadOnlyList<MemoryEntry> memories) => JsonStore.Write(Store, memories);
 }
 
+/// One JSON array of days. A year is a few hundred small rows, so it is read whole
+public sealed class JsonRhythmRepository : IRhythmRepository
+{
+	private static readonly string Store = KernelFiles.Path("Days.json");
+	private const int Keep = 400;
+
+	private readonly Lock _gate = new();
+
+	public IReadOnlyList<DaySummary> Load(int days)
+	{
+		lock (_gate)
+		{
+			List<DaySummary> all = JsonStore.Read<List<DaySummary>>(Store) ?? [];
+			return [.. all.OrderByDescending(day => day.Day).Take(Math.Max(1, days))];
+		}
+	}
+
+	public void Save(DaySummary day)
+	{
+		lock (_gate)
+		{
+			List<DaySummary> all = JsonStore.Read<List<DaySummary>>(Store) ?? [];
+
+			all.RemoveAll(entry => entry.Day == day.Day);
+			all.Add(day);
+
+			JsonStore.Write(Store, all.OrderByDescending(entry => entry.Day).Take(Keep).OrderBy(entry => entry.Day).ToList());
+		}
+	}
+}
+
+public sealed class JsonNoteRepository : INoteRepository
+{
+	private static readonly string Store = KernelFiles.Path("Notes.json");
+
+	public IReadOnlyList<Note> Load() => JsonStore.Read<List<Note>>(Store) ?? [];
+
+	public void Save(IReadOnlyList<Note> notes) => JsonStore.Write(Store, notes);
+}
+
 public sealed class JsonVolitionRepository : IVolitionRepository
 {
 	private static readonly string Store = KernelFiles.Path("Volition.json");
@@ -126,4 +188,52 @@ public sealed class JsonVolitionRepository : IVolitionRepository
 	public VolitionState Load() => JsonStore.Read<VolitionState>(Store) ?? new VolitionState();
 
 	public void Save(VolitionState state) => JsonStore.Write(Store, state);
+}
+
+public sealed class JsonFabricRepository : IFabricRepository
+{
+	private static readonly string Sources = KernelFiles.Path("Sources.json");
+	private static readonly string Registered = KernelFiles.Path("Registrations.json");
+	private static readonly string Channels = KernelFiles.Path("Channels.json");
+
+	public IReadOnlyList<SourceDescriptor> LoadSources() => JsonStore.Read<List<SourceDescriptor>>(Sources) ?? [];
+
+	public void SaveSources(IReadOnlyList<SourceDescriptor> sources) => JsonStore.Write(Sources, sources);
+
+	public Registrations LoadRegistrations() => JsonStore.Read<Registrations>(Registered) ?? new Registrations([], []);
+
+	public void SaveRegistrations(Registrations registrations) => JsonStore.Write(Registered, registrations);
+
+	public IReadOnlyDictionary<string, PowerState> LoadChannels() =>
+		JsonStore.Read<Dictionary<string, PowerState>>(Channels) ?? [];
+
+	public void SaveChannels(IReadOnlyDictionary<string, PowerState> channels) =>
+		JsonStore.Write(Channels, channels);
+}
+
+public sealed class JsonBindRepository : IBindRepository
+{
+	private static readonly string Store = KernelFiles.Path("Binds.json");
+
+	public IReadOnlyList<Bind> Load() => JsonStore.Read<List<Bind>>(Store) ?? FabricDefaults.Binds;
+
+	public void Save(IReadOnlyList<Bind> binds) => JsonStore.Write(Store, binds);
+}
+
+public sealed class JsonWarningRepository : IWarningRepository
+{
+	private static readonly string Store = KernelFiles.Path("Warnings.json");
+
+	public IReadOnlyList<Warning> Load() => JsonStore.Read<List<Warning>>(Store) ?? [];
+
+	public void Save(IReadOnlyList<Warning> warnings) => JsonStore.Write(Store, warnings);
+}
+
+public sealed class JsonLayoutRepository
+{
+	private static readonly string Store = KernelFiles.Path("Layout.json");
+
+	public DashboardLayout Load() => JsonStore.Read<DashboardLayout>(Store) ?? new DashboardLayout([], []);
+
+	public void Save(DashboardLayout layout) => JsonStore.Write(Store, layout);
 }

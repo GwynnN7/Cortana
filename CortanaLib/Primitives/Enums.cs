@@ -1,13 +1,5 @@
 namespace CortanaLib.Primitives;
 
-public enum DeviceId
-{
-	Lamp,
-	Computer,
-	Power,
-	Generic
-}
-
 public enum PowerState
 {
 	Off = 0,
@@ -21,16 +13,6 @@ public enum SwitchAction
 	Toggle
 }
 
-public enum SensorId
-{
-	Temperature,
-	Humidity,
-	Light,
-	Motion,
-	Co2,
-	Tvoc
-}
-
 public enum Mood
 {
 	Calm,
@@ -40,6 +22,7 @@ public enum Mood
 	Watching,
 	Worried,
 	Resting,
+	Bored,
 	Alone
 }
 
@@ -48,6 +31,7 @@ public enum AutomationStatus
 {
 	Active,
 	Holding,
+	Idle,
 	Off
 }
 
@@ -87,7 +71,8 @@ public enum ComputerCommand
 	BootIntoOtherOperatingSystem,
 	RunShellCommand,
 	LaunchApplication,
-	CloseApplication
+	CloseApplication,
+	SetActivityDetail
 }
 
 public enum ServiceId
@@ -120,7 +105,7 @@ public enum NotificationSource
 	Computer,
 	Sensors,
 	Motion,
-	AirQuality,
+	Warnings,
 	Automation,
 	Sleep,
 	Schedule,
@@ -140,12 +125,8 @@ public enum NotificationChannel
 public enum SettingKey
 {
 	AutomationEnabled,
-	LightThreshold,
-	Co2Threshold,
-	TvocThreshold,
 	MorningHour,
 	NightHour,
-	TemperatureOffset,
 	MotionTimeoutSeconds,
 	ManualOverrideMinutes,
 	SleepManualOverrideMinutes,
@@ -153,10 +134,15 @@ public enum SettingKey
 	SleepEntryDelayMinutes,
 	DaySleepMinutes,
 	ComputerShutdownGraceSeconds,
-	LampUsesPulseRelay,
 	NotifyWeb,
 	NotifyTelegram,
-	NotifyDiscord
+	NotifyDiscord,
+	SleepEnabled,
+	WarningsEnabled,
+	NotesEnabled,
+	MemoryEnabled,
+	HistoryEnabled,
+	WrapupEnabled
 }
 
 public enum VideoQuality

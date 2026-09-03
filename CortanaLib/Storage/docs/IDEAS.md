@@ -3,494 +3,247 @@
 Direction notes, not a plan, and nothing here is committed to. The question behind all of them:
 how does she become *present* without becoming *noise*.
 
-**Built so far**
-
-| § | | |
-| :--- | :--- | :--- |
-| 8 | `why` on every notification | done — reason on `NotificationEntry`, expandable in the log |
-| 5 | the mood word | done — `MoodRules`, with the reason carried to every client |
-| 11 | activity, games, music | done — focus category *and* MPRIS playback as separate axes, gaming ⇒ do-not-disturb, both recorded to history |
-| 10.2 | idle and lock | done — lock via the shell's IPC, idle via an `ext-idle-notify` daemon calling `cortana idle` |
-
-**Still open:** §2 baselines, §4 memory and its dashboard page, and the room × desktop correlation at
-the end of §11 — which is the one the other two make possible.
-
 **Contents**
 
 | § | | |
 | :--- | :--- | :--- |
-| [0](#0-the-diagnosis) | The diagnosis | what is actually missing |
-| [1](#1-volition--the-attention-budget) | **Volition** | the attention budget — the frame everything plugs into |
-| [2](#2-baselines--giving-her-a-sense-of-normal) | **Baselines** | a sense of *normal*, so something can be surprising |
-| [3](#3-rhythm--a-model-of-your-day) | Rhythm | a learned model of your day |
-| [4](#4-memory-of-you) | **Memory** | of *you*, not just of conversations |
-| [5](#5-interiority--something-of-her-own-to-express) | Interiority | a mood of her own to express |
-| [6](#6-voice) | Voice | the largest jump, and the largest project |
-| [7](#7-physical-presence) | Physical presence | the LED as her eye |
-| [8](#8-smaller-additions-that-pull-their-weight) | Smaller additions | that still pull their weight |
-| [9](#9-curiosity--questions-that-arent-random) | Curiosity | questions that aren't random |
-| [10](#10-the-linux-desktop-as-her-body) | The desktop | Hyprland + Caelestia as her body |
-| [11](#11-activity-games-and-music--one-model-not-three) | **Activity** | games and music as one model — and the room × desktop loop |
-| [12](#12-the-contract-worth-pinning-in-devmd) | The contract | rules any unsolicited message must satisfy |
-| [13](#13-where-to-start) | Where to start | a build order |
+| [0](#0-where-things-stand) | Where things stand | what is already built, and what it unlocked |
+| [1](#1-volition--the-attention-budget) | **Volition** | the frame exists; the judgement does not |
+| [2](#2-rhythm--a-model-of-your-day) | **Rhythm** | a learned model of your day — the biggest missing input |
+| [3](#3-the-daily-digest) | The daily digest | one row per day, and a real "yesterday you…" |
+| [4](#4-more-sources) | More sources | Discord voice, window-open, weather, games |
+| [5](#5-the-desktop-as-her-body) | The desktop | shell, hotkey, two-way notifications |
+| [6](#6-physical-presence) | Physical presence | the LED as her eye, and the protocol change it needs |
+| [7](#7-voice) | Voice | the largest jump, and the largest project |
+| [8](#8-curiosity) | Curiosity | questions that are not random |
+| [9](#9-smaller-things) | Smaller things | that still pull their weight |
+| [10](#10-the-contract) | **The contract** | rules any unsolicited message must satisfy |
+| [11](#11-a-build-order) | A build order | what unblocks what |
 
 ---
 
-## 0. The diagnosis
+## 0. Where things stand
 
-What exists today is an excellent **reflex arc**: sensors → rules → devices → notifications, with a
-conversational front bolted cleanly on the side. Every path is reactive. She answers, she reports,
-she obeys. Nothing originates with her.
+Built, in rough order of how much they changed the system:
 
-Four things are missing, and each has an obvious home in the current layering:
+| | |
+| :--- | :--- |
+| **Reasons everywhere** | every notification carries a `why`, expandable in the log |
+| **Mood** | one word for the whole house, with the sentence behind it, on the status pill and in her prompt |
+| **Activity** | the desktop's focus category *and* MPRIS playback as two independent axes, privacy-bounded on the agent |
+| **Do not disturb** | a fullscreen game or film holds back desktop notifications and automation |
+| **Presence** | idle and lock via `ext-idle-notify`, feeding a single motion timeout instead of two crude ones |
+| **Baselines** | median + MAD per hour-of-day, so "unusual" is computable rather than a fixed threshold |
+| **Memory** | what she knows about you, weighted, decaying, inspectable, trusted-only |
+| **Correlation** | room against desk, including the drift across the current session |
+| **Volition, seeded** | a persisted quiet period, a morning greeting, and a daily wrap-up said with probability *p* |
+| **The fabric** | hardware announces channels as tags; devices and sensors are registered on top, and nothing names a lamp |
+| **Notes** | what you asked her to write down, separate from what she knows about you |
+| **Features** | twelve services with a real switch, honoured in the Kernel and reflected in the web |
 
-| Missing | What it means | Where it would live |
-| :--- | :--- | :--- |
-| **Initiative** | She never speaks first | `Domain/Volition` |
-| **Noticing** | No sense of *normal*, so nothing is ever surprising | `Domain/History` (baselines) |
-| **Continuity** | She remembers conversations, not *you* | `Domain/Memory` |
-| **Interiority** | No state of her own to express | `Domain/Automation` + push/UI |
+What that unlocked: **every fact she states can now be computed rather than guessed**, history carries
+the room and the desk in the same rows, and what exists is whatever you registered rather than what
+was compiled in.
 
-More capabilities will not produce aliveness. These four will, and three of them are deterministic —
-no extra model trust required.
+What it did *not* unlock: she speaks unprompted twice a day at fixed hours and otherwise only when
+spoken to. Everything below is really about closing that gap without becoming a nuisance.
 
 ---
 
 ## 1. Volition — the attention budget
 
-The one mechanism everything else plugs into, and the answer to "without being annoying".
+The frame exists (`VolitionRules`, a persisted `Quiet`, one greeting, everything logged). What is
+missing is everything that makes it *judgement* rather than a cron job.
 
-Introduce **`Impulse`**: something Cortana *could* say. Anything may raise one — the automation
-engine, a sensor anomaly, a schedule, the desktop agent, a memory. Each carries:
+**`Impulse`** — something she *could* say. Anything may raise one:
 
 ```
 Impulse { Source, Salience 0..1, Key (dedupe), ExpiresAt, Payload, Actionable? }
 ```
 
-A pure `VolitionRules.Select(impulses, state, clock)` decides which — **usually none** — becomes
-speech. Same shape as `AutomationRules` and `ScheduleTiming`: pure, fake-clock testable, no
-infrastructure.
+`VolitionRules.Select(impulses, state, now)` returns **at most one**, usually none. Pure, so it stays
+testable without infrastructure — same shape as `AutomationRules` and `ScheduleTiming`.
 
-The budget is what makes it safe:
+The budget is the safety, not the prompt wording:
 
-- **Hard quota.** N unsolicited messages per waking day (3 is probably right), refilled at
-  `MorningHour`. Never during `SleepMode`. Minimum spacing between two.
-- **A rising bar.** Every message spoken raises the salience threshold for the next few hours, then
-  it decays back. Self-limiting by construction — a chatty hour makes her quieter, automatically.
-- **Novelty required.** A `Key` cannot fire twice inside its cooldown, and cannot fire at all unless
-  the underlying fact moved materially since last time.
-- **Silence is the default output.** An impulse that expires unspoken is simply dropped, and that is
-  the normal case, not a failure.
-- **Learned weights.** Record whether an unsolicited message was *acted on* (lamp switched after she
-  mentioned it, window opened after a CO₂ note, reply within N minutes). Nudge that `Key`'s weight
-  up or down in a small JSON file. She learns what you don't care about and stops raising it. This
-  is the single highest-value anti-annoyance feature in the whole document and it costs one file.
-- **An off switch that persists.** `Quiet(duration)` as a `Management` capability plus a setting, so
-  "leave me alone until tonight" is a thing she can actually honour.
-
-Log **every** impulse, spoken or not, with its salience and outcome. Without that there is no way to
-tune this and it becomes vibes.
+- **Hard quota** — a few unsolicited messages per waking day, refilled at `MorningHour`, never during
+  sleep mode, with a minimum spacing between two.
+- **A rising bar** — each message raises the salience threshold for a few hours, then it decays. A
+  chatty hour makes her quieter by construction.
+- **Novelty required** — a `Key` cannot fire inside its cooldown, and cannot fire at all unless the
+  underlying fact *moved materially* since last time.
+- **Silence is the default output.** An impulse expiring unspoken is the normal case.
+- **Learned weights, later.** Record whether a message was *acted on* — lamp switched after she
+  mentioned it, window opened after a CO₂ note, a reply within N minutes — and nudge that `Key`'s
+  weight. Do this only once the log shows what actually fires; three observations a day converges too
+  slowly to be worth guessing at up front.
 
 ### Choose the channel by urgency
 
-Not everything that is worth expressing is worth *interrupting* for. Rank the surfaces:
-
 ```
-ambient (LED colour, status line)  →  passive (dashboard badge)  →  interrupting (push, Telegram)
+ambient (status line, LED)  →  passive (dashboard badge)  →  interrupting (push, Telegram)
 ```
 
-Most impulses should die at the ambient level. Reserve push for things with a deadline.
+Most impulses should die at the ambient level. The status line already carries mood, devices, motion,
+air and schedules — that is a working ambient channel that interrupts nobody. Reserve push for things
+with a deadline.
+
+**The honest blocker:** there is currently about one thing worth saying unprompted. Arbitration
+between one source is not arbitration. §2 is what produces the rest.
 
 ---
 
-## 2. Baselines — giving her a sense of "normal"
+## 2. Rhythm — a model of your day
 
-`HistoryAnalysis` already does deterministic reductions over the CSVs. Add **`HistoryBaseline`**:
-per sensor, per hour-of-day, per weekday, a rolling median + MAD over the last few weeks.
+The biggest missing *input*, and mostly a reduction over data already being collected.
 
-What that unlocks:
+Per weekday, per hour: when the computer comes on, when motion starts, when sleep mode is entered,
+when the lamp goes on. Store medians, not means — one late night should not move the model.
 
-- **Anomaly instead of threshold.** `Co2Threshold` becomes "CO₂ is higher than it has been at this
-  hour in three weeks" — which is a *thing to say*, where a fixed number is not.
-- A new AI capability `CompareToUsual(metric, window)`, deterministic, so it never invents.
-- Better automation input than a fixed `LightThreshold`.
-- **Applies to `MachineSample` too.** The desktop already pushes CPU/RAM/GPU/uptime and nobody is
-  looking at it. "GPU has been pinned for two hours" or "something's been chewing CPU since you went
-  to bed" is useful *and* alive, and it is her noticing something about your machine unprompted.
+What it produces, all of which are impulse sources with real salience:
 
-Being noticed is most of what makes a presence feel present. This is the highest-leverage item here.
+- "You are up two hours earlier than usual for a Tuesday."
+- "The computer has been on since 09:00, which is your longest stretch this month."
+- "You normally go to bed around now."
+- Anticipation rather than reaction: warm the room *before* the usual wake time.
 
----
-
-## 3. Rhythm — a model of your day
-
-Derived from history, not configured:
-
-- Typical wake time, typical PC-on time, typical session length, typical night.
-- `MorningHour` / `NightHour` become *learned*, with the settings as bounds rather than the truth.
-- "You're up two hours earlier than usual" is a real observation with zero invention behind it.
-- **Absence.** No motion + PC off for long enough = away. Motion returning fires exactly one
-  welcome-back — and it earns its place by carrying what happened while you were out: air quality
-  peaked at 21:00, a schedule fired, the desktop rebooted itself.
-- **Suggestions, never actions.** "You've switched the lamp off manually around 23:40 five nights
-  running — want that as a schedule?" Proposing an automation is alive *and* useful, and it puts the
-  decision back with you, which is why it doesn't grate.
+It is also the honest prerequisite for a **sleep model** — bedtime and wake time are already implicit
+in sleep mode and motion, and the room data over those hours is already recorded.
 
 ---
 
-## 4. Memory of *you*
+## 3. The daily digest — **half built**
 
-Conversations persist; nothing about the person does. Add a small, capped, human-readable store:
+`HistoryService.Digest` reduces a window to plain lines — every sensor's range, every device's on-time,
+minutes per activity category, music — and the evening wrap-up turns that into a sentence she stores
+as a short-term memory and sometimes says.
+
+What is left is the part §2 wants: **keeping the digests**. They are composed and thrown away, so
+there is no series of days to model a rhythm over. Persisting one row per day is the next step, and it
+is small.
+
+Pair it with an **end-of-session digest** — when a long gaming or coding stretch ends, one line about
+what it cost: how long, what the air did, how far the room warmed. `Digest` already takes an arbitrary
+window, so this is a trigger away.
+
+---
+
+## 4. More sources
+
+### Discord voice time
+
+Worth doing, and **most of it already exists**. `CortanaDiscord/Program.cs` hooks
+`UserVoiceStateUpdated` and keeps `DiscordContext.VoiceSince[userId]` — the join timestamp is already
+in memory, purely for greetings. Nothing reports it to the Kernel and nothing records it.
+
+It fills a real gap: the desktop agent sees *what application has focus*, which says nothing about
+whether you have been talking to people for three hours. A `voice` column beside `activity` and
+`music` would immediately work with the baselines and correlation already built — "you have been in
+voice for four hours and the CO₂ is up 500" is exactly the shape of insight §1 wants, with no new
+hardware and no protocol change.
+
+The missing pieces are small: a Kernel endpoint the bot can post voice enter/leave to, a registry
+beside `ActivityRegistry`, and one history column.
+
+Caveats worth naming before building it: it is a second activity axis rather than a category (you can
+be gaming *and* in voice), so it belongs as its own field, not as an `ActivityCategory` value; and it
+should record duration only — never who else was in the channel, and never anything said.
+
+### Window-open detection
+
+CO₂ falling faster than any decay plus temperature moving toward outdoor = the window is open.
+Deterministic, no new hardware. Makes "open the window" advice verifiable — she can *tell whether you
+did it*, and learn how long the room takes to recover, which feeds both baselines and volition.
+
+### Weather
+
+The one external API worth adding. Indoor against outdoor makes ventilation advice actually correct:
+"open the window" is bad advice at 35 °C or during a downpour. Also gives context for heating and for
+the temperature baselines.
+
+### Games, properly
+
+The detection chain needs no Steam API and no login:
 
 ```
-Memory { Id, Text, Kind (fact | preference | event), Source, CreatedAt, LastUsedAt, Weight }
+running process → exe under steamapps/common/<Dir> → appmanifest_<appid>.acf → appid → IGDB
 ```
 
-- Two capabilities: `Remember(text, kind)` and `Recall(query)`. Top-N by weight and recency get
-  injected into the system prompt — which is what `memory depth` in `Ai.json` is already for.
-- **She says when she stores something**, or asks first. Silent accumulation is the difference
-  between a companion and surveillance.
-- Unused memories decay and fall out.
-- **A "what she knows about me" page in the dashboard**, with delete. This is a feature in its own
-  right and it is the whole answer to the creepiness objection: the memory is inspectable.
+`CORTANA_IGDB_*` is already wired for Discord `/games`, so the knowledge half exists. Session records
+into history make every existing reduction work on them the day they land: longest session, totals,
+"you always play this on Sundays". Lutris and Heroic keep their own configs for the non-Steam case.
 
-Alongside it, an **episodic layer**: one generated digest row per day — `up 07:40, PC 09:12–01:30,
-worst air 21:00, lamp on 6h`. Cheap to compute from existing CSVs, and it gives her a genuine
-"yesterday you…" faculty that no amount of prompt engineering can fake.
+### Music, beyond reading it
+
+`playerctl` play/pause/next as agent commands, so "pause the music" works from chat or Telegram.
+Better: **sleep mode pauses the music and dims the lamp in one gesture.** The house acting as one
+thing is worth more than either half.
 
 ---
 
-## 5. Interiority — something of her own to express
+## 5. The desktop as her body
 
-The push status is currently pure fact: `Online · 💡🖥️🔌 · 🔆|💠|💤 💨 21.4°`. Give her a mood,
-**derived from real state**, not simulated emotion:
-
-- *watching* — idle, everything nominal
-- *busy* — schedules firing, machine loaded
-- *concerned* — air degrading, a sensor gone stale, disk filling
-- *resting* — sleep mode
-- *alone* — no motion for hours
-
-One word in front of the facts. Expose it to the model so her tone shifts for a reason instead of
-randomly. This is honest — it's a summary of her actual situation — and it makes the status line
-read as a state of mind rather than a readout.
-
-Two more, both already true of the architecture and both more alive than false confidence:
-
-- **She believes, she does not know.** GPIO can't be read back. "I believe the lamp is on, I can't
-  verify it" is more characterful *and* more accurate than asserting it.
-- **Her own health is hers.** A stale ESP32, a dropped agent, a full disk. "One of my senses has
-  been out for an hour" is exactly the kind of line the character should have, and it is a real
-  operational alert.
+- **In the shell.** A Caelestia widget showing mood and the room at a glance; the status line already
+  computes everything it needs.
+- **One key away.** A global hotkey that opens a prompt, sends to `/ai`, and shows the reply. The CLI
+  already does the hard part.
+- **Notifications that are hers, and two-way.** Desktop notifications with actions — "open the
+  window" with a *Done* button, which is exactly the acted-on signal §1 needs for learned weights.
+- **More hands.** Volume, brightness, media keys, window management as capabilities.
 
 ---
 
-## 6. Voice
+## 6. Physical presence
 
-The largest single jump, and conspicuously absent. Halo's Cortana is a voice.
+The LED on the station as her eye: mood as colour, a slow pulse when she has something to say, dark
+when quiet. The cheapest possible ambient channel and the most "alive" thing per line of code.
 
-- **Output first.** Piper TTS on the Pi is fast enough for short lines. Even speaking *only* the
-  volition messages — and only when you're at the desk and awake — changes the character of the
-  whole system.
-- **Input second, and elsewhere.** STT belongs on the desktop, not the Pi: whisper.cpp on the GPU
-  machine, reached over the agent socket, which is already a bidirectional JSON-line protocol built
-  for exactly this. Wake word via openWakeWord on the desktop, or on the ESP32 if you want it to
-  work with the PC off.
-- Architecturally this is a new `CommandSurface.Voice` and one more client project. The Kernel does
-  not need to learn anything new.
+**It needs a protocol change first.** The station link is currently send-only — the firmware opens the
+socket and writes; it never reads. Making the LED expressive means the Kernel talking *back* to the
+ESP32, which means a read path, a frame format, and a reconnect story. Worth doing deliberately rather
+than bolting on.
 
 ---
 
-## 7. Physical presence
+## 7. Voice
 
-Non-verbal channels are the anti-annoyance channels: they communicate continuously without ever
-demanding a response.
-
-- **An RGB LED or a short strip on the ESP32 as her eye.** Colour is the mood from §5 — blue
-  watching, amber concerned, dim while resting, a brief pulse when a command lands or she's
-  thinking. Most impulses should end their life here and nowhere else.
-- A soft chime tied to an event class rather than a text notification.
-- In the dashboard, a subtle breathing indicator on snapshot updates — she is visibly *running*.
+The largest jump and the largest project. Wake word, speech-to-text, and a voice that sounds like her.
+Locally on a Pi 4 this is unrealistic; as a hybrid it is a real project rather than a feature. Worth
+keeping in view because it changes what the assistant *is*, not just what it does — but everything
+else here is cheaper and lands sooner.
 
 ---
 
-## 8. Smaller additions that pull their weight
+## 8. Curiosity
 
-- **Morning brief.** One message on first contact of the day: last night's air, how long sleep mode
-  held, today's schedules, weather if a source gets added. Bounded, once, obviously useful.
-- **Generalise `why`.** `ExplainAutomation` answers it for the lamp. Attach the deciding fact to
-  *every* notification and let the dashboard expand any state change into its reason. This is the
-  deepest "she is actually thinking" signal available and it is already half built.
-- **The desktop agent as a sense, not just hands** — see §10, which is where this grew into its
-  own answer.
-- **Real away-mode** via phone presence (ARP ping, or a Telegram location share).
-- **A guest persona.** `trusted` already exists for Discord; a visitor-facing manner is a cheap and
-  fun surface.
+Questions that are not random, drawn from material she actually has: a game untouched for three
+weeks, an album played four times in a day, a room that has been stuffy every evening this week. The
+difference between small talk and being noticed is entirely in whether the question is grounded.
+
+This is downstream of §2 and §3 — without a model of normal, "curiosity" is just a random prompt.
 
 ---
 
-## 9. Curiosity — questions that aren't random
+## 9. Smaller things
 
-A random question is a gimmick with a shelf life of about a week: you learn the pattern and it
-becomes a slot machine. What makes a question feel like it came from a person is that it is
-**grounded in something she observed** and that **she has a use for the answer**.
-
-So invert it. Questions are not generated for their own sake — they are generated by **gaps in
-memory that she could actually use**:
-
-> She knows you played *Elden Ring* four nights this week. She does not know whether you like it.
-> That gap is worth one question, because the answer changes recommendations, tone, and whether
-> she brings it up again.
-
-If there is no slot the answer would fill, she doesn't ask. That single rule kills every "what's
-your favourite colour" failure mode, and it self-limits: gaps get filled, curiosity subsides, and
-new observations open new ones.
-
-### Rules
-
-- **Cite the observation.** "Four nights this week — is it good, or are you just stuck?" is alive.
-  "Do you like games?" is a chatbot.
-- **Ask at seams, never in flow.** PC just on, just back from an absence, a long session just
-  ended, right before sleep, first contact of the day. The rhythm model (§3) hands her these
-  boundaries for free. Never mid-session, never during fullscreen.
-- **Lowest priority impulse there is.** Curiosity spends the same §1 budget as a CO₂ alert and
-  always loses to it. One every few days at most.
-- **Answer-optional by construction.** A remark with a hook, not an interrogation. Never follow up
-  on an unanswered one — silence is an answer, and it is a negative weight on that curiosity class.
-- **Guess, don't interrogate.** "I'm guessing you shelved it. Right?" is cheaper to answer, more
-  characterful, and proves she was paying attention. A wrong guess is *better* material than a
-  right one.
-- **Opinions often beat questions.** Her prompt already says she has opinions and will disagree.
-  "Third night past 3am, and the window's been shut since Tuesday. I'm not your mother, but." —
-  stake, information, character, and no reply demanded.
-- **Remember being wrong.** "You told me you hated roguelikes and you have thirty hours in one" is
-  the single most alive line a system can produce, and it falls straight out of §4.
-
-### Where the material comes from
-
-Games and music are the two richest seams, and they are the same integration — §11 has the model,
-the detection chain and the plumbing. What matters *here* is what curiosity does with them:
-
-- **A play journal makes gaps visible.** Sixty-hour game and you are twelve hours in. Three titles
-  bounced off in a fortnight. One untouched for three weeks. Each is a specific thing she noticed
-  and does not know the reason for — which is exactly the shape of a question worth asking.
-- **Music is warmer and cheaper.** That album four times today; the thing you put on at 2am; the
-  music stopping an hour before you actually went to bed. Mostly these should surface as remarks,
-  not questions — there is rarely a memory slot that needs filling, and the observation alone is
-  the point.
-- **Same for anything else the desktop can see**: what you are reading, what you are building.
-
-The test never changes: *would her behaviour differ once she knows the answer?* If not, it is small
-talk, and small talk is what makes assistants insufferable.
+- **An hour × weekday heatmap** of activity on the dashboard. This *is* the §2 rhythm model, made
+  visible, and the data is already there.
+- **Top games and top artists** over a window. Cheap, and quietly delightful.
+- **A separate push tag for her own messages.** Right now everything reuses the status overlay, so a
+  greeting replaces the status body for a few seconds and is easy to miss. Anything she says on her
+  own initiative should probably persist until dismissed.
+- **Pi self-observation.** Disk and temperature trends against their own baselines — she already has
+  the machinery, nothing points it at her own host.
+- ~~**`ActivityDetail` has no UI.**~~ Done: the level rides on every activity update and is set from
+  the Logs page or by the AI, and the agent writes it back to `activity.conf`.
+- **Editing a registration cannot rename its id.** Deliberate — history columns and binds key off it —
+  but it means a badly named sensor is delete-and-recreate, which loses its history column.
+- **Telegram and Discord read; the dashboard configures.** That split is now deliberate rather than
+  accidental. If a bot ever needs to configure something, ask whether the AI could do it instead.
 
 ---
 
-## 10. The Linux desktop as her body
-
-Hyprland on CachyOS, with a personal fork of Caelestia, is about the best case available. Hyprland
-has an **event socket** (`$XDG_RUNTIME_DIR/hypr/$HIS/.socket2.sock`) that *streams* `activewindow`,
-`workspace`, `fullscreen`, `openwindow` and `closewindow` — no polling, no guessing, a live feed of
-what you are doing. And owning the shell means she is not a guest in it.
-
-The desktop agent already holds an open socket to the Kernel and speaks JSON lines, so all of this
-is one more subscription on the other end of a process that is already running.
-
-Ordered by value per hour of work:
-
-### 10.1 She becomes part of the shell
-
-A personal fork of **Caelestia** changes this from "bolt a module onto a bar" to "she is a component
-of the shell", which is a different and much better thing. Quickshell/QML gives her a bar module, an
-orb, a sidebar pane, her own notification style and the lock screen — all in one idiom, all yours to
-edit.
-
-**The data path should not be new.** The agent already holds the socket to the Kernel, so let it be
-the machine's Cortana endpoint: the agent writes `$XDG_RUNTIME_DIR/cortana/state.json` atomically on
-every change, and QML watches that file. No second SSE consumer, no API key inside the shell, and it
-degrades honestly — if the Pi is unreachable the file just goes stale and the orb can say so. The
-reverse direction is already solved too: QML shells out to `cortana`, which is on `PATH`.
-
-Start with the **bar module**: her mood word from §5, the room temperature, the lamp state, and a
-colour that is her eye. Click toggles the lamp, right-click opens the pane. Permanently present,
-never interrupting — the ambient channel from §1, in the place you already look fifty times a day.
-
-### 10.2 Activity as a sense, category only
-
-Map window class → coarse category (`gaming | coding | browsing | media | idle`) **on the desktop
-side** and send only the category over the socket. Never window titles. That boundary is the whole
-answer to the privacy objection, and it is enforced by where the mapping lives rather than by
-policy.
-
-Add idle seconds (hypridle / a `swayidle`-style watcher) and "PC on" finally splits into **at the
-desk** vs **machine on, nobody home** — a far better sleep-entry signal than the current one, and
-the thing that tells volition when interrupting is acceptable.
-
-Lock/unlock events (hyprlock) are a second presence signal, and combining them with the PIR gives a
-much better away model than either alone.
-
-### 10.3 One key away
-
-`SUPER+C` → a floating terminal running `cortana chat`, or a fuzzel/rofi prompt that pipes one line
-to `cortana ask` and returns the answer as a notification. Hyprland window rules make the floating
-centred pane two lines of config. A `wtype` variant lets her **type the answer into the focused
-window**, which turns her into an editor tool rather than a separate app.
-
-### 10.4 Notifications that are hers, and two-way
-
-`notify-send` is already the fallback path — make it a real surface:
-
-- A consistent app name, her icon, and **urgency mapped from `NotificationLevel`**.
-- A **replace-id**, so her status notification updates in place instead of stacking — precisely what
-  the web push status notification already does. Mirror that behaviour on the desktop.
-- **`notify-send --action`**: "Turn it off" / "Not now" / "Remind me later". The chosen action comes
-  back on stdout, and the agent routes it to the Kernel as a command. That is the difference between
-  a notification and an interaction, and it makes "Not now" a real, one-click way to feed the
-  learned weights in §1.
-
-### 10.5 An actual presence on screen
-
-With the shell in your hands, four things worth building in roughly this order:
-
-- **The orb.** A layer-shell widget that breathes, takes her mood colour, and pulses when a
-  command lands or she is thinking. Click-through while idle. Caelestia's animation idiom already
-  suits this; it is the closest a desktop gets to Cortana on her pedestal.
-- **A Cortana pane in the sidebar/dashboard.** Room state, sensor readouts, her last few utterances,
-  and a text field wired to `cortana ask`. This retires the floating-terminal hack in §10.3 in
-  favour of something that belongs to the shell.
-- **Her notifications, rendered by the shell.** Caelestia already draws its own popups, so she gets
-  her avatar, an urgency colour from `NotificationLevel`, in-place replacement for the status line,
-  and **native inline actions** — with the buttons calling `cortana` directly. That is §10.4 done
-  properly instead of fighting `notify-send`'s limits.
-- **The lock screen.** Room state, temperature, whether the lamp is on, her mood. Very Halo, and
-  unlock is the strongest "you're back" signal the machine can give her.
-
-Then the striking one: **let her drive the shell's accent.** Caelestia already themes dynamically;
-invert it so the palette warms toward amber when she is concerned and cools with the night boundary,
-in step with the physical lamp. The room and the desktop visibly become one system — which is the
-actual thesis of this project, and it is only available to you because you own the shell.
-
-Keep the amplitude small and put it behind a toggle. A desktop that changes colour on you is magic
-for a week and an irritant in month two.
-
-### 10.6 More hands
-
-The agent has six commands. Linux gives a dozen more for almost nothing:
-
-- Volume and media (`wpctl`, `playerctl`) — and with MPRIS she gets §9's music context in the same
-  stroke.
-- **Clipboard both ways** (`wl-clipboard`). "What's on my clipboard?" is fine; *"here's the command,
-  it's on your clipboard"* is the one you'd use daily.
-- Screenshot, lock, workspace switch, and "open my work layout" — launch a set of apps into
-  workspaces, which Hyprland scripts trivially.
-- **Phone ⇄ desk handoff.** Telegram already exists on one end and the clipboard on the other. Small
-  feature, disproportionate daily utility.
-
-### 10.7 She can see what you're building
-
-Long build finished, test loop failing repeatedly, uncommitted changes sitting for three days. All
-genuinely useful, all one careless step from insufferable — so this one only ships **behind the §1
-budget with learned weights**, never as a direct notification.
-
----
-
-## 11. Activity, games and music — one model, not three
-
-Activity category, the running game and the current track are the same fact wearing three hats:
-**what the machine is being used for right now.** Model it once in `CortanaLib/Contracts` and it
-flows for free to the shell, the dashboard, the AI, automation, volition and history. Model it three
-times and you will be reconciling three half-truths by Christmas.
-
-```
-DesktopActivity(
-    ActivityCategory Category,   // Idle | Browsing | Coding | Gaming | Media | Away | Locked
-    string?          Subject,    // game title or track, only at the detail level the user chose
-    string?          Detail,     // artist/album, or the Steam appid
-    DateTimeOffset   Since,
-    int              IdleSeconds,
-    bool             Locked)
-```
-
-Keep it **out of `MetricsView`** — that record is about hardware and should stay that way. A sibling
-`DesktopActivity?` on the snapshot, next to `ComputerMetrics`, is the right shape.
-
-One privacy dial, three positions, enforced **on the desktop side** where the mapping lives:
-`category only` → `+ game titles` → `+ now playing`. Never window titles, at any setting.
-
-### The hazard worth writing down now
-
-`StateBroadcaster` subscribes to *every* event and turns it into a snapshot rebroadcast. Hyprland's
-socket2 emits on every focus change; `playerctl --follow` emits on every seek. Wiring either
-straight into the bus will melt the Blazor clients.
-
-So: the **agent** debounces, not the Kernel. It emits only *transitions* — category changed, game
-started or stopped, track changed — and never streams `IdleSeconds`; the clients derive elapsed time
-from `Since` themselves. Coalesce on the Kernel side too, the way `PushService` already does at
-300 ms. This is the one place where the new sense could genuinely destabilise a working system.
-
-### Games
-
-The detection chain on Linux needs no Steam API and no login:
-
-```
-running process  →  exe path under a Steam library's steamapps/common/<Dir>
-                 →  appmanifest_<appid>.acf in that library   (gives name + appid)
-                 →  appid  →  IGDB / SteamGridDB  →  cover art, length, genre, similar games
-```
-
-Lutris and Heroic keep their own configs for the non-Steam case, with a class→name map as the last
-fallback. `CORTANA_IGDB_*` is already wired for Discord `/games`, so the knowledge half exists.
-
-Write **session records** into the existing history mechanism — `game, start, end, duration` — and
-every reduction in `HistoryAnalysis` works on them the day they land: longest session, totals,
-comparisons, "you always play this on Sundays".
-
-The immediately *useful* payoff, independent of any personality feature: **gaming plus fullscreen is
-automatic do-not-disturb.** Volition goes silent, notifications are held rather than shown, and the
-lamp stops being clever. That alone justifies the feature.
-
-The *alive* payoff is §9's material: sixty-hour game and you are twelve hours in, three games
-bounced off in a fortnight, a title untouched for three weeks — each one a grounded question or a
-grounded opinion, not small talk.
-
-### Music
-
-`playerctl --follow --format '{{status}}|{{artist}}|{{title}}|{{album}}|{{mpris:artUrl}}'` is one
-long-running process the agent reads line by line. That is the entire integration, and it covers
-Spotify, browsers and everything else that speaks MPRIS.
-
-- **History.** Track plays into the same store: top artists this week, what you put on at 2am, "that
-  album four times today" — which is a warm observation rather than a metric.
-- **Control.** `playerctl` play/pause/next as agent commands, so "pause the music" works from chat,
-  Telegram or eventually voice. Better: **sleep-mode entry pauses the music and dims the lamp in the
-  same gesture.** The house acting as one thing is worth more than either half.
-- Titles are more personal than game names — that is what the third position on the privacy dial is
-  for.
-
-### The dashboard section, and the actual killer feature
-
-A desktop panel on `Core.razor` is the natural home:
-
-- **A day ribbon** — today as a horizontal band of coloured segments by category. The single most
-  satisfying way to see what you actually did, and it comes straight out of the history CSVs.
-- **An hour × weekday heatmap** over a few weeks. This *is* the §3 rhythm model, made visible.
-- Now-playing with album art; current game with cover art, session length and tracked total.
-- Top games and top artists over a window. Cheap, and quietly delightful.
-
-And then the thing **no other assistant on earth can do**, because no other assistant has both
-halves:
-
-> **Correlate the room against the machine.**
-> CO₂ against gaming sessions — door shut, two hours in, the air goes off a cliff.
-> Room temperature against GPU load. Late sessions against the next morning's wake time.
-
-That closes a loop worth closing: *"ninety minutes in, CO₂ is up four hundred — open the window"* is
-specific, non-obvious, genuinely useful, and structurally impossible for anything that only watches
-the desktop or only watches the room. It is the strongest single argument for this whole project
-existing, and every piece needed to build it is already in the repository.
-
----
-
-## 12. The contract (worth pinning in DEV.md)
+## 10. The contract
 
 Rules any unsolicited message must satisfy. Written down so they survive future features:
 
@@ -499,46 +252,26 @@ Rules any unsolicited message must satisfy. Written down so they survive future 
 3. **Prefer the ambient channel.** Interrupt only when there is a deadline.
 4. **Never twice for one cause.** Dedupe by key, not by text.
 5. **Never during sleep.** No exceptions worth the trust it costs.
-6. **Trivially silenceable, and the silence persists.**
+6. **Trivially silenceable, and the silence persists.** (`Quiet` exists and is honoured.)
 7. **Measured.** Every impulse logged with salience and outcome, or none of this can be tuned.
 
-The failure mode to design against is not "she said something wrong". It is "she said something
-true, useful, and unwanted, three times". A quota plus learned weights is what prevents that; no
-amount of prompt wording will.
+The failure mode to design against is not "she said something wrong". It is "she said something true,
+useful, and unwanted, three times". A quota plus learned weights is what prevents that; no amount of
+prompt wording will.
 
 ---
 
-## 13. Where to start
+## 11. A build order
 
-Roughly in dependency order, not importance order.
+1. ~~**Persist the daily digest (§3)**~~ — done. `Days.json` holds one row per day and backfills from
+   the CSVs already on disk.
+2. **Rhythm (§2)** — the weekday comparison exists (`CompareToUsualDay`); what is left is turning it
+   into *impulse sources* with salience, and anticipation rather than reaction.
+3. **Volition proper (§1)** — the impulse queue, quota and rising bar, now that there is something to
+   arbitrate between.
+4. **Two-way notifications (§5)** — the *Done* button is the acted-on signal that makes learned
+   weights possible.
+5. **Learned weights (§1)** — only now, with a log of what fired and what was acted on.
 
-**Groundwork — build these first, everything else assumes them.**
-
-1. **Volition: the budget and the learned weights** (§1). The frame every proactive idea plugs into.
-   Nothing else in this document is safe to build before it exists, because without a budget each
-   new idea is another thing that can interrupt you.
-2. **Activity as a category, with idle and lock** (§10.2, §11). What tells volition whether you are
-   even there, and the sense that games, music and the do-not-disturb rule all ride on.
-
-**Then the two that change what she is.**
-
-3. **Baselines** (§2) — turns her from a readout into something that notices.
-4. **Memory of you, with the dashboard page** (§4) — turns her from a session into a relationship.
-
-**Pure payoff, buildable early if you want a win.**
-
-- **The Caelestia bar module** (§10.1). Continuously present for almost no work, and it makes every
-  later ambient idea have somewhere to land.
-- **The room × desktop correlation** (§11). The CO₂-versus-session loop needs nothing beyond
-  activity category, and it is the one capability nothing else can copy.
-- **Gaming ⇒ do-not-disturb** (§11). Falls out of step 2 for free and is immediately useful.
-
-**Bigger than it looks.**
-
-- **Voice** (§6) is a larger project than the first four combined. Worth it, but not first.
-- **Shell-wide accent driven by her state** (§10.5) is a week of magic and a month of irritation
-  unless the amplitude stays tiny and it sits behind a toggle.
-
-Whatever gets built: **log every impulse, spoken or not, with its salience and its outcome** from
-day one (§12.7). Without that log there is no way to tell whether any of this is working, and the
-whole document becomes a matter of taste.
+Everything in §4 can land at any point and makes each of the above better. §6 and §7 are their own
+projects and depend on nothing here.

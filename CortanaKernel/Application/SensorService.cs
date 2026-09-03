@@ -1,6 +1,6 @@
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Sensors;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Settings;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
@@ -8,108 +8,129 @@ using CortanaLib.Runtime;
 
 namespace CortanaKernel.Application;
 
-/// Turns raw station observations into domain facts
 public sealed class SensorService(
-	SensorRegistry sensors,
-	SettingsStore settings,
+	Fabric fabric,
+	PresenceState presence,
+	WarningState state,
+	WarningStore warnings,
+	SettingsStore flags,
 	NotificationService notifications,
 	IEventBus bus)
 {
-	private static readonly TimeSpan AirQualityCooldown = TimeSpan.FromMinutes(45);
+	public IReadOnlyList<SensorView> All() => fabric.Sensors();
 
-	public IReadOnlyList<SensorView> All() => sensors.All();
+	public IReadOnlyList<SourceView> Sources() => fabric.Views();
 
-	public Result<string> Read(SensorId sensor)
+	public void Describe(string source, IReadOnlyDictionary<string, string> facts) => fabric.Describe(source, facts);
+
+	public SourceView? Source(string source) =>
+		fabric.Views().FirstOrDefault(view => view.Id.Equals(source, StringComparison.OrdinalIgnoreCase));
+
+	public DateTimeOffset? SeenAt(string source) => Source(source)?.LastSeen;
+
+	public double? Value(string sensor) => fabric.Read(sensor)?.Value;
+
+	public Result<string> Read(string sensor)
 	{
-		string value = sensors.Value(sensor);
-		return value.Length == 0 ? Result.Fail<string>("The station is offline") : Result.Ok(value);
+		SensorView? view = View(sensor);
+
+		if (view is null) return Result.Fail<string>($"Unknown sensor '{sensor}'");
+		return view.Available ? Result.Ok(view.Value) : Result.Fail<string>($"{view.Name} has no reading");
 	}
 
-	public string Describe(SensorId sensor)
-	{
-		string value = sensors.Value(sensor);
-		if (value.Length == 0) return $"{sensor} is unavailable";
+	private SensorView? View(string sensor) =>
+		fabric.Sensor(sensor) is { } registered
+			? fabric.Sensors().FirstOrDefault(entry => entry.Sensor.Equals(registered.Id, StringComparison.OrdinalIgnoreCase))
+			: null;
 
-		return sensor switch
+	public string Describe(string sensor)
+	{
+		SensorView? view = View(sensor);
+		if (view is not { Available: true }) return $"{sensor} is unavailable";
+
+		return fabric.Sensor(sensor)?.Kind == ReadingKind.Boolean
+			? view.Value == "true" ? $"{view.Name} detected" : $"No {view.Name.ToLowerInvariant()}"
+			: $"{view.Value}{view.Unit}";
+	}
+
+	public void Observe(string source, IReadOnlyDictionary<string, double> values, DateTimeOffset at)
+	{
+		VirtualSensor[] registered = [.. fabric.Registered.Where(sensor => sensor.Source.Equals(source, StringComparison.OrdinalIgnoreCase))];
+		var readings = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+		foreach ((string channel, double raw) in values)
 		{
-			SensorId.Motion => value == "true" ? "Motion detected" : "No motion",
-			_ => $"{value}{Units.For(sensor)}"
-		};
+			VirtualSensor? sensor = registered.FirstOrDefault(entry => entry.Channel.Equals(channel, StringComparison.OrdinalIgnoreCase));
+			readings[channel] = sensor is { Offset: not 0 } ? Math.Round(raw + sensor.Offset, 2) : raw;
+		}
+
+		bool wasOnline = fabric.IsOnline(source);
+		bool hadMotion = Present();
+
+		fabric.Observe(source, readings, at);
+
+		bool motion = Present();
+		if (motion) presence.LastMotionAt = at;
+
+		if (!wasOnline) bus.Publish(new SensorAvailabilityChanged(true, at));
+		if (motion && !hadMotion) bus.Publish(new MotionDetected(at));
+
+		EvaluateWarnings(motion, at);
+		bus.Publish(new SensorReadingReceived(at));
 	}
 
-	public void Observe(SensorReading raw)
+	private bool Present() =>
+		fabric.Registered.Where(sensor => sensor.FeedsPresence)
+			.Any(sensor => fabric.Read(sensor.Id) is { Value: >= 0.5 });
+
+	public void SetSourceOnline(string source, bool online)
 	{
-		double offset = settings.Decimal(SettingKey.TemperatureOffset);
-		SensorReading reading = offset == 0 ? raw : raw with { Temperature = Math.Round(raw.Temperature + offset, 2) };
+		if (fabric.IsOnline(source) == online) return;
 
-		bool wasOnline = sensors.Online;
-		bool hadMotion = sensors.Motion == true;
+		if (online) fabric.Touch(source);
+		else fabric.Dropped(source);
 
-		sensors.Observe(reading);
+		string name = fabric.Sources.FirstOrDefault(entry => entry.Id.Equals(source, StringComparison.OrdinalIgnoreCase))?.Id ?? source;
 
-		if (!wasOnline) bus.Publish(new SensorAvailabilityChanged(true, reading.At));
-		if (reading.Motion && !hadMotion) bus.Publish(new MotionDetected(reading.At));
-
-		EvaluateAirQuality(reading);
-		bus.Publish(new SensorReadingReceived(reading.At));
-	}
-
-	public string CalibrationNote()
-	{
-		SensorReading? reading = sensors.Last;
-		if (reading?.AirQualityTemperature is not { } airQuality) return "";
-
-		double offset = settings.Decimal(SettingKey.TemperatureOffset);
-		double room = reading.Temperature - offset;
-
-		return $"Room sensor {Units.Number(room)}°C uncorrected, air-quality sensor {Units.Number(airQuality)}°C, " +
-			$"a {Units.Number(airQuality - room)}°C spread. Current offset {Units.Number(offset)}°C.";
-	}
-
-	public void SetStationOnline(bool online)
-	{
-		if (sensors.Online == online) return;
-
-		sensors.SetOnline(online);
 		bus.Publish(new SensorAvailabilityChanged(online, DateTimeOffset.Now));
-		notifications.Raise(NotificationSource.Sensors, online ? "Station online" : "Station offline",
+		notifications.Raise(NotificationSource.Sensors, online ? $"{name} online" : $"{name} offline",
 			online ? NotificationLevel.Info : NotificationLevel.Warning,
-			online ? "the station reconnected and sent a reading" : "the station stopped sending readings");
+			online ? $"{name} reconnected and sent a reading" : $"{name} stopped sending readings");
 	}
 
-	private void EvaluateAirQuality(SensorReading reading)
+	private void EvaluateWarnings(bool present, DateTimeOffset now)
 	{
-		DateTimeOffset now = reading.At;
+		if (!flags.Flag(SettingKey.WarningsEnabled)) return;
 
-		if (sensors.AirQualityWarning && sensors.AirQualityWarningUntil is { } until && until <= now)
+		foreach (Warning warning in warnings.All())
 		{
-			sensors.SetAirQualityWarning(false);
-			sensors.AirQualityWarningUntil = null;
-			bus.Publish(new AirQualityWarningChanged(false, now));
-		}
+			if (!warning.Enabled) continue;
 
-		if (!reading.Motion) return;
+			bool active = state.IsActive(warning.Id);
 
-		int co2Threshold = settings.Number(SettingKey.Co2Threshold);
-		int tvocThreshold = settings.Number(SettingKey.TvocThreshold);
+			if (active && state.Since(warning.Id) is { } since && now - since >= TimeSpan.FromMinutes(warning.CooldownMinutes))
+			{
+				state.Clear(warning.Id);
+				bus.Publish(new WarningStateChanged(warning.Id, false, now));
+				continue;
+			}
 
-		if (!sensors.AirQualityWarning && AutomationRules.AirQualityUnsafe(reading.Co2, reading.Tvoc, co2Threshold, tvocThreshold))
-		{
-			sensors.SetAirQualityWarning(true);
-			sensors.AirQualityWarningUntil = now + AirQualityCooldown;
-			notifications.Raise(NotificationSource.AirQuality, "Air quality low, open the window", NotificationLevel.Alert,
-				$"CO2 {reading.Co2} ppm against a {co2Threshold} ppm threshold, TVOC {reading.Tvoc} ppb against {tvocThreshold} ppb");
-			bus.Publish(new AirQualityWarningChanged(true, now));
-			return;
-		}
+			if (!active && WarningRules.Fires(warning, fabric.Read))
+			{
+				state.Raise(warning.Id, now);
+				notifications.Raise(NotificationSource.Warnings, warning.Message, warning.Level,
+					WarningRules.Explain(warning, fabric.Read, fabric.Sensor));
+				bus.Publish(new WarningStateChanged(warning.Id, true, now));
+				continue;
+			}
 
-		if (sensors.AirQualityWarning && AutomationRules.AirQualityBackToNormal(reading.Co2, reading.Tvoc, co2Threshold, tvocThreshold))
-		{
-			sensors.SetAirQualityWarning(false);
-			sensors.AirQualityWarningUntil = null;
-			notifications.Raise(NotificationSource.AirQuality, "Air quality normal",
-				reason: $"CO2 back to {reading.Co2} ppm and TVOC to {reading.Tvoc} ppb");
-			bus.Publish(new AirQualityWarningChanged(false, now));
+			if (active && WarningRules.Clears(warning, fabric.Read))
+			{
+				state.Clear(warning.Id);
+				notifications.Raise(NotificationSource.Warnings, $"{warning.Name} back to normal",
+					reason: WarningRules.Explain(warning, fabric.Read, fabric.Sensor));
+				bus.Publish(new WarningStateChanged(warning.Id, false, now));
+			}
 		}
 	}
 }

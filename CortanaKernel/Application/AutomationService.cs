@@ -1,41 +1,55 @@
 using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Devices;
-using CortanaKernel.Domain.Sensors;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Settings;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 
 namespace CortanaKernel.Application;
 
-public sealed class AutomationWorld(DeviceRegistry devices, SensorRegistry sensors, IComputerEndpoint computer, ActivityRegistry activity) : IAutomationWorld
+public sealed class AutomationWorld(Fabric fabric, PresenceState presence, WarningState warnings, BindStore binds, IComputerEndpoint computer, ActivityRegistry activity) : IAutomationWorld
 {
-	public PowerState DeviceState(DeviceId device) => devices.State(device);
+	public PowerState DeviceState(string device) => fabric.State(device);
 
 	public bool ComputerConnected => computer.Connected;
 
-	public int? Light => sensors.Light;
+	public DateTimeOffset? LastMotionAt => presence.LastMotionAt;
 
-	public DateTimeOffset? LastMotionAt => sensors.LastMotionAt;
+	public bool SourcesOnline => fabric.Sources.All(source => fabric.IsOnline(source.Id));
 
-	public bool StationOnline => sensors.Online;
+	/// A computer going offline is routine, not a fault, so it does not count against the mood
+	public bool CriticalSourcesOnline => fabric.Sources
+		.Where(source => source.Kind != SourceKind.Computer)
+		.All(source => fabric.IsOnline(source.Id));
 
-	public bool AirQualityWarning => sensors.AirQualityWarning;
+	public bool WarningActive => warnings.Any;
 
 	public bool DesktopBusy => activity.Current is { } current
 		&& (current.Fullscreen || current.Category == ActivityCategory.Gaming);
 
-	public bool DeskActive => computer.Connected && activity.Current is { Locked: false, IdleSeconds: 0 };
+	public bool Present => fabric.Registered
+		.Where(sensor => sensor.FeedsPresence)
+		.Any(sensor => fabric.Read(sensor.Id) is { Value: >= 0.5 });
+
+	public Reading? Read(string sensor) => fabric.Read(sensor);
+
+	public string DeviceName(string device) => fabric.Device(device)?.Name ?? device;
+
+	public IReadOnlyList<Bind> Binds => binds.All();
 }
 
 public sealed class AutomationEffects(
 	Lazy<DeviceService> devices,
+	Fabric fabric,
 	NotificationService notifications,
 	IEventBus bus) : IAutomationEffects
 {
-	public void SwitchDevice(DeviceId device, PowerState state, string reason) =>
+	public void SwitchDevice(string device, PowerState state, string reason) =>
 		devices.Value.ApplyAutomatic(device, state, reason);
+
+	public void Observe(string sensor, double value) =>
+		fabric.Observe(SourceIds.Kernel, new Dictionary<string, double> { [sensor] = value }, DateTimeOffset.Now);
 
 	public void TellComputer(string message) =>
 		_ = devices.Value.CommandComputer(ComputerCommand.Notify, message, CommandOrigin.Automation);

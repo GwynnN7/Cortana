@@ -10,6 +10,17 @@ public sealed record AskRequest(
 
 public sealed record AskResponse(string Reply, string Conversation);
 
+/// One stored turn, as any client would render it
+public sealed record ChatTurn(bool Mine, string Text, DateTimeOffset At);
+
+public sealed record ConversationResponse(string Conversation, IReadOnlyList<ChatTurn> Turns);
+
+public static class Conversations
+{
+	/// Every browser shares one conversation, so the dashboard is a channel Cortana can speak into
+	public const string Web = "web";
+}
+
 public enum LlmFamily
 {
 	Flash,
@@ -34,7 +45,9 @@ public enum AiSettingKey
 	HistoryRetentionDays,
 	PushEventSeconds,
 	MemoryDepth,
-	MemoryStateHours
+	MemoryStateHours,
+	WrapupHour,
+	WrapupChance
 }
 
 public sealed record AiSettingView(AiSettingKey Setting, string Value);
@@ -46,6 +59,7 @@ public sealed record NumberRequest(double Value);
 public sealed record VolitionState(
 	DateTimeOffset? QuietUntil = null,
 	DateOnly? LastGreeted = null,
-	DateTimeOffset? LastSpokeAt = null);
+	DateTimeOffset? LastSpokeAt = null,
+	DateOnly? LastWrapped = null);
 
 public sealed record QuietRequest(int Minutes);

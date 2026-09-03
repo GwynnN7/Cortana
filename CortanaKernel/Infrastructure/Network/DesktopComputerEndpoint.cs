@@ -3,7 +3,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using CortanaKernel.Application;
-using CortanaKernel.Domain.Devices;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Infrastructure.Raspberry;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
@@ -14,7 +14,8 @@ namespace CortanaKernel.Infrastructure.Network;
 /// Wire format between the Kernel and the desktop agent
 public sealed record AgentCommand(string Id, string Command, string Argument);
 
-public sealed record AgentMessage(string Type, string Id = "", string Text = "", DesktopActivity? Activity = null);
+public sealed record AgentMessage(string Type, string Id = "", string Text = "", DesktopActivity? Activity = null,
+	IReadOnlyDictionary<string, double>? Values = null, IReadOnlyDictionary<string, string>? Facts = null);
 
 public sealed class DesktopComputerEndpoint(IComputerPresence presence, RaspberryHost host) : IComputerEndpoint
 {
@@ -124,6 +125,12 @@ public sealed class DesktopComputerEndpoint(IComputerPresence presence, Raspberr
 				break;
 			case "activity" when message.Activity is not null:
 				presence.ActivityChanged(message.Activity);
+				break;
+			case Wire.Reading when message.Values is not null:
+				presence.Observed(message.Values);
+				break;
+			case Wire.Facts when message.Facts is not null:
+				presence.Described(message.Facts);
 				break;
 		}
 	}

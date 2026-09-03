@@ -22,6 +22,7 @@ internal static class DesktopOs
 			ComputerCommand.RunShellCommand => string.IsNullOrWhiteSpace(argument) ? "No command given" : await Run(argument),
 			ComputerCommand.LaunchApplication => await Launch(argument),
 			ComputerCommand.CloseApplication => await Close(argument),
+			ComputerCommand.SetActivityDetail => Activity.SetDetail(argument),
 			_ => $"Unknown command '{command}'"
 		};
 	}

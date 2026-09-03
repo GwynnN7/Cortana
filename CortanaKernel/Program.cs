@@ -5,12 +5,11 @@ using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Devices;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.History;
-using CortanaKernel.Domain.Metrics;
+using CortanaKernel.Domain.Notes;
 using CortanaKernel.Domain.Notifications;
 using CortanaKernel.Domain.Scheduling;
-using CortanaKernel.Domain.Sensors;
 using CortanaKernel.Domain.Services;
 using CortanaKernel.Domain.Settings;
 using CortanaKernel.Domain.Volition;
@@ -45,9 +44,19 @@ builder.Services.AddCors(options => options.AddPolicy("Cortana", policy => polic
 
 // ---------- domain ----------
 builder.Services.AddSingleton<IEventBus, EventBus>();
-builder.Services.AddSingleton<DeviceRegistry>();
-builder.Services.AddSingleton<SensorRegistry>();
-builder.Services.AddSingleton<MetricsRegistry>();
+builder.Services.AddSingleton<IFabricRepository, JsonFabricRepository>();
+builder.Services.AddSingleton<Fabric>();
+builder.Services.AddSingleton<PresenceState>();
+builder.Services.AddSingleton<WarningState>();
+builder.Services.AddSingleton<IBindRepository, JsonBindRepository>();
+builder.Services.AddSingleton<BindStore>();
+builder.Services.AddSingleton<IWarningRepository, JsonWarningRepository>();
+builder.Services.AddSingleton<WarningStore>();
+builder.Services.AddSingleton<JsonLayoutRepository>();
+builder.Services.AddSingleton<INoteRepository, JsonNoteRepository>();
+builder.Services.AddSingleton<IRhythmRepository, JsonRhythmRepository>();
+builder.Services.AddSingleton<NoteStore>();
+builder.Services.AddSingleton<PluginService>();
 builder.Services.AddSingleton<ActivityRegistry>();
 builder.Services.AddSingleton<IMemoryRepository, JsonMemoryRepository>();
 builder.Services.AddSingleton<MemoryStore>();
@@ -57,12 +66,15 @@ builder.Services.AddSingleton<VolitionService>();
 builder.Services.AddSingleton<NotificationLog>();
 builder.Services.AddSingleton<SettingsStore>();
 builder.Services.AddSingleton<AiSettingsStore>();
+builder.Services.AddSingleton<DayNightClock>();
 builder.Services.AddSingleton<AutomationEngine>();
 
 // ---------- infrastructure ----------
 builder.Services.AddSingleton<RaspberryHost>();
 builder.Services.AddSingleton<IHostMachine>(provider => provider.GetRequiredService<RaspberryHost>());
-builder.Services.AddSingleton<ILocalDeviceController, GpioDeviceController>();
+builder.Services.AddSingleton<GpioDeviceController>();
+builder.Services.AddSingleton<IChannelWriter>(services => services.GetRequiredService<GpioDeviceController>());
+builder.Services.AddSingleton<IChannelWriter, StationChannelWriter>();
 builder.Services.AddSingleton<IServiceSupervisor, SystemdSupervisor>();
 builder.Services.AddSingleton<ISettingsRepository, JsonSettingsRepository>();
 builder.Services.AddSingleton<IAiSettingsRepository, JsonAiSettingsRepository>();
@@ -71,7 +83,7 @@ builder.Services.AddSingleton<IConversationRepository, JsonConversationRepositor
 builder.Services.AddSingleton<IHistoryRepository, CsvHistoryRepository>();
 builder.Services.AddSingleton<DesktopComputerEndpoint>();
 builder.Services.AddSingleton<IComputerEndpoint>(provider => provider.GetRequiredService<DesktopComputerEndpoint>());
-builder.Services.AddSingleton<Esp32SensorSource>();
+builder.Services.AddSingleton<StationSource>();
 builder.Services.AddSingleton<ModelCatalogue>();
 builder.Services.AddSingleton<IAiProvider, GeminiProvider>();
 builder.Services.AddSingleton<PushService>();
@@ -80,6 +92,7 @@ builder.Services.AddSingleton(provider => new Lazy<SnapshotService>(provider.Get
 builder.Services.AddSingleton(provider => new Lazy<ScheduleService>(provider.GetRequiredService<ScheduleService>));
 builder.Services.AddSingleton(provider => new Lazy<VolitionService>(provider.GetRequiredService<VolitionService>));
 builder.Services.AddSingleton(provider => new Lazy<AiService>(provider.GetRequiredService<AiService>));
+builder.Services.AddSingleton(provider => new Lazy<SensorService>(provider.GetRequiredService<SensorService>));
 
 // ---------- application ----------
 builder.Services.AddSingleton<StateBroadcaster>();
@@ -162,6 +175,9 @@ app.MapScheduleEndpoints();
 app.MapAiEndpoints();
 app.MapHistoryEndpoints();
 app.MapNotificationEndpoints();
+app.MapNoteEndpoints();
+app.MapFabric();
+app.MapPlugins();
 
 // Build the route graph now to catch bad endpoints
 try
@@ -180,6 +196,16 @@ app.Services.GetRequiredService<SettingsService>();
 app.Services.GetRequiredService<AiService>();
 
 Log.Write("Kernel", "Online");
+Fabric fabric = app.Services.GetRequiredService<Fabric>();
+fabric.Seed(FabricDefaults.Sources, FabricDefaults.Registered);
+app.Services.GetRequiredService<WarningStore>().Seed(FabricDefaults.Warnings);
+
+foreach (SourceDescriptor source in fabric.Sources)
+	if (source.Kind == SourceKind.Host)
+		fabric.Touch(source.Id);
+
+app.Services.GetRequiredService<DeviceService>().Restore();
+
 await app.RunAsync();
 Log.Write("Kernel", "Stopped");
 return;

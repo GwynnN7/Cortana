@@ -1,5 +1,6 @@
 using System.Globalization;
 using CortanaKernel.Domain.Ai;
+using CortanaKernel.Domain.Notes;
 using CortanaKernel.Domain.Common;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
@@ -24,6 +25,7 @@ public sealed class CapabilityRegistry
 		SnapshotService snapshot,
 		NotificationService notifications,
 		MemoryStore memories,
+		NoteStore notes,
 		Lazy<VolitionService> volition,
 		Lazy<AiService> ai)
 	{
@@ -34,12 +36,12 @@ public sealed class CapabilityRegistry
 				async (_, _, token) =>
 					$"Mood: {await snapshot.Mood(token)} ({await snapshot.MoodReason(token)})\n{HouseState(devices, sensors, automation)}"),
 
-			Query("GetDevices", "Power state of every device in the room.",
-				(_, _, _) => Task.FromResult(string.Join("\n", devices.All().Select(view => $"{view.Device} is {view.State}")))),
+			Query("GetDevices", "Power state of every registered device.",
+				(_, _, _) => Task.FromResult(string.Join("\n", devices.All().Select(view => $"{view.Name} is {view.State}")))),
 
-			Query("GetSensors", "Latest reading from every sensor: temperature, humidity, light, motion, CO2 and TVOC.",
+			Query("GetSensors", "Latest reading from every registered sensor.",
 				(_, _, _) => Task.FromResult(string.Join("\n", sensors.All().Select(view =>
-					$"{view.Sensor}: {(view.Available ? view.Value + view.Unit : "unavailable")}")))),
+					$"{view.Name}: {(view.Available ? view.Value + view.Unit : "unavailable")}")))),
 
 			Query("GetAutomationState", "Whether automation is on, whether Cortana thinks the user is asleep, the day/night context and the motion state.",
 				(_, _, _) => Task.FromResult(AutomationText(automation.View()))),
@@ -47,13 +49,13 @@ public sealed class CapabilityRegistry
 			Query("GetSettings", "Every automation setting and its current value.",
 				(_, _, _) => Task.FromResult(string.Join("\n", settings.All().Select(view => $"{view.Setting}: {view.Value}{view.Unit}")))),
 
-			Query("GetComputerStatus", "Whether the desktop computer is reachable, plus its load and temperatures.",
+			Query("GetComputerStatus", "Whether the desktop computer is reachable, plus what it says about itself and its readings.",
 				(_, _, _) => Task.FromResult(devices.ComputerConnected
-					? metrics.Computer() is { } view ? MachineMetrics.Render(view) : "The computer is connected but has not reported metrics yet"
+					? Machine(SourceIds.Computer, sensors)
 					: "The computer is off or not connected")),
 
-			Query("GetRaspberryStatus", "Load, temperature and uptime of the Raspberry Pi that runs the house.",
-				(_, _, _) => Task.FromResult(MachineMetrics.Render(metrics.Raspberry()))),
+			Query("GetRaspberryStatus", "What the Raspberry Pi that runs the house says about itself, and its readings.",
+				(_, _, _) => Task.FromResult(Machine(SourceIds.Raspberry, sensors))),
 
 			Query("GetSchedules", "Every saved schedule with its next run time.",
 				(_, _, _) => Task.FromResult(schedules.Views().Count == 0
@@ -116,6 +118,36 @@ public sealed class CapabilityRegistry
 				(_, _, _) => Task.FromResult(memories.All() is { Count: > 0 } stored
 					? string.Join("\n", stored.Select(memory => $"[{memory.Id}] ({memory.Kind}) {memory.Text}"))
 					: "Nothing stored yet")),
+
+			Management("WriteNote",
+				"Write something down for gwynn7 to act on later: a feature he wants added, a link worth keeping, or anything he asks you to note. A note is a task, not a fact about him, so use Remember for who he is and this for what he wants done.",
+				(arguments, origin, _) => Task.FromResult(
+					notes.Write(arguments.Text("text"),
+						arguments.TryEnum("kind", out NoteKind kind) ? kind : NoteKind.Personal,
+						origin.Surface.ToString()).Match(note => $"Written down as {note.Id}: {note.Text}", error => error)),
+				new AiToolParameter("text", "The note, in his words where he gave them", AiParameterType.String, true),
+				new AiToolParameter("kind", $"One of: {string.Join(", ", Enum.GetNames<NoteKind>())}", AiParameterType.String, false)),
+
+			Management("ReadNotes",
+				"List everything written down, with the id of each, so gwynn7 can be reminded of what is still open.",
+				(_, _, _) => Task.FromResult(notes.All() is { Count: > 0 } written
+					? string.Join("\n", written.Select(note => $"[{note.Id}] ({note.Kind}) {(note.Done ? "done" : "open")}: {note.Text}"))
+					: "Nothing written down yet")),
+
+			Management("SettleNote",
+				"Mark a note done once gwynn7 says it is handled, or reopen one by its id.",
+				(arguments, _, _) => Task.FromResult(
+					notes.Settle(arguments.Text("id"), !arguments.Text("state", "done").Equals("open", StringComparison.OrdinalIgnoreCase))
+						.Match(note => $"'{note.Text}' is {(note.Done ? "done" : "open again")}", error => error)),
+				new AiToolParameter("id", "The id shown next to the note", AiParameterType.String, true),
+				new AiToolParameter("state", "done or open", AiParameterType.String, false)),
+
+			Analysis("CompareToUsualDay",
+				"How today compares with a usual day of this weekday: when he got up, when the computer came on or off, when he went to sleep. Computed from recorded days, so say it only when the difference is real.",
+				(arguments, _, _) => Task.FromResult(history.Rhythm(arguments.Text("metric", "up"),
+					arguments.Integer("weeks", 8)).Summary),
+				new AiToolParameter("metric", "One of: up, bed, computerOn, computerOff, sleep", AiParameterType.String, true),
+				new AiToolParameter("weeks", "How many weeks of the same weekday to draw on", AiParameterType.Integer, false)),
 
 			Analysis("CorrelateRoomAndDesk",
 				"Compare two recorded metrics against each other over a window, for example CO2 against GPU load or room temperature against desktop load. Returns a real correlation computed from history, never a guess.",
@@ -185,26 +217,20 @@ public sealed class CapabilityRegistry
 				new AiToolParameter("windowMinutes", "For WorstPeriod: the length of the window to score", AiParameterType.Integer, false)),
 
 			// ---------- actions ----------
-			Action("SwitchDevice", "Turn a device on or off, or toggle it. Lamp is the room light, Power is the desktop's mains supply, Generic is the extra socket (a speaker in Orvieto, the light in Pisa).",
+			Action("SwitchDevice", "Turn a device on or off, or toggle it. The devices that exist are whatever the connected hardware offers, so read their names from the parameter description rather than assuming.",
 				(arguments, origin, _) =>
 				{
-					if (!arguments.TryEnum("device", out DeviceId device))
-						return Task.FromResult($"Unknown device. Valid devices: {string.Join(", ", Enum.GetNames<DeviceId>())}");
+					string device = arguments.Text("device");
+					if (!devices.Known(device))
+						return Task.FromResult($"Unknown device. Valid devices: {Named(devices)}");
 					if (!arguments.TryEnum("action", out SwitchAction action))
 						return Task.FromResult($"Unknown action. Valid actions: {string.Join(", ", Enum.GetNames<SwitchAction>())}");
 
-					return Task.FromResult(devices.Switch(device, action, origin).Match(result => $"{device}: {result}", error => error));
+					return Task.FromResult(devices.Switch(device, action, origin)
+						.Match(result => $"{devices.Describe(device)?.Name ?? device}: {result}", error => error));
 				},
-				new AiToolParameter("device", $"One of: {string.Join(", ", Enum.GetNames<DeviceId>())}", AiParameterType.String, true),
+				new AiToolParameter("device", $"One of: {Named(devices)}", AiParameterType.String, true),
 				new AiToolParameter("action", "On, Off or Toggle", AiParameterType.String, true)),
-
-			Action("SwitchRoom", "Switch the whole room at once. Off turns the lamp and the mains supply off; On brings the supply and the computer up.",
-				(arguments, origin, _) =>
-				{
-					if (!arguments.TryEnum("action", out SwitchAction action)) return Task.FromResult("Use On or Off");
-					return Task.FromResult(devices.SwitchRoom(action, origin).Match(result => result, error => error));
-				},
-				new AiToolParameter("action", "On or Off", AiParameterType.String, true)),
 
 			Action("SetSleepMode", "Tell Cortana whether the user is going to sleep. Sleep mode changes the automation rules; it does not turn automation off.",
 				(arguments, origin, _) =>
@@ -347,6 +373,25 @@ public sealed class CapabilityRegistry
 
 	// ---------- helpers ----------
 
+	/// A machine in one block: what it says about itself, then what it is reading
+	private static string Machine(string source, SensorService sensors)
+	{
+		if (sensors.Source(source) is not { } view) return $"Nothing is registered as '{source}'";
+
+		string facts = string.Join(", ", view.Facts.Select(fact => $"{fact.Key} {fact.Value}"));
+		string readings = string.Join(", ", sensors.All()
+			.Where(sensor => sensor.Source == source && sensor.Available)
+			.Select(sensor => $"{sensor.Name} {sensor.Value}{sensor.Unit}"));
+
+		return $"{facts}\n{(readings.Length == 0 ? "no readings" : readings)}";
+	}
+
+	private static string Named(DeviceService devices) =>
+		string.Join(", ", devices.All().Select(view => view.Name));
+
+	private static string Named(SensorService sensors) =>
+		string.Join(", ", sensors.All().Select(view => view.Name));
+
 	private static AiCapability Query(string name, string description,
 		Func<IReadOnlyDictionary<string, string>, CommandOrigin, CancellationToken, Task<string>> execute, params AiToolParameter[] parameters) =>
 		new(name, description, CapabilityKind.Query, parameters, execute);
@@ -365,10 +410,10 @@ public sealed class CapabilityRegistry
 
 	private static string HouseState(DeviceService devices, SensorService sensors, AutomationService automation)
 	{
-		string deviceText = string.Join(", ", devices.All().Select(view => $"{view.Device} {view.State}"));
+		string deviceText = string.Join(", ", devices.All().Select(view => $"{view.Name} {view.State}"));
 		string sensorText = string.Join(", ", sensors.All()
 			.Where(view => view.Available)
-			.Select(view => $"{view.Sensor} {view.Value}{view.Unit}"));
+			.Select(view => $"{view.Name} {view.Value}{view.Unit}"));
 
 		return $"Devices: {deviceText}\nSensors: {(sensorText.Length == 0 ? "the station is offline" : sensorText)}\n{AutomationText(automation.View())}";
 	}
@@ -381,12 +426,12 @@ public sealed class CapabilityRegistry
 			$"Time context: {view.TimeContext}",
 			$"Sleep mode: {(view.SleepMode ? "active" : "inactive")}{(view.SleepModeUntil is { } until ? $" until {until:HH:mm}" : "")}",
 			$"Motion: {(view.MotionActive ? "detected" : "none")}{(view.LastMotionAt is { } last ? $", last at {last:HH:mm:ss}" : "")}",
-			$"Station: {(view.StationOnline ? "online" : "offline")}"
+			$"Sources: {(view.SourcesOnline ? "all online" : "one or more offline")}"
 		};
 
 		if (view.SleepHold) lines.Add($"Sleep hold until {view.SleepHoldUntil:HH:mm}");
 		if (view.SleepEntryAt is { } entry) lines.Add($"Sleep will start at {entry:HH:mm}");
-		if (view.AirQualityWarning) lines.Add("Air quality warning is active");
+		if (view.WarningActive) lines.Add("A warning is firing");
 
 		return string.Join("\n", lines);
 	}
@@ -397,7 +442,7 @@ public sealed class CapabilityRegistry
 
 		IEnumerable<DeviceView> overrides = diagnostics.Devices.Where(view => view.OverrideUntil != null);
 		lines.Add(overrides.Any()
-			? "Active overrides: " + string.Join(", ", overrides.Select(view => $"{view.Device} until {view.OverrideUntil:HH:mm}"))
+			? "Active overrides: " + string.Join(", ", overrides.Select(view => $"{view.Name} until {view.OverrideUntil:HH:mm}"))
 			: "No manual overrides are active");
 
 		lines.Add("Recent decisions:");

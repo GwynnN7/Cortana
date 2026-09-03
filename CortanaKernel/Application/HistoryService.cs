@@ -1,8 +1,8 @@
+using CortanaKernel.Domain.Settings;
 using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.History;
-using CortanaKernel.Domain.Metrics;
-using CortanaKernel.Domain.Sensors;
+using CortanaKernel.Domain.Fabric;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
@@ -11,12 +11,13 @@ namespace CortanaKernel.Application;
 
 public sealed class HistoryService(
 	IHistoryRepository repository,
-	SensorRegistry sensors,
+	IRhythmRepository rhythm,
+	Fabric sensors,
 	DeviceService devices,
-	MetricsRegistry metrics,
 	ActivityRegistry activity,
 	MemoryStore memories,
-	AiSettingsStore aiSettings) : BackgroundService
+	AiSettingsStore aiSettings,
+	SettingsStore flags) : BackgroundService
 {
 	private const int MaxSamples = 240;
 
@@ -41,11 +42,11 @@ public sealed class HistoryService(
 		IReadOnlyList<HistoryPoint> points = repository.Read(wanted, from, to);
 
 		if (points.Count == 0)
-			return Result.Ok(new HistorySeries(wanted, Units.ForMetric(wanted), 0, 0, 0, 0, from, to, []));
+			return Result.Ok(new HistorySeries(wanted, Unit(wanted), 0, 0, 0, 0, from, to, []));
 
 		return Result.Ok(new HistorySeries(
 			wanted,
-			Units.ForMetric(wanted),
+			Unit(wanted),
 			points.Count,
 			Math.Round(points.Min(point => point.Value), 1),
 			Math.Round(points.Max(point => point.Value), 1),
@@ -67,7 +68,7 @@ public sealed class HistoryService(
 			: [];
 
 		return Result.Ok(HistoryAnalysis.Run(
-			request.Function, metric, points, comparison, request.At, request.State, request.WindowMinutes));
+			request.Function, metric, Unit(metric), points, comparison, request.At, request.State, request.WindowMinutes));
 	}
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -87,11 +88,14 @@ public sealed class HistoryService(
 				return;
 			}
 
+			if (!flags.Flag(SettingKey.HistoryEnabled)) continue;
+
 			try
 			{
 				repository.Append(Sample());
 				if (DateTimeOffset.Now.Hour == 0 && DateTimeOffset.Now.Minute < every.TotalMinutes)
 				{
+					Summarise(DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime).AddDays(-1));
 					repository.Prune(aiSettings.Integer(AiSettingKey.HistoryRetentionDays));
 
 					int forgotten = memories.Prune();
@@ -105,6 +109,167 @@ public sealed class HistoryService(
 		}
 	}
 
+	/// Everything worth saying about a stretch of the day, in plain lines an LLM can read
+	public IReadOnlyList<string> Digest(DateTimeOffset from, DateTimeOffset to)
+	{
+		double every = Math.Clamp(aiSettings.Integer(AiSettingKey.HistorySampleMinutes), 1, 60);
+		var lines = new List<string>();
+
+		foreach (VirtualSensor sensor in sensors.Registered)
+		{
+			IReadOnlyList<HistoryPoint> points = repository.Read(sensor.Id, from, to);
+			if (points.Count < 2) continue;
+
+			if (sensor.Kind == ReadingKind.Boolean)
+			{
+				double minutes = points.Count(point => point.Value >= 0.5) * every;
+				if (minutes > 0) lines.Add($"{sensor.Name.ToLowerInvariant()} for {Spell(minutes)}");
+				continue;
+			}
+
+			string unit = sensor.Unit;
+			lines.Add($"{sensor.Name.ToLowerInvariant()} from {Units.Number(points.Min(point => point.Value))}{unit} " +
+				$"to {Units.Number(points.Max(point => point.Value))}{unit}, " +
+				$"averaging {Units.Number(points.Average(point => point.Value))}{unit}");
+		}
+
+		foreach (VirtualDevice device in sensors.RegisteredDevices)
+		{
+			IReadOnlyList<HistoryPoint> points = repository.Read(device.Id, from, to);
+			double minutes = points.Count(point => point.Value >= 0.5) * every;
+
+			if (minutes > 0) lines.Add($"{device.Name.ToLowerInvariant()} on for {Spell(minutes)}");
+		}
+
+		foreach (ActivityCategory category in Enum.GetValues<ActivityCategory>())
+		{
+			double minutes = repository.Read("activity", from, to)
+				.Count(point => Math.Abs(point.Value - (int)category) < 0.5) * every;
+
+			if (minutes > 0) lines.Add($"{category.ToString().ToLowerInvariant()} for {Spell(minutes)}");
+		}
+
+		double music = repository.Read("music", from, to).Count(point => point.Value >= 0.5) * every;
+		if (music > 0) lines.Add($"music playing for {Spell(music)}");
+
+		return lines;
+	}
+
+	/// The day reduced to numbers and kept, because a rhythm needs a series and prose is not one
+	public DaySummary Summarise(DateOnly day)
+	{
+		var from = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), DateTimeOffset.Now.Offset);
+		DateTimeOffset to = from.AddDays(1);
+		double every = Math.Clamp(aiSettings.Integer(AiSettingKey.HistorySampleMinutes), 1, 60);
+
+		IReadOnlyList<HistoryPoint> presence = repository.Read(SensorIds.Presence, from, to);
+		IReadOnlyList<HistoryPoint> computer = repository.Read(DeviceIds.Computer, from, to);
+		IReadOnlyList<HistoryPoint> sleep = repository.Read(SensorIds.Sleep, from, to);
+		IReadOnlyList<HistoryPoint> music = repository.Read("music", from, to);
+
+		var byActivity = new Dictionary<string, double>();
+		foreach (ActivityCategory category in Enum.GetValues<ActivityCategory>())
+		{
+			double minutes = repository.Read("activity", from, to)
+				.Count(point => Math.Abs(point.Value - (int)category) < 0.5) * every;
+
+			if (minutes > 0) byActivity[category.ToString()] = Math.Round(minutes, 1);
+		}
+
+		var byDevice = new Dictionary<string, double>();
+		foreach (VirtualDevice device in sensors.RegisteredDevices)
+		{
+			double minutes = DayRhythm.Minutes(repository.Read(device.Id, from, to), every);
+			if (minutes > 0) byDevice[device.Id] = minutes;
+		}
+
+		var averages = new Dictionary<string, double>();
+		foreach (VirtualSensor sensor in sensors.Registered.Where(entry => entry.Kind == ReadingKind.Number))
+		{
+			IReadOnlyList<HistoryPoint> points = repository.Read(sensor.Id, from, to);
+			if (points.Count > 1) averages[sensor.Id] = Math.Round(points.Average(point => point.Value), 1);
+		}
+
+		var summary = new DaySummary(day, day.DayOfWeek,
+			DayRhythm.Rose(presence), DayRhythm.Fell(presence),
+			DayRhythm.Rose(computer), DayRhythm.Fell(computer),
+			DayRhythm.Rose(sleep),
+			DayRhythm.Minutes(presence, every),
+			DayRhythm.Minutes(computer, every),
+			DayRhythm.Minutes(music, every),
+			byActivity, byDevice, averages);
+
+		rhythm.Save(summary);
+		return summary;
+	}
+
+	public IReadOnlyList<DaySummary> Days(int days = 30) => rhythm.Load(days);
+
+	/// Days already on disk were never summarised, so a fresh rhythm can be given its head start
+	public int Backfill(int days)
+	{
+		DateOnly today = DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime);
+		var written = 0;
+
+		for (var back = 1; back <= Math.Clamp(days, 1, 400); back++)
+		{
+			DateOnly day = today.AddDays(-back);
+			var from = new DateTimeOffset(day.ToDateTime(TimeOnly.MinValue), DateTimeOffset.Now.Offset);
+
+			if (repository.Read(SensorIds.Presence, from, from.AddDays(1)).Count < 2
+				&& repository.Read(DeviceIds.Computer, from, from.AddDays(1)).Count < 2) continue;
+
+			Summarise(day);
+			written++;
+		}
+
+		return written;
+	}
+
+	/// How today compares with the usual for this weekday, which is what makes a remark worth making
+	public RhythmView Rhythm(string metric, int weeks = 8)
+	{
+		IReadOnlyList<DaySummary> all = rhythm.Load(weeks * 7);
+		DateOnly today = DateOnly.FromDateTime(DateTimeOffset.Now.LocalDateTime);
+
+		Func<DaySummary, int?> pick = metric.ToLowerInvariant() switch
+		{
+			"up" or "firstpresence" => day => day.FirstPresence,
+			"bed" or "lastpresence" => day => day.LastPresence,
+			"computeron" => day => day.ComputerOn,
+			"computeroff" => day => day.ComputerOff,
+			_ => day => day.SleepAt
+		};
+
+		DaySummary[] sameWeekday = [.. all.Where(day => day.Weekday == today.DayOfWeek && day.Day != today)];
+		int? usual = DayRhythm.Usual(sameWeekday.Select(pick));
+		int? now = all.FirstOrDefault(day => day.Day == today) is { } current ? pick(current) : null;
+
+		string summary = usual is null
+			? $"There is no usual {metric} for a {today.DayOfWeek} yet, only {sameWeekday.Length} of them recorded"
+			: now is null
+				? $"Usually {DayRhythm.Spell(usual)} on a {today.DayOfWeek}, from {sameWeekday.Length} of them. Nothing today yet"
+				: Compare(metric, usual.Value, now.Value, today.DayOfWeek, sameWeekday.Length);
+
+		return new RhythmView(metric, usual, now, sameWeekday.Length, summary);
+	}
+
+	private static string Compare(string metric, int usual, int now, DayOfWeek weekday, int days)
+	{
+		int drift = now - usual;
+		string usually = $"usually {DayRhythm.Spell(usual)} on a {weekday}, from {days} of them";
+
+		return Math.Abs(drift) switch
+		{
+			< 20 => $"{metric} at {DayRhythm.Spell(now)}, about normal — {usually}",
+			< 60 => $"{metric} at {DayRhythm.Spell(now)}, {Math.Abs(drift)} minutes {(drift > 0 ? "later" : "earlier")} than usual — {usually}",
+			_ => $"{metric} at {DayRhythm.Spell(now)}, {Math.Abs(drift) / 60.0:0.#} hours {(drift > 0 ? "later" : "earlier")} than usual — {usually}"
+		};
+	}
+
+	private static string Spell(double minutes) =>
+		minutes >= 90 ? $"{minutes / 60:0.#} hours" : $"{minutes:0} minutes";
+
 	public Result<BaselineResult> CompareToUsual(string metric, int days = 21, DateTimeOffset? at = null)
 	{
 		string wanted = metric.Trim().ToLowerInvariant();
@@ -117,7 +282,7 @@ public sealed class HistoryService(
 		IReadOnlyList<HistoryPoint> points = repository.Read(wanted, moment.AddDays(-window), moment);
 		double? current = points.Count > 0 ? points[^1].Value : null;
 
-		return Result.Ok(HistoryBaseline.Build(wanted, points, current, moment.Hour));
+		return Result.Ok(HistoryBaseline.Build(wanted, Unit(wanted), points, current, moment.Hour));
 	}
 
 	public Result<CorrelationResult> Correlate(string metric, string against, int hours = 24)
@@ -139,7 +304,7 @@ public sealed class HistoryService(
 		DateTimeOffset now = DateTimeOffset.Now;
 		DateTimeOffset from = now.AddHours(-Math.Clamp(hours, 1, 720));
 
-		return Result.Ok(HistoryCorrelation.Split(wanted, "activity", (int)category,
+		return Result.Ok(HistoryCorrelation.Split(wanted, Unit(wanted), "activity", (int)category,
 			repository.Read(wanted, from, now), repository.Read("activity", from, now),
 			category.ToString().ToLowerInvariant()));
 	}
@@ -164,8 +329,11 @@ public sealed class HistoryService(
 			since = activity[i].At;
 		}
 
-		return Result.Ok(HistoryCorrelation.Session(wanted, category, since, repository.Read(wanted, from, now)));
+		return Result.Ok(HistoryCorrelation.Session(wanted, Unit(wanted), category, since, repository.Read(wanted, from, now)));
 	}
+
+	/// A metric is a sensor, a device or one of the desktop facts, and only sensors carry a unit
+	private string Unit(string metric) => sensors.Sensor(metric)?.Unit ?? "";
 
 	private string? Resolve(string metric)
 	{
@@ -178,31 +346,16 @@ public sealed class HistoryService(
 
 	private HistorySample Sample()
 	{
-		SensorReading? reading = sensors.Last;
-		MetricsView pi = metrics.Raspberry(DateTimeOffset.Now);
-		MetricsView? pc = metrics.Computer(DateTimeOffset.Now) is { Stale: false } fresh ? fresh : null;
+		var values = new Dictionary<string, double?>(StringComparer.OrdinalIgnoreCase);
 
-		var values = new Dictionary<string, double?>
-		{
-			["temperature"] = reading?.Temperature,
-			["humidity"] = reading?.Humidity,
-			["light"] = reading?.Light,
-			["co2"] = reading?.Co2,
-			["tvoc"] = reading?.Tvoc,
-			["motion"] = reading == null ? null : reading.Motion ? 1 : 0,
-			["lamp"] = devices.State(DeviceId.Lamp) == PowerState.On ? 1 : 0,
-			["computer"] = devices.State(DeviceId.Computer) == PowerState.On ? 1 : 0,
-			["pi_cpu"] = pi.CpuLoad,
-			["pi_temp"] = pi.CpuTemp,
-			["pi_ram"] = Percent(pi.MemoryUsed, pi.MemoryTotal),
-			["pc_cpu"] = pc?.CpuLoad,
-			["pc_temp"] = pc?.CpuTemp,
-			["pc_ram"] = pc == null ? null : Percent(pc.MemoryUsed, pc.MemoryTotal),
-			["pc_gpu"] = pc?.GpuLoad,
-			["pc_gpu_temp"] = pc?.GpuTemp,
-			["activity"] = activity.Current is { } doing ? (int)doing.Category : null,
-			["music"] = activity.Current?.Playing is { } playing ? playing.Paused ? 0 : 1 : null
-		};
+		foreach (VirtualSensor sensor in sensors.Registered)
+			values[sensor.Id] = sensors.Read(sensor.Id)?.Value;
+
+		foreach (VirtualDevice device in sensors.RegisteredDevices)
+			values[device.Id] = devices.State(device.Id) == PowerState.On ? 1 : 0;
+
+		values["activity"] = activity.Current is { } doing ? (int)doing.Category : null;
+		values["music"] = activity.Current?.Playing is { } playing ? playing.Paused ? 0 : 1 : null;
 
 		return new HistorySample(DateTimeOffset.Now, values);
 	}

@@ -7,18 +7,11 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace CortanaTelegram.Menus;
 
-/// Devices, the room, and sleep mode
+/// Devices, sleep mode and automation
 public sealed class DeviceMenu : Menu
 {
-	private static readonly Dictionary<DeviceId, string> Emoji = new()
-	{
-		[DeviceId.Lamp] = "💡",
-		[DeviceId.Computer] = "💻",
-		[DeviceId.Power] = "⚡️",
-		[DeviceId.Generic] = "🔌"
-	};
-
-	private DeviceId? _selected;
+	private string? _selected;
+	private IReadOnlyList<DeviceView> _devices = [];
 	private bool _withTimer;
 
 	public override string Tag => "device";
@@ -30,8 +23,10 @@ public sealed class DeviceMenu : Menu
 		Result<CortanaSnapshot> snapshot = await TelegramSession.Cortana.Snapshot();
 		if (!snapshot.IsOk) return "\n🏠 <b>Devices</b>\n================\nCortana is offline\n";
 
-		string rows = string.Join("\n", snapshot.Value.Devices.Select(view =>
-			$"{(view.State == PowerState.On ? "🟢" : "🔴")} • <b>{view.Device}</b> {Emoji[view.Device]}"));
+		_devices = snapshot.Value.Devices;
+
+		string rows = string.Join("\n", _devices.Select(view =>
+			$"{view.Icon} • <b>{view.Name}</b> {(view.State == PowerState.On ? "🟢" : "🔴")}"));
 
 		AutomationView automation = snapshot.Value.Automation;
 
@@ -41,6 +36,7 @@ public sealed class DeviceMenu : Menu
 			{
 				AutomationStatus.Off => "✋ Manual",
 				AutomationStatus.Holding => $"✋ Holding until {automation.HoldingUntil:HH:mm}",
+				AutomationStatus.Idle => "🕸 Nothing bound",
 				_ => "🤖 Automatic"
 			};
 
@@ -64,13 +60,10 @@ public sealed class DeviceMenu : Menu
 				.AddButton("<<", $"{Tag}-cancel");
 		}
 
-		foreach (DeviceId entry in Enum.GetValues<DeviceId>())
-			keyboard.AddButton($"{entry} {Emoji[entry]}", $"{Tag}-pick-{entry}").AddNewRow();
+		foreach (DeviceView entry in _devices)
+			keyboard.AddButton(entry.Name, $"{Tag}-pick-{entry.Device}").AddNewRow();
 
 		return keyboard
-			.AddButton("Room on 🏠", $"{Tag}-roomon")
-			.AddButton("Room off 🌑", $"{Tag}-roomoff")
-			.AddNewRow()
 			.AddButton("Sleep 🛌", $"{Tag}-sleep")
 			.AddButton("Automation 🤖", $"{Tag}-automation")
 			.AddNewRow()
@@ -103,14 +96,6 @@ public sealed class DeviceMenu : Menu
 				await Report(query, await TelegramSession.Text(TelegramSession.Cortana.SetAutomation(SwitchAction.Toggle)));
 				return;
 
-			case "device-roomon":
-				await Report(query, await TelegramSession.Text(TelegramSession.Cortana.SwitchRoom(SwitchAction.On)));
-				return;
-
-			case "device-roomoff":
-				await Report(query, await TelegramSession.Text(TelegramSession.Cortana.SwitchRoom(SwitchAction.Off)));
-				return;
-
 			case "device-on":
 			case "device-off":
 			case "device-toggle":
@@ -118,7 +103,7 @@ public sealed class DeviceMenu : Menu
 				return;
 
 			case var _ when command.StartsWith("device-pick-"):
-				_selected = Enum.Parse<DeviceId>(command["device-pick-".Length..], true);
+				_selected = command["device-pick-".Length..];
 				_withTimer = false;
 				await TelegramSession.Bot.EditMessageReplyMarkup(query.Message!.Chat.Id, query.Message.MessageId, Keyboard());
 				return;

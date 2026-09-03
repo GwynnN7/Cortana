@@ -1,224 +1,241 @@
-# Cortana — file map
+# Cortana — the map
 
-What every file in the repository is for, in a line each. Directory order follows the layering:
-shared contracts, then the Kernel from the outside in, then the clients.
+What every file is for, grouped the way the code is. Each section opens with **"change this when…"**
+so you can find the right file without reading the whole tree
 
----
-
-## CortanaLib — shared by every process
-
-Contracts, the API client, and small runtime helpers. Holds no business rules.
-
-| File | Purpose |
-| :--- | :--- |
-| `Primitives/Enums.cs` | Every enum crossing a boundary: devices, sensors, settings, services, command origin, automation status |
-| `Primitives/Result.cs` | `Result<T>`: a value or a human-readable error, used at every layer boundary |
-| `Contracts/Snapshot.cs` | `CortanaSnapshot` and its views — the read model clients render |
-| `Contracts/Requests.cs` | Request bodies for switching, settings, commands and notifications |
-| `Contracts/Responses.cs` | Generic message and problem envelopes |
-| `Contracts/Schedules.cs` | Schedule model, triggers, events, actions and their request/response shapes |
-| `Contracts/Ai.cs` | Ask request/response, model list, AI setting keys |
-| `Contracts/History.cs` | History points, series, and the deterministic analysis request/result |
-| `Contracts/Metrics.cs` | `MachineSample`, pushed by the desktop and produced locally for the Pi |
-| `Contracts/Notifications.cs` | Notification entry (with its `Reason`) and the channel envelope used by the event stream |
-| `Contracts/Activity.cs` | The desktop's focus category and, separately, what is playing |
-| `Contracts/Push.cs` | Browser push subscription and its per-device preferences |
-| `Client/CortanaClient.cs` | The only way a client talks to the Kernel: typed HTTP plus both SSE streams |
-| `Runtime/CortanaEnvironment.cs` | Config folders, the `.env` loader, and the two JSON conventions |
-| `Runtime/JsonStore.cs` | Atomic read/write of JSON files; every repository is built on it |
-| `Runtime/Log.cs` | Console logging (user-facing messages go through notifications instead) |
-| `Runtime/Shell.cs` | Shell execution with a timeout and bounded, merged output |
-| `Runtime/MachineMetrics.cs` | CPU/RAM/GPU/disk/uptime read from `/proc` and `/sys`, plus their rendering |
-| `Runtime/Units.cs` | One place deciding how a reading is spelled, so clients agree |
-| `Runtime/ProcessSignals.cs` | SIGTERM/SIGINT wait for the non-web processes |
-| `Media/MediaLibrary.cs` | QR codes, and YouTube through the system `yt-dlp` only |
-| `Storage/prompt.txt` | The system prompt Cortana ships with |
+`DEV.md` explains how the pieces find each other; this is the index
 
 ---
 
-## CortanaKernel — the brain
+# CortanaLib
 
-### `Domain/` — the rules
+The shared vocabulary. Every project references it; it references nothing. **If a type crosses a
+process boundary it belongs here**
 
-Pure C#. No ASP.NET, no GPIO, no sockets, no provider SDK.
+## `Contracts/` — the shapes that cross the wire
 
-| File | Purpose |
+*Change these when a client needs to see something new. Adding a field here means every client and
+the API see it; nothing else needs touching*
+
+| File | What it carries |
 | :--- | :--- |
-| `Common/CommandOrigin.cs` | Who asked and through which surface; sleep-wake rules depend on it |
-| `Common/DomainEvents.cs` | Every typed fact: device, sensor, sleep, automation, schedule, hold |
-| `Common/EventBus.cs` | In-process typed publish/subscribe; no string hooks, no central switch |
-| `Automation/AutomationRules.cs` | The pure decisions: day/night, motion freshness, the lamp, air-quality hysteresis |
-| `Automation/AutomationEngine.cs` | Owns automation authority, sleep mode, device holds and the sleep hold; ticks once a second |
-| `Automation/MoodRules.cs` | The pure decision behind Cortana's mood word, and the sentence explaining it |
-| `Devices/DeviceRegistry.cs` | Cortana's *belief* about each device, plus the hardware and computer interfaces |
-| `Sensors/SensorRegistry.cs` | Last observation, freshness, motion timestamp and the air-quality flag |
-| `Settings/SettingsStore.cs` | Domain-owned settings: definitions, validation, persistence, change notification |
-| `Scheduling/ScheduleRepository.cs` | The schedule store interface and `ScheduleTiming` — next run, and whether an event should fire |
+| `Snapshot.cs` | `CortanaSnapshot`, the single object every client renders, plus `DeviceView`, `SensorView`, `AutomationView`, `MetricsView` |
+| `Fabric.cs` | The hardware vocabulary: `SourceDescriptor`, `DeviceDescriptor`, `SensorDescriptor`, `Trigger`, `Bind` |
+| `Activity.cs` | The desktop's focus category and, separately, what is playing |
+| `Memory.cs` | What Cortana remembers, and its two horizons |
+| `Ai.cs` | Ask/reply shapes, AI settings, `VolitionState` |
+| `History.cs` | Series, analysis results, baselines, correlations, session insights |
+| `Metrics.cs` | `MachineSample`, what a machine reports about itself |
+| `Notifications.cs` | A notification and its `Reason`, plus the channel envelope |
+| `Schedules.cs` | Schedule definitions, triggers and actions |
+| `Push.cs` | Browser push subscriptions and their per-device preferences |
+| `Requests.cs`, `Responses.cs` | Request bodies and list wrappers used by the API |
+
+## `Primitives/` — vocabulary with no behaviour
+
+*Change `Ids.cs` when you want a new well-known device or sensor name. Note that you do not have to:
+ids are strings, and a source can announce anything*
+
+| File | What it carries |
+| :--- | :--- |
+| `Ids.cs` | Well-known device, sensor and source ids. Conventions, not a closed set |
+| `Enums.cs` | Every enum crossing a boundary: power state, mood, automation status, notification source and level, command origin |
+| `Result.cs` | `Result<T>`, the success-or-message type returned by anything that can fail |
+
+## `Client/` and `Runtime/`
+
+*Change `CortanaClient.cs` when you add an API route a client needs. Everything in `Runtime/` is
+plumbing shared by all processes*
+
+| File | What it does |
+| :--- | :--- |
+| `Client/CortanaClient.cs` | The typed HTTP client every client process uses. One method per route |
+| `Runtime/CortanaEnvironment.cs` | The `.env` file, the config and storage folders, and the JSON options |
+| `Runtime/JsonStore.cs` | Read and write JSON through a temp file, so a crash cannot truncate a config |
+| `Runtime/MachineMetrics.cs` | What a Linux box can say about itself: CPU, memory, disk, GPU load, GPU power |
+| `Runtime/Units.cs` | Units and number formatting, in one place so every surface agrees |
+| `Runtime/Log.cs`, `Shell.cs`, `ProcessSignals.cs` | Logging, shelling out, and signal handling |
+| `Media/MediaLibrary.cs` | The shipped assets: icon, prompt, sounds |
+
+---
+
+# CortanaKernel
+
+The only process that owns state. Laid out `Api → Application → Domain ← Infrastructure`
+
+## `Domain/` — rules and in-memory state, no I/O
+
+*This is where behaviour lives. If you are changing **what Cortana decides**, it is in here. Nothing
+in this folder knows about HTTP, sockets or files*
+
+### `Domain/Fabric/` — the hardware model
+
+*Change these to alter how devices and sensors are modelled, or how sensors drive devices*
+
+| File | What it does |
+| :--- | :--- |
+| `Fabric.cs` | Sources and their channels, the virtual devices and sensors registered on them, and the live state |
+| `BindRules.cs` | The pure decision: given a bind and the readings, should this device be on |
+| `BindStore.cs` | The bindings themselves, persisted and editable |
+| `WarningRules.cs` | What Cortana watches for, with fixed hysteresis, plus `WarningStore` and `WarningState`. Warnings take the same `Trigger` as binds |
+| `FabricDefaults.cs` | The shipped channels and the registrations seeded on first boot. **Edit this to change what exists out of the box** |
+| `PresenceState.cs` | The last-motion latch, which outlives one reading |
+| `Hardware.cs` | The seams Infrastructure implements: `IChannelWriter` per source, and the desktop link |
+
+### `Domain/Automation/`
+
+*Change these to alter when Cortana acts, or how she describes her own state*
+
+| File | What it does |
+| :--- | :--- |
+| `AutomationEngine.cs` | Owns automation authority, sleep mode, device holds and the sleep hold. Ticks once a second, then evaluates every bind |
+| `SleepEngine.cs` | The sleep state machine: entry delay, hold, the daytime nap, and what wakes it |
+| `AutomationRules.cs` | The pure decisions that are not per-device: day/night and presence |
+| `DayNightClock.cs` | Produces the time context, so nothing else has to know the hours |
+| `MoodRules.cs` | The mood word and the sentence behind it |
+
+### `Domain/Ai/`, `Domain/Volition/`
+
+*Change these to alter what Cortana knows, or when she speaks first*
+
+| File | What it does |
+| :--- | :--- |
 | `Ai/AiProvider.cs` | Conversations and the provider-agnostic request/tool/response shapes |
-| `Ai/Capability.cs` | What an AI capability is, and its four kinds (query, analysis, action, management) |
-| `Ai/AiSettingsStore.cs` | Model choice, memory depth, history cadence, push overlay duration |
+| `Ai/Capability.cs` | What a capability is, and its four kinds. **`IsReadOnly` here decides what guests can reach** |
+| `Ai/MemoryStore.cs` | Permanent facts and expiring state, with weighted recall |
+| `Ai/AiSettingsStore.cs` | Model choice, memory depth, history cadence, wrap-up hour and chance |
+| `Volition/VolitionRules.cs` | Whether she may speak unprompted, and the quiet period that stops her |
+
+### `Domain/History/`, and the rest
+
+| File | What it does |
+| :--- | :--- |
 | `History/HistoryRepository.cs` | The recorded-sample store interface |
-| `History/HistoryAnalysis.cs` | The deterministic reductions the AI uses instead of doing arithmetic |
-| `History/HistoryBaseline.cs` | What is normal for this metric at this hour, as a median and a robust spread |
-| `Metrics/MetricsRegistry.cs` | Latest desktop and Raspberry samples, with staleness |
-| `Notifications/NotificationLog.cs` | Bounded activity history and the delivery-sink interface |
-| `Activity/ActivityRegistry.cs` | The desktop's current activity, plus the do-not-disturb and at-the-desk rules |
+| `History/HistoryAnalysis.cs` | Deterministic reductions the AI uses instead of doing arithmetic |
+| `History/HistoryBaseline.cs` | What is normal for a metric at this hour, as a median and a robust spread |
+| `History/HistoryCorrelation.cs` | Room against desk: correlation, per-activity split, current-session drift |
+| `History/DayRhythm.cs` | One day reduced to the numbers a rhythm is made of, and the median that makes "usual" |
+| `Activity/ActivityRegistry.cs` | What the desktop is doing, and the do-not-disturb rule |
+
+| `Notifications/NotificationLog.cs` | Bounded history of everything she has said, and the sink interface |
+| `Settings/SettingsStore.cs` | Runtime settings with bounds and validation. **Add a `SettingKey` here to expose a new tunable** |
+| `Scheduling/ScheduleRepository.cs` | Schedule persistence interface and the timing rules |
 | `Services/ServiceSupervisor.cs` | Process supervision and host-machine interfaces |
+| `Common/EventBus.cs` | The typed in-process publish/subscribe |
+| `Common/DomainEvents.cs` | Every event that can be published. **Add one here to let anything react to a new fact** |
+| `Common/CommandOrigin.cs` | Who asked, from where, and whether the AI relayed it |
 
-### `Application/` — commands, queries, orchestration
+## `Application/` — orchestration
 
-| File | Purpose |
+*Change these when a command needs to do several things, or when a client needs a new operation. This
+is the layer that turns one request into domain calls plus an event*
+
+| File | What it does |
 | :--- | :--- |
-| `DeviceService.cs` | The one place device commands run: room semantics, wake-on-LAN, the PC shutdown sequence |
-| `AutomationService.cs` | Wires the engine to the bus and drives its tick; also the world/effects adapters |
-| `SensorService.cs` | Turns station observations into facts; applies the temperature offset; air-quality policy |
-| `SettingsService.cs` | Setting writes as domain facts |
-| `ScheduleService.cs` | Persistent schedules: validation, the due loop, event hooks, dispatch to real commands |
+| `SnapshotService.cs` | Builds the read model every client renders, and the mood |
+| `DeviceService.cs` | The one place device commands run: name resolution, wake-on-LAN, the PC shutdown sequence, and re-asserting outputs on boot |
+| `SensorService.cs` | Turns source observations into facts; applies each sensor's offset; evaluates warnings |
+| `AutomationService.cs` | Wires the engine to the bus and drives its tick; also the world and effects adapters |
+| `VolitionService.cs` | The one place she decides to speak first: the morning greeting, the daily wrap-up and quiet |
+| `AiService.cs` | The conversation loop, the system prompt, memory recall, and `Compose` for phrasing anything |
+| `CapabilityRegistry.cs` | Every capability the AI can reach. **Add a capability here to give her a new ability** |
 | `NotificationService.cs` | Channel policy and fan-out to the sinks |
-| `SnapshotService.cs` | Builds the read model and the automation diagnostics |
-| `StateBroadcaster.cs` | Turns every event into "there is a newer snapshot", and feeds the notification stream |
-| `MetricsService.cs` | Samples the Pi on a timer, accepts the desktop's pushes |
-| `HistoryService.cs` | Records the house on a cadence; answers series and analysis queries |
+| `HistoryService.cs` | Records the house on a cadence; answers series, analysis, baselines and correlations |
+| `ScheduleService.cs` | Persistent schedules: validation, the due loop, event hooks, dispatch |
+| `MetricsService.cs` | Samples the Pi on a timer and turns any machine sample into readings plus facts |
 | `ServiceControlService.cs` | Start/stop/restart/update with a short status cache |
-| `ComputerPresenceService.cs` | Turns an agent connection into device state — this is what "PC is on" means; also takes activity updates |
-| `CapabilityRegistry.cs` | Every capability the AI can reach, each calling an ordinary application command |
-| `AiService.cs` | Conversation persistence, prompt handling, and the single door between model and Cortana |
+| `SettingsService.cs` | Setting writes as domain facts |
+| `ComputerPresenceService.cs` | Turns an agent connection into device state and source liveness |
+| `PluginService.cs` | Every feature she runs, the switch behind each one, and whether it has one |
+| `StateBroadcaster.cs` | Turns every event into "there is a newer snapshot", and feeds the notification stream |
 
-### `Infrastructure/` — the outside world
+## `Api/` — transport only
 
-| File | Purpose |
+*Change these to expose something over HTTP. No decisions belong here*
+
+| File | What it serves |
 | :--- | :--- |
-| `Gpio/GpioDeviceController.cs` | The relays, the pin map, the location difference, and the pulse-relay option |
-| `Network/ConnectionServer.cs` | One TCP port for both machines, with the handshake and the shared socket plumbing |
-| `Network/DesktopComputerEndpoint.cs` | The desktop as a capability: JSON-line protocol, correlated replies, shutdown wait |
-| `Network/Esp32SensorSource.cs` | The station's brace-counted JSON frames turned into readings |
-| `Persistence/JsonRepositories.cs` | Settings, AI settings, schedules and conversations on disk |
-| `Persistence/CsvHistoryRepository.cs` | One CSV per day, pruned by retention |
-| `Ai/GeminiProvider.cs` | The only file that knows about Gemini: its shapes, tool dialect and errors |
-| `Ai/ModelCatalogue.cs` | Model ids per family, refreshed daily, parked when rate limited |
-| `Push/PushService.cs` | The persistent browser status notification, its event overlay and the subscriptions |
-| `Process/SystemdSupervisor.cs` | systemd user units |
-| `Raspberry/RaspberryHost.cs` | The Pi itself: temperature, gateway, public IP, power, shell, wake-on-LAN |
-| `Raspberry/NetworkProfile.cs` | Location profiles, chosen by matching the live gateway |
+| `ApiResults.cs` | Content negotiation: plain text or JSON from one `Result<T>` |
+| `ApiAccess.cs` | The three access levels and the API-key check |
+| `Endpoints/HomeEndpoints.cs` | Identity, health, the snapshot, and the two SSE streams |
+| `Endpoints/FabricEndpoints.cs` | Sources, channels, registrations, binds, warnings and the dashboard layout |
+| `Endpoints/PluginEndpoints.cs` | The feature list and its switches |
+| `Endpoints/NoteEndpoints.cs` | Notes: read, write, settle, drop |
+| `Endpoints/DeviceEndpoints.cs`, `SensorEndpoints.cs` | Reading and switching |
+| `Endpoints/AutomationEndpoints.cs` | Automation, sleep mode, holds, diagnostics |
+| `Endpoints/AiEndpoints.cs` | Ask, one conversation's turns, prompt, model, settings, memory, quiet |
+| `Endpoints/HistoryEndpoints.cs` | Series, analysis, baselines, correlation, session |
+| `Endpoints/ScheduleEndpoints.cs`, `SettingEndpoints.cs`, `ServiceEndpoints.cs` | Schedules, settings, services |
+| `Endpoints/MachineEndpoints.cs` | The desktop and the Raspberry |
+| `Endpoints/NotificationEndpoints.cs` | The log, sending, and push subscriptions |
 
-### `Api/` — the public boundary
+## `Infrastructure/` — the outside world
 
-| File | Purpose |
+*Change these to talk to different hardware, a different model, or a different storage format. Each
+one implements an interface declared in `Domain`*
+
+| File | What it does |
 | :--- | :--- |
-| `ApiAccess.cs` | Access levels, the API key gate, and the caller's declared surface |
-| `ApiResults.cs` | Dual rendering: plain text for terminals and bots, JSON for the dashboard |
-| `Endpoints/HomeEndpoints.cs` | Identity, health, the snapshot, and both SSE streams |
-| `Endpoints/DeviceEndpoints.cs` | Device and room switching |
-| `Endpoints/AutomationEndpoints.cs` | Automation, sleep mode, and the diagnostics |
-| `Endpoints/SensorEndpoints.cs` | Readings, plus the station calibration note |
-| `Endpoints/SettingEndpoints.cs` | Reading and writing automation settings |
-| `Endpoints/MachineEndpoints.cs` | The desktop, the Raspberry, and both metric streams |
-| `Endpoints/ServiceEndpoints.cs` | Service state, control and journals |
-| `Endpoints/ScheduleEndpoints.cs` | Schedule CRUD and run/enable/disable |
-| `Endpoints/AiEndpoints.cs` | Ask, conversations, prompt, models and AI settings |
-| `Endpoints/HistoryEndpoints.cs` | Series (with time paging) and deterministic analysis |
-| `Endpoints/NotificationEndpoints.cs` | The activity log, sending, and push subscriptions |
-| `Program.cs` | The composition root: registration, the API key middleware, routes, fail-fast route check |
+| `Gpio/GpioDeviceController.cs` | The relays on the Pi's header. **Reads `Pins.json` for the pin map, and never closes a pin on shutdown: releasing a line stops it holding its relay** |
+| `Network/ConnectionServer.cs` | The TCP listener both the station and the agent connect to |
+| `Network/StationSource.cs` | Every announced station: frames in, readings out, one connection each |
+| `Network/StationChannelWriter.cs` | Outputs that live on a station, switched down its own socket |
+| `Network/DesktopComputerEndpoint.cs` | The agent link: commands out, replies and activity in |
+| `Ai/GeminiProvider.cs` | The only Gemini-aware file in the codebase |
+| `Ai/ModelCatalogue.cs` | Which models exist and which is selected |
+| `Push/PushService.cs` | Web push: the persistent status line and her own messages |
+| `Persistence/JsonRepositories.cs` | Every JSON-backed repository, in one file |
+| `Persistence/CsvHistoryRepository.cs` | One CSV per day, columns discovered from the sample and widened as registrations appear |
+| `Process/SystemdSupervisor.cs` | Starting, stopping and reading the journal |
+| `Raspberry/RaspberryHost.cs`, `NetworkProfile.cs` | The host machine and its network identity |
 
-### `Scripts/`
-
-| File | Purpose |
-| :--- | :--- |
-| `cortana` | Control script on the Pi: start/stop/status/log/install/update, and ESP32 flashing |
-| `migrate-config` | Converts a legacy `~/.config/cortana` tree to the current layout, idempotently |
-| `cortana-*.service` | The four systemd user units; the Kernel pulls the others up |
-| `nginx` | Dashboard on `/`, API on `/api/`, with the WebSocket upgrade Blazor needs |
+`Program.cs` is the composition root: **every registration lives there, and a new service must be
+registered there or the Kernel will crash at startup rather than fail to compile**
 
 ---
 
-## CortanaWeb — the dashboard
+# CortanaWeb
 
-| File | Purpose |
+Blazor Server dashboard. *Change `Pages/` for a screen, `Shared/` for a piece reused across screens*
+
+| File | What it is |
 | :--- | :--- |
-| `Program.cs` | Host, cookie auth, and the QR/audio/video media endpoints |
-| `Services/CortanaState.cs` | Holds the newest snapshot, keeps the stream open, falls back to polling |
-| `Services/WebAuth.cs` | The optional dashboard passcode |
-| `Components/App.razor`, `Routes.razor`, `_Imports.razor` | Document shell, routing, shared usings |
-| `Components/Layout/*` | The frame, the nav, and the bare layout used by the login page |
-| `Components/Pages/Dashboard.razor` | Chat, sensors, automation, quick toggles, machine cards |
-| `Components/Pages/Devices.razor` | Device cards, room control, and the desktop command panel |
-| `Components/Pages/Sensors.razor` | Station, computer and Raspberry tabs with their plots |
-| `Components/Pages/Settings.razor` | Automation, sleep/override durations, AI, notification destinations |
-| `Components/Pages/Core.razor` | Raspberry info, service control, broadcast, shell, power |
-| `Components/Pages/Logs.razor` | Activity, service journals, and push notification preferences |
-| `Components/Pages/Utility.razor` | Schedules, QR codes, YouTube downloads |
-| `Components/Pages/Quick.razor` | The home-screen shortcut targets |
-| `Components/Pages/Login.razor` | Passcode entry |
-| `Components/Shared/HistoryChart.razor` | The SVG plot: real-time x-axis, gaps left as gaps |
-| `Components/Shared/HistoryPanel.razor` | Metric and window pickers, and paging back through time |
-| `Components/Shared/SchedulePanel.razor` | Schedule list and the creation form |
-| `Components/Shared/ChatPanel.razor` | The conversation, with its id kept in the browser |
-| `Components/Shared/AiSettingsPanel.razor` | Model, temperature, memory, and the system prompt |
-| `Components/Shared/DeviceCard.razor`, `ComputerCard.razor`, `StatTile.razor`, `Metric.razor` | The repeated display pieces |
+| `Services/CortanaState.cs` | The dashboard's view of the Kernel: the snapshot, the live stream, and every command |
+| `Components/Pages/Dashboard.razor` | Chat, the sensors and devices you picked, the modes, the machines |
+| `Components/Pages/Devices.razor`, `Sensors.razor`, `Core.razor` | Devices, sensor detail and history, the Pi. **Both render whatever the fabric offers, so a new device or sensor appears on its own** |
+| `Components/Pages/Hardware.razor` | Five tabs — sources, devices, sensors, binds, warnings — each creating and editing through the same modal |
+| `Components/Pages/Memory.razor`, `Notes.razor` | What she knows about you, and what you asked her to note. Both say so when the feature is switched off |
+| `Components/Pages/Logs.razor` | Activity, service journals, push preferences |
+| `Components/Pages/Docs.razor` | The API reference link and how the pieces fit. The feature switches live on `Core.razor` |
+| `Components/Pages/Settings.razor`, `Utility.razor`, `Quick.razor`, `Login.razor` | Settings, tools, one-tap actions, auth |
+| `Components/Shared/ActivityRibbon.razor` | The day as coloured segments by category |
+| `Components/Shared/SourceCard.razor`, `MachineFooter.razor`, `SensorGrid.razor` | Any source, drawn the same wherever it appears: its sensors as bars grouped by shared name, the facts it reports, activity and now playing |
+| `Components/Shared/HistoryChart.razor`, `HistoryPanel.razor` | The SVG plot and its pickers |
+| `Components/Shared/ChatPanel.razor`, `SchedulePanel.razor`, `AiSettingsPanel.razor` | Conversation, schedules, model settings |
+| `Components/Shared/DeviceCard.razor`, `StatTile.razor`, `Metric.razor`, `Icon.razor`, `Toast.razor`, `StatusPill.razor` | The repeated display pieces |
 | `Components/Shared/NumberSetting.razor`, `AiNumberSetting.razor` | Editable settings, integer or decimal |
-| `Components/Shared/Toast.razor`, `StatusPill.razor`, `Icon.razor`, `RedirectToLogin.razor` | Small shared UI |
-| `wwwroot/app.css` | The whole visual design, carried over unchanged |
-| `wwwroot/service-worker.js` | Shell caching, the offline page, and the push handler |
-| `wwwroot/notify.js` | Notification permission, push subscription, and the stored preferences |
-| `wwwroot/manifest.webmanifest` | Installable app metadata and the home-screen shortcuts |
+| `Components/Shared/Modal.razor`, `TriggerEditor.razor` | The one dialog every create and edit opens in, and the condition row inside it |
+| `Components/Shared/TabStrip.razor` | Every tabbed page's strip, swipeable on touch. Vertical scrolling always wins over a lazy diagonal drag |
+| `Components/Shared/ActingPage.cs`, `Models/TriggerDraft.cs` | The busy/message/run base every acting page shares, and what a typed form parses back into |
+| `Components/App.razor`, `Routes.razor`, `Layout/MainLayout.razor`, `NavMenu.razor`, `EmptyLayout.razor` | The shell: document, routing, navigation. **Add a page to `NavMenu.razor` and the Dashboard "More" grid, or it is unreachable on mobile** |
+| `Components/Shared/RedirectToLogin.razor` | Sends unauthenticated visitors to the login page |
+| `wwwroot/app.css` | All styling |
+| `wwwroot/service-worker.js` | Shell caching, push display, notification clicks |
+| `wwwroot/notify.js` | Local notifications and the push subscription API |
 
 ---
 
-## Clients and devices
+# The other clients
 
-### CortanaTelegram
-
-| File | Purpose |
+| File | What it is |
 | :--- | :--- |
-| `Program.cs` | Update routing, the home menu, and both Kernel streams |
-| `Runtime/TelegramConfig.cs` | The home group, its topics, and the known usernames |
-| `Runtime/TelegramSession.cs` | Bot handle, pending-input registry, duration parsing, acks and toasts |
-| `Menus/Menu.cs` | One updating message per topic, edited in place only within its own topic |
-| `Menus/LiveMenu.cs` | Keeps the visible menus in step with Kernel state |
-| `Menus/DeviceMenu.cs` | Devices, room, sleep, automation, and device timers |
-| `Menus/SensorMenu.cs` | Readings and the editable automation settings |
-| `Menus/SystemMenu.cs` | The desktop on one tab, the Raspberry on the other |
-| `Menus/CortanaMenu.cs` | Chat, AI settings, and the services |
-| `Menus/UtilityMenu.cs` | QR codes, reminders, schedules, downloads, and the relay chat |
-
-### CortanaDiscord
-
-| File | Purpose |
-| :--- | :--- |
-| `Program.cs` | Gateway wiring, mention-driven chat, presence, and the notification stream |
-| `Runtime/DiscordContext.cs` | Identities, per-guild settings, embeds, and the Kernel client |
-| `Runtime/CommandHandler.cs` | Slash-command registration and error reporting |
-| `Modules/HomeModule.cs` | The house: devices, sensors, automation, machines, schedules, services, AI |
-| `Modules/UtilityModule.cs` | QR codes, downloads, avatars, counting, and reminders |
-| `Modules/FunModules.cs` | Random picks and IGDB game lookups |
-| `Modules/ServerModule.cs` | Moderation and per-server settings |
-
-### CortanaDesktop
-
-| File | Purpose |
-| :--- | :--- |
-| `Program.cs` | Agent when run bare, CLI when given arguments |
-| `Agent.cs` | The resident socket, the JSON-line protocol, and the metrics push |
-| `Activity.cs` | Watches Hyprland and `playerctl`, maps class to a category, debounces, reports transitions only |
-| `Cli.cs` | `chat`, `ask`, `monitor`, `pc`, `status` |
-| `DesktopOs.cs` | Everything done to this machine, including misspelling-tolerant app matching |
-| `Scripts/cortana` | The desktop wrapper: agent dispatch, API, git, deploy, notifications |
-| `Scripts/cortana-desktop.service` | The agent's systemd user unit; builds to `~/.local/share/cortana/desktop` |
-
-### CortanaEmbedded
-
-| File | Purpose |
-| :--- | :--- |
-| `ESP32Station/ESP32Station.ino` | The sensor station: reads the sensors, streams JSON, reports motion immediately |
-| `ESP32Station/secrets.example.h` | Template for the network and Kernel address |
-
----
-
-## Documentation
-
-| File | Purpose |
-| :--- | :--- |
-| `README.md` | What Cortana is, and how to set her up and use her. Stays at the repository root so GitHub renders it |
-| `DEV.md` | Architecture, decisions, non-obvious behaviour, and remaining work |
-| `FILES.md` | This map |
-| `.editorconfig` | Tab indentation, and unused variables and parameters treated as warnings |
+| `CortanaTelegram/Menus/*.cs` | One menu per topic. `Menu.cs` is the base; `LiveMenu.cs` keeps a message in step with the house |
+| `CortanaTelegram/Runtime/TelegramSession.cs` | The bot connection, topics and message helpers |
+| `CortanaDiscord/Modules/*.cs` | Slash-command groups. Discord caps a group at 25 subcommands. They read the house and switch what switches; they do not configure it |
+| `CortanaDesktop/Agent.cs` | The resident socket, the JSON-line protocol, the metrics push |
+| `CortanaDesktop/Activity.cs` | Watches Hyprland and `playerctl`; maps window class to a category. **Edit the map here to categorise a new application** |
+| `CortanaDesktop/DesktopOs.cs` | Everything done to this machine |
+| `CortanaDesktop/Cli.cs` | `chat`, `ask`, `monitor`, `pc`, `status` |
+| `CortanaDesktop/Scripts/cortana` | The desktop wrapper: agent dispatch, API, git, deploy, notify, idle |
+| `CortanaKernel/Scripts/cortana` | The Pi wrapper, including `flash` for the station |
+| `CortanaEmbedded/ESP32Station/ESP32Station.ino` | The station firmware. **Probes for the I²C bus rather than trusting the board variant** |

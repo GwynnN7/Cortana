@@ -1,4 +1,3 @@
-using System.Globalization;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaTelegram.Runtime;
@@ -32,10 +31,9 @@ public sealed class CortanaMenu : Menu
 		if (_settingsOpen)
 		{
 			string models = await TelegramSession.Text(TelegramSession.Cortana.ModelsText());
-			string settings = await TelegramSession.Text(TelegramSession.Cortana.AiSettingsText());
 			string prompt = await TelegramSession.Text(TelegramSession.Cortana.Prompt());
 
-			return $"⚙️ <b>AI settings</b>\n====================\n<code>{models}</code>\n\n<code>{settings}</code>\n\n<b>Prompt</b>\n<code>{prompt}</code>";
+			return $"🧠 <b>Mind</b>\n====================\n<code>{models}</code>\n\n<b>Prompt</b>\n<code>{prompt}</code>";
 		}
 
 		Result<CortanaSnapshot> snapshot = await TelegramSession.Cortana.Snapshot();
@@ -53,9 +51,6 @@ public sealed class CortanaMenu : Menu
 
 		if (_settingsOpen)
 		{
-			foreach (AiSettingKey setting in Enum.GetValues<AiSettingKey>())
-				keyboard.AddButton($"{setting} ✏️", $"{Tag}-set-{setting}").AddNewRow();
-
 			return keyboard
 				.AddButton("Model 🧠", $"{Tag}-models")
 				.AddNewRow()
@@ -81,7 +76,7 @@ public sealed class CortanaMenu : Menu
 		{
 			keyboard
 				.AddButton("Ask 🧠", $"{Tag}-ask")
-				.AddButton("Settings ⚙️", $"{Tag}-settings")
+				.AddButton("Mind 🧩", $"{Tag}-settings")
 				.AddNewRow();
 		}
 		else
@@ -155,14 +150,6 @@ public sealed class CortanaMenu : Menu
 				await Show(query);
 				return;
 
-			case var _ when command.StartsWith("cortana-set-"):
-				string setting = command["cortana-set-".Length..];
-				if (TelegramSession.Begin(Topic, new PendingInput("aisetting", query, query.Message!, setting), query))
-					await TelegramSession.Bot.EditMessageText(query.Message!.Chat.Id, query.Message.MessageId,
-						$"New value for {setting}", replyMarkup: TelegramSession.Cancel(Tag));
-
-				return;
-
 			case var _ when command.StartsWith("cortana-pick-"):
 				_selected = Enum.Parse<ServiceId>(command["cortana-pick-".Length..], true);
 				await TelegramSession.Bot.EditMessageReplyMarkup(query.Message!.Chat.Id, query.Message.MessageId, Keyboard());
@@ -211,14 +198,6 @@ public sealed class CortanaMenu : Menu
 
 			case "prompt":
 				await Finish(message, pending, await TelegramSession.Text(TelegramSession.Cortana.SetPrompt(message.Text)));
-				return;
-
-			case "aisetting":
-				string result = double.TryParse(message.Text.Trim(), CultureInfo.InvariantCulture, out double value)
-					? await TelegramSession.Text(TelegramSession.Cortana.SetAiSetting(Enum.Parse<AiSettingKey>(pending.Argument), value))
-					: "That is not a number";
-
-				await Finish(message, pending, result);
 				return;
 
 			case "broadcast":

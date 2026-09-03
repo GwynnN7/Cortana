@@ -14,12 +14,19 @@ She lives on a **Raspberry Pi 4** and is written in **C# / .NET 10**.
 
 ## What she does
 
-- **Devices** — lamp, mains supply, the desktop computer and a generic socket, over the Pi's GPIO relays.
-- **Sensors** — temperature, humidity, light, motion, CO₂ and TVOC from an ESP32 station.
-- **Automation** — motion and light decide the lamp, with manual overrides that expire on their own.
+- **Fabric** — hardware announces the channels it offers, as tags, and a few facts about itself. You
+  register virtual devices and sensors on those channels: several devices may share one channel, and
+  one device may span several.
+- **Automation** — binds point sensors at a device. A sustaining condition keeps it on, the rest only
+  switch it on, and a manual touch makes automation back off for a while.
+- **Warnings** — the same conditions watched against thresholds, with hysteresis and a cooldown.
 - **Scheduling** — one-off, repeating and event-triggered actions that survive a restart.
+- **History** — every registered sensor and device recorded on a cadence, in one CSV per day.
 - **AI** — a conversational front over every one of those capabilities.
 - **Notifications** — a persistent browser status notification, plus Telegram and Discord.
+
+Nothing above names a lamp or a socket. What exists is whatever the hardware announced and you
+registered on top of it.
 
 ## The pieces
 
@@ -126,17 +133,24 @@ Override the board with `CORTANA_ESP32_FQBN` and the port with `CORTANA_ESP32_PO
 
 ## Using her
 
-The **dashboard** is the main surface: devices, sensors, plots, schedules, settings and a chat
-window. Add it to your home screen and it behaves like an app, with one persistent notification that
-always shows the current state of the room.
+The **dashboard** is the main surface and the only one that configures anything: hardware, binds,
+warnings, schedules, memory, notes, settings and a chat window. Add it to your home screen and it
+behaves like an app, with one persistent notification showing the devices, warnings and readings you
+marked for it.
 
-**Telegram** gives one updating menu per topic in the home group. **Discord** uses slash commands
-under `/home`, `/utility`, `/remind`, `/random`, `/games`, `/server` and `/settings`.
+**Telegram** and **Discord** read the house and switch what switches — devices, sleep, automation,
+the features on the Core page, and commands to the desktop. They deliberately do not configure
+hardware or settings; that is the dashboard's job, and the AI can still reach everything.
+
+Telegram gives one updating menu per topic in the home group. Discord uses slash commands under
+`/home`, `/cortana`, `/utility`, `/remind`, `/random`, `/games` and `/server`.
 
 And you can simply ask:
 
-> Turn the lamp on. · Put me in sleep mode. · What was the worst air quality yesterday? ·
+> Turn the speakers on. · Put me in sleep mode. · What was the worst air quality yesterday? ·
 > Why didn't the lamp turn on? · Turn on the pc and then reboot into Windows.
+
+She resolves a device or a sensor by whatever you named it, not by its id.
 
 ---
 

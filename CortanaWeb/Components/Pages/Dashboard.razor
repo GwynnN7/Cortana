@@ -2,13 +2,14 @@
 @attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
 @inject CortanaState State
+@inherits ActingPage
 @implements IDisposable
 
 <PageTitle>Cortana</PageTitle>
 
 <h1 class="visually-hidden">Dashboard</h1>
 
-<Toast @bind-Message="_message"/>
+<Toast @bind-Message="Message"/>
 
 <section class="section">
     <header class="section-head">
@@ -39,62 +40,86 @@
 <section class="section">
     <header class="section-head">
         <h2><a class="section-link" href="/sensors">Sensors</a></h2>
-        <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
-            @(State.SensorsOnline ? "Station Online" : "Station Offline")
-        </span>
+        <button class="btn btn-ghost btn-small" @onclick="() => _editing = !_editing">@(_editing ? "Done" : "Choose")</button>
     </header>
 
-    <div class="tiles tiles-6">
-        <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="@State.MotionIcon" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
-        <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
-    </div>
+    <SensorGrid Sensors="ChosenSensors"/>
 
-    <div class="toggle-row">
-        <div>
-            <strong>Automation</strong>
-            <small>@AutomationHint</small>
-        </div>
-        <div class="toggle-actions">
-            @if (State.Automation.HoldingUntil is not null)
+    @if (_editing)
+    {
+        <div class="options">
+            @foreach (SensorView view in State.Snapshot?.Sensors ?? [])
             {
-                <button class="btn btn-small" disabled="@_busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
+                <label>
+                    <input type="checkbox" checked="@_layout.Sensors.Contains(view.Sensor)"
+                           @onchange="args => ToggleSensor(view.Sensor, (bool)(args.Value ?? false))"/>
+                    @view.Icon @view.Name
+                </label>
             }
-            <button class="switch @SwitchClass"
-                    role="switch" aria-checked="@(State.Automation.Enabled ? "true" : "false")"
-                    aria-label="Automation" disabled="@_busy" @onclick="() => Run(() => State.SetAutomation(SwitchAction.Toggle))"><span class="knob"></span></button>
         </div>
-    </div>
+    }
 </section>
 
 <section class="section">
     <header class="section-head">
-        <h2><a class="section-link" href="/devices">Quick Toggles</a></h2>
+        <h2><a class="section-link" href="/devices">Quick Devices</a></h2>
+        <button class="btn btn-ghost btn-small" @onclick="() => _editing = !_editing">@(_editing ? "Done" : "Choose")</button>
     </header>
 
     <div class="quick-grid">
-        <button class="quick @(State.Automation.SleepMode ? "quick-active" : "")" disabled="@_busy"
-                @onclick="() => Run(() => State.SetSleepMode(SwitchAction.Toggle))">
-            <span class="quick-emoji" aria-hidden="true">🛌</span> Sleep
-            <small>@(State.Automation.SleepMode ? "Active" : "Off")</small>
-        </button>
-        @foreach ((DeviceId device, string emoji, bool compact) in QuickDevices)
+        @foreach (DeviceView device in ChosenDevices)
         {
-            <button class="quick @(State.IsDeviceOn(device) ? "quick-active" : "") @(compact ? "" : "quick-wide")"
-                    disabled="@_busy" @onclick="() => Run(() => State.SwitchDevice(device, SwitchAction.Toggle))">
-                <span class="quick-emoji" aria-hidden="true">@emoji</span> @device
-                <small>@State.DeviceStatus(device)</small>
+            <button class="quick @(device.Partial ? "quick-partial" : device.State == PowerState.On ? "quick-active" : "")"
+                    disabled="@Busy" @onclick="() => Run(() => State.SwitchDevice(device.Device, SwitchAction.Toggle))">
+                <span class="quick-emoji" aria-hidden="true">@device.Icon</span> @device.Name
+                <small>@(device.Partial ? "Partly on" : device.State.ToString())</small>
             </button>
         }
     </div>
+
+    @if (_editing)
+    {
+        <div class="options">
+            @foreach (DeviceView device in State.Snapshot?.Devices ?? [])
+            {
+                <label>
+                    <input type="checkbox" checked="@_layout.Devices.Contains(device.Device)"
+                           @onchange="args => ToggleDevice(device.Device, (bool)(args.Value ?? false))"/>
+                    @device.Icon @device.Name
+                </label>
+            }
+        </div>
+    }
 </section>
 
-<ComputerCard Metrics="State.Computer" Activity="State.Activity"/>
+<section class="section">
+    <header class="section-head">
+        <h2>Modes</h2>
+        <span class="badge">@AutomationHint</span>
+        @if (State.Automation.HoldingUntil is not null)
+        {
+            <button class="btn btn-small" disabled="@Busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
+        }
+    </header>
 
-<ComputerCard Metrics="State.RaspberryMetrics"/>
+    <div class="quick-grid">
+        <button class="quick @AutomationClass" disabled="@Busy"
+                @onclick="() => Run(() => State.SetAutomation(SwitchAction.Toggle))">
+            <span class="quick-emoji" aria-hidden="true">🤖</span> Automatic
+            <small>@AutomationState</small>
+        </button>
+
+        <button class="quick @(State.Automation.SleepMode ? "quick-active" : "")" disabled="@Busy"
+                @onclick="() => Run(() => State.SetSleepMode(SwitchAction.Toggle))">
+            <span class="quick-emoji" aria-hidden="true">🛌</span> Sleep
+            <small>@(State.Automation.SleepMode ? "On" : "Off")</small>
+        </button>
+    </div>
+</section>
+
+<SourceCard Source="State.Source(SourceIds.Computer)" Activity="State.Activity" Sensors="Machine(SourceIds.Computer)"/>
+
+<SourceCard Source="State.Source(SourceIds.Raspberry)" Sensors="Machine(SourceIds.Raspberry)"/>
 
 <section class="section section-more">
     <header class="section-head">
@@ -104,29 +129,64 @@
     <div class="quick-grid">
         <a class="quick" href="/core"><span aria-hidden="true">🧠</span> Core</a>
         <a class="quick" href="/utility"><span aria-hidden="true">🧰</span> Utility</a>
+        <a class="quick" href="/hardware"><span aria-hidden="true">🔧</span> Hardware</a>
         <a class="quick" href="/memory"><span aria-hidden="true">🧩</span> Memory</a>
+        <a class="quick" href="/notes"><span aria-hidden="true">📝</span> Notes</a>
+        <a class="quick" href="/docs"><span aria-hidden="true">📖</span> Docs</a>
         <a class="quick" href="/logs"><span aria-hidden="true">📜</span> Logs</a>
         <a class="quick" href="/settings"><span aria-hidden="true">⚙️</span> Settings</a>
     </div>
 </section>
 
 @code {
+    private DashboardLayout _layout = new([], []);
+    private bool _editing;
 
-    private static readonly (DeviceId Device, string Emoji, bool Compact)[] QuickDevices =
-    [
-        (DeviceId.Lamp, "💡", true),
-        (DeviceId.Generic, "🔌", true),
-        (DeviceId.Computer, "🖥️", true),
-        (DeviceId.Power, "⚡", false)
-    ];
+    private IReadOnlyList<SensorView> ChosenSensors =>
+        [.. (State.Snapshot?.Sensors ?? []).Where(view => _layout.Sensors.Contains(view.Sensor))];
+
+    private IReadOnlyList<DeviceView> ChosenDevices =>
+        [.. (State.Snapshot?.Devices ?? []).Where(view => _layout.Devices.Contains(view.Device))];
+
+    private IReadOnlyList<SensorView> Machine(string source) =>
+        [.. (State.Snapshot?.Sensors ?? []).Where(view => view.Source == source)];
+
+    private async Task ToggleSensor(string id, bool wanted)
+    {
+        List<string> chosen = [.. _layout.Sensors];
+        if (wanted) chosen.Add(id); else chosen.Remove(id);
+
+        _layout = _layout with { Sensors = chosen };
+        await State.SaveLayout(_layout);
+    }
+
+    private async Task ToggleDevice(string id, bool wanted)
+    {
+        List<string> chosen = [.. _layout.Devices];
+        if (wanted) chosen.Add(id); else chosen.Remove(id);
+
+        _layout = _layout with { Devices = chosen };
+        await State.SaveLayout(_layout);
+    }
+
 
     private ChatPanel? _chat;
     private bool _chatOpen;
     private IDisposable? _subscription;
-    private string? _message;
-    private bool _busy;
 
-    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+        _layout = await State.Layout();
+
+        if (_layout.Sensors.Count > 0 || _layout.Devices.Count > 0) return;
+
+        _layout = new DashboardLayout(
+            [.. (State.Snapshot?.Sensors ?? []).Where(view => view.Source == SourceIds.Station).Select(view => view.Sensor)],
+            [.. (State.Snapshot?.Devices ?? []).Select(view => view.Device)]);
+
+        if (_layout.Sensors.Count > 0 || _layout.Devices.Count > 0) await State.SaveLayout(_layout);
+    }
 
     public void Dispose() => _subscription?.Dispose();
 
@@ -135,11 +195,20 @@
         if (_chat != null) await _chat.ClearAsync();
     }
 
-    private string SwitchClass => State.Automation.Status switch
+
+    private string AutomationClass => State.Automation.Status switch
     {
-        AutomationStatus.Holding => "switch-hold",
-        AutomationStatus.Active => "switch-on",
-        _ => ""
+        AutomationStatus.Holding => "quick-hold",
+        AutomationStatus.Off => "",
+        _ => "quick-active"
+    };
+
+    private string AutomationState => State.Automation.Status switch
+    {
+        AutomationStatus.Holding => "Holding",
+        AutomationStatus.Off => "Off",
+        AutomationStatus.Idle => "Idle",
+        _ => "On"
     };
 
     private string AutomationHint => State.Automation switch
@@ -147,20 +216,9 @@
         { Status: AutomationStatus.Off } => "Manual control only",
         { Status: AutomationStatus.Holding, HoldingUntil: { } until } => $"Holding until {until:HH:mm}",
         { Status: AutomationStatus.Holding, DesktopHold: true } => "Holding, fullscreen app detected",
+        { Status: AutomationStatus.Idle } => "Nothing is bound yet",
         { SleepMode: true } => "Sleep rules are active",
-        _ => "Motion controls the lamp"
+        _ => "Binds are deciding"
     };
 
-    private async Task Run(Func<Task<string>> action)
-    {
-        _busy = true;
-        try
-        {
-            _message = await action();
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
 }

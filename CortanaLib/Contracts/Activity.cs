@@ -8,7 +8,8 @@ public enum ActivityCategory
 	Gaming,
 	Media,
 	Away,
-	Locked
+	Locked,
+	Studying
 }
 
 public enum ActivityDetail
@@ -27,7 +28,7 @@ public sealed record NowPlaying(
 public sealed record DesktopActivity(
 	ActivityCategory Category,
 	string? Subject,
-	string? Detail,
+	ActivityDetail Detail,
 	DateTimeOffset Since,
 	int IdleSeconds,
 	bool Locked,

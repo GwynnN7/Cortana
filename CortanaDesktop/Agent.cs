@@ -71,7 +71,7 @@ internal static class Agent
 
 			lock (Gate) _socket = socket;
 
-			Send("computer");
+			Send(JsonSerializer.Serialize(Hello(), CortanaEnvironment.WireJson));
 			_ = DesktopOs.Execute(ComputerCommand.Notify, "Cortana connected");
 			Activity.Resend(Report);
 			return true;
@@ -152,8 +152,43 @@ internal static class Agent
 		});
 	}
 
-	private static void Report(DesktopActivity activity) =>
+	private static SourceHello Hello() => new(
+		Wire.Hello, Wire.Magic, Wire.Version, SourceIds.Computer, SourceKind.Computer,
+		[DeviceIds.Computer],
+		["cpu", "cpu_temp", "gpu", "gpu_temp", "gpu_power", "ram", "disk", "at_desk", "locked"],
+		Facts(MachineMetrics.Collect()));
+
+	/// The slow things that describe this machine rather than measure it
+	private static Dictionary<string, string> Facts(MachineSample sample) => new()
+	{
+		["name"] = sample.Host,
+		["os"] = sample.Os,
+		["memory"] = $"{sample.MemoryUsed:F1}/{sample.MemoryTotal:F1} GB",
+		["disk"] = $"{sample.DiskUsed:F0}/{sample.DiskTotal:F0} GB",
+		["uptime"] = Units.Elapsed(TimeSpan.FromSeconds(sample.Uptime))
+	};
+
+	private static Dictionary<string, double> Readings(MachineSample sample) => new()
+	{
+		["cpu"] = Math.Round(sample.CpuLoad, 1),
+		["cpu_temp"] = Math.Round(sample.CpuTemp, 1),
+		["gpu"] = Math.Round(sample.GpuLoad, 1),
+		["gpu_temp"] = Math.Round(sample.GpuTemp, 1),
+		["gpu_power"] = Math.Round(sample.GpuPower, 1),
+		["ram"] = sample.MemoryTotal > 0 ? Math.Round(sample.MemoryUsed / sample.MemoryTotal * 100, 1) : 0,
+		["disk"] = sample.DiskTotal > 0 ? Math.Round(sample.DiskUsed / sample.DiskTotal * 100, 1) : 0
+	};
+
+	private static void Report(DesktopActivity activity)
+	{
 		Send(JsonSerializer.Serialize(new AgentMessage("activity", Activity: activity), CortanaEnvironment.WireJson));
+
+		Send(JsonSerializer.Serialize(new SourceReading(Wire.Reading, new Dictionary<string, double>
+		{
+			["at_desk"] = activity is { Locked: false, IdleSeconds: 0 } ? 1 : 0,
+			["locked"] = activity.Locked ? 1 : 0
+		}), CortanaEnvironment.WireJson));
+	}
 
 	private static async Task KeepAliveLoop()
 	{
@@ -169,7 +204,6 @@ internal static class Agent
 	private static async Task MetricsLoop()
 	{
 		MachineMetrics.Collect();
-		CortanaClient client = CortanaClient.Default.As(CommandSurface.Desktop);
 
 		while (true)
 		{
@@ -177,7 +211,10 @@ internal static class Agent
 
 			try
 			{
-				await client.PushMetrics(MachineMetrics.Collect());
+				MachineSample sample = MachineMetrics.Collect();
+
+				Send(JsonSerializer.Serialize(new SourceReading(Wire.Reading, Readings(sample)), CortanaEnvironment.WireJson));
+				Send(JsonSerializer.Serialize(new SourceDescription(Wire.Facts, Facts(sample)), CortanaEnvironment.WireJson));
 			}
 			catch (Exception ex)
 			{

@@ -37,7 +37,7 @@ ${STRONG}cortana${RESET} ${MUTED}- desktop agent and client${RESET}
 
   ${ACCENT}service${RESET} [start|stop|restart|build]    the resident agent
   ${ACCENT}git${RESET} status|update [message]           version control, then tell the Kernel to update
-  ${ACCENT}api${RESET} [route] [-act|-cmd|-val|-msg X]   talk to the API directly
+  ${ACCENT}api${RESET} [route] [-act|-cmd|-val|-msg|-txt|-kind X]  talk to the API directly
   ${ACCENT}deploy${RESET} [service...] [-n|-s|-l]        sync this tree to the Pi and restart
   ${ACCENT}notify${RESET} [-t Title]                     send piped input as a desktop notification
   ${ACCENT}idle${RESET} on|off                           report desk idle state, for hypridle to call
@@ -119,6 +119,8 @@ handle_api() {
 			-cmd) field="command" ;;
 			-val) field="value" ;;
 			-msg) field="message" ;;
+			-txt) field="text" ;;
+			-kind) field="kind" ;;
 			*) die "Unknown option '$1'" ;;
 		esac
 		shift

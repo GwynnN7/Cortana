@@ -160,12 +160,6 @@ internal static class Cli
 		});
 	}
 
-	private static async Task<int> Print(Task<string> call)
-	{
-		Console.WriteLine(await call);
-		return 0;
-	}
-
 	private static async Task<int> Monitor(bool watch)
 	{
 		if (!watch)
@@ -225,7 +219,7 @@ internal static class Cli
 	private static async Task<string> Text(Task<Result<string>> call) => (await call).Match(value => value, error => error);
 
 	private static async Task<string> ComputerMetricsText(this CortanaClient client) =>
-		(await client.ComputerMetrics()).Match(MachineMetrics.Render, error => error);
+		(await client.GetText("metrics/computer")).Match(value => value, error => error);
 
 	private static MachineSample Sample()
 	{

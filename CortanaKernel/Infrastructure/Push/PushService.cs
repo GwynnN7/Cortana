@@ -4,9 +4,8 @@ using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Activity;
 using CortanaKernel.Domain.Automation;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Devices;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Notifications;
-using CortanaKernel.Domain.Sensors;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
@@ -31,13 +30,13 @@ public sealed class PushService : BackgroundService
 	private readonly ConcurrentDictionary<string, PushDeviceRequest> _devices = new();
 	private readonly Vapid _keys;
 
-	private readonly DeviceRegistry _deviceRegistry;
-	private readonly SensorRegistry _sensors;
+	private readonly Fabric _fabric;
+	private readonly WarningStore _warnings;
+	private readonly WarningState _warningState;
 	private readonly AutomationEngine _automation;
 	private readonly AiSettingsStore _aiSettings;
 	private readonly ActivityRegistry _activity;
 	private readonly Lazy<CortanaKernel.Application.SnapshotService> _snapshots;
-	private readonly Lazy<CortanaKernel.Application.ScheduleService> _schedules;
 	private readonly IEventBus _bus;
 
 	private readonly SemaphoreSlim _pending = new(0, 1);
@@ -46,22 +45,22 @@ public sealed class PushService : BackgroundService
 	private string _lastStatus = "";
 
 	public PushService(
-		DeviceRegistry devices,
-		SensorRegistry sensors,
+		Fabric fabric,
+		WarningStore warnings,
+		WarningState warningState,
 		AutomationEngine automation,
 		AiSettingsStore aiSettings,
 		ActivityRegistry activity,
 		Lazy<CortanaKernel.Application.SnapshotService> snapshots,
-		Lazy<CortanaKernel.Application.ScheduleService> schedules,
 		IEventBus bus)
 	{
-		_deviceRegistry = devices;
-		_sensors = sensors;
+		_fabric = fabric;
+		_warnings = warnings;
+		_warningState = warningState;
 		_automation = automation;
 		_aiSettings = aiSettings;
 		_activity = activity;
 		_snapshots = snapshots;
-		_schedules = schedules;
 		_bus = bus;
 		_keys = LoadKeys();
 
@@ -96,7 +95,7 @@ public sealed class PushService : BackgroundService
 
 	// ---------- the status line ----------
 
-	/// Online · {lamp}{computer}{generic} · {motion}{air} {temperature}
+	/// Mood · devices that are on · warnings that are firing · the readings worth a glance
 	public async Task<string> StatusLine()
 	{
 		var parts = new List<string> { (await _snapshots.Value.Mood()).ToString() };
@@ -104,21 +103,28 @@ public sealed class PushService : BackgroundService
 		try
 		{
 			var devices = "";
-			if (_deviceRegistry.IsOn(DeviceId.Lamp)) devices += "💡";
-			if (_deviceRegistry.IsOn(DeviceId.Computer)) devices += "🖥️";
+			foreach (VirtualDevice device in _fabric.RegisteredDevices.Where(device => device.InStatus))
+				if (_fabric.IsOn(device.Id)) devices += device.IconOn;
+
 			if (_activity.Current?.Playing is { Paused: false }) devices += "♪";
-			if (_deviceRegistry.IsOn(DeviceId.Generic)) devices += "🔌";
 			if (devices.Length > 0) parts.Add(devices);
 
-			AutomationView view = _automation.View();
+			var alerts = "";
+			foreach (Warning warning in _warnings.All().Where(warning => warning is { Enabled: true, InStatus: true }))
+				if (_warningState.IsActive(warning.Id)) alerts += warning.Icon;
+
+			if (_automation.View().SleepMode) alerts += "💤";
+			if (alerts.Length > 0) parts.Add(alerts);
+
 			var readings = "";
+			foreach (SensorView sensor in _fabric.Sensors())
+			{
+				if (!sensor.Available || _fabric.Sensor(sensor.Sensor) is not { InStatus: true }) continue;
 
-			if (view.SleepMode) readings += "💤";
-			else if (view.Enabled && view.StationOnline) readings += view.MotionActive ? "💠" : "🔮";
-
-			if (view.StationOnline && view.AirQualityWarning) readings += "💨";
-			if (_schedules.Value.All().Any(schedule => schedule.Enabled)) readings += "⏰";
-			if (view.StationOnline && _sensors.Temperature is { } temperature) readings += $" {Units.Number(temperature)}°";
+				readings += sensor.Kind == ReadingKind.Boolean
+					? $" {sensor.Icon}"
+					: $" {sensor.Value}{sensor.Unit}";
+			}
 
 			if (readings.Length > 0) parts.Add(readings.Trim());
 		}
@@ -200,9 +206,11 @@ public sealed class PushService : BackgroundService
 
 		while (!stoppingToken.IsCancellationRequested)
 		{
+			bool signalled;
+
 			try
 			{
-				await _pending.WaitAsync(Safeguard, stoppingToken);
+				signalled = await _pending.WaitAsync(Safeguard, stoppingToken);
 				await Task.Delay(Coalesce, stoppingToken);
 			}
 			catch (OperationCanceledException)
@@ -213,7 +221,7 @@ public sealed class PushService : BackgroundService
 			// While an event overlay is up, its own restore is what puts the newest status back
 			if (DateTimeOffset.Now < _overlayUntil) continue;
 
-			await RefreshStatus();
+			await RefreshStatus(force: !signalled);
 		}
 	}
 

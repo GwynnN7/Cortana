@@ -20,12 +20,8 @@ public sealed class SettingsStore(ISettingsRepository repository)
 		new SettingDefinition[]
 		{
 			new(SettingKey.AutomationEnabled, "On", 0, 1, IsFlag: true),
-			new(SettingKey.LightThreshold, "60", 0, 65535),
-			new(SettingKey.Co2Threshold, "1000", 0, 10000),
-			new(SettingKey.TvocThreshold, "250", 0, 10000),
 			new(SettingKey.MorningHour, "9", 0, 23),
 			new(SettingKey.NightHour, "23", 0, 23),
-			new(SettingKey.TemperatureOffset, "0", -10, 10, Decimals: 1),
 			new(SettingKey.MotionTimeoutSeconds, "30", 1, 3600),
 			new(SettingKey.ManualOverrideMinutes, "15", 1, 720),
 			new(SettingKey.SleepManualOverrideMinutes, "10", 1, 720),
@@ -33,10 +29,15 @@ public sealed class SettingsStore(ISettingsRepository repository)
 			new(SettingKey.SleepEntryDelayMinutes, "10", 0, 720),
 			new(SettingKey.DaySleepMinutes, "90", 1, 1440),
 			new(SettingKey.ComputerShutdownGraceSeconds, "20", 0, 600),
-			new(SettingKey.LampUsesPulseRelay, "Off", 0, 1, IsFlag: true),
 			new(SettingKey.NotifyWeb, "On", 0, 1, IsFlag: true),
 			new(SettingKey.NotifyTelegram, "Off", 0, 1, IsFlag: true),
-			new(SettingKey.NotifyDiscord, "Off", 0, 1, IsFlag: true)
+			new(SettingKey.NotifyDiscord, "Off", 0, 1, IsFlag: true),
+			new(SettingKey.SleepEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.WarningsEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.NotesEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.MemoryEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.HistoryEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.WrapupEnabled, "On", 0, 1, IsFlag: true)
 		}.ToDictionary(definition => definition.Key);
 
 	private readonly Dictionary<SettingKey, string> _values = Initialise(repository);
@@ -62,8 +63,6 @@ public sealed class SettingsStore(ISettingsRepository repository)
 	public bool Flag(SettingKey key) => Read(key).Equals(nameof(PowerState.On), StringComparison.OrdinalIgnoreCase);
 
 	public int Number(SettingKey key) => int.TryParse(Read(key), CultureInfo.InvariantCulture, out int value) ? value : 0;
-
-	public double Decimal(SettingKey key) => double.TryParse(Read(key), CultureInfo.InvariantCulture, out double value) ? value : 0;
 
 	public TimeSpan Minutes(SettingKey key) => TimeSpan.FromMinutes(Number(key));
 

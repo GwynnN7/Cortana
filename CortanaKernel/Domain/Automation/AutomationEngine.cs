@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using CortanaKernel.Domain.Common;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Settings;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
@@ -9,60 +10,76 @@ namespace CortanaKernel.Domain.Automation;
 /// What the engine needs to read about the world
 public interface IAutomationWorld
 {
-	PowerState DeviceState(DeviceId device);
+	PowerState DeviceState(string device);
 	bool ComputerConnected { get; }
-	int? Light { get; }
 	DateTimeOffset? LastMotionAt { get; }
-	bool StationOnline { get; }
-	bool AirQualityWarning { get; }
+	bool SourcesOnline { get; }
+	bool CriticalSourcesOnline { get; }
+	bool WarningActive { get; }
 	bool DesktopBusy { get; }
-	bool DeskActive { get; }
+	bool Present { get; }
+	Fabric.Reading? Read(string sensor);
+	string DeviceName(string device);
+	IReadOnlyList<Bind> Binds { get; }
 }
 
 /// What the engine is allowed to do
 public interface IAutomationEffects
 {
-	void SwitchDevice(DeviceId device, PowerState state, string reason);
+	void SwitchDevice(string device, PowerState state, string reason);
+	void Observe(string sensor, double value);
 	void TellComputer(string message);
 	void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null);
 	void Publish(IDomainEvent domainEvent);
 }
 
 /// Owns every runtime concept that decides whether Cortana acts
-public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld world, IAutomationEffects effects)
+public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock, IAutomationWorld world, IAutomationEffects effects) : ISleepHost
 {
+	private SleepEngine sleep => field ??= new SleepEngine(settings, world, effects, this);
+
+	public SleepEngine Sleep => sleep;
+
+	public bool AutomationEnabled => Enabled;
+
+	public void ClearHolds()
+	{
+		List<string> cleared;
+		lock (_gate)
+		{
+			cleared = [.. _overrides.Keys];
+			_overrides.Clear();
+		}
+
+		foreach (string device in cleared) effects.Publish(new DeviceHoldChanged(device, null, DateTimeOffset.Now));
+	}
+
+	public void Reevaluate() => Evaluate();
+
+	public Result<string> RequestSleepMode(SwitchAction action, CommandOrigin origin) => sleep.Request(action, origin);
+
 	private const int DecisionHistory = 40;
 
 	private readonly Lock _gate = new();
+	private readonly Lock _evaluateGate = new();
 	private readonly ConcurrentQueue<DecisionRecord> _decisions = new();
 
-	private TimeContext _context = TimeContext.Day;
 	private bool _started;
 
-	private bool _sleepMode;
-	private bool _sleepWasAutomatic;
-	private DateTimeOffset? _sleepUntil;
-	private DateTimeOffset? _sleepHoldUntil;
-	private DateTimeOffset? _sleepEntryDueAt;
 
-	private readonly Dictionary<DeviceId, DateTimeOffset> _overrides = new();
+	private readonly Dictionary<string, DateTimeOffset> _overrides = new();
 
 	private bool _lastMotionActive;
 	private string _lastDecision = "not evaluated yet";
+	private readonly ConcurrentDictionary<string, BindStatusView> _bindStatus = new(StringComparer.OrdinalIgnoreCase);
 
-	public bool SleepMode
-	{
-		get { lock (_gate) return _sleepMode; }
-	}
+	public bool SleepMode => sleep.Active;
 
 	public bool Enabled => settings.Flag(SettingKey.AutomationEnabled);
 
-	public TimeContext Context
-	{
-		get { lock (_gate) return _context; }
-	}
+	public TimeContext Context => clock.Context;
 
-	public DateTimeOffset? OverrideUntil(DeviceId device)
+	public DateTimeOffset? OverrideUntil(string device)
 	{
 		lock (_gate) return _overrides.TryGetValue(device, out DateTimeOffset until) && until > DateTimeOffset.Now ? until : null;
 	}
@@ -74,11 +91,8 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 	/// Startup establishes the current context
 	public void Start()
 	{
-		lock (_gate)
-		{
-			_context = AutomationRules.ContextAt(DateTimeOffset.Now, settings.Number(SettingKey.NightHour), settings.Number(SettingKey.MorningHour));
-			_started = true;
-		}
+		clock.Establish(DateTimeOffset.Now);
+		lock (_gate) _started = true;
 
 		Record("startup", "ready", $"time context is {Context}");
 		Evaluate();
@@ -91,52 +105,23 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		DateTimeOffset now = DateTimeOffset.Now;
 
-		TimeContext current = AutomationRules.ContextAt(now, settings.Number(SettingKey.NightHour), settings.Number(SettingKey.MorningHour));
-		TimeContext previous;
-		lock (_gate)
-		{
-			previous = _context;
-			_context = current;
-		}
-
-		if (current != previous)
+		if (clock.Advance(now) is { } current)
 		{
 			effects.Publish(new TimeContextChanged(current, now));
-			if (current == TimeContext.Night) OnNightStarted();
-			else OnMorningStarted();
+			if (current == TimeContext.Night) sleep.OnNightStarted();
+			else sleep.OnMorningStarted();
 		}
 
-		bool reevaluate = false;
+		bool reevaluate = sleep.Tick(now);
 
-		if (Due(ref _sleepEntryDueAt, now))
-		{
-			Record("sleep", "activated", "the sleep entry delay elapsed");
-			SetSleepMode(true, CommandOrigin.Automation, automatic: true);
-			return;
-		}
-
-		if (Due(ref _sleepUntil, now))
-		{
-			Record("sleep", "expired", "the daytime sleep duration elapsed");
-			SetSleepMode(false, CommandOrigin.Automation, automatic: true);
-			return;
-		}
-
-		if (Due(ref _sleepHoldUntil, now))
-		{
-			Record("sleep hold", "expired", "reconsidering automatic sleep");
-			ReconsiderAutomaticSleep();
-			reevaluate = true;
-		}
-
-		List<DeviceId> expired;
+		List<string> expired;
 		lock (_gate)
 		{
 			expired = [.. _overrides.Where(entry => entry.Value <= now).Select(entry => entry.Key)];
-			foreach (DeviceId device in expired) _overrides.Remove(device);
+			foreach (string device in expired) _overrides.Remove(device);
 		}
 
-		foreach (DeviceId device in expired)
+		foreach (string device in expired)
 		{
 			effects.Publish(new DeviceHoldChanged(device, null, now));
 			effects.Notify(NotificationSource.Automation, "Automation resumed", reason: $"the hold on {device} expired");
@@ -157,38 +142,22 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 	public void OnComputerConnected()
 	{
-		lock (_gate) _sleepEntryDueAt = null;
-
-		if (SleepMode)
-		{
-			Record("sleep", "ended", "the computer powered on");
-			SetSleepMode(false, CommandOrigin.Internal, automatic: true);
-			return;
-		}
-
+		sleep.OnComputerConnected();
 		Evaluate();
 	}
 
 	public void OnComputerDisconnected()
 	{
-		DateTimeOffset now = DateTimeOffset.Now;
-
-		if (!SleepMode && Context == TimeContext.Night && Enabled && !SleepHoldActive(now))
-			StartSleepEntryDelay(now, "the computer went off during the night");
-
+		sleep.OnComputerDisconnected();
 		Evaluate();
 	}
 
 	/// A user handling a device is both a possible wake signal and the start of a manual override
-	public void OnUserDeviceAction(DeviceId device)
+	public void OnUserDeviceAction(string device)
 	{
 		DateTimeOffset now = DateTimeOffset.Now;
 
-		if (SleepMode && Context == TimeContext.Day)
-		{
-			Record("sleep", "ended", $"a user action on {device} after the morning boundary");
-			SetSleepMode(false, CommandOrigin.User(CommandSurface.Internal), automatic: false);
-		}
+		sleep.OnUserAction(device);
 
 		if (!Enabled || !Managed.Contains(device)) return;
 
@@ -216,13 +185,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		if (!enabled)
 		{
-			lock (_gate)
-			{
-				_sleepEntryDueAt = null;
-				_sleepHoldUntil = null;
-			}
-
-			if (SleepMode) SetSleepMode(false, CommandOrigin.Internal, automatic: true);
+			sleep.Suspend();
 			Record("automation", "disabled", $"requested by {origin}");
 			return;
 		}
@@ -231,8 +194,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 		if (SleepMode && origin.IsUser && Context == TimeContext.Day)
 		{
-			Record("sleep", "ended", "the user enabled automation after the morning boundary");
-			SetSleepMode(false, origin, automatic: false);
+			sleep.Request(SwitchAction.Off, origin);
 			return;
 		}
 
@@ -247,186 +209,81 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 	// ---------- sleep ----------
 
-	public Result<string> RequestSleepMode(SwitchAction action, CommandOrigin origin)
+	// ---------- evaluation ----------
+
+	/// Readings, the tick and the computer all reach this from their own threads, and a device must
+	/// only be switched once, so the whole pass is serialised
+	public void Evaluate()
 	{
-		bool target = action switch
-		{
-			SwitchAction.On => true,
-			SwitchAction.Off => false,
-			_ => !SleepMode
-		};
-
-		if (target == SleepMode) return Result.Ok(target ? "Sleep mode is already active" : "Sleep mode is already off");
-
-		SetSleepMode(target, origin, automatic: false);
-		return Result.Ok(target ? "Sleep mode active" : "Sleep mode off");
+		lock (_evaluateGate) Pass();
 	}
 
-	private void SetSleepMode(bool active, CommandOrigin origin, bool automatic)
+	private void Pass()
 	{
 		DateTimeOffset now = DateTimeOffset.Now;
-		bool wasAutomatic;
-		List<DeviceId> cleared = [];
+		bool present = MotionActive(now);
+		_lastMotionActive = present;
 
-		lock (_gate)
-		{
-			wasAutomatic = _sleepWasAutomatic;
-			_sleepMode = active;
-			_sleepEntryDueAt = null;
+		effects.Observe(SensorIds.Presence, present ? 1 : 0);
+		effects.Observe(SensorIds.Night, Context == TimeContext.Night ? 1 : 0);
+		effects.Observe(SensorIds.Sleep, SleepMode ? 1 : 0);
 
-			if (active)
-			{
-				_sleepWasAutomatic = automatic;
-				// A daytime sleep is a nap with a fixed length while a nighttime one lasts until morning
-				_sleepUntil = _context == TimeContext.Day ? now + settings.Minutes(SettingKey.DaySleepMinutes) : null;
-				_sleepHoldUntil = null;
-				cleared = [.. _overrides.Keys];
-				_overrides.Clear();
-			}
-			else
-			{
-				_sleepUntil = null;
-				// Turning an automatic nighttime sleep off is a request not to be put back to sleep straight away
-				if (_context == TimeContext.Night && wasAutomatic && origin.IsUser)
-					_sleepHoldUntil = now + settings.Minutes(SettingKey.SleepHoldMinutes);
-			}
-		}
-
-		// Entering sleep cancels daytime holds, so those clients hear about it too
-		foreach (DeviceId device in cleared) effects.Publish(new DeviceHoldChanged(device, null, now));
-
-		string reason = active ? $"activated by {origin}" : $"ended by {origin}";
-		effects.Publish(new SleepModeChanged(active, automatic, reason, now));
-		effects.Notify(NotificationSource.Sleep, active ? "Sleep mode on" : "Sleep mode off", reason: reason);
-		Record("sleep", active ? "active" : "off", reason);
-
-		Evaluate();
-	}
-
-	private void OnNightStarted()
-	{
-		effects.Notify(NotificationSource.Automation, "Night started", reason: $"the clock reached the configured night hour of {settings.Number(SettingKey.NightHour)}");
-
-		if (SleepMode)
-		{
-			Record("sleep", "unchanged", "night started while sleep mode was already active");
-			return;
-		}
-
-		if (SleepHoldActive(DateTimeOffset.Now))
-		{
-			Record("sleep", "suppressed", "a sleep hold is still running");
-			return;
-		}
+		string[] live = [.. world.Binds.Select(bind => bind.Id)];
+		foreach (string stale in _bindStatus.Keys.Where(id => !live.Contains(id, StringComparer.OrdinalIgnoreCase)))
+			_bindStatus.TryRemove(stale, out _);
 
 		if (!Enabled)
 		{
-			Record("sleep", "suppressed", "automation is off");
+			_lastDecision = "automation is off";
+			foreach (Bind bind in world.Binds) Status(bind, "off", "automation is off");
 			return;
 		}
 
-		if (world.ComputerConnected)
+		foreach (Bind bind in world.Binds)
 		{
-			effects.TellComputer("It's late, you should go to sleep.");
-			effects.Notify(NotificationSource.Automation, "Night, but the computer is on", reason: "automatic sleep is blocked while the computer is connected, so the computer was told instead");
-			Record("sleep", "deferred", "the computer is on, so the computer was notified instead");
-			return;
+			bool held;
+			lock (_gate) held = _overrides.TryGetValue(bind.Device, out DateTimeOffset until) && until > now;
+
+			if (held)
+			{
+				_lastDecision = $"{bind.Device} is under a manual hold";
+				Status(bind, "held", $"{world.DeviceName(bind.Device)} is under a manual hold");
+				continue;
+			}
+
+			if (world.DesktopBusy)
+			{
+				_lastDecision = "the computer is busy with a game or something fullscreen";
+				Status(bind, "held", "the computer is busy with a game or something fullscreen");
+				continue;
+			}
+
+			bool isOn = world.DeviceState(bind.Device) == PowerState.On;
+
+			BindDecision decision = BindRules.Decide(bind, isOn, world.Read);
+
+			_lastDecision = decision.Reason;
+			Status(bind, decision.Suspended ? "suspended" : decision.Target?.ToString().ToLowerInvariant() ?? "waiting",
+				decision.Reason, decision.Suspended);
+
+			if (decision.Target is not { } target || target == (isOn ? PowerState.On : PowerState.Off)) continue;
+
+			string name = world.DeviceName(bind.Device);
+			Record(bind.Device, target.ToString(), decision.Reason);
+			effects.SwitchDevice(bind.Device, target, decision.Reason);
+			effects.Notify(NotificationSource.Automation, $"{name} {target.ToString().ToLowerInvariant()}", reason: decision.Reason);
 		}
-
-		StartSleepEntryDelay(DateTimeOffset.Now, "night started with the computer off");
 	}
 
-	private void OnMorningStarted()
-	{
-		lock (_gate)
-		{
-			_sleepHoldUntil = null;
-			_sleepEntryDueAt = null;
-		}
+	private void Status(Bind bind, string outcome, string reason, bool suspended = false) =>
+		_bindStatus[bind.Id] = new BindStatusView(bind.Id, suspended, outcome, reason);
 
-		effects.Notify(NotificationSource.Automation, "Good morning", reason: $"the clock reached the configured morning hour of {settings.Number(SettingKey.MorningHour)}");
+	public IReadOnlyList<BindStatusView> BindStatus => [.. _bindStatus.Values];
 
-		if (SleepMode)
-		{
-			Record("sleep", "ended", "the morning boundary was reached");
-			SetSleepMode(false, CommandOrigin.Automation, automatic: true);
-			return;
-		}
-
-		Evaluate();
-	}
-
-	private void StartSleepEntryDelay(DateTimeOffset now, string reason)
-	{
-		TimeSpan delay = settings.Minutes(SettingKey.SleepEntryDelayMinutes);
-
-		if (delay <= TimeSpan.Zero)
-		{
-			Record("sleep", "activated", reason);
-			SetSleepMode(true, CommandOrigin.Automation, automatic: true);
-			return;
-		}
-
-		lock (_gate) _sleepEntryDueAt = now + delay;
-		Record("sleep", "pending", $"{reason}, entering in {delay.TotalMinutes:0} minutes");
-	}
-
-	private void ReconsiderAutomaticSleep()
-	{
-		if (SleepMode || Context != TimeContext.Night || !Enabled) return;
-
-		if (world.ComputerConnected)
-		{
-			effects.TellComputer("It's late, you should go to sleep.");
-			Record("sleep", "deferred", "the sleep hold expired but the computer is on");
-			return;
-		}
-
-		Record("sleep", "activated", "the sleep hold expired and nighttime sleep still applies");
-		SetSleepMode(true, CommandOrigin.Automation, automatic: true);
-	}
-
-	private bool SleepHoldActive(DateTimeOffset now)
-	{
-		lock (_gate) return _sleepHoldUntil.HasValue && _sleepHoldUntil.Value > now;
-	}
-
-	// ---------- evaluation ----------
-
-	/// Reconciles the automatically controlled devices with the current conditions
-	public void Evaluate()
-	{
-		DateTimeOffset now = DateTimeOffset.Now;
-		bool motion = MotionActive(now);
-		_lastMotionActive = motion;
-
-		bool overrideActive;
-		lock (_gate) overrideActive = _overrides.TryGetValue(DeviceId.Lamp, out DateTimeOffset until) && until > now;
-
-		var input = new LampInput(
-			Enabled,
-			overrideActive,
-			world.DesktopBusy,
-			SleepMode,
-			motion,
-			world.DeviceState(DeviceId.Lamp) == PowerState.On,
-			world.Light,
-			settings.Number(SettingKey.LightThreshold));
-
-		LampDecision decision = AutomationRules.DecideLamp(input);
-		_lastDecision = decision.Reason;
-
-		if (decision.Target is not { } target || target == (input.LampIsOn ? PowerState.On : PowerState.Off)) return;
-
-		Record(nameof(DeviceId.Lamp), target.ToString(), decision.Reason);
-		effects.SwitchDevice(DeviceId.Lamp, target, decision.Reason);
-		effects.Notify(NotificationSource.Automation, $"Lamp {target.ToString().ToLowerInvariant()}", reason: decision.Reason);
-	}
-
-	private static readonly DeviceId[] Managed = [DeviceId.Lamp];
+	private string[] Managed => [.. world.Binds.Where(bind => bind.HoldsOnManualAction).Select(bind => bind.Device)];
 
 	private bool MotionActive(DateTimeOffset now) => AutomationRules.Present(
-		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds), world.DeskActive);
+		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds), world.Present);
 
 	private bool Due(ref DateTimeOffset? deadline, DateTimeOffset now)
 	{
@@ -438,7 +295,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 		}
 	}
 
-	private void Record(string subject, string outcome, string reason)
+	public void Record(string subject, string outcome, string reason)
 	{
 		_decisions.Enqueue(new DecisionRecord(DateTimeOffset.Now, subject, outcome, reason));
 		while (_decisions.Count > DecisionHistory) _decisions.TryDequeue(out _);
@@ -461,23 +318,25 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 
 			AutomationStatus status = !enabled
 				? AutomationStatus.Off
-				: holdingUntil.HasValue || world.DesktopBusy ? AutomationStatus.Holding : AutomationStatus.Active;
+				: holdingUntil.HasValue || world.DesktopBusy ? AutomationStatus.Holding
+				: world.Binds.Any(bind => bind.Enabled) ? AutomationStatus.Active : AutomationStatus.Idle;
 
 			return new AutomationView(
 				enabled,
 				status,
-				_context,
-				_sleepMode,
-				_sleepUntil,
-				_sleepHoldUntil.HasValue && _sleepHoldUntil.Value > now,
-				_sleepHoldUntil,
-				_sleepEntryDueAt,
+				Context,
+				sleep.Active,
+				sleep.Until,
+				sleep.HoldActive(now),
+				sleep.HoldUntil,
+				sleep.EntryDueAt,
 				holdingUntil,
 				world.DesktopBusy,
 				MotionActive(now),
 				world.LastMotionAt,
-				world.AirQualityWarning,
-				world.StationOnline);
+				world.WarningActive,
+				world.SourcesOnline,
+				world.CriticalSourcesOnline);
 		}
 	}
 
@@ -485,7 +344,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 	public void ReleaseHolds(string reason, bool evaluate = true)
 	{
 		DateTimeOffset now = DateTimeOffset.Now;
-		List<DeviceId> released;
+		List<string> released;
 
 		lock (_gate)
 		{
@@ -493,7 +352,7 @@ public sealed class AutomationEngine(SettingsStore settings, IAutomationWorld wo
 			_overrides.Clear();
 		}
 
-		foreach (DeviceId device in released) effects.Publish(new DeviceHoldChanged(device, null, now));
+		foreach (string device in released) effects.Publish(new DeviceHoldChanged(device, null, now));
 
 		if (released.Count > 0)
 		{

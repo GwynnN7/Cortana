@@ -22,27 +22,17 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 
 	// ---------- projections ----------
 
-	public DeviceView? Device(DeviceId device) => Snapshot?.Devices.FirstOrDefault(view => view.Device == device);
+	public DeviceView? Device(string device) => Snapshot?.Devices.FirstOrDefault(view => view.Device == device);
 
-	public string DeviceStatus(DeviceId device) => Device(device)?.State.ToString() ?? "-";
+	public string DeviceStatus(string device) => Device(device)?.State.ToString() ?? "-";
 
-	public bool IsDeviceOn(DeviceId device) => Device(device)?.State == PowerState.On;
+	public bool IsDeviceOn(string device) => Device(device)?.State == PowerState.On;
 
-	public SensorView? Sensor(SensorId sensor) => Snapshot?.Sensors.FirstOrDefault(view => view.Sensor == sensor);
+	public SensorView? Sensor(string sensor) => Snapshot?.Sensors.FirstOrDefault(view => view.Sensor == sensor);
 
-	public string SensorValue(SensorId sensor)
-	{
-		SensorView? reading = Sensor(sensor);
-		if (reading is not { Available: true } || reading.Value.Length == 0) return "-";
+	public bool IsSourceOnline(string source) => Source(source)?.State == SourceState.Online;
 
-		return sensor == SensorId.Motion
-			? reading.Value == "true" ? "Detected" : "Clear"
-			: $"{reading.Value}{reading.Unit}";
-	}
-
-	public bool SensorsOnline => Snapshot?.Automation.StationOnline ?? false;
-
-	public string MotionIcon => Sensor(SensorId.Motion)?.Value == "true" ? "💠" : "🔮";
+	public bool SourcesOnline => Snapshot?.Automation.SourcesOnline ?? false;
 
 	public Mood Mood => Snapshot?.Mood ?? Mood.Calm;
 
@@ -51,7 +41,7 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 	public DesktopActivity? Activity => Snapshot?.Activity;
 
 	public AutomationView Automation => Snapshot?.Automation ??
-		new AutomationView(false, AutomationStatus.Off, TimeContext.Day, false, null, false, null, null, null, false, false, null, false, false);
+		new AutomationView(false, AutomationStatus.Off, TimeContext.Day, false, null, false, null, null, null, false, false, null, false, false, false);
 
 	public string SettingValue(SettingKey setting) =>
 		Snapshot?.Settings.FirstOrDefault(view => view.Setting == setting)?.Value ?? "-";
@@ -70,15 +60,12 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 	public bool ServiceRunning(ServiceId service) =>
 		Snapshot?.Services.FirstOrDefault(view => view.Service == service)?.Running ?? false;
 
-	public MetricsView? Computer => Snapshot?.ComputerMetrics;
-
-	public MetricsView? RaspberryMetrics => Snapshot?.RaspberryMetrics;
+	public SourceView? Source(string source) =>
+		(Snapshot?.Sources ?? []).FirstOrDefault(view => view.Id.Equals(source, StringComparison.OrdinalIgnoreCase));
 
 	// ---------- commands ----------
 
-	public Task<string> SwitchDevice(DeviceId device, SwitchAction action) => Act(() => _client.SwitchDevice(device, action));
-
-	public Task<string> SwitchRoom(SwitchAction action) => Act(() => _client.SwitchRoom(action));
+	public Task<string> SwitchDevice(string device, SwitchAction action) => Act(() => _client.SwitchDevice(device, action));
 
 	public Task<string> SetAutomation(SwitchAction action) => Act(() => _client.SetAutomation(action));
 
@@ -104,8 +91,56 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 
 	public Task<string> ClearNotifications() => Text(_client.ClearNotifications());
 
-	public async Task<SessionInsight?> Session(string metric, int hours = 12) =>
-		(await _client.Session(metric, hours)).Match(SessionInsight? (insight) => insight, _ => null);
+	public async Task<IReadOnlyList<SourceView>> Sources() =>
+		(await _client.Sources()).Match(list => list.Sources, _ => []);
+
+	public async Task<IReadOnlyList<ChannelView>> Channels() =>
+		(await _client.Channels()).Match(list => list.Channels, _ => []);
+
+	public Task<string> RegisterDevice(VirtualDevice device) => Act(() => _client.RegisterDevice(device));
+
+	public Task<string> RegisterSensor(VirtualSensor sensor) => Act(() => _client.RegisterSensor(sensor));
+
+	public Task<string> Unregister(string id) => Act(() => _client.Unregister(id));
+
+	public async Task<Registrations> Registered() =>
+		(await _client.Registrations()).Match(value => value, _ => new Registrations([], []));
+
+	public async Task<IReadOnlyList<Bind>> Binds() => (await _client.Binds()).Match(list => list.Binds, _ => []);
+
+	public async Task<IReadOnlyList<BindStatusView>> BindStatus() => (await _client.Binds()).Match(list => list.Status, _ => []);
+
+	public async Task<IReadOnlyList<string>> AdriftBinds() => (await _client.Binds()).Match(list => list.Adrift, _ => []);
+
+	public async Task<IReadOnlyList<string>> AdriftWarnings() => (await _client.Warnings()).Match(list => list.Adrift, _ => []);
+
+	public Task<string> RestoreBind(string id) => Act(() => _client.RestoreBind(id));
+
+	public Task<string> RestoreWarning(string id) => Act(() => _client.RestoreWarning(id));
+
+	public Task<string> SaveBind(Bind bind) => Act(() => _client.SaveBind(bind));
+
+	public Task<string> DeleteBind(string id) => Act(() => _client.DeleteBind(id));
+
+	public async Task<DashboardLayout> Layout() =>
+		(await _client.Layout()).Match(value => value, _ => new DashboardLayout([], []));
+
+	public Task<string> SaveLayout(DashboardLayout layout) => Text(_client.SaveLayout(layout));
+
+	public async Task<IReadOnlyList<PluginView>> Plugins() =>
+		(await _client.Plugins()).Match(list => list.Plugins, _ => []);
+
+	public bool FeatureOn(string plugin) =>
+		(Snapshot?.Plugins ?? []).FirstOrDefault(view => view.Id == plugin)?.Active ?? true;
+
+	public Task<string> SwitchPlugin(string plugin, SwitchAction action) => Act(() => _client.SwitchPlugin(plugin, action));
+
+	public async Task<IReadOnlyList<WarningView>> Warnings() =>
+		(await _client.Warnings()).Match(list => list.Warnings, _ => []);
+
+	public Task<string> SaveWarning(Warning warning) => Act(() => _client.SaveWarning(warning));
+
+	public Task<string> DeleteWarning(string id) => Act(() => _client.DeleteWarning(id));
 
 	public async Task<IReadOnlyList<MemoryEntry>> Memories() =>
 		(await _client.Memories()).Match(list => list.Memories, _ => []);
@@ -119,6 +154,19 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 		Text(_client.Ask(message, conversation, "Web"));
 
 	public Task<string> ResetChat(string conversation) => Text(_client.ResetConversation(conversation));
+
+	public async Task<IReadOnlyList<ChatTurn>> ChatHistory(string conversation) =>
+		(await _client.Conversation(conversation)).Match(view => view.Turns, _ => []);
+
+	public async Task<IReadOnlyList<Note>> Notes() => (await _client.Notes()).Match(list => list.Notes, _ => []);
+
+	public Task<string> WriteNote(string text, NoteKind kind) => Act(() => _client.WriteNote(new NoteRequest(text, kind, "web")));
+
+	public Task<string> SettleNote(string id, bool done) => Act(() => _client.SettleNote(id, done));
+
+	public Task<string> DropNote(string id) => Act(() => _client.DropNote(id));
+
+	public Task<string> ClearNotes() => Act(() => _client.ClearNotes());
 
 	public async Task<IReadOnlyList<ModelView>> Models() => (await _client.Models()).Match(list => list.Models, _ => []);
 

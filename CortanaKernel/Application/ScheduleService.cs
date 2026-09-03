@@ -107,16 +107,15 @@ public sealed class ScheduleService(
 		return schedule == null ? Result.Fail<string>($"Schedule '{id}' not found") : await Execute(schedule);
 	}
 
-	private static Result<ScheduleAction> BuildAction(ScheduleActionType type, string target, string value)
+	private Result<ScheduleAction> BuildAction(ScheduleActionType type, string target, string value)
 	{
 		switch (type)
 		{
 			case ScheduleActionType.SwitchDevice:
-				if (!Enum.TryParse(target, true, out DeviceId _)) return Fail($"Unknown device '{target}'");
+				if (!devices.Known(target)) return Fail($"Unknown device '{target}'");
 				if (!Enum.TryParse(value, true, out SwitchAction _)) return Fail($"Unknown action '{value}'");
 				break;
 
-			case ScheduleActionType.SwitchRoom:
 			case ScheduleActionType.SetSleepMode:
 			case ScheduleActionType.SetAutomation:
 				if (!Enum.TryParse(value, true, out SwitchAction _)) return Fail($"Unknown action '{value}'");
@@ -170,10 +169,7 @@ public sealed class ScheduleService(
 		switch (action.Type)
 		{
 			case ScheduleActionType.SwitchDevice:
-				return devices.Switch(Enum.Parse<DeviceId>(action.Target, true), Enum.Parse<SwitchAction>(action.Value, true), origin);
-
-			case ScheduleActionType.SwitchRoom:
-				return devices.SwitchRoom(Enum.Parse<SwitchAction>(action.Value, true), origin);
+				return devices.Switch(action.Target, Enum.Parse<SwitchAction>(action.Value, true), origin);
 
 			case ScheduleActionType.CommandComputer:
 				return await devices.CommandComputer(Enum.Parse<ComputerCommand>(action.Target, true), action.Value, origin, token);
@@ -275,9 +271,9 @@ public sealed class ScheduleService(
 
 		bus.Subscribe<MotionDetected>(_ => Raise(ScheduleEvent.MotionDetected));
 
-		bus.Subscribe<AirQualityWarningChanged>(fact =>
+		bus.Subscribe<WarningStateChanged>(fact =>
 		{
-			if (fact.Warning) Raise(ScheduleEvent.AirQualityWarning);
+			if (fact.Active) Raise(ScheduleEvent.WarningRaised);
 		});
 	}
 

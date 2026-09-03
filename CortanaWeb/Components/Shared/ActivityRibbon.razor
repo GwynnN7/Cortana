@@ -26,11 +26,6 @@
             }
         </div>
 
-        @if (_insight is { Delta: not null, Summary.Length: > 0 })
-        {
-            <p class="ribbon-insight">@_insight.Summary</p>
-        }
-
         <div class="ribbon-legend">
             @foreach (ActivityCategory category in _segments.Select(segment => segment.Category).Distinct())
             {
@@ -49,7 +44,6 @@
     private bool _loading = true;
     private int _hours = 12;
     private double _total;
-    private SessionInsight? _insight;
 
     private sealed record Segment(ActivityCategory Category, DateTimeOffset From, DateTimeOffset To, double Weight);
 
@@ -93,8 +87,6 @@
 
             _total = _segments.Sum(segment => segment.Weight);
         }
-
-        _insight = await State.Session("co2");
 
         _loading = false;
         StateHasChanged();

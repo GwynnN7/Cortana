@@ -1,0 +1,837 @@
+@page "/hardware"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@implements IDisposable
+
+<PageTitle>Hardware</PageTitle>
+
+<h1>Hardware</h1>
+<Toast @bind-Message="_message"/>
+
+<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="Show">
+
+@if (_tab == "sources")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Sources</h2>
+            <span class="badge">@_sources.Count</span>
+        </header>
+
+        <div class="memory-list">
+            @foreach (SourceView source in _sources)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@source.Id</span>
+                        <span class="memory-meta">
+                            @source.Kind.ToString().ToLower() · @source.Outputs outputs · @source.Inputs inputs
+                            @if (source.LastSeen is { } seen)
+                            {
+                                <text> · seen @seen.ToString("HH:mm")</text>
+                            }
+                        </span>
+                    </div>
+                    <span class="badge @(source.State == SourceState.Online ? "badge-ok" : "badge-bad")">@source.State.ToString().ToLower()</span>
+                </article>
+            }
+        </div>
+
+        <p class="section-hint">Tags the hardware announces. Register a device or sensor on one to use it</p>
+    </section>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>Channels</h2>
+        </header>
+
+        <div class="memory-list">
+            @foreach (ChannelView channel in _channels)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@channel.Source / @channel.Channel</span>
+                        <span class="memory-meta">
+                            <span class="memory-kind @(channel.IsOutput ? "memory-fact" : "memory-preference")">@(channel.IsOutput ? "output" : "input")</span>
+                            @(channel.Registered ? channel.RegisteredAs : "free")
+                        </span>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+}
+else if (_tab == "devices")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Devices</h2>
+            <span class="badge">@_registered.Devices.Count</span>
+            <button class="btn btn-small" disabled="@_busy" @onclick="() => Open(Form.Device)">New device</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (VirtualDevice device in _registered.Devices)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@device.IconOn @device.Name</span>
+                        <span class="memory-meta">
+                            @string.Join(", ", device.Channels.Select(channel => $"{channel.Source}/{channel.Channel}"))
+                            @if (device.InStatus)
+                            {
+                                <text> · status line</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="btn-row wrap">
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Edit(device)">Edit</button>
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(device.Id)">Remove</button>
+                    </div>
+
+                    @if (_confirming == device.Id)
+                    {
+                        <div class="memory-edit">
+                            <span class="memory-meta is-suspended">Also removes @string.Join(" and ", Cascade(device.Id))</span>
+                            <div class="btn-row">
+                                <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(device.Id)">Confirm</button>
+                                <button class="btn btn-small" disabled="@_busy" @onclick="() => _confirming = null">Keep</button>
+                            </div>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+}
+else if (_tab == "sensors")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Sensors</h2>
+            <span class="badge">@_registered.Sensors.Count</span>
+            <button class="btn btn-small" disabled="@_busy" @onclick="() => Open(Form.Sensor)">New sensor</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (VirtualSensor sensor in _registered.Sensors)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@sensor.IconHigh @sensor.Name</span>
+                        <span class="memory-meta">
+                            @sensor.Source/@sensor.Channel @sensor.Unit
+                            @if (sensor is { Min: not null, Max: not null })
+                            {
+                                <text> · @sensor.Min–@sensor.Max</text>
+                            }
+                            @if (sensor.Offset != 0)
+                            {
+                                <text> · offset @sensor.Offset</text>
+                            }
+                            @if (sensor.FeedsPresence)
+                            {
+                                <span class="memory-kind memory-preference">presence</span>
+                            }
+                            @if (sensor.InStatus)
+                            {
+                                <text> · status line</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="btn-row wrap">
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Edit(sensor)">Edit</button>
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(sensor.Id)">Remove</button>
+                    </div>
+
+                    @if (_confirming == sensor.Id)
+                    {
+                        <div class="memory-edit">
+                            <span class="memory-meta is-suspended">Also removes @string.Join(" and ", Cascade(sensor.Id))</span>
+                            <div class="btn-row">
+                                <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(sensor.Id)">Confirm</button>
+                                <button class="btn btn-small" disabled="@_busy" @onclick="() => _confirming = null">Keep</button>
+                            </div>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+
+        <p class="section-hint">A minimum and a maximum make it a bar, without they make a tile</p>
+    </section>
+}
+else if (_tab == "binds")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Binds</h2>
+            <span class="badge">@_binds.Count</span>
+            <button class="btn btn-small" disabled="@(_busy || _registered.Devices.Count == 0)" @onclick="() => Open(Form.Bind)">New bind</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (Bind bind in _binds)
+            {
+                <article class="memory @(bind.Enabled ? "" : "is-disabled")">
+                    <div class="memory-main">
+                        <span class="memory-text">@BindName(bind.Id)</span>
+                        <span class="memory-meta">
+                            @DeviceName(bind.Device) · @(bind.Mode == BindMode.All ? "every condition" : "any condition")
+                        </span>
+                        <span class="memory-meta">
+                            @foreach (Trigger trigger in bind.Triggers)
+                            {
+                                <span class="memory-kind @(trigger.Sustains ? "memory-preference" : "memory-event")">@Describe(trigger)</span>
+                            }
+                        </span>
+                        @if (Status(bind) is { } status)
+                        {
+                            <span class="memory-meta @(status.Suspended ? "is-suspended" : "")">@status.Outcome · @status.Reason</span>
+                        }
+                    </div>
+                    <div class="btn-row wrap">
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Edit(bind)">Edit</button>
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Toggle(bind)">@(bind.Enabled ? "Disable" : "Enable")</button>
+                        @if (_adriftBinds.Contains(bind.Id))
+                        {
+                            <button class="btn btn-small" disabled="@_busy" @onclick="() => RestoreBind(bind)">Reset</button>
+                        }
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => RemoveBind(bind)">Delete</button>
+                    </div>
+                </article>
+            }
+        </div>
+
+        <p class="section-hint">
+            A sustaining condition keeps the device on, the rest only switch it on.
+            @if (_adriftBinds.Count > 0)
+            {
+                <text>Reset puts a shipped bind back to its defaults, which is the only way an updated default reaches an install</text>
+            }
+        </p>
+    </section>
+}
+else
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Warnings</h2>
+            <span class="badge">@_warnings.Count</span>
+            <button class="btn btn-small" disabled="@_busy" @onclick="() => Open(Form.Warning)">New warning</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (WarningView view in _warnings)
+            {
+                <article class="memory @(view.Warning.Enabled ? "" : "is-disabled")">
+                    <div class="memory-main">
+                        <span class="memory-text">@view.Warning.Icon @view.Warning.Name</span>
+                        <span class="memory-meta">@view.Warning.Message</span>
+                        <span class="memory-meta">
+                            @foreach (Trigger trigger in view.Warning.Triggers)
+                            {
+                                <span class="memory-kind @(trigger.Sustains ? "memory-preference" : "memory-event")">@Describe(trigger)</span>
+                            }
+                        </span>
+                        <span class="memory-meta">
+                            @view.Warning.Level.ToString().ToLower() · @view.Warning.CooldownMinutes min
+                            @if (view.Warning.InStatus)
+                            {
+                                <text> · status line</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="btn-row wrap">
+                        <span class="badge @(view.Active ? "badge-bad" : "badge-ok")">@(view.Active ? "active" : "quiet")</span>
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Edit(view.Warning)">Edit</button>
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => ToggleWarning(view.Warning)">@(view.Warning.Enabled ? "Disable" : "Enable")</button>
+                        @if (_adriftWarnings.Contains(view.Warning.Id))
+                        {
+                            <button class="btn btn-small" disabled="@_busy" @onclick="() => RestoreWarning(view.Warning.Id)">Reset</button>
+                        }
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => RemoveWarning(view.Warning.Id)">Delete</button>
+                    </div>
+                </article>
+            }
+        </div>
+
+        <p class="section-hint">A sustaining condition gates the warning, the rest raise it. Fires 15% past, clears 10% under</p>
+    </section>
+}
+
+</TabStrip>
+
+<Modal Open="_form == Form.Device" Title="@(_editing is null ? "New device" : $"Editing {_name}")" OnClose="Close">
+    <ChildContent>
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
+        <input type="text" placeholder="On" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+        <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"
+               title="Leave empty to keep the same icon when it is off"/>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_source" @bind:after="ResetPicks" disabled="@_busy">
+            @foreach (string id in SourcesWith(true))
+            {
+                <option value="@id">@id</option>
+            }
+        </select>
+    </div>
+
+    <div class="options">
+        @foreach (ChannelView channel in Available(true))
+        {
+            <label>
+                <input type="checkbox" checked="@_picked.Contains(channel.Channel)"
+                       @onchange="args => Pick(channel.Channel, (bool)(args.Value ?? false))"/>
+                @channel.Channel@(channel.Registered ? $" ({channel.RegisteredAs})" : "")
+            </label>
+        }
+    </div>
+
+    <p class="section-hint">Every channel this device drives</p>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
+    </div>
+    </ChildContent>
+
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || _name.Trim().Length == 0 || _picked.Count == 0)" @onclick="SaveDevice">
+            @(_editing is null ? "Create" : "Save")
+        </button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
+
+<Modal Open="_form == Form.Sensor" Title="@(_editing is null ? "New sensor" : $"Editing {_name}")" OnClose="Close">
+    <ChildContent>
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
+        <input type="text" placeholder="Icon" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+        @if (_kind == ReadingKind.Boolean)
+        {
+            <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+        }
+        <input type="text" placeholder="Unit" @bind="_unit" @bind:event="oninput" disabled="@_busy"/>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_source" @bind:after="ResetPicks" disabled="@_busy">
+            @foreach (string id in SourcesWith(false))
+            {
+                <option value="@id">@id</option>
+            }
+        </select>
+        <select @bind="_channel" disabled="@_busy">
+            @foreach (ChannelView channel in Available(false))
+            {
+                <option value="@channel.Channel">@channel.Channel@(channel.Registered ? $" ({channel.RegisteredAs})" : "")</option>
+            }
+        </select>
+        <select @bind="_kind" disabled="@_busy">
+            @foreach (ReadingKind kind in Enum.GetValues<ReadingKind>())
+            {
+                <option value="@kind">@kind</option>
+            }
+        </select>
+    </div>
+
+    @if (_kind == ReadingKind.Number)
+    {
+        <div class="field-row">
+            <input type="text" placeholder="Min" @bind="_min" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            <input type="text" placeholder="Max" @bind="_max" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            <input type="text" placeholder="Offset" @bind="_offset" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+        </div>
+    }
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_feedsPresence"/> Counts as presence</label>
+        <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
+    </div>
+    </ChildContent>
+
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || _name.Trim().Length == 0 || _channel.Length == 0)" @onclick="SaveSensor">
+            @(_editing is null ? "Create" : "Save")
+        </button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
+
+<Modal Open="_form == Form.Bind" Title="@(_editing is null ? "New bind" : $"Editing {_name}")" OnClose="Close">
+    <ChildContent>
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
+        <select @bind="_bindDevice" disabled="@(_busy || _editing is not null)">
+            @foreach (VirtualDevice device in _registered.Devices)
+            {
+                <option value="@device.Id">@device.Name</option>
+            }
+        </select>
+        <select @bind="_bindMode" disabled="@_busy">
+            <option value="@BindMode.All">every condition</option>
+            <option value="@BindMode.Any">any condition</option>
+        </select>
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_holds"/> Pause after a manual switch</label>
+    </div>
+
+    <p class="section-hint">Conditions</p>
+
+    <div class="memory-list">
+        @foreach (Trigger trigger in _triggers)
+        {
+            <article class="memory">
+                <div class="memory-main">
+                    <span class="memory-text">@Describe(trigger)</span>
+                    <span class="memory-meta">@(trigger.Sustains ? "has to stay true" : "only switches it on")</span>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Flip(trigger)">Flip</button>
+                    <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Drop(trigger)">Remove</button>
+                </div>
+            </article>
+        }
+    </div>
+
+    <TriggerEditor Draft="_trigger" Sensors="_registered.Sensors" Busy="_busy" OnAdd="Collect"
+                   SustainLabel="Has to stay true"/>
+    </ChildContent>
+
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || _triggers.Count == 0)" @onclick="SaveBind">
+            @(_editing is null ? "Create" : "Save")
+        </button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
+
+<Modal Open="_form == Form.Warning" Title="@(_editing is null ? "New warning" : $"Editing {_name}")" OnClose="Close">
+    <ChildContent>
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
+        <input type="text" placeholder="Icon" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+    </div>
+
+    <div class="field-row">
+        <input type="text" placeholder="What she says" @bind="_warnMessage" @bind:event="oninput" disabled="@_busy"/>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_level" disabled="@_busy">
+            @foreach (NotificationLevel level in Enum.GetValues<NotificationLevel>())
+            {
+                <option value="@level">@level.ToString().ToLower()</option>
+            }
+        </select>
+        <input type="text" placeholder="Cooldown min" @bind="_cooldown" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
+    </div>
+
+    <p class="section-hint">Conditions</p>
+
+    <div class="memory-list">
+        @foreach (Trigger trigger in _triggers)
+        {
+            <article class="memory">
+                <div class="memory-main">
+                    <span class="memory-text">@Describe(trigger)</span>
+                    <span class="memory-meta">@(trigger.Sustains ? "has to stay true" : "raises it")</span>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Flip(trigger)">Flip</button>
+                    <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Drop(trigger)">Remove</button>
+                </div>
+            </article>
+        }
+    </div>
+
+    <TriggerEditor Draft="_trigger" Sensors="_registered.Sensors" Busy="_busy" OnAdd="Collect"
+                   SustainLabel="Has to stay true"/>
+    </ChildContent>
+
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || _name.Trim().Length == 0 || _triggers.Count == 0)" @onclick="SaveWarning">
+            @(_editing is null ? "Create" : "Save")
+        </button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
+
+@code {
+    private enum Form { None, Device, Sensor, Bind, Warning }
+
+    private static readonly (string Key, string Label)[] Tabs =
+    [
+        ("sources", "Sources"), ("devices", "Devices"), ("sensors", "Sensors"), ("binds", "Binds"), ("warnings", "Warnings")
+    ];
+
+    private IReadOnlyList<SourceView> _sources = [];
+    private IReadOnlyList<ChannelView> _channels = [];
+    private IReadOnlyList<Bind> _binds = [];
+    private IReadOnlyList<BindStatusView> _bindStatus = [];
+    private IReadOnlyList<WarningView> _warnings = [];
+    private IReadOnlyList<string> _adriftBinds = [];
+    private IReadOnlyList<string> _adriftWarnings = [];
+    private Registrations _registered = new([], []);
+    private readonly HashSet<string> _picked = [];
+    private readonly List<Trigger> _triggers = [];
+    private readonly TriggerDraft _trigger = new();
+
+    private IDisposable? _subscription;
+    private string _tab = "sources";
+    private Form _form = Form.None;
+
+    private string _source = "";
+    private string _channel = "";
+    private string _name = "";
+    private string _unit = "";
+    private string _iconHigh = "";
+    private string _iconLow = "";
+    private string _min = "";
+    private string _max = "";
+    private string _offset = "";
+    private string _cooldown = "45";
+    private string _warnMessage = "";
+    private string _bindDevice = "";
+    private bool _feedsPresence;
+    private bool _inStatus;
+    private bool _holds = true;
+    private BindMode _bindMode = BindMode.All;
+    private NotificationLevel _level = NotificationLevel.Alert;
+    private ReadingKind _kind = ReadingKind.Number;
+    private string? _editing;
+    private string? _confirming;
+    private string? _message;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+        await Reload();
+    }
+
+    public void Dispose() => _subscription?.Dispose();
+
+    private void Show(string tab)
+    {
+        _tab = tab;
+        Close();
+    }
+
+    private void Close()
+    {
+        _form = Form.None;
+        _editing = null;
+        _confirming = null;
+        _name = "";
+        _unit = "";
+        _iconHigh = "";
+        _iconLow = "";
+        _min = "";
+        _max = "";
+        _offset = "";
+        _cooldown = "45";
+        _warnMessage = "";
+        _inStatus = false;
+        _feedsPresence = false;
+        _holds = true;
+        _bindMode = BindMode.All;
+        _level = NotificationLevel.Alert;
+        _kind = ReadingKind.Number;
+        _picked.Clear();
+        _triggers.Clear();
+        _trigger.Clear();
+    }
+
+    private void Open(Form form)
+    {
+        Close();
+        _form = form;
+
+        _source = form == Form.Device
+            ? SourcesWith(true).FirstOrDefault() ?? ""
+            : SourcesWith(false).FirstOrDefault() ?? "";
+
+        ResetPicks();
+    }
+
+    private async Task Reload()
+    {
+        _sources = await State.Sources();
+        _channels = await State.Channels();
+        _binds = await State.Binds();
+        _bindStatus = await State.BindStatus();
+        _warnings = await State.Warnings();
+        _registered = await State.Registered();
+        _adriftBinds = await State.AdriftBinds();
+        _adriftWarnings = await State.AdriftWarnings();
+
+        if (_source.Length == 0) _source = _sources.FirstOrDefault()?.Id ?? "";
+        if (_bindDevice.Length == 0) _bindDevice = _registered.Devices.FirstOrDefault()?.Id ?? "";
+        if (_trigger.Sensor.Length == 0) _trigger.Sensor = _registered.Sensors.FirstOrDefault()?.Id ?? "";
+
+        StateHasChanged();
+    }
+
+    // ---------- channels ----------
+
+    private IEnumerable<string> SourcesWith(bool outputs) =>
+        _channels.Where(view => view.IsOutput == outputs).Select(view => view.Source).Distinct();
+
+    private IEnumerable<ChannelView> Available(bool outputs) =>
+        _channels.Where(view => view.IsOutput == outputs && view.Source == _source);
+
+    private void ResetPicks()
+    {
+        _picked.Clear();
+        _channel = Available(false).FirstOrDefault()?.Channel ?? "";
+    }
+
+    private void Pick(string channel, bool wanted)
+    {
+        if (wanted) _picked.Add(channel);
+        else _picked.Remove(channel);
+    }
+
+    // ---------- names ----------
+
+    private string DeviceName(string id) => _registered.Devices.FirstOrDefault(device => device.Id == id)?.Name ?? id;
+
+    private string SensorName(string id) => _registered.Sensors.FirstOrDefault(sensor => sensor.Id == id)?.Name ?? id;
+
+    private string BindName(string id) =>
+        _binds.FirstOrDefault(bind => bind.Id == id) is { } bind && bind.Name.Length > 0 ? bind.Name : id;
+
+    private BindStatusView? Status(Bind bind) => _bindStatus.FirstOrDefault(entry => entry.Bind == bind.Id);
+
+    private string Describe(Trigger trigger) => TriggerText.Describe(trigger, SensorName);
+
+    private string Unused(string id)
+    {
+        if (_binds.All(bind => bind.Id != id)) return id;
+
+        var suffix = 2;
+        while (_binds.Any(bind => bind.Id == $"{id}-{suffix}")) suffix++;
+
+        return $"{id}-{suffix}";
+    }
+
+    // ---------- the trigger list inside a modal ----------
+
+    private void Collect()
+    {
+        _triggers.Add(_trigger.Read());
+        _trigger.Clear();
+    }
+
+    private void Drop(Trigger trigger) => _triggers.Remove(trigger);
+
+    private void Flip(Trigger trigger)
+    {
+        int index = _triggers.IndexOf(trigger);
+        if (index >= 0) _triggers[index] = trigger with { Sustains = !trigger.Sustains };
+    }
+
+    // ---------- opening an editor ----------
+
+    private void Edit(VirtualDevice device)
+    {
+        Open(Form.Device);
+        _editing = device.Id;
+        _name = device.Name;
+        _iconHigh = device.IconOn;
+        _iconLow = device.IconOff;
+        _inStatus = device.InStatus;
+        _source = device.Channels[0].Source;
+        _picked.Clear();
+        foreach (ChannelRef channel in device.Channels) _picked.Add(channel.Channel);
+    }
+
+    private void Edit(VirtualSensor sensor)
+    {
+        Open(Form.Sensor);
+        _editing = sensor.Id;
+        _name = sensor.Name;
+        _iconHigh = sensor.IconHigh;
+        _iconLow = sensor.IconLow;
+        _unit = sensor.Unit;
+        _source = sensor.Source;
+        _channel = sensor.Channel;
+        _kind = sensor.Kind;
+        _min = sensor.Min?.ToString(CultureInfo.InvariantCulture) ?? "";
+        _max = sensor.Max?.ToString(CultureInfo.InvariantCulture) ?? "";
+        _offset = sensor.Offset.ToString(CultureInfo.InvariantCulture);
+        _feedsPresence = sensor.FeedsPresence;
+        _inStatus = sensor.InStatus;
+    }
+
+    private void Edit(Bind bind)
+    {
+        Open(Form.Bind);
+        _editing = bind.Id;
+        _name = bind.Name.Length > 0 ? bind.Name : bind.Id;
+        _bindDevice = bind.Device;
+        _bindMode = bind.Mode;
+        _holds = bind.HoldsOnManualAction;
+        _triggers.AddRange(bind.Triggers);
+    }
+
+    private void Edit(Warning warning)
+    {
+        Open(Form.Warning);
+        _editing = warning.Id;
+        _name = warning.Name;
+        _warnMessage = warning.Message;
+        _iconHigh = warning.Icon;
+        _level = warning.Level;
+        _cooldown = warning.CooldownMinutes.ToString(CultureInfo.InvariantCulture);
+        _inStatus = warning.InStatus;
+        _triggers.AddRange(warning.Triggers);
+    }
+
+    // ---------- saving ----------
+
+    private async Task SaveDevice()
+    {
+        _busy = true;
+        _message = await State.RegisterDevice(new VirtualDevice(_editing ?? Drafts.Slug(_name), _name.Trim(),
+            [.. _picked.Select(channel => new ChannelRef(_source, channel))],
+            _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "🟢",
+            _iconLow.Trim(),
+            InStatus: _inStatus));
+
+        await Done();
+    }
+
+    private async Task SaveSensor()
+    {
+        _busy = true;
+        _message = await State.RegisterSensor(new VirtualSensor(_editing ?? Drafts.Slug(_name), _name.Trim(), _source, _channel,
+            _unit.Trim(), _kind,
+            _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "🔵",
+            _iconLow.Trim(),
+            Drafts.Number(_min), Drafts.Number(_max), Drafts.Number(_offset) ?? 0, _feedsPresence, _inStatus));
+
+        await Done();
+    }
+
+    private async Task SaveBind()
+    {
+        string id = _editing ?? Unused(_name.Trim().Length > 0 ? Drafts.Slug(_name) : $"{_bindDevice}-{_triggers[0].Sensor}");
+
+        _busy = true;
+        _message = await State.SaveBind(new Bind(id, _bindDevice, [.. _triggers], _bindMode,
+            Enabled: _binds.FirstOrDefault(bind => bind.Id == id)?.Enabled ?? true,
+            HoldsOnManualAction: _holds,
+            Name: _name.Trim().Length > 0 ? _name.Trim() : DeviceName(_bindDevice)));
+
+        if (_triggers.All(trigger => !trigger.Sustains))
+            _message += ". Nothing keeps it on, so it can switch it on but never off";
+
+        await Done();
+    }
+
+    private async Task SaveWarning()
+    {
+        Warning? existing = _warnings.FirstOrDefault(view => view.Warning.Id == _editing)?.Warning;
+
+        _busy = true;
+        _message = await State.SaveWarning(new Warning(_editing ?? Drafts.Slug(_name), _name.Trim(),
+            _warnMessage.Trim().Length > 0 ? _warnMessage.Trim() : _name.Trim(),
+            [.. _triggers],
+            _level,
+            (int)(Drafts.Number(_cooldown) ?? 45),
+            existing?.Enabled ?? true,
+            _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "⚠️",
+            _inStatus));
+
+        await Done();
+    }
+
+    private async Task Done()
+    {
+        Close();
+        await Reload();
+        _busy = false;
+    }
+
+    // ---------- removing ----------
+
+    private string[] Cascade(string id) =>
+    [
+        .. _binds.Where(bind => bind.Device.Equals(id, StringComparison.OrdinalIgnoreCase)
+                || bind.Triggers.All(trigger => trigger.Sensor.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            .Select(bind => $"the {BindName(bind.Id)} bind"),
+        .. _warnings.Where(view => view.Warning.Triggers.Count > 0
+                && view.Warning.Triggers.All(trigger => trigger.Sensor.Equals(id, StringComparison.OrdinalIgnoreCase)))
+            .Select(view => $"the {view.Warning.Name} warning")
+    ];
+
+    private async Task Remove(string id)
+    {
+        if (_confirming != id && Cascade(id).Length > 0)
+        {
+            _confirming = id;
+            return;
+        }
+
+        _busy = true;
+        _confirming = null;
+        _message = await State.Unregister(id);
+        await Reload();
+        _busy = false;
+    }
+
+    private async Task Toggle(Bind bind)
+    {
+        _busy = true;
+        _message = await State.SaveBind(bind with { Enabled = !bind.Enabled });
+        await Done();
+    }
+
+    private async Task RestoreBind(Bind bind)
+    {
+        _busy = true;
+        _message = await State.RestoreBind(bind.Id);
+        await Done();
+    }
+
+    private async Task RestoreWarning(string id)
+    {
+        _busy = true;
+        _message = await State.RestoreWarning(id);
+        await Done();
+    }
+
+    private async Task RemoveBind(Bind bind)
+    {
+        _busy = true;
+        _message = await State.DeleteBind(bind.Id);
+        await Done();
+    }
+
+    private async Task ToggleWarning(Warning warning)
+    {
+        _busy = true;
+        _message = await State.SaveWarning(warning with { Enabled = !warning.Enabled });
+        await Done();
+    }
+
+    private async Task RemoveWarning(string id)
+    {
+        _busy = true;
+        _message = await State.DeleteWarning(id);
+        await Done();
+    }
+}

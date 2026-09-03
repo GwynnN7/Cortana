@@ -8,54 +8,49 @@
 
 <h1>Sensors</h1>
 
-<div class="subnav">
-    @foreach ((string key, string label) in Tabs)
-    {
-        <button class="subnav-tab @(_tab == key ? "subnav-active" : "")" @onclick="() => _tab = key">@label</button>
-    }
-</div>
+<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
+    <SourceCard Source="State.Source(_tab)" Sensors="Readings"
+                Activity="@(_tab == SourceIds.Computer ? State.Activity : null)"/>
 
-@if (_tab == "station")
-{
-    <section class="section">
-        <header class="section-head">
-            <h2>Station</h2>
-            <span class="badge @(State.SensorsOnline ? "badge-ok" : "badge-bad")">
-                @(State.SensorsOnline ? "Online" : "Offline")
-            </span>
-        </header>
-
-        <div class="tiles tiles-6">
-            <StatTile Icon="🌡" Label="Temperature" Value="@State.SensorValue(SensorId.Temperature)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="💧" Label="Humidity" Value="@State.SensorValue(SensorId.Humidity)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="💡" Label="Light" Value="@State.SensorValue(SensorId.Light)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="@State.MotionIcon" Label="Motion" Value="@State.SensorValue(SensorId.Motion)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🧪" Label="CO₂" Value="@State.SensorValue(SensorId.Co2)" Muted="!State.SensorsOnline"/>
-            <StatTile Icon="🦠" Label="TVOC" Value="@State.SensorValue(SensorId.Tvoc)" Muted="!State.SensorsOnline"/>
-        </div>
-    </section>
-
-    <HistoryPanel Title="History" Metrics="@(new[] { "temperature", "humidity", "light", "co2", "tvoc", "motion", "lamp", "computer" })"/>
-}
-else if (_tab == "computer")
-{
-    <ComputerCard Metrics="State.Computer" Activity="State.Activity"/>
-    <HistoryPanel Title="History" Metrics="@(new[] { "pc_cpu", "pc_temp", "pc_gpu", "pc_gpu_temp", "pc_ram" })"/>
-}
-else
-{
-    <ComputerCard Metrics="State.RaspberryMetrics"/>
-    <HistoryPanel Title="History" Metrics="@(new[] { "pi_cpu", "pi_temp", "pi_ram" })"/>
-}
+    <HistoryPanel Title="History" Metrics="@Metrics"/>
+</TabStrip>
 
 @code {
-    private static readonly (string Key, string Label)[] Tabs =
-        [("station", "Station"), ("computer", "Computer"), ("raspberry", "Raspberry")];
-
-    private string _tab = "station";
     private IDisposable? _subscription;
+    private string _tab = SourceIds.Station;
 
-    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override void OnInitialized()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(OnSnapshot));
+        EnsureTab();
+    }
 
     public void Dispose() => _subscription?.Dispose();
+
+    /// The snapshot arrives asynchronously, often after this runs once with nothing loaded yet.
+    /// Only correct the tab once sources are actually known, so a real default is never wiped to ""
+    private void EnsureTab()
+    {
+        if (Sources.Any() && !Sources.Contains(_tab)) _tab = Sources.First();
+    }
+
+    private void OnSnapshot()
+    {
+        EnsureTab();
+        StateHasChanged();
+    }
+
+    private IEnumerable<string> Sources =>
+        (State.Snapshot?.Sensors ?? []).Select(view => view.Source).Distinct().Order();
+
+    private IReadOnlyList<(string Key, string Label)> Tabs => [.. Sources.Select(source => (source, source))];
+
+    private IReadOnlyList<SensorView> Readings =>
+        [.. (State.Snapshot?.Sensors ?? []).Where(view => view.Source == _tab)];
+
+    private string[] Metrics =>
+    [
+        .. Readings.Select(view => view.Sensor),
+        .. _tab == SourceIds.Computer ? new[] { "activity", "music" } : []
+    ];
 }

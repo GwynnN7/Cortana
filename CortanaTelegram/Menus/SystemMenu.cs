@@ -18,25 +18,14 @@ public sealed class SystemMenu : Menu
 
 	protected override Task<string> Render() => _tab == 0 ? Computer() : Raspberry();
 
-	private static async Task<string> Computer()
-	{
-		Result<MetricsView> metrics = await TelegramSession.Cortana.ComputerMetrics();
-
-		return metrics.Match(
-			pc => "\n🖥 <b>" + pc.Host + "</b>\n================\n" +
-				$"⚙️ • <b>CPU</b>: {pc.CpuLoad:F0}% - {pc.CpuTemp:F0}°C\n" +
-				$"🎮 • <b>GPU</b>: {pc.GpuLoad:F0}% - {pc.GpuTemp:F0}°C\n" +
-				$"🧠 • <b>RAM</b>: {pc.MemoryUsed:F1}/{pc.MemoryTotal:F1} GB\n" +
-				$"💾 • <b>Disk</b>: {pc.DiskUsed:F0}/{pc.DiskTotal:F0} GB\n" +
-				$"⏱ • <b>Uptime</b>: {TimeSpan.FromSeconds(pc.Uptime):d\\d\\ hh\\:mm}\n" +
-				(pc.Stale ? $"\n<i>Last seen at {pc.Timestamp:HH:mm}</i>\n" : ""),
-			_ => "\n🖥 <b>Computer</b>\n================\nNo metrics received yet\n");
-	}
+	private static Task<string> Computer() => Machine(SourceIds.Computer, "🖥");
 
 	private static async Task<string> Raspberry()
 	{
+		string machine = await Machine(SourceIds.Raspberry, "🍓");
+
 		Result<CortanaSnapshot> snapshot = await TelegramSession.Cortana.Snapshot();
-		if (!snapshot.IsOk) return "\n🍓 <b>Raspberry</b>\n================\nCortana is offline\n";
+		if (!snapshot.IsOk) return machine;
 
 		string Value(RaspberryInfo info)
 		{
@@ -44,15 +33,34 @@ public sealed class SystemMenu : Menu
 			return view == null || view.Value.Length == 0 ? "Unknown" : $"{view.Value}{view.Unit}";
 		}
 
-		MetricsView pi = snapshot.Value.RaspberryMetrics;
-
-		return "\n🍓 <b>Raspberry</b>\n================\n" +
-			$"🌡 • <b>Temperature</b>: {Value(RaspberryInfo.Temperature)}\n" +
+		return machine +
 			$"📍 • <b>Location</b>: {Value(RaspberryInfo.Location)}\n" +
-			$"🌐 • <b>Gateway</b>: {Value(RaspberryInfo.Gateway)}\n" +
-			$"📬 • <b>IP</b>: {Value(RaspberryInfo.PublicIp)}\n" +
-			$"⚙️ • <b>CPU</b>: {pi.CpuLoad:F0}%\n" +
-			$"🧠 • <b>RAM</b>: {pi.MemoryUsed:F1}/{pi.MemoryTotal:F1} GB\n";
+			$"📬 • <b>IP</b>: {Value(RaspberryInfo.PublicIp)}\n";
+	}
+
+	/// Whatever the source says about itself, then whatever it is reading
+	private static async Task<string> Machine(string source, string emoji)
+	{
+		Result<CortanaSnapshot> snapshot = await TelegramSession.Cortana.Snapshot();
+		if (!snapshot.IsOk) return $"\n{emoji} <b>{source}</b>\n================\nCortana is offline\n";
+
+		CortanaSnapshot state = snapshot.Value;
+		SourceView? view = state.Sources.FirstOrDefault(entry => entry.Id == source);
+		if (view is null) return $"\n{emoji} <b>{source}</b>\n================\nNothing announced yet\n";
+
+		string name = view.Facts.FirstOrDefault(fact => fact.Key == "name")?.Value ?? view.Id;
+
+		string facts = string.Join("\n", view.Facts
+			.Where(fact => fact.Key != "name")
+			.Select(fact => $"• <b>{fact.Key}</b>: {fact.Value}"));
+
+		string readings = string.Join("\n", state.Sensors
+			.Where(sensor => sensor.Source == source && sensor.Available)
+			.Select(sensor => $"{sensor.Icon} • <b>{sensor.Name}</b>: {sensor.Value}{sensor.Unit}"));
+
+		return $"\n{emoji} <b>{name}</b>\n================\n" +
+			(facts.Length > 0 ? facts + "\n" : "") +
+			(readings.Length > 0 ? readings + "\n" : "");
 	}
 
 	protected override InlineKeyboardMarkup Keyboard()

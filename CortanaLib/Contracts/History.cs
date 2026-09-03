@@ -76,3 +76,28 @@ public sealed record SessionInsight(
 	double? Current,
 	double? Delta,
 	string Summary);
+
+/// One row per day: the few numbers a rhythm is made of, kept so months of them stay cheap to read
+public sealed record DaySummary(
+	DateOnly Day,
+	DayOfWeek Weekday,
+	int? FirstPresence,
+	int? LastPresence,
+	int? ComputerOn,
+	int? ComputerOff,
+	int? SleepAt,
+	double PresenceMinutes,
+	double ComputerMinutes,
+	double MusicMinutes,
+	IReadOnlyDictionary<string, double> ActivityMinutes,
+	IReadOnlyDictionary<string, double> DeviceMinutes,
+	IReadOnlyDictionary<string, double> SensorAverages);
+
+public sealed record RhythmView(
+	string Metric,
+	int? Usual,
+	int? Today,
+	int Days,
+	string Summary);
+
+public sealed record DaySummaryListResponse(IReadOnlyList<DaySummary> Days);

@@ -1,12 +1,15 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
+using CortanaKernel.Domain.Fabric;
+using CortanaLib.Contracts;
+using CortanaLib.Primitives;
 using CortanaLib.Runtime;
 
 namespace CortanaKernel.Infrastructure.Network;
 
-/// One TCP port for both machines that talk to the Kernel. The first bytes identify the client and the connection is handed to the matching handler
-public sealed class ConnectionServer(DesktopComputerEndpoint desktop, Esp32SensorSource station) : BackgroundService
+public sealed class ConnectionServer(DesktopComputerEndpoint desktop, StationSource station, Fabric fabric) : BackgroundService
 {
 	private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(10);
 
@@ -60,26 +63,55 @@ public sealed class ConnectionServer(DesktopComputerEndpoint desktop, Esp32Senso
 			}
 
 			string message = Encoding.UTF8.GetString(buffer, 0, received);
-			string? identity = new[] { "computer", "esp32" }.FirstOrDefault(name => message.StartsWith(name, StringComparison.OrdinalIgnoreCase));
 
-			if (identity == null)
+			if (Announced(message) is { } hello)
 			{
-				Log.Write("Network", $"Rejected an unknown client: '{Truncate(message)}'");
-				await socket.SendAsync(Encoding.UTF8.GetBytes("FIN\n"), SocketFlags.None, token);
-				socket.Close();
+				string rest = message[(message.IndexOf('\n') + 1)..];
+				fabric.Announce(new SourceDescriptor(hello.Source, hello.Kind, hello.Outputs, hello.Inputs));
+				fabric.Describe(hello.Source, hello.Facts);
+
+				await socket.SendAsync(Encoding.UTF8.GetBytes(
+					JsonSerializer.Serialize(new SourceWelcome(Wire.Welcome, true, "announced"), CortanaEnvironment.WireJson) + "\n"),
+					SocketFlags.None, token);
+
+				Log.Write("Network", $"{hello.Source} announced {hello.Outputs.Count} output(s) and {hello.Inputs.Count} input(s)");
+
+				if (hello.Kind == SourceKind.Computer) desktop.Bind(socket, rest);
+				else station.Bind(socket, rest, hello.Source);
 				return;
 			}
 
-			string pending = message[identity.Length..];
-			await socket.SendAsync(Encoding.UTF8.GetBytes("ACK\n"), SocketFlags.None, token);
-
-			if (identity == "computer") desktop.Bind(socket, pending);
-			else station.Bind(socket, pending);
+			Log.Write("Network", $"Rejected a client that did not announce itself: '{Truncate(message)}'");
+			await socket.SendAsync(Encoding.UTF8.GetBytes("FIN\n"), SocketFlags.None, token);
+			socket.Close();
 		}
 		catch (Exception ex)
 		{
 			Log.Error("Network", $"Handshake failed: {ex.Message}");
 			try { socket.Close(); } catch { /* already gone */ }
+		}
+	}
+
+	private static SourceHello? Announced(string message)
+	{
+		int newline = message.IndexOf('\n');
+		string first = (newline < 0 ? message : message[..newline]).Trim();
+
+		if (!first.StartsWith('{') || !first.Contains(Wire.Magic, StringComparison.OrdinalIgnoreCase)) return null;
+
+		try
+		{
+			SourceHello? hello = JsonSerializer.Deserialize<SourceHello>(first, CortanaEnvironment.WireJson);
+
+			if (hello is null || hello.Magic != Wire.Magic || hello.Source.Length == 0) return null;
+			if (hello.Version > Wire.Version) Log.Write("Network", $"{hello.Source} speaks version {hello.Version}, this Kernel speaks {Wire.Version}");
+
+			return hello;
+		}
+		catch (JsonException ex)
+		{
+			Log.Write("Network", $"Malformed announcement: {ex.Message}");
+			return null;
 		}
 	}
 

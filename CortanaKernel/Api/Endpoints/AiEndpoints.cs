@@ -17,18 +17,29 @@ public static class AiEndpoints
 					reply => (reply, new AskResponse(reply, body.Conversation)));
 			})
 			.Access(ApiAccess.Sensitive)
-			.WithSummary("Sends a message to Cortana. Set remember=false for a one-shot ask that is not stored in the conversation.")
+			.WithSummary("Sends a message to Cortana. Set remember=false for a one-shot ask that is not stored in the conversation")
 			.Produces<AskResponse>();
+
+		group.MapGet("/{conversation}", (string conversation, AiService ai, HttpRequest request) =>
+			{
+				IReadOnlyList<ChatTurn> turns = ai.History(conversation);
+				string text = turns.Count == 0
+					? $"Nothing said in '{conversation}' yet"
+					: string.Join("\n", turns.Select(turn => $"{turn.At:HH:mm} {(turn.Mine ? "you" : "Cortana")}: {turn.Text}"));
+
+				return ApiResults.Ok(request, text, new ConversationResponse(conversation, turns));
+			})
+			.Access(ApiAccess.ReadOnly).WithSummary("Everything said in one conversation").Produces<ConversationResponse>();
 
 		group.MapDelete("/{conversation}", (string conversation, AiService ai, HttpRequest request) =>
 			{
 				ai.Forget(conversation);
 				return ApiResults.Message(request, $"Conversation '{conversation}' forgotten");
 			})
-			.Access(ApiAccess.Sensitive).WithSummary("Forgets one conversation.");
+			.Access(ApiAccess.Sensitive).WithSummary("Forgets one conversation");
 
 		group.MapGet("/prompt", (AiService ai, HttpRequest request) => ApiResults.Message(request, ai.SystemPrompt))
-			.Access(ApiAccess.ReadOnly).WithSummary("The system prompt currently in use.");
+			.Access(ApiAccess.ReadOnly).WithSummary("The system prompt currently in use");
 
 		group.MapGet("/memory", (AiService ai, HttpRequest request) =>
 			{
@@ -64,10 +75,10 @@ public static class AiEndpoints
 			.Access(ApiAccess.Sensitive).WithSummary("Let Cortana speak unprompted again");
 
 		group.MapPost("/prompt", (PromptRequest body, AiService ai, HttpRequest request) => ApiResults.From(request, ai.SetPrompt(body.Prompt)))
-			.Access(ApiAccess.Sensitive).WithSummary("Replaces the system prompt.");
+			.Access(ApiAccess.Sensitive).WithSummary("Replaces the system prompt");
 
 		group.MapDelete("/prompt", (AiService ai, HttpRequest request) => ApiResults.From(request, ai.ResetPrompt()))
-			.Access(ApiAccess.Sensitive).WithSummary("Restores the system prompt that ships with Cortana.");
+			.Access(ApiAccess.Sensitive).WithSummary("Restores the system prompt that ships with Cortana");
 
 		group.MapGet("/models", (AiService ai, HttpRequest request) =>
 			{
@@ -75,10 +86,10 @@ public static class AiEndpoints
 				string text = string.Join("\n", models.Select(model => $"{(model.Current ? "*" : " ")} {model.Name}"));
 				return ApiResults.Ok(request, text, new ModelListResponse(models, ai.ModelName));
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Every selectable language model.").Produces<ModelListResponse>();
+			.Access(ApiAccess.ReadOnly).WithSummary("Every selectable language model").Produces<ModelListResponse>();
 
 		group.MapPost("/model", (ModelRequest body, AiService ai, HttpRequest request) => ApiResults.From(request, ai.SelectModel(body.Model)))
-			.Access(ApiAccess.Sensitive).WithSummary("Switches the language model.");
+			.Access(ApiAccess.Sensitive).WithSummary("Switches the language model");
 
 		group.MapGet("/settings", (AiService ai, HttpRequest request) =>
 			{
@@ -86,7 +97,7 @@ public static class AiEndpoints
 				return ApiResults.Ok(request, string.Join("\n", settings.Select(view => $"{view.Setting}: {view.Value}")),
 					new AiSettingListResponse(settings));
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Model behaviour, memory depth and telemetry cadence.")
+			.Access(ApiAccess.ReadOnly).WithSummary("Model behaviour, memory depth and telemetry cadence")
 			.Produces<AiSettingListResponse>();
 
 		group.MapGet("/settings/{setting}", (string setting, AiService ai, HttpRequest request) =>
@@ -95,7 +106,7 @@ public static class AiEndpoints
 
 				return ApiResults.Ok(request, ai.ReadSetting(parsed), new AiSettingView(parsed, ai.ReadSetting(parsed)));
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("One AI setting.").Produces<AiSettingView>();
+			.Access(ApiAccess.ReadOnly).WithSummary("One AI setting").Produces<AiSettingView>();
 
 		group.MapPost("/settings/{setting}", (string setting, NumberRequest body, AiService ai, HttpRequest request) =>
 			{
@@ -104,6 +115,6 @@ public static class AiEndpoints
 				return ApiResults.From(request, ai.WriteSetting(parsed, body.Value),
 					message => (message, new AiSettingView(parsed, ai.ReadSetting(parsed))));
 			})
-			.Access(ApiAccess.Sensitive).WithSummary("Updates one AI setting.").Produces<AiSettingView>();
+			.Access(ApiAccess.Sensitive).WithSummary("Updates one AI setting").Produces<AiSettingView>();
 	}
 }

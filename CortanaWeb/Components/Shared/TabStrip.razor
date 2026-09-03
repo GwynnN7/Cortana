@@ -1,0 +1,72 @@
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+
+<div class="subnav">
+    @foreach ((string key, string label) in Tabs)
+    {
+        <button class="subnav-tab @(Current == key ? "subnav-active" : "")" @onclick="() => Go(key)">@label</button>
+    }
+</div>
+
+<div class="tab-swipe" @ref="_panel">
+    <div class="tab-panel @_slide" @key="Current">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<(string Key, string Label)> Tabs { get; set; } = [];
+    [Parameter, EditorRequired] public string Current { get; set; } = "";
+    [Parameter] public EventCallback<string> CurrentChanged { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private ElementReference _panel;
+    private DotNetObjectReference<TabStrip>? _self;
+    private string _slide = "";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _self = DotNetObjectReference.Create(this);
+        await Js.InvokeVoidAsync("cortanaSwipe.attach", _panel, _self);
+    }
+
+    private int At(string key)
+    {
+        for (var i = 0; i < Tabs.Count; i++)
+            if (Tabs[i].Key == key) return i;
+
+        return -1;
+    }
+
+    /// Forward is +1, back is -1. The ends do not wrap: a swipe past the last tab should feel like a wall
+    [JSInvokable]
+    public async Task Swiped(int direction)
+    {
+        int at = At(Current);
+        if (at < 0) return;
+
+        int next = at + direction;
+        if (next < 0 || next >= Tabs.Count) return;
+
+        await Go(Tabs[next].Key, direction);
+        StateHasChanged();
+    }
+
+    private Task Go(string key, int direction = 0)
+    {
+        if (key == Current) return Task.CompletedTask;
+
+        if (direction == 0) direction = At(key) > At(Current) ? 1 : -1;
+
+        _slide = direction > 0 ? "slide-in-right" : "slide-in-left";
+        return CurrentChanged.InvokeAsync(key);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _self?.Dispose();
+        await ValueTask.CompletedTask;
+    }
+}

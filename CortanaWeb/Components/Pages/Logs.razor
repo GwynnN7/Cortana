@@ -93,6 +93,27 @@
 
 <section class="section">
     <header class="section-head">
+        <h2>What the desktop reports</h2>
+    </header>
+
+    <div class="field-row">
+        <select value="@Reporting" disabled="@(_busy || State.Activity is null)" @onchange="SetDetail">
+            @foreach (ActivityDetail level in Enum.GetValues<ActivityDetail>())
+            {
+                <option value="@level">@level</option>
+            }
+        </select>
+    </div>
+
+    <p class="section-hint">
+        @(State.Activity is null
+            ? "The desktop agent is not connected"
+            : $"Reporting {Describe(Reporting)}")
+    </p>
+</section>
+
+<section class="section">
+    <header class="section-head">
         <h2>Notifications</h2>
         <p class="section-hint">One persistent notification that always shows the newest state</p>
     </header>
@@ -148,6 +169,30 @@
 </section>
 
 @code {
+    private ActivityDetail Reporting => State.Activity?.Detail ?? ActivityDetail.NowPlaying;
+
+    private static string Describe(ActivityDetail level) => level switch
+    {
+        ActivityDetail.CategoryOnly => "the category only, no window titles or music",
+        ActivityDetail.GameTitles => "the category and game titles, but not music",
+        _ => "the category, game titles and what is playing"
+    };
+
+    private async Task SetDetail(ChangeEventArgs args)
+    {
+        if (!Enum.TryParse(args.Value?.ToString(), out ActivityDetail level)) return;
+
+        _busy = true;
+        try
+        {
+            _message = await State.ComputerCommand(CortanaLib.Primitives.ComputerCommand.SetActivityDetail, level.ToString());
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
     private readonly HashSet<NotificationSource> _sources = [.. Enum.GetValues<NotificationSource>()];
     private readonly HashSet<NotificationEntry> _expanded = [];
 

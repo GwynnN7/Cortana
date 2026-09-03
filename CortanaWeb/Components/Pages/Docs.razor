@@ -1,0 +1,50 @@
+@page "/docs"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+
+<PageTitle>Docs</PageTitle>
+
+<h1>Docs</h1>
+
+<section class="section">
+    <header class="section-head">
+        <h2>API</h2>
+    </header>
+
+    <p class="section-hint">Every route the Kernel exposes, with the shapes it returns. Plain text comes back for <code>Accept: text/plain</code>, JSON otherwise</p>
+
+    <div class="btn-row btn-row-spaced">
+        <a class="btn" href="/api/scalar/v1" target="_blank" rel="noopener">Open the API reference</a>
+        <a class="btn btn-ghost" href="/api/openapi/v1.json" target="_blank" rel="noopener">OpenAPI document</a>
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>How it fits together</h2>
+    </header>
+
+    <div class="docs-grid">
+        @foreach ((string title, string body) in Notes)
+        {
+            <article class="docs-note">
+                <strong>@title</strong>
+                <span>@body</span>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    private static readonly (string Title, string Body)[] Notes =
+    [
+        ("Sources", "Hardware announces what it offers. A source declares its devices and sensors, and everything downstream follows that declaration rather than a fixed list"),
+        ("Binds", "A bind points sensors at a device. Sustaining triggers keep it on, the rest are only needed to switch it on"),
+        ("Presence", "Composed, not measured. Every sensor marked \"counts as presence\" feeds it — the PIR, being at the desk — it lingers for the timeout after the last goes quiet, and the Kernel publishes it as an ordinary sensor"),
+        ("Warnings", "A warning watches sensors against thresholds. It fires 15% past one and clears only when every one is 10% under, so it cannot flap"),
+        ("Notes", "A note is something to act on. Memory is who you are; notes are what you asked for"),
+        ("Memory", "Facts, preferences and events are permanent. A state is short-term, replaced by the next one and expiring on its own"),
+        ("History", "Every metric lands in one CSV row per sample, which is why the room and the desk can be correlated at all"),
+        ("Volition", "Anything Cortana says unprompted goes through one place, is rationed, and can be silenced with Quiet")
+    ];
+}

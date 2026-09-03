@@ -41,11 +41,8 @@ public sealed class CortanaClient
 
 	// ---------- devices ----------
 
-	public Task<Result<string>> SwitchDevice(DeviceId device, SwitchAction action) =>
+	public Task<Result<string>> SwitchDevice(string device, SwitchAction action) =>
 		PostText($"devices/{device}", new SwitchRequest(action));
-
-	public Task<Result<string>> SwitchRoom(SwitchAction action) =>
-		PostText("devices/room", new SwitchRequest(action));
 
 	public Task<Result<string>> Devices() => GetText("devices");
 
@@ -75,7 +72,7 @@ public sealed class CortanaClient
 
 	public Task<Result<string>> Sensors() => GetText("sensors");
 
-	public Task<Result<string>> Sensor(SensorId sensor) => GetText($"sensors/{sensor}");
+	public Task<Result<string>> Sensor(string sensor) => GetText($"sensors/{sensor}");
 
 	public Task<Result<string>> Settings() => GetText("settings");
 
@@ -92,11 +89,9 @@ public sealed class CortanaClient
 
 	public Task<Result<string>> RaspberryInfo(RaspberryInfo info) => GetText($"raspberry/{info}");
 
-	public Task<Result<MetricsView>> ComputerMetrics() => GetJson<MetricsView>("metrics/computer");
+	public Task<Result<SourceView>> ComputerMetrics() => GetJson<SourceView>("metrics/computer");
 
-	public Task<Result<MetricsView>> RaspberryMetrics() => GetJson<MetricsView>("metrics/raspberry");
-
-	public Task<Result<string>> PushMetrics(MachineSample sample) => PostText("metrics/computer", sample);
+	public Task<Result<SourceView>> RaspberryMetrics() => GetJson<SourceView>("metrics/raspberry");
 
 	// ---------- services ----------
 
@@ -128,6 +123,21 @@ public sealed class CortanaClient
 
 	public Task<Result<string>> ResetConversation(string conversation) => DeleteText($"ai/{conversation}");
 
+	public Task<Result<ConversationResponse>> Conversation(string conversation) =>
+		GetJson<ConversationResponse>($"ai/{conversation}");
+
+	// ---------- notes ----------
+
+	public Task<Result<NoteListResponse>> Notes() => GetJson<NoteListResponse>("notes");
+
+	public Task<Result<string>> WriteNote(NoteRequest note) => PostText("notes", note);
+
+	public Task<Result<string>> SettleNote(string id, bool done) => PostText($"notes/{id}/{(done ? "done" : "open")}", new { });
+
+	public Task<Result<string>> DropNote(string id) => DeleteText($"notes/{id}");
+
+	public Task<Result<string>> ClearNotes() => DeleteText("notes");
+
 	public Task<Result<ModelListResponse>> Models() => GetJson<ModelListResponse>("ai/models");
 
 	public Task<Result<string>> ModelsText() => GetText("ai/models");
@@ -142,8 +152,6 @@ public sealed class CortanaClient
 
 	public Task<Result<AiSettingListResponse>> AiSettings() => GetJson<AiSettingListResponse>("ai/settings");
 
-	public Task<Result<string>> AiSettingsText() => GetText("ai/settings");
-
 	public Task<Result<string>> AiSetting(AiSettingKey setting) => GetText($"ai/settings/{setting}");
 
 	public Task<Result<string>> SetAiSetting(AiSettingKey setting, double value) =>
@@ -157,6 +165,43 @@ public sealed class CortanaClient
 
 	public Task<Result<AnalysisResult>> Analyse(AnalysisRequest request) =>
 		PostJson<AnalysisResult>("history/analysis", request);
+
+	public Task<Result<SourceListResponse>> Sources() => GetJson<SourceListResponse>("sources");
+
+	public Task<Result<ChannelListResponse>> Channels() => GetJson<ChannelListResponse>("channels");
+
+	public Task<Result<Registrations>> Registrations() => GetJson<Registrations>("registrations");
+
+	public Task<Result<string>> RegisterDevice(VirtualDevice device) => PostText("registrations/devices", device);
+
+	public Task<Result<string>> RegisterSensor(VirtualSensor sensor) => PostText("registrations/sensors", sensor);
+
+	public Task<Result<string>> Unregister(string id) => DeleteText($"registrations/{id}");
+
+	public Task<Result<BindListResponse>> Binds() => GetJson<BindListResponse>("binds");
+
+	public Task<Result<string>> SaveBind(Bind bind) => PostText("binds", bind);
+
+	public Task<Result<string>> DeleteBind(string id) => DeleteText($"binds/{id}");
+
+	public Task<Result<string>> RestoreBind(string id) => PostText($"binds/{id}/restore", new { });
+
+	public Task<Result<string>> RestoreWarning(string id) => PostText($"warnings/{id}/restore", new { });
+
+	public Task<Result<DashboardLayout>> Layout() => GetJson<DashboardLayout>("layout");
+
+	public Task<Result<string>> SaveLayout(DashboardLayout layout) => PostText("layout", layout);
+
+	public Task<Result<PluginListResponse>> Plugins() => GetJson<PluginListResponse>("plugins");
+
+	public Task<Result<string>> SwitchPlugin(string plugin, SwitchAction action) =>
+		PostText($"plugins/{plugin}", new SwitchRequest(action));
+
+	public Task<Result<WarningListResponse>> Warnings() => GetJson<WarningListResponse>("warnings");
+
+	public Task<Result<string>> SaveWarning(Warning warning) => PostText("warnings", warning);
+
+	public Task<Result<string>> DeleteWarning(string id) => DeleteText($"warnings/{id}");
 
 	public Task<Result<SessionInsight>> Session(string metric, int hours = 12) =>
 		GetJson<SessionInsight>($"history/{metric}/session?hours={hours}");

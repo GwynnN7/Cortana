@@ -9,14 +9,13 @@ public static class HistoryAnalysis
 	public static AnalysisResult Run(
 		AnalysisFunction function,
 		string metric,
+		string unit,
 		IReadOnlyList<HistoryPoint> points,
 		IReadOnlyList<HistoryPoint> comparison,
 		DateTimeOffset? at,
 		double? state,
 		int windowMinutes)
 	{
-		string unit = Units.ForMetric(metric);
-
 		if (points.Count == 0)
 			return new AnalysisResult(function, metric, unit, null, null, 0, $"Nothing was recorded for {metric} in that window");
 

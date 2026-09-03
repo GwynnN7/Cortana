@@ -14,15 +14,11 @@ public sealed class HomeModule : InteractionModuleBase<SocketInteractionContext>
 	public Task State() => Reply(DiscordContext.Cortana.GetText("snapshot"));
 
 	[SlashCommand("device", "Switch a device on, off or toggle it", runMode: RunMode.Async)]
-	public Task Device([Summary("device", "Which device")] DeviceId device, [Summary("action", "What to do")] SwitchAction action) =>
+	public Task Device([Summary("device", "Which device")] string device, [Summary("action", "What to do")] SwitchAction action) =>
 		Reply(DiscordContext.Cortana.SwitchDevice(device, action));
 
 	[SlashCommand("devices", "Power state of every device", runMode: RunMode.Async)]
 	public Task Devices() => Reply(DiscordContext.Cortana.Devices());
-
-	[SlashCommand("room", "Switch the whole room", runMode: RunMode.Async)]
-	public Task Room([Summary("action", "On or Off")] SwitchAction action) =>
-		Reply(DiscordContext.Cortana.SwitchRoom(action));
 
 	[SlashCommand("sleep", "Turn sleep mode on, off or toggle it", runMode: RunMode.Async)]
 	public Task Sleep([Summary("action", "On, Off or Toggle")] SwitchAction action = SwitchAction.Toggle) =>
@@ -42,15 +38,16 @@ public sealed class HomeModule : InteractionModuleBase<SocketInteractionContext>
 	public Task Sensors() => Reply(DiscordContext.Cortana.Sensors());
 
 	[SlashCommand("sensor", "One sensor reading", runMode: RunMode.Async)]
-	public Task Sensor([Summary("sensor", "Which sensor")] SensorId sensor) =>
+	public Task Sensor([Summary("sensor", "Which sensor")] string sensor) =>
 		Reply(DiscordContext.Cortana.Sensor(sensor));
 
-	[SlashCommand("settings", "Every automation setting", runMode: RunMode.Async)]
-	public Task Settings() => Reply(DiscordContext.Cortana.Settings());
+	[SlashCommand("features", "Every feature Cortana runs and whether it is on", runMode: RunMode.Async)]
+	public Task Features() => Reply(DiscordContext.Cortana.GetText("plugins"));
 
-	[SlashCommand("set", "Change one automation setting", runMode: RunMode.Async)]
-	public Task Set([Summary("setting", "Which setting")] SettingKey setting, [Summary("value", "New value, or On/Off/Toggle")] string value) =>
-		Reply(DiscordContext.Cortana.SetSetting(setting, value));
+	[SlashCommand("feature", "Turn one feature on, off or toggle it", runMode: RunMode.Async)]
+	public Task Feature([Summary("feature", "For example automation, warnings, notes")] string feature,
+		[Summary("action", "On, Off or Toggle")] SwitchAction action = SwitchAction.Toggle) =>
+		Reply(DiscordContext.Cortana.SwitchPlugin(feature, action));
 
 	[SlashCommand("computer", "Command the desktop computer", runMode: RunMode.Async)]
 	public async Task Computer(
@@ -179,12 +176,8 @@ public sealed class CortanaModule : InteractionModuleBase<SocketInteractionConte
 	[SlashCommand("models", "Every selectable language model", runMode: RunMode.Async)]
 	public Task Models() => Reply(DiscordContext.Cortana.ModelsText());
 
-	[SlashCommand("ai-settings", "The AI settings", runMode: RunMode.Async)]
-	public Task AiSettings() => Reply(DiscordContext.Cortana.AiSettingsText());
-
-	[SlashCommand("ai-set", "Change one AI setting", runMode: RunMode.Async)]
-	public Task AiSet([Summary("setting", "Which setting")] AiSettingKey setting, [Summary("value", "New value")] double value) =>
-		Reply(DiscordContext.Cortana.SetAiSetting(setting, value));
+	[SlashCommand("notes", "Everything written down", runMode: RunMode.Async)]
+	public Task Notes() => Reply(DiscordContext.Cortana.GetText("notes"));
 
 	private async Task Reply(Task<Result<string>> call)
 	{

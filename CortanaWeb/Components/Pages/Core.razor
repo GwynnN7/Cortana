@@ -22,7 +22,34 @@
 
 <section class="section">
     <header class="section-head">
-        <h2>Services</h2>
+        <h2>Features</h2>
+        <span class="badge">@_plugins.Count(plugin => plugin.Active) of @_plugins.Count</span>
+    </header>
+
+    <div class="memory-list">
+        @foreach (PluginView plugin in _plugins)
+        {
+            <article class="feature @(plugin.Active ? "" : "is-disabled")">
+                <span class="feature-name">@plugin.Name</span>
+                <button class="switch @(plugin.Active ? "switch-on" : "")" role="switch"
+                        aria-checked="@(plugin.Active ? "true" : "false")" aria-label="@plugin.Name"
+                        title="@(plugin.CanDisable ? plugin.Name : "Always on")"
+                        disabled="@(_busy || !plugin.CanDisable)" @onclick="() => SwitchPlugin(plugin)"><span class="knob"></span></button>
+                <span class="feature-note">
+                    @plugin.Purpose
+                    @if (plugin.Detail.Length > 0)
+                    {
+                        <text> · @plugin.Detail</text>
+                    }
+                </span>
+            </article>
+        }
+    </div>
+</section>
+
+<section class="section">
+    <header class="section-head">
+        <h2>Units</h2>
     </header>
 
     <div class="card-grid">
@@ -130,9 +157,28 @@
     private string _command = "";
     private string? _output;
     private bool _busy;
+    private IReadOnlyList<PluginView> _plugins = [];
     private RaspberryCommand? _confirming;
 
-    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override async Task OnInitializedAsync()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+        _plugins = await State.Plugins();
+    }
+
+    private async Task SwitchPlugin(PluginView plugin)
+    {
+        _busy = true;
+        try
+        {
+            _message = await State.SwitchPlugin(plugin.Id, SwitchAction.Toggle);
+            _plugins = await State.Plugins();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     public void Dispose() => _subscription?.Dispose();
 

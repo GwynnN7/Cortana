@@ -11,44 +11,97 @@ public sealed class CsvHistoryRepository : IHistoryRepository
 {
 	private static readonly string Folder = KernelFiles.Path("History");
 
-	private static readonly string[] Columns =
-	[
-		"temperature", "humidity", "light", "co2", "tvoc", "motion", "lamp", "computer",
-		"pi_cpu", "pi_temp", "pi_ram", "pc_cpu", "pc_temp", "pc_ram", "pc_gpu", "pc_gpu_temp",
-		"activity", "music"
-	];
-
-	private static readonly string Header = "timestamp," + string.Join(",", Columns);
-
 	private readonly Lock _gate = new();
 
-	public IReadOnlyList<string> Metrics => Columns;
+	/// Whatever the files hold, so a metric survives the sensor that produced it being unregistered
+	public IReadOnlyList<string> Metrics
+	{
+		get
+		{
+			lock (_gate)
+			{
+				var known = new List<string>();
+
+				foreach (string file in Files())
+					foreach (string column in Columns(file))
+						if (!known.Contains(column, StringComparer.OrdinalIgnoreCase)) known.Add(column);
+
+				return known;
+			}
+		}
+	}
 
 	public void Append(HistorySample sample)
 	{
-		string row = string.Join(",", new[] { sample.At.ToString("s", CultureInfo.InvariantCulture) }
-			.Concat(Columns.Select(column => sample.Values.GetValueOrDefault(column) is { } value
-				? Math.Round(value, 1).ToString(CultureInfo.InvariantCulture)
-				: "")));
-
 		string path = PathFor(DateOnly.FromDateTime(sample.At.LocalDateTime));
+		string[] wanted = [.. sample.Values.Keys];
 
 		lock (_gate)
 		{
 			Directory.CreateDirectory(Folder);
-			bool fresh = !File.Exists(path);
+
+			string[] columns = File.Exists(path) ? Columns(path) : [];
+			string[] missing = [.. wanted.Where(column => !columns.Contains(column, StringComparer.OrdinalIgnoreCase))];
+
+			if (missing.Length > 0)
+			{
+				columns = [.. columns, .. missing];
+				Widen(path, columns);
+			}
 
 			using var writer = new StreamWriter(path, append: true, Encoding.UTF8);
-			if (fresh) writer.WriteLine(Header);
-			writer.WriteLine(row);
+			writer.WriteLine(string.Join(",", new[] { sample.At.ToString("s", CultureInfo.InvariantCulture) }
+				.Concat(columns.Select(column => sample.Values.GetValueOrDefault(column) is { } value
+					? Math.Round(value, 1).ToString(CultureInfo.InvariantCulture)
+					: ""))));
+		}
+	}
+
+	/// A day already on disk keeps its rows, they just gain empty cells for the new columns
+	private static void Widen(string path, string[] columns)
+	{
+		string header = "timestamp," + string.Join(",", columns);
+
+		if (!File.Exists(path))
+		{
+			File.WriteAllText(path, header + Environment.NewLine, Encoding.UTF8);
+			return;
+		}
+
+		string[] lines = File.ReadAllLines(path);
+		var rebuilt = new List<string> { header };
+
+		foreach (string line in lines.Skip(1))
+		{
+			if (line.Length == 0) continue;
+
+			int cells = line.Split(',').Length;
+			rebuilt.Add(line + new string(',', Math.Max(0, columns.Length + 1 - cells)));
+		}
+
+		File.WriteAllLines(path, rebuilt, Encoding.UTF8);
+	}
+
+	private static IEnumerable<string> Files() =>
+		Directory.Exists(Folder) ? Directory.EnumerateFiles(Folder, "*.csv").OrderByDescending(file => file) : [];
+
+	private static string[] Columns(string path)
+	{
+		try
+		{
+			using var reader = new StreamReader(path, Encoding.UTF8);
+			return reader.ReadLine() is { } header ? [.. header.TrimStart('\ufeff').Split(',').Skip(1)] : [];
+		}
+		catch (IOException)
+		{
+			return [];
 		}
 	}
 
 	public IReadOnlyList<HistoryPoint> Read(string metric, DateTimeOffset from, DateTimeOffset to)
 	{
 		var points = new List<HistoryPoint>();
-		string wanted = metric.ToLowerInvariant();
-		if (!Columns.Contains(wanted)) return points;
+		string wanted = metric.Trim();
 
 		for (DateOnly day = DateOnly.FromDateTime(from.LocalDateTime); day <= DateOnly.FromDateTime(to.LocalDateTime); day = day.AddDays(1))
 		{
@@ -62,7 +115,8 @@ public sealed class CsvHistoryRepository : IHistoryRepository
 					string[] lines = File.ReadAllLines(path);
 					if (lines.Length < 2) continue;
 
-					int column = Array.IndexOf(lines[0].TrimStart('﻿').Split(','), wanted);
+					int column = Array.FindIndex(lines[0].TrimStart('﻿').Split(','),
+						name => name.Equals(wanted, StringComparison.OrdinalIgnoreCase));
 					if (column < 1) continue;
 
 					foreach (string line in lines.Skip(1))

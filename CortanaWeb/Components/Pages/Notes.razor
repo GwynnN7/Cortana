@@ -1,0 +1,148 @@
+@page "/notes"
+@attribute [Authorize(Policy = WebAuth.Policy)]
+@rendermode InteractiveServer
+@inject CortanaState State
+@inherits ActingPage
+
+<PageTitle>Notes</PageTitle>
+
+<h1>Notes</h1>
+<Toast @bind-Message="Message"/>
+
+@if (!State.FeatureOn("notes"))
+{
+    <section class="section">
+        <p class="section-hint">Notes are switched off. Turn them back on from <a href="/core">Core</a></p>
+    </section>
+}
+else
+{
+<section class="section">
+    <header class="section-head">
+        <h2>Write one down</h2>
+    </header>
+
+    <div class="field-row">
+        <select @bind="_kind" disabled="@Busy">
+            @foreach (NoteKind kind in Enum.GetValues<NoteKind>())
+            {
+                <option value="@kind">@kind</option>
+            }
+        </select>
+        <input class="input" type="text" placeholder="Something to do, add or keep" maxlength="500"
+               @bind="_draft" @bind:event="oninput" @onkeydown="OnKey" disabled="@Busy"/>
+        <button class="btn btn-primary" disabled="@(Busy || _draft.Trim().Length == 0)" @onclick="Write">Write</button>
+    </div>
+
+    <p class="section-hint">Something to act on. What you are belongs in <a href="/memory">Memory</a></p>
+</section>
+
+@foreach (NoteKind kind in Enum.GetValues<NoteKind>())
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>@kind</h2>
+            <span class="badge">@OpenOf(kind).Count</span>
+        </header>
+
+        @if (OpenOf(kind).Count == 0)
+        {
+            <p class="section-hint">@(_loading ? "Reading" : "Nothing open")</p>
+        }
+        else
+        {
+            <div class="memory-list">
+                @foreach (Note note in OpenOf(kind))
+                {
+                    <article class="memory">
+                        <div class="memory-main">
+                            <span class="memory-text">@note.Text</span>
+                            <span class="memory-meta">
+                                written @note.CreatedAt.ToString("dd MMM")
+                                @if (note.Source.Length > 0)
+                                {
+                                    <text> · via @note.Source</text>
+                                }
+                            </span>
+                        </div>
+                        <div class="btn-row">
+                            <button class="btn btn-small" disabled="@Busy" @onclick="() => Settle(note, true)">Done</button>
+                            <button class="btn btn-off btn-small" disabled="@Busy" @onclick="() => Drop(note)">Drop</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@if (Finished.Count > 0)
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>Done</h2>
+            <button class="btn btn-ghost btn-small" disabled="@Busy" @onclick="Clear">Clear</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (Note note in Finished)
+            {
+                <article class="memory is-disabled">
+                    <div class="memory-main">
+                        <span class="memory-text">@note.Text</span>
+                        <span class="memory-meta">done @note.DoneAt?.ToString("dd MMM HH:mm")</span>
+                    </div>
+                    <div class="btn-row">
+                        <button class="btn btn-small" disabled="@Busy" @onclick="() => Settle(note, false)">Reopen</button>
+                        <button class="btn btn-off btn-small" disabled="@Busy" @onclick="() => Drop(note)">Drop</button>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+}
+
+}
+
+@code {
+    private IReadOnlyList<Note> _notes = [];
+    private string _draft = "";
+    private NoteKind _kind = NoteKind.Personal;
+    private bool _loading = true;
+
+    private List<Note> Open => [.. _notes.Where(note => !note.Done)];
+
+    private List<Note> OpenOf(NoteKind kind) => [.. Open.Where(note => note.Kind == kind)];
+
+    private List<Note> Finished => [.. _notes.Where(note => note.Done)];
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    protected override Task AfterRun() => Reload();
+
+    private async Task Reload()
+    {
+        _notes = await State.Notes();
+        _loading = false;
+    }
+
+    private async Task OnKey(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter") await Write();
+    }
+
+    private async Task Write()
+    {
+        if (_draft.Trim().Length == 0) return;
+
+        await Run(() => State.WriteNote(_draft.Trim(), _kind));
+        _draft = "";
+    }
+
+    private Task Settle(Note note, bool done) => Run(() => State.SettleNote(note.Id, done));
+
+    private Task Drop(Note note) => Run(() => State.DropNote(note.Id));
+
+    private Task Clear() => Run(State.ClearNotes);
+
+}

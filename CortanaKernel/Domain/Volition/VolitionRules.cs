@@ -42,8 +42,21 @@ public static class VolitionRules
 		DateOnly today = DateOnly.FromDateTime(now.LocalDateTime);
 		if (state.LastGreeted == today) return false;
 
-		var opens = new DateTimeOffset(today.Year, today.Month, today.Day, morningHour, 0, 0, now.Offset);
+		return InWindow(now, today, morningHour);
+	}
 
+	/// The wrap-up is written every day, whether or not she decides to say it out loud
+	public static bool ShouldWrapUp(VolitionState state, DateTimeOffset now, int wrapupHour)
+	{
+		DateOnly today = DateOnly.FromDateTime(now.LocalDateTime);
+		if (state.LastWrapped == today) return false;
+
+		return InWindow(now, today, wrapupHour);
+	}
+
+	private static bool InWindow(DateTimeOffset now, DateOnly day, int hour)
+	{
+		var opens = new DateTimeOffset(day.Year, day.Month, day.Day, hour, 0, 0, now.Offset);
 		return now >= opens && now < opens + GreetingWindow;
 	}
 }

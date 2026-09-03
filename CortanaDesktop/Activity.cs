@@ -21,7 +21,13 @@ internal static class Activity
 		["kitty"] = ActivityCategory.Coding,
 		["alacritty"] = ActivityCategory.Coding,
 		["com.anthropic.claude"] = ActivityCategory.Coding,
-		["md.obsidian.obsidian"] = ActivityCategory.Coding,
+		["md.obsidian.obsidian"] = ActivityCategory.Studying,
+		["org.pwmt.zathura"] = ActivityCategory.Studying,
+		["zathura"] = ActivityCategory.Studying,
+		["evince"] = ActivityCategory.Studying,
+		["okular"] = ActivityCategory.Studying,
+		["sioyek"] = ActivityCategory.Studying,
+		["com.github.johnfactotum.foliate"] = ActivityCategory.Studying,
 		["jetbrains-rider"] = ActivityCategory.Coding,
 		["zen"] = ActivityCategory.Browsing,
 		["firefox"] = ActivityCategory.Browsing,
@@ -59,6 +65,11 @@ internal static class Activity
 		["mpv"] = "mpv",
 		["vlc"] = "VLC",
 		["lutris"] = "Lutris",
+		["org.pwmt.zathura"] = "Zathura",
+		["zathura"] = "Zathura",
+		["evince"] = "Evince",
+		["okular"] = "Okular",
+		["sioyek"] = "Sioyek",
 		["heroic"] = "Heroic",
 		["gamescope"] = "Game",
 		["steam_app"] = "Game"
@@ -96,6 +107,44 @@ internal static class Activity
 		lock (Gate) current = _reported;
 		if (current != null) publish(current);
 	}
+
+	public static ActivityDetail Detail
+	{
+		get { lock (Gate) return _detail; }
+	}
+
+	/// The privacy dial belongs to this machine, so it is written here rather than kept in the Kernel
+	public static string SetDetail(string wanted)
+	{
+		if (!Enum.TryParse(wanted, true, out ActivityDetail level))
+			return $"Use one of: {string.Join(", ", Enum.GetNames<ActivityDetail>())}";
+
+		lock (Gate) _detail = level;
+
+		string path = CortanaEnvironment.Path_(CortanaFolder.Config, "activity.conf");
+
+		try
+		{
+			string[] lines = File.Exists(path) ? File.ReadAllLines(path) : [];
+			string[] kept = [.. lines.Where(line => !line.Split('#')[0].TrimStart().StartsWith("detail", StringComparison.OrdinalIgnoreCase))];
+
+			Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+			File.WriteAllLines(path, [.. kept, $"detail = {level}"]);
+		}
+		catch (Exception ex)
+		{
+			return $"Set to {level} for now, but saving failed: {ex.Message}";
+		}
+
+		return $"Reporting {Explain(level)}";
+	}
+
+	public static string Explain(ActivityDetail level) => level switch
+	{
+		ActivityDetail.CategoryOnly => "the category only, no window titles or music",
+		ActivityDetail.GameTitles => "the category and game titles, but not music",
+		_ => "the category, game titles and what is playing"
+	};
 
 	private static void LoadOverrides()
 	{
@@ -376,7 +425,7 @@ internal static class Activity
 				if (!changed && now - _sent < Heartbeat) return;
 				if (_reported is null || _reported.Category != category) _since = now;
 
-				next = new DesktopActivity(category, subject, null, _since, _idleSeconds, _locked, fullscreen, _playing);
+				next = new DesktopActivity(category, subject, _detail, _since, _idleSeconds, _locked, fullscreen, _playing);
 				_reported = next;
 				_sent = now;
 			}

@@ -1,341 +1,437 @@
 # Cortana — developer notes
 
-State of the implementation, the boundaries that matter, and what is left. Written so a new session
-can pick this up with nothing but the repository.
+How the system is built, for whoever picks it up next. `FILES.md` says what each file is;
+this says how the pieces find each other
 
 ---
 
-## 1. Layering
+## 1. The shape
+
+Seven projects, one solution:
+
+| Project | What it is |
+| :--- | :--- |
+| **CortanaLib** | Shared vocabulary: contracts, primitives, the HTTP client, runtime helpers. Everything references it, it references nothing |
+| **CortanaKernel** | The only process that owns state. Talks to the hardware, decides things, exposes an HTTP API |
+| **CortanaWeb** | Blazor Server dashboard |
+| **CortanaTelegram** | Telegram bot |
+| **CortanaDiscord** | Discord bot |
+| **CortanaDesktop** | Agent on the PC, and the CLI |
+| **CortanaEmbedded** | ESP32 station firmware |
+
+**The clients are thin on purpose.** None of them holds state or logic: they read a snapshot and post
+commands. That is why adding a client (an Android app, say) needs no Kernel work — the API is the
+whole contract. The same applies inside the Kernel: memory, history and the fabric are services, so
+anything that can reach them, including the language model, gets them for free
+
+## 2. Layering inside the Kernel
 
 ```
-Clients (Web, Telegram, Discord, Desktop)     separate processes, no business rules
-        │  HTTP + two SSE streams
-CortanaKernel/Api                             translates requests into commands and queries
-CortanaKernel/Application                     commands, queries, snapshot, AI capabilities
-CortanaKernel/Domain                          the rules
-CortanaKernel/Infrastructure                  GPIO, sockets, JSON/CSV files, Gemini, web push, systemd
+Api  →  Application  →  Domain  ←  Infrastructure
 ```
 
-`Domain/` depends on nothing but `CortanaLib`. That is now a convention rather than a compiler-checked
-boundary — keep it honest: nothing under `Domain/` should reference ASP.NET, GPIO, sockets, a provider
-SDK or a client type.
+Dependencies point inward. The rule that keeps it honest:
 
-`CortanaLib` is shared by every process: the contracts, `CortanaClient`, and small runtime helpers
-(environment, JSON store, shell, machine metrics, media). It holds no rules.
+- **Domain** knows nothing about HTTP, sockets, files or JSON. Pure rules and in-memory state
+- **Application** orchestrates. It is where a command becomes several domain calls plus an event
+- **Infrastructure** implements the interfaces Domain declares — GPIO, sockets, files, the model
+- **Api** is transport only. No decisions
 
-### Dependency notes
+When Domain needs something from the outside it declares an interface and Infrastructure implements
+it: `ILocalDeviceController`, `IComputerEndpoint`, `IServiceSupervisor`, `IAiProvider`, and every
+`I*Repository`. This is also why the automation engine takes `IAutomationWorld` and
+`IAutomationEffects` rather than the services themselves — without them the engine would depend on
+`DeviceService`, which depends back on the engine
 
-- `AutomationEffects` takes a `Lazy<DeviceService>`. Automation switches devices, and switching a
-  device raises a fact automation listens to; the laziness breaks that one cycle at composition time.
-- `WebPushSink` takes a `Lazy<PushService>` for the same reason.
-- Everything else is plain constructor injection from `Program.cs`, which is the only composition root.
+## 3. How things are wired: dependency injection
 
----
+Nothing constructs its own collaborators. `Program.cs` registers every type once, and the container
+hands each class what its constructor asks for. **Everything is a singleton** — there is one house, so
+there is one of each service for the life of the process
 
-## 2. Commands, queries, events
+Reading a class's constructor tells you exactly what it can touch, and nothing else is reachable
 
-- **`AutomationStatus` (Active | Holding | Off) is derived, never stored.** It is projected in
-  `AutomationEngine.View()` from the persisted `AutomationEnabled` setting plus whether any device
-  hold is live. Keeping it derived is deliberate: a stored `Hold` would survive a restart (holds are
-  transient by design), would be global where holds are per-device, and would have to grow a
-  sub-state to describe a hold begun during sleep. The dashboard switch reflects the setting; the
-  subtitle reflects the status.
-- **Holds are facts.** `DeviceHoldChanged` fires when a hold opens and when it expires, and both
-  raise a notification, so the clients show state changes through the event system rather than
-  through explanatory text in the UI. `LastDecision` still exists but lives only in
-  `/automation/diagnostics`, because the AI's "why didn't the lamp turn on?" is built on it.
-- **Event schedules** are one-shot by default when the AI creates them (`RunOnce`), because chaining
-  one action onto another — "turn the pc on and then reboot into windows" — must not repeat on every
-  later power-on. A repeating hook is opt-in and can carry a `MinimumIntervalSeconds` cooldown, which
-  is what stops a flapping agent connection from firing `ComputerTurnedOn` twice. The decision lives
-  in `ScheduleTiming.ShouldFireOnEvent` so it is testable, and firing claims the schedule under the
-  lock so a burst cannot double-fire it.
-- **Commands** carry a `CommandOrigin` (`Actor` + `Surface` + `ViaAi`). Clients declare their surface
-  with the `X-Cortana-Surface` header; the Kernel decides what that is allowed to do. An action a
-  user asked for through the AI stays `Actor = User`, which is what the sleep-wake rules key off.
-- **Events** are typed facts on an in-process `EventBus` (`CortanaKernel/Domain/Common/EventBus.cs`).
-  Handlers subscribe to a type, never to a string. They are ephemeral: a subscriber that is not
-  listening simply misses one.
-- **State** reaches other processes as snapshots. `StateBroadcaster` subscribes to *every* event and
-  turns it into "there is a newer snapshot"; `/events` then pushes a fresh `CortanaSnapshot`. Missing
-  an event is harmless because the snapshot is authoritative.
-- `/events/notifications?channel=Telegram|Discord` is the second stream. It replaced the Redis IPC
-  the old build used; **there is no Redis anywhere any more.**
+```csharp
+public sealed class SensorService(
+    Fabric fabric,          // where readings live
+    RoomState room,         // derived room facts
+    SettingsStore settings, // thresholds
+    NotificationService notifications,
+    IEventBus bus)
+```
 
----
+**Interfaces are registered to implementations**, which is how Infrastructure gets substituted without
+Domain knowing: `AddSingleton<ILocalDeviceController, GpioDeviceController>()`. Where one object must
+be visible under two types, it is registered once and aliased, so both names resolve to the *same*
+instance:
 
-## 3. The automation engine
+```csharp
+AddSingleton<RaspberryHost>();
+AddSingleton<IHostMachine>(provider => provider.GetRequiredService<RaspberryHost>());
+```
 
-`CortanaKernel/Domain/Automation/AutomationEngine.cs` owns every runtime concept that decides whether
-Cortana acts. They are deliberately separate values, never one enum:
+### `Lazy<T>` and why it appears
 
-| Concept | Lives where | Persisted? |
+Some dependencies are genuinely circular: `AiService` needs `CapabilityRegistry` to know what it can
+do, and capabilities call back into services. `DeviceService` and `AutomationEngine` need each other.
+`Lazy<T>` breaks the construction cycle — the container builds the wrapper immediately and resolves
+the real object on first use, by which time everything exists
+
+`Lazy<T>` must itself be registered. **A missing `Lazy<T>` registration compiles fine and crashes at
+startup**, because DI resolves at run time, not compile time. If the Kernel dies immediately with
+`Unable to resolve service for type 'System.Lazy\`1[...]'`, that is what happened
+
+### Hosted services
+
+Anything with a loop is a `BackgroundService` registered twice — once as itself so others can inject
+it, once as a hosted service so the host starts it:
+
+```csharp
+AddSingleton<PushService>();
+AddHostedService(provider => provider.GetRequiredService<PushService>());
+```
+
+The loops are `MetricsService`, `AutomationService`, `ScheduleService`, `HistoryService`,
+`ModelCatalogue`, `PushService`, `VolitionService` and `ConnectionServer`
+
+## 4. How things talk
+
+Three mechanisms, each for a different job:
+
+**Direct calls, inward.** An `Api` endpoint calls an `Application` service, which calls `Domain`.
+Synchronous, returns a `Result<T>`
+
+**The event bus, for facts.** `IEventBus` is a typed in-process publish/subscribe. A service that has
+just changed something publishes a record — `DeviceStateChanged`, `MotionDetected`,
+`NotificationRaised` — and anything interested subscribes. Events are **facts that already happened**,
+never requests. They are ephemeral: nothing is persisted or replayed, so a subscriber that was not
+listening simply missed it
+
+This is what stops the services knotting together. `PushService` does not need to be called by
+everything that changes state; it subscribes to the bus and reacts
+
+**Snapshots, outward.** Clients never subscribe to events — they cannot, they are separate processes.
+`SnapshotService.Build` assembles the entire visible state into one `CortanaSnapshot`, and
+`StateBroadcaster` turns every bus event into "there is a newer snapshot" on an SSE stream at
+`/events`. Clients re-read and re-render
+
+`StateBroadcaster` uses a bounded(1) channel with `DropWrite`, so a burst of events collapses into a
+single notification rather than a flood. This matters more than it sounds: the station reports every
+five seconds, and anything wired directly to the bus inherits that rate
+
+## 5. The fabric: hardware, and what you make of it
+
+Nothing about the hardware is hard-coded, and there are two separate ideas that used to be one.
+
+**Hardware declares channels, and nothing else.** A source announces an id, a kind, and lists of
+output and input **tags**. No names, no units, no icons — those are not hardware facts:
+
+```
+SourceDescriptor { Id, Kind, Outputs[], Inputs[] }
+```
+
+```
+raspberry  outputs: pin23, pin24, pin25
+station    inputs:  motion, light, temperature, humidity, co2, tvoc, air_temperature
+```
+
+**You create virtual devices and sensors on top.** A channel is only a possibility until something is
+registered on it:
+
+```
+VirtualDevice { Id, Name, IconOn, IconOff, Channels[] (source + channel), Pulse, PoweredBy, InStatus }
+VirtualSensor { Id, Name, IconHigh, IconLow, Source, Channel, Unit, Kind,
+                Min, Max, Offset, FeedsPresence, InStatus }
+```
+
+Only a boolean sensor has two icons to draw; a number carries one and says the rest with its value.
+`Min` and `Max` are what make it render as a bar instead of a tile, and `InStatus` is what puts it on
+the phone's persistent notification
+
+**Ids are internal.** Every surface resolves a device or a sensor by **id or name**, and the AI is
+shown names, because a person asks for the speakers and not for `generic`
+
+**A source also says what it *is*.** Readings are what a source measures; **facts** are what it is:
+
+```
+SourceFact { Key, Value }        name, os, uptime, memory, disk, ip, signal…
+```
+
+Nothing validates the keys — a source offers whatever it can. The Pi and the desktop give name, os,
+uptime and the absolute GB; the station gives its name, chip, uptime, IP and signal. They arrive in
+the `hello` and are refreshed by a `{"type":"facts","values":{…}}` message, and they are live rather
+than persisted: a source that goes away stops describing itself.
+
+That replaced `MetricsRegistry`, which was a second store of the same numbers that only two machines
+could ever use. The numbers that move are sensors; the ones that describe are facts; there is no
+`MetricsView` any more, and a machine card is just a source with its facts and its sensors
+
+This is the part worth understanding: **a channel is not automatically a device.** A Pi exposing three
+pins where two could drive the same lamp means you register one device on the pin you actually wired.
+An unregistered channel shows as `free` and does nothing
+
+**A device is on while any of its channels is on**, and `Partial` says when only some of them are.
+Any-on is deliberate: toggling a half-lit room turns it *off*, which is the safe direction, where
+all-on would read it as off and toggling would switch everything on
+
+**A device can span several channels, and channels can be shared.** That is what removed the special
+case for the room:
+
+```
+raspberry/pin23 (output): Power, Room
+raspberry/pin24 (output): Generic, Room
+raspberry/pin25 (output): Lamp, Room
+```
+
+`Room` is an ordinary virtual device holding all three, with no code of its own anywhere — there is no
+`SwitchRoom` service, route, capability or schedule action left
+
+**State belongs to the channel, not the device.** Two devices sharing an output can never disagree
+about it, and a device reads `On` while any of its channels is on. It is persisted in `Channels.json`
+and re-asserted on boot, because a GPIO output cannot be read back
+
+**The desktop is found, not named.** `Fabric.Machine` is the device registered on a `Computer`-kind
+source, and the supply to cut is its `PoweredBy`. Wake-on-LAN and the shutdown-then-cut sequence hang
+off those two, not off the ids `computer` and `power`
+
+**Channels are shared freely.** Several virtual devices may sit on the same channel, and one device
+may span several — a `Room` covering every relay, or curtains driven by two motors. Switching a device
+writes every channel it holds, and any other device sharing those channels has its state updated to
+match
+
+**Readings arrive keyed by channel tag**, and the fabric maps `(source, tag)` to whichever virtual
+sensor claims it. A source gaining a channel therefore cannot break the frame, and an unclaimed
+channel is simply ignored
+
+**Sources declare, they are not configured.** `Announce` replaces whatever a source said before and
+persists it. `Dropped` removes a source from the liveness map **only** — its channels and everything
+registered on them stay, and simply read offline
+
+The Raspberry is the exception the design allows for: it has no link to speak over, so it declares its
+pins through `Pins.json`, falling back to the header pins it knows about
+
+**Binds are how sensors reach devices:**
+
+```
+Bind { Id, Device, Triggers[], Mode (All|Any), Enabled, HoldsOnManualAction }
+  Trigger { Sensor, Kind (IsTrue|IsFalse|Below|Above|Outside|Changed), Low, High, Sustains }
+```
+
+**A trigger with no reading suspends the bind.** Not "false" — suspended. The device is left exactly
+as it is and the decision carries `waiting on <sensor>`. This matters because sensors can disappear:
+the station drops, or a service that publishes one is disabled. Treating absence as false would make a
+sustaining trigger switch the device *off* whenever a sensor went quiet, so a disabled sleep service
+would turn the lamp off rather than leave it alone
+
+`Sustains` is the subtle flag. The lamp must *stay* on while someone is present, but only needs
+darkness to come *on*. So the presence trigger sustains and the light trigger does not:
+`BindRules.Decide` switches off when any sustaining trigger fails, and switches on only when every
+trigger is satisfied. That reproduces hand-written hysteresis for any device
+
+**Machines are sources too.** The desktop agent publishes `cpu`, `cpu_temp`, `gpu`, `gpu_temp`,
+`gpu_power`, `ram`, `disk`, plus `at_desk` and `locked`; the Kernel publishes the same machine
+readings for the Pi. So "warn when the GPU passes 80 °C" is an ordinary warning, and nothing about it
+is special-cased
+
+**Presence is composed, not hardcoded.** Any sensor marked `FeedsPresence` contributes. Today that is
+the PIR and the desktop's `at_desk`, which is why sitting still at the computer keeps the lamp on
+without the engine knowing what a desk is. Two motion sensors can therefore be split: one feeding
+presence, one driving a fan through its own bind
+
+`AutomationRules.Present` is `live || MotionActive(lastMotionAt, now, timeout)` — a level sensor such
+as `at_desk` holds presence directly, while a momentary one such as the PIR is carried by the timeout
+
+**The Kernel is a source as well** (`kernel`), publishing the composed `presence` so binds can
+reference it like any other reading
+
+### Warnings
+
+Nothing about "air quality" is special. A **warning** watches one or more sensors, each with its own
+threshold, and is stored in `Warnings.json` like any other configuration:
+
+```
+Warning { Id, Name, Message, Triggers[], Level, CooldownMinutes, Enabled, Icon, InStatus }
+```
+
+A warning takes the **same `Trigger` as a bind**. A sustaining trigger gates it — every one has to
+hold — and the rest raise it, so "only when somebody is here" is `presence IsTrue` rather than a flag
+of its own, and any sensor can gate any warning
+
+Hysteresis is fixed rather than per-warning: it fires at the threshold times `1.15` and clears only
+when **every** raising trigger is back under `0.9`. Firing on any trigger but clearing on all of them
+is deliberate — one sensor recovering should not silence a warning another is still raising
+
+### The handshake
+
+One protocol for every source, newline-delimited JSON, every message typed:
+
+```json
+{"type":"hello","magic":"cortana","version":1,"source":"station","kind":"Station",
+ "outputs":[],"inputs":["motion","light","temperature"]}
+
+{"type":"reading","values":{"motion":1,"light":21,"temperature":28.7}}
+```
+
+The Kernel replies `{"type":"welcome","accepted":true}` and thereafter treats the connection as that
+source. `version` exists so the protocol can change without a flag day; a source claiming a higher
+version is logged rather than rejected
+
+The desktop agent speaks the same protocol, which is why it is an ordinary source that happens to
+offer one output. A client that does not announce itself is refused: there is no legacy prefix left
+
+Outputs are not Pi-only. `IChannelWriter` is chosen per source, so the GPIO header and a station that
+announces outputs are two implementations of the same seam, the latter sending `SourceCommand` back
+down the socket that carries its readings
+
+## 6. Automation
+
+`AutomationEngine` owns everything that decides whether Cortana acts, as separate values rather than
+one enum:
+
+| Concept | Where | Persisted |
 | :--- | :--- | :--- |
 | `AutomationEnabled` | a setting | yes |
 | `TimeContext` (Day/Night) | derived from `NightHour`/`MorningHour` | no |
-| `SleepMode` | engine field | **no**, transient by design |
-| Device overrides | engine field | no |
+| `SleepMode` | engine field | no, transient by design |
+| Device holds | engine field | no |
 | `SleepHold` | engine field | no |
 
-The engine reads the world through `IAutomationWorld` and acts through `IAutomationEffects`. Those
-two interfaces are what keep the domain from depending on the application: without them the engine
-would have to call `DeviceService` and `NotificationService` directly, which is also a hard DI cycle.
+Sleep is no longer part of it. `SleepEngine` owns that state machine and reaches the rest of
+automation through an `ISleepHost` seam — the time context, whether automation is on, clearing holds,
+and asking for a re-evaluation. It never touches automation's internals. It publishes `sleep` as a
+sensor, so the lamp's sleep gate is an ordinary sustaining trigger on the bind rather than a branch
+inside `Evaluate`
 
-### Why a tick instead of timers
+`Evaluate` loops every bind. The gates it applies around them — automation off, sleep mode, a manual
+hold, a busy desktop — are the parts that were never about one lamp
 
-`Tick()` runs once a second and expires everything time-based: the day/night boundary, the sleep
-entry delay, a daytime sleep, the sleep hold, device overrides and the motion window. One cheap tick
-is far easier to reason about than the six interacting timers the old build had, and it makes every
-expiry reachable from one place.
+**A tick, not timers.** `Tick()` runs once a second and expires everything time-based: the day/night
+boundary, the sleep entry delay, a daytime sleep, the sleep hold, device holds and the motion window.
+One cheap tick is easier to reason about than six interacting timers, and every expiry is reachable
+from one place
 
-### Deliberate behaviour changes from the old build
+**Presence is composed, not measured.** Every sensor marked `FeedsPresence` feeds it — the PIR, being
+at the desk — and it lingers for `MotionTimeoutSeconds` after the last goes quiet. `at_desk` requires a
+*positive* report of not-idle, never merely the absence of an idle signal: `IdleSeconds` is `-1` when
+idle cannot be observed, and a `systemd-inhibit --what=idle` lock stops hypridle reporting, so
+treating silence as presence would pin the lamp on after leaving with the inhibitor set
 
-- **Night alone no longer suppresses automatic lighting.** Previously `Night` and `Sleep` were the
-  same state, so motion did not light the lamp after `NightHour`. They are now separate: at night,
-  before sleep mode is entered, motion still lights the lamp. Nighttime sleep entry is what stops it.
-- **The motion timeout is one number, not one per computer state.** `MotionTimeoutComputerOnSeconds`
-  and `MotionTimeoutComputerOffSeconds` were a crude proxy for "is anyone there"; real presence
-  signals replaced them with a single `MotionTimeoutSeconds`.
+**A dropped source loses its readings.** `Fabric.Dropped` clears them, or the last value of a source
+that went away is believed for ever — `at_desk` stayed true all night with the computer off, and
+carried presence with it
 
-  `AutomationRules.Present` is `deskActive || MotionActive(...)`: using the computer holds the lamp
-  on, and everything else falls back to the plain PIR timeout.
+**Evaluate is serialised.** Readings, the tick, the computer and the endpoints all reach it from their
+own threads, so without one lock around the pass two of them can both see a device off and both
+switch it on
 
-  `DeskActive` requires `computer.Connected && Locked: false && IdleSeconds: 0` — a *positive* report
-  of not-idle, never merely the absence of an idle signal. `IdleSeconds` is `-1` (unknown) whenever
-  idle cannot be observed: no idle file, **no running idle daemon** (`hypridle`/`swayidle` — checked
-  every poll, so a dead daemon degrades to plain motion instead of pinning the lamp on with a stale
-  file), or **an idle inhibitor is held**. That last case matters —
-  `systemd-inhibit --what=idle --mode=block` stops hypridle reporting idle at all, so treating "no
-  idle signal" as "at the desk" would keep the lamp on forever after leaving with the inhibitor on.
-  Unknown therefore falls back to plain motion, which is the safe direction.
+## 7. The assistant
 
-  The four states: at the desk → no timeout; idle, locked, inhibited, or computer off → plain motion
-  timeout. The lamp can still switch *on* from motion and lux in every one of them.
-- **Sleep mode is a real toggle** with its own lifetime, hold and entry delay, instead of a one-way
-  "enter sleep" button.
-- `ComputerCommand.System` became `BootIntoOtherOperatingSystem`, and the rest of the enum names were
-  spelled out, because the AI picks tools by reading them.
+**Capabilities.** `CapabilityRegistry` is every action the model can take, each one calling an
+ordinary application command. Kinds are `Query`, `Analysis`, `Action`, `Management`; `IsReadOnly` is
+`Query or Analysis`, and untrusted callers get only those. **Anything reading the owner's memory must
+be `Management`**, not `Query` — a guest was once able to read stored preferences because `Recall` was
+registered as a query
 
-### Mood and activity
+**Mood** reduces the house to one word, computed fresh per snapshot and never stored. Every word
+describes *Cortana*, and most of them follow what the owner is doing: `Happy` at the desk, `Watching`
+when something is fullscreen or a game is running, `Bored` when the desk is locked or the computer has
+been off 45 minutes, `Alone` when nobody has been around for hours, `Resting` in sleep mode, `Worried`
+on a warning or a service down. The nominal state is one of `Calm`/`Friendly`/`Helpful`, picked on
+entering the state and held until it leaves, because rolling it per snapshot would flicker every few
+seconds. `Happy` left that rotation once it started meaning something
 
-Two derived read-only values sit next to the engine, both computed fresh per snapshot and never stored.
+**Memory** has two horizons. `Fact`, `Preference` and `Event` are permanent and announced when
+stored. `State` is where the owner is right now: it expires, a new one replaces the old, and it is
+stored without ceremony. `Prune` removes only expired entries — nothing decays for going unused
 
-`Domain/Automation/MoodRules.cs` reduces the whole house to one word — `Watching`, `Quiet`,
-`Concerned`, `Resting`, `Alone` — with `Explain()` giving the sentence behind it. Every word describes
-**Cortana**, not the user: `Quiet` means she is holding back because the desk is busy, which is why it
-is not called `Busy`. `Explain()` reaches clients as `CortanaSnapshot.MoodReason`, so the word is
-never unexplained: it is the status pill's tooltip and the first section of the logs page.
+**Volition** is the one place she speaks unprompted. Deliberately almost empty: a persisted `Quiet`
+period, a once-daily greeting inside a window after `MorningHour`, a once-daily wrap-up at
+`WrapupHour`, and everything logged. Both go through `AiService.Compose(brief, fallback)`, which falls
+back to a plain line when no model answers, and both read `HistoryService.Digest` rather than naming a
+metric. The wrap-up is always written as a short-term memory and only *said* with probability
+`WrapupChance`
 
-Mood drives the push status line, the top-right status pill (which carries the online dot and links
-to the logs) and the AI's opening context.
+**Features are switchable.** `PluginService` is the one list of what she runs, the switch behind each
+one, and whether it can be switched at all. It is carried in the snapshot, so a page can say it is off
+rather than pretend
 
-`Domain/Activity/ActivityRegistry.cs` holds what the desktop is doing. It has **two independent axes**,
-which is the whole point: `Category` is the focused window, `Playing` is whatever MPRIS is playing.
-Coding with music on is `Coding` **and** a track — one field could not say that, and folding music into
-`Category` would have made background music invisible.
+**Baselines and correlation** make "unusual" computable. `HistoryBaseline` buckets a metric by
+hour-of-day into a median and MAD, both robust so one bad afternoon does not move it.
+`HistoryCorrelation` joins metrics on their shared row timestamp — exact, not interpolated, because
+every metric is written in the same CSV row
 
-Two things read it:
+## 8. Persistence
 
-- `ActivityRules.DoNotDisturb` — a fullscreen game or film. It gates exactly one thing:
-  `DeviceService.CommandComputer` drops a non-user `ComputerCommand.Notify`, so nothing pops up on the
-  desktop mid-game. Push to the phone, the web log, Telegram and Discord are all untouched, and a
-  notification the user explicitly asked for still goes through because `origin.IsUser` bypasses it.
-  Background music never triggers it — DND requires fullscreen.
-- `MoodRules` — fullscreen gaming or media reads as `Quiet` regardless of CPU load.
-- `AutomationEngine` — while anything is fullscreen the engine holds: the lamp decision returns "no
-  action" and `AutomationStatus` reads `Holding`. A manual lamp change during a film therefore sticks.
-  This hold has no expiry, so `HoldingUntil` is null and the dashboard's Resume button is hidden —
-  `FullscreenHold` on `AutomationView` is what tells the two kinds of hold apart.
+Everything the Kernel keeps lives under `~/.config/cortana/CortanaKernel/`, one JSON file per concern
+(`Sources.json`, `Registrations.json`, `Channels.json`, `Binds.json`, `Warnings.json`, `Settings.json`,
+`Ai.json`, `Layout.json`, `Memory.json`, `Notes.json`, `Volition.json`, `Schedules.json`), plus one CSV
+per day under `History/`
 
-The privacy boundary is the agent, not the Kernel: `CortanaDesktop/Activity.cs` maps the window class
-to a category on the desktop. **Window titles never leave the machine, at any setting.** It also only
-names a class that is in the map, because an unmapped class can itself be sensitive — a browser-made
-web app encodes its site host in the class, which is how the first live run shipped a Tailscale
-hostname to the Pi.
+**A day is reduced and kept.** `HistoryService.Summarise` turns one day of samples into a `DaySummary`
+— when presence and the computer rose and fell, minutes per activity category, per device and each
+sensor's average — appended to `Days.json` at midnight and again at the wrap-up. `Rhythm(metric)`
+compares today with the median of the same weekday, which is what makes "two hours earlier than usual
+for a Tuesday" computable rather than a guess
 
-`~/.config/cortana/activity.conf` holds `class = category` lines plus one `detail =` line — the §11
-privacy dial, `CategoryOnly` | `GameTitles` | `NowPlaying`. **It defaults to `NowPlaying`**, on the
-grounds that the destination is the user's own Pi on their own LAN and track titles are the point of
-the feature. `detail = CategoryOnly` turns off both the app name and the track.
+Transitions, not first-seen: a day that starts with the computer already on has no "came on" moment,
+and recording one at 00:00 would poison the median. `DayRhythm.Rose`/`Fell` look for the edge
 
-The agent is also where the debouncing lives. It listens on Hyprland's `socket2` and reads
-`playerctl --follow`, collapses bursts into one evaluation every 750 ms, and sends only transitions
-plus a 5-minute heartbeat. That matters
-because `StateBroadcaster` turns every bus event into a snapshot rebroadcast; wiring a raw compositor
-event stream into the bus would melt the Blazor clients. The broadcaster's bounded(1)/`DropWrite`
-channel and the SSE coalesce delay are the second line of defence, not the first.
+**Both enum-keyed stores read their file key by key.** `Settings.json` and `Ai.json` are maps from an
+enum name to a value, and deserialising the whole map fails outright when a member is removed, which
+silently resets every setting to its default. Each unknown name is now skipped with a log line
+instead. Never remove an enum member from `SettingKey` or `AiSettingKey` without checking this
 
-### Baselines
+**Shipped defaults reach a live install only for registrations.** `Fabric.Seed` is additive, so a new
+default sensor appears. Bind and warning *contents* are never migrated, because rewriting someone's
+triggers is presumptuous — so `BindStore.Adrift` reports which shipped ones differ and `Restore` puts
+one back on request. That is the only path an updated default has
 
-`Domain/History/HistoryBaseline.cs` answers "is this normal for this hour" instead of "is this above a
-number". It buckets the last few weeks of a metric by hour-of-day and reduces to a **median and a MAD**
-(scaled by 1.4826 to read like a standard deviation) — both robust, so one bad afternoon does not move
-the baseline the way a mean would. Below eight samples in the bucket it says so rather than guessing.
+**`Channels.json` is what the outputs were last written to.** A GPIO output cannot be read back, so
+the last written value is persisted per channel and re-asserted on boot by `DeviceService.Restore`.
+`GpioDeviceController.Dispose` deliberately does **not** close its pins: closing a line releases it,
+and a released line stops holding its relay, so shutting the Kernel down would switch the house
 
-Reached as `GET /history/{metric}/usual` and as the `CompareToUsual` AI capability, which is the point:
-the model gets "clearly higher than usual" as a computed fact rather than inventing the judgement.
+`JsonStore` writes through a temporary file, so a crash mid-write cannot truncate a config
 
-Two caveats worth knowing: `pc_gpu` baselines are skewed until the old raw-utilisation samples age out
-of the window, because effective load reads much lower; and a metric added to the CSV mid-day is
-unreadable for the rest of that day, since `Read` resolves columns from the file's own header and
-`Append` only writes a header for a fresh file.
+History reads resolve columns from **each file's own header**, so adding a metric leaves older files
+readable and simply missing it. The day a column is added keeps its old header until midnight rollover
 
----
+## 9. Protocols
 
-## 4. Devices
+- **Any source → Kernel**: the announcement above, then `{"type":"reading","values":{…}}`. The station
+  sends bare JSON objects with no delimiter, so frames are cut by counting braces
+- **Desktop agent ↔ Kernel**: one JSON object per line both ways. The agent announces, then sends
+  `{"type":"ping"|"reply"|"activity"|"reading"}`; the Kernel sends `{"id","command","argument"}`.
+  Replies are correlated by id, so several commands can be in flight
+- **API**: plain text for `Accept: text/plain`, JSON otherwise. That is what lets the bots and the CLI
+  stay thin
 
-GPIO outputs cannot be read back, so `DeviceRegistry` holds *Cortana's belief*. A failed write leaves
-the belief alone; only a successful one moves it. On boot every device is believed OFF and **nothing
-is written to the pins** — one of those relays is the desktop's mains supply.
+## 10. Testing
 
-`GpioDeviceController` owns the pin map, and with it the location difference: in Pisa there is no
-dedicated lamp line, so Lamp and Generic are the same relay. `Linked()` tells the application which
-beliefs move together, so no location knowledge leaks into the domain.
+There is no test project: the dashboard is how the system is exercised. The logic that most wants
+testing is written as pure functions — `AutomationRules`, `BindRules`, `MoodRules`, `ScheduleTiming`,
+`HistoryAnalysis`, `HistoryBaseline`, `HistoryCorrelation`, `VolitionRules`, `SettingsStore` — so it
+can be covered cheaply if that changes
 
-Two sequences worth knowing:
+The Kernel does check one thing at boot: it materialises the whole route graph and refuses to start if
+any endpoint signature is invalid, because that failure otherwise turns every request into a 500
 
-- **Power off with the desktop alive** asks it to shut down, waits for the socket *and* a ping to go
-  quiet, then waits `ComputerShutdownGraceSeconds` before cutting the relay. The agent process dies
-  before the machine does, so the socket closing alone is not proof.
-- **PC ON, for every user-facing purpose, means the desktop agent is connected.** `ComputerPresenceService`
-  is what turns a connection into device state, and it also marks Power as ON, since a machine that is
-  talking to us obviously has power.
+## 11. Known limitations
 
----
-
-## 5. AI
-
-`CapabilityRegistry` is the whole surface the model can reach: ~25 capabilities tagged
-`Query`, `Analysis`, `Action` or `Management`. Each one calls the same application command a human
-client would. There is no path from a tool to infrastructure.
-
-- Untrusted conversations (`trusted: false`, which Discord sets for anyone but the Chief) get the
-  read-only subset, and `AiService.Invoke` refuses a mutating tool even if the model names one.
-- `chat` persists to `CortanaKernel/Conversations/<id>.json` and survives a restart. `ask` runs the
-  identical pipeline, tools included, and neither loads nor writes history.
-- Arithmetic is never left to the model: `AnalyseHistory` runs one of the deterministic reductions in
-  `HistoryAnalysis` (average, extremes, value-at, trend, transitions, duration-in-state, worst period,
-  compare).
-- `ExplainAutomation` returns the engine's own decision ring buffer, so "why didn't the lamp turn on"
-  is answered from recorded facts rather than invented.
-- `GeminiProvider` is the only file that knows about Gemini. `IAiProvider` speaks in plain messages
-  and `AiToolDescriptor`s; swapping providers means one new adapter.
-
----
-
-## 6. Persistence
-
-Everything lives under `~/.config/cortana`, written through `JsonStore` (atomic: temp file + move).
-
-| File | Contents |
-| :--- | :--- |
-| `CortanaKernel/Settings.json` | `SettingKey` → string. Enum names are the dictionary keys |
-| `CortanaKernel/Ai.json` | `{ values: { AiSettingKey: number }, model }` |
-| `CortanaKernel/Network.json` | array of location profiles, selected by matching the live gateway |
-| `CortanaKernel/Schedules.json` | persistent schedules |
-| `CortanaKernel/Conversations/*.json` | one file per conversation |
-| `CortanaKernel/History/YYYY-MM-DD.csv` | one row per sample, pruned by retention |
-| `CortanaKernel/Vapid.json`, `PushDevices.json` | web push keys and subscriptions |
-
-Transient by design and never written: sleep mode, sleep hold, device overrides, device states.
-
-**The config format changed from the old build.** `CortanaKernel/Scripts/migrate-config` converts a
-legacy tree in place (backing each file up as `*.legacy`) and is idempotent; `--dry-run` shows what
-it would do. `Vapid.json` and the history CSVs were already compatible and are left alone.
-
----
-
-## 7. Clients
-
-- **Web** — Blazor Server. The visual design, `app.css`, the charts and the service worker are carried
-  over unchanged; only the data layer was rewritten. `CortanaState` holds the newest snapshot, keeps
-  the SSE subscription open, and falls back to polling for a few seconds when the stream drops.
-- **Push status notification** — no title (Android renders one badly here), tag `cortana-status`,
-  `ongoing`. `PushService` rebuilds it from live state on every event with a 300 ms coalesce, and a
-  five-minute timer exists only as a safeguard. An accepted event replaces the body for
-  `PushEventSeconds`, then the newest status is rebuilt — never restored from cached text. The status
-  line is `Online · 💡🖥️🔌 · 🔆|💠|💤 💨 21.4°`, with the emoji taken from the old build.
-- **Telegram** — one updating menu per topic (`Menu` + `LiveMenu`). One pending input per topic at a
-  time. Notifications arrive on the notification stream.
-- **Discord** — slash commands only. **Voice is deliberately absent**: no `VoiceService`, no
-  `libdave.so`, no meme playback. `/home` carries the house, and a mention opens a short conversation
-  window during which Cortana keeps answering untagged.
-- **Desktop** — `Agent` (resident socket, JSON-line protocol, metrics push) plus `Cli`. Three
-  conversational modes are distinct: `cortana chat` (interactive persistent), `cortana chat "msg"`
-  (one-shot into the same persistent conversation) and `cortana ask "..."` (stateless).
-  `DesktopOs.BestMatch` resolves misspelled application names before launching or closing anything.
-
----
-
-## 8. Protocols
-
-- **ESP32 → Kernel**: unchanged from the old build, so the firmware does not need reflashing. It sends
-  `esp32` then bare JSON objects with no delimiter; frames are cut by counting braces.
-- **Desktop agent ↔ Kernel**: one JSON object per line in both directions. Agent sends `computer`,
-  then `{"type":"ping"|"reply","id","text"}`; the Kernel sends `{"id","command","argument"}`.
-  Replies are correlated by id, so several commands can be in flight. The agent also pushes
-  `{"type":"activity","activity":{...}}` on transitions.
-- **API**: every route answers plain text when `Accept: text/plain`, JSON otherwise. That is what lets
-  the bots and the CLI stay thin.
-
----
-
-## 9. Testing
-
-There is no automated test project: the dashboard is the intended way to exercise the system. The
-logic that was covered by tests during the rewrite — the sleep transition table, hold lifetimes and
-wake sources, schedule timing, settings validation and the deterministic analyses — is written as
-pure functions (`AutomationRules`, `ScheduleTiming`, `HistoryAnalysis`, `SettingsStore`) so it can be
-covered again cheaply if that changes.
-
-The Kernel does check one thing at boot: it materialises the whole route graph and refuses to start
-if any endpoint signature is invalid, because that failure otherwise turns every request into a 500.
-
----
-
-## 10. Known limitations and remaining work
-
-- Notification text is written short because it becomes the push overlay body verbatim; the overlay
-  additionally trims anything past 80 characters.
-- The station has two temperature sensors with distinct jobs: the SHT4x is the reported room
-  measurement, and the AHT20 exists only to compensate the ENS160. The AHT20 reading is forwarded as
-  `airQualityTemperature` purely so the two can be compared while calibrating the offset; it is never
-  presented as a room reading.
-- The temperature offset is applied at ingest, so it corrects live readings and everything recorded
-  from that moment on; history written before it was set keeps the old values.
-- **`Wire.begin()` must never be left to the board variant.** The sketch probes 21/22, then 13/16,
-  then 13/33, and only falls back to the variant default. This is not defensive padding: flashing with
-  `esp32:esp32:esp32-poe-iso` put I²C on **SDA 13 / SCL 16** while the sensors are wired for the
-  generic ESP32's **21/22**, so every I²C device failed `begin()` while the GPIO PIR on pin 23 kept
-  working perfectly. The tell was `light = -2`, which is BH1750's documented "sensor not configured"
-  sentinel rather than a reading. Changing the FQBN silently moves the bus; the probe makes the sketch
-  independent of which board definition it is compiled for.
-- **The ESP32 has not been reflashed since the firmware changed.** `airQualityTemperature` and
-  `WiFi.setSleep(true)` only take effect after `cortana flash` is run **on the Pi**, where
-  `arduino-cli` is installed. Everything else — GPIO, the station socket, the agent handshake, the
-  deploy and `migrate-config` — has been exercised against the real Pi.
-- Device overrides are per-device with one shared duration, as specified. If automation ever controls
-  more than the lamp, per-device durations become worth having.
-- `HistoryAnalysis.WorstPeriod` is O(n²) over the window. Fine for a few thousand samples, worth an
-  index if retention grows a lot.
-- The Discord `/games` module needs `CORTANA_IGDB_*`; without them the command answers that it is not
-  configured rather than failing.
-- `yt-dlp` is required for anything YouTube. There is no fallback, on purpose.
-- `Locked` comes from `qs -c caelestia ipc call lock isLocked`, polled every 10s and only when a `qs`
-  process is actually running.
-- Idle arrives from outside: `cortana idle on|off` writes `$XDG_RUNTIME_DIR/cortana/idle`, and the
-  agent turns that into `Away` with `IdleSeconds` measured from the file's mtime. This exists because
-  Wayland exposes idle only through `ext-idle-notify-v1` and logind is no help — `IdleAction=ignore`
-  and nothing maintains the session `IdleHint`, so systemd holds no idle counter to read. An
-  `ext-idle-notify` client such as `hypridle` calls the wrapper on timeout and resume.
-- The agent is Hyprland-first, not Hyprland-only. With `HYPRLAND_INSTANCE_SIGNATURE` set it reads
-  socket2 and `hyprctl`; without it (the CachyOS gamescope session) it falls back to probing for a
-  `gamescope` process or a `steamapps/common` binary and reports `Gaming` fullscreen. `playerctl` and
-  the lock query work in both.
-- `activity` and `music` were appended to the history columns. `Read` resolves each column from the
-  file's own header, so older CSVs stay readable and simply lack the two; the day the change lands
-  keeps its old header until midnight rollover, so those two are blank for the rest of that day.
-- Mood still has **no behavioural consumer** — it is display text and LLM context only. Activity has
-  exactly one, the do-not-disturb gate above.
-- The activity map is Hyprland-only. On any other compositor `Activity` stays null, which every
-  consumer already treats as "unknown" rather than "idle".
+- The ESP32 link is **send-only in the firmware**. The Kernel can send a `SourceCommand` to any station
+  that announces outputs, but this sketch never reads, so an LED as an ambient channel needs a read
+  path added to the firmware first
+- `Wire.begin()` must never be left to the board variant. The sketch probes 21/22, then 13/16, then
+  13/33: flashing as `esp32-poe-iso` puts I²C on 13/16 while the sensors are wired for 21/22, and
+  every device fails `begin()` while the GPIO PIR keeps working. The tell is `light = -2`, BH1750's
+  "not configured" sentinel
+- `IdleSeconds` comes from outside: `cortana idle on|off` writes `$XDG_RUNTIME_DIR/cortana/idle`, and
+  an `ext-idle-notify` client such as hypridle calls it. Wayland exposes idle no other way, and logind
+  is no help — `IdleAction=ignore` and nothing maintains the session `IdleHint`
+- The agent is Hyprland-first, not Hyprland-only. It finds the socket under `$XDG_RUNTIME_DIR/hypr/`
+  rather than trusting `HYPRLAND_INSTANCE_SIGNATURE`, which is empty when the agent starts before
+  Hyprland exports it. Without a compositor it probes for `gamescope` or a `steamapps/common` binary
+- `pc_gpu` baselines are skewed until pre-effective-load samples age out of the window
+- Only the GPU rail reports power; CPU package energy needs root on this kernel
+- `HistoryAnalysis.WorstPeriod` is O(n²) over the window. Fine for a few thousand samples
+- The Discord `/games` module needs `CORTANA_IGDB_*`; `yt-dlp` is required for anything YouTube

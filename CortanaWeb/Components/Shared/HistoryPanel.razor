@@ -30,9 +30,13 @@
         <button class="btn btn-ghost btn-small" disabled="@(_loading || _offset == 0)" @onclick="Reset">Now</button>
     </div>
 
-    @if (_series is { Points: 0 } && _offset == 0)
+    @if (_loading || _series is null)
     {
-        <p class="chart-empty">No data available for this metric yet.</p>
+        <p class="chart-empty">Reading</p>
+    }
+    else if (_series is { Points: 0 } && _offset == 0)
+    {
+        <p class="chart-empty">Nothing recorded for this yet</p>
     }
     else
     {
@@ -64,44 +68,27 @@
         }
     }
 
-    private static readonly Dictionary<string, string> Labels = new()
+    private SensorView? Registered(string metric) =>
+        (State.Snapshot?.Sensors ?? []).FirstOrDefault(view => view.Sensor.Equals(metric, StringComparison.OrdinalIgnoreCase));
+
+    private bool IsBinary =>
+        Registered(_metric)?.Kind == ReadingKind.Boolean
+        || (State.Snapshot?.Devices ?? []).Any(view => view.Device.Equals(_metric, StringComparison.OrdinalIgnoreCase));
+
+    private (double? Low, double? High) Bounds() =>
+        IsBinary ? (0, 1) : Registered(_metric) is { Min: { } low, Max: { } high } ? (low, high) : (null, null);
+
+    private string Pretty(string metric) =>
+        Registered(metric)?.Name
+        ?? (State.Snapshot?.Devices ?? []).FirstOrDefault(view => view.Device.Equals(metric, StringComparison.OrdinalIgnoreCase))?.Name
+        ?? char.ToUpper(metric[0]) + metric[1..];
+
+    protected override async Task OnParametersSetAsync()
     {
-        ["co2"] = "CO₂",
-        ["tvoc"] = "TVOC",
-        ["pi_temp"] = "CPU Temperature",
-        ["pi_cpu"] = "CPU Usage",
-        ["pi_ram"] = "RAM Usage",
-        ["pc_temp"] = "CPU Temperature",
-        ["pc_cpu"] = "CPU Usage",
-        ["pc_ram"] = "RAM Usage",
-        ["pc_gpu"] = "GPU Usage",
-        ["pc_gpu_temp"] = "GPU Temperature",
-        ["lamp"] = "Lamp",
-        ["computer"] = "Computer",
-        ["motion"] = "Motion"
-    };
+        if (Metrics.Contains(_metric)) return;
 
-    private static readonly string[] BinaryMetrics = ["motion", "lamp", "computer"];
-
-    private bool IsBinary => BinaryMetrics.Contains(_metric);
-
-    private (double? Low, double? High) Bounds() => _metric switch
-    {
-        "motion" or "lamp" or "computer" => (0, 1),
-        "humidity" or "pi_cpu" or "pi_ram" or "pc_cpu" or "pc_ram" or "pc_gpu" => (0, 100),
-        "pi_temp" or "pc_temp" or "pc_gpu_temp" => (30, 100),
-        "temperature" => (10, 40),
-        "co2" => (400, 2000),
-        "tvoc" => (0, 5000),
-        _ => (null, null)
-    };
-
-    private static string Pretty(string metric) =>
-        Labels.TryGetValue(metric, out string? label) ? label : char.ToUpper(metric[0]) + metric[1..];
-
-    protected override async Task OnInitializedAsync()
-    {
         _metric = Metrics.FirstOrDefault() ?? "";
+        _offset = 0;
         await Load();
     }
 
@@ -127,7 +114,10 @@
     {
         if (string.IsNullOrEmpty(_metric)) return;
 
+        _series = null;
         _loading = true;
+        StateHasChanged();
+
         try
         {
             _series = await State.History(_metric, _hours, Until);

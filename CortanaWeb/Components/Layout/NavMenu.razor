@@ -1,4 +1,6 @@
 @inject WebAuth Auth
+@inject CortanaState State
+@implements IDisposable
 
 <nav class="nav">
     <div class="brand">
@@ -28,15 +30,24 @@
 </nav>
 
 @code {
+    private IDisposable? _subscription;
+
+    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+
+    public void Dispose() => _subscription?.Dispose();
+
     private static readonly (string Href, string Label, string Icon, bool Primary)[] Links =
     [
-        ("devices", "Devices", "devices", true),
         ("", "Dashboard", "dashboard", true),
+        ("devices", "Devices", "devices", true),
         ("sensors", "Sensors", "sensors", true),
         ("core", "Core", "raspberry", false),
-        ("settings", "Settings", "settings", false),
-        ("utility", "Utility", "utility", false),
         ("memory", "Memory", "memory", false),
-        ("logs", "Logs", "logs", false)
+        ("utility", "Utility", "utility", false),
+        ("notes", "Notes", "note", false),
+        ("hardware", "Hardware", "subfunctions", false),
+        ("docs", "Docs", "logs", false),
+        ("logs", "Logs", "logs", false),
+        ("settings", "Settings", "settings", false)
     ];
 }

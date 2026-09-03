@@ -12,4 +12,5 @@ public sealed record MachineSample(
 	double GpuTemp,
 	double DiskUsed,
 	double DiskTotal,
-	long Uptime);
+	long Uptime,
+	double GpuPower = 0);

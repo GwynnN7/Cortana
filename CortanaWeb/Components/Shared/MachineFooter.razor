@@ -1,0 +1,22 @@
+@if (Facts.Count > 0)
+{
+    <p class="machine-totals">@string.Join(" · ", Facts.Select(fact => $"{fact.Value} {fact.Key}"))</p>
+}
+
+@if (Activity?.Playing is { } track)
+{
+    <p class="now-playing">@(track.Paused ? "⏸" : "♪") @Track(track)</p>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<SourceFact> Facts { get; set; } = [];
+    [Parameter] public DesktopActivity? Activity { get; set; }
+
+    private static string Track(NowPlaying track) => track switch
+    {
+        { Title.Length: > 0, Album.Length: > 0 } => $"{track.Title} — {track.Album}",
+        { Title.Length: > 0 } => track.Title,
+        { Paused: true } => "paused",
+        _ => "playing"
+    };
+}

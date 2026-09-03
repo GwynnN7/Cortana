@@ -20,13 +20,12 @@ public enum ScheduleEvent
 	SleepModeStarted,
 	SleepModeEnded,
 	MotionDetected,
-	AirQualityWarning
+	WarningRaised
 }
 
 public enum ScheduleActionType
 {
 	SwitchDevice,
-	SwitchRoom,
 	CommandComputer,
 	CommandRaspberry,
 	ChangeSetting,

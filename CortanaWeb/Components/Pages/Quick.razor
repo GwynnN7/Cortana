@@ -17,24 +17,23 @@
 
     private string? _result;
 
-    private static readonly Dictionary<string, (string Title, string Icon)> Known = new(StringComparer.OrdinalIgnoreCase)
-    {
-        { "sleep", ("Sleep mode", "🛌") },
-        { "lamp", ("Toggle lamp", "💡") },
-        { "generic", ("Toggle generic", "🔌") },
-        { "computer", ("Toggle computer", "💻") }
-    };
+    private const string Sleep = "sleep";
 
-    private string Title => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Title : "Unknown shortcut";
-    private string Icon => Known.TryGetValue(Action, out (string Title, string Icon) known) ? known.Icon : "❔";
+    private DeviceView? Target =>
+        (State.Snapshot?.Devices ?? []).FirstOrDefault(device => device.Device.Equals(Action, StringComparison.OrdinalIgnoreCase));
+
+    private string Title => Action.Equals(Sleep, StringComparison.OrdinalIgnoreCase)
+        ? "Sleep mode"
+        : Target is { } device ? $"Toggle {device.Name.ToLowerInvariant()}" : "Unknown shortcut";
+
+    private string Icon => Action.Equals(Sleep, StringComparison.OrdinalIgnoreCase)
+        ? "🛌"
+        : Target?.Icon ?? "❔";
 
     protected override async Task OnInitializedAsync() =>
-        _result = Action.ToLowerInvariant() switch
-        {
-            "generic" => await State.SwitchDevice(DeviceId.Generic, SwitchAction.Toggle),
-            "lamp" => await State.SwitchDevice(DeviceId.Lamp, SwitchAction.Toggle),
-            "computer" => await State.SwitchDevice(DeviceId.Computer, SwitchAction.Toggle),
-            "sleep" => await State.SetSleepMode(SwitchAction.Toggle),
-            _ => "That shortcut does not exist."
-        };
+        _result = Action.Equals(Sleep, StringComparison.OrdinalIgnoreCase)
+            ? await State.SetSleepMode(SwitchAction.Toggle)
+            : Target is { } device
+                ? await State.SwitchDevice(device.Device, SwitchAction.Toggle)
+                : "That shortcut does not exist.";
 }

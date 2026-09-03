@@ -8,10 +8,8 @@ public static class HistoryBaseline
 	private const double MadToSigma = 1.4826;
 	private const int LeastSamples = 8;
 
-	public static BaselineResult Build(string metric, IReadOnlyList<HistoryPoint> points, double? current, int hour)
+	public static BaselineResult Build(string metric, string unit, IReadOnlyList<HistoryPoint> points, double? current, int hour)
 	{
-		string unit = Units.ForMetric(metric);
-
 		double[] values = [.. points.Where(point => point.At.Hour == hour).Select(point => point.Value).Order()];
 
 		if (values.Length < LeastSamples)

@@ -1,6 +1,6 @@
 // Caches the shell for instant startup and serves an offline page when the Pi is down
 
-const CACHE = 'cortana-shell-v12';
+const CACHE = 'cortana-shell-v13';
 const SHELL = ['/', '/app.css', '/favicon.png', '/icon-192x192.png', '/icon-144x144.png', '/icon-72x72.png', '/icon-512x512.png', '/manifest.webmanifest', '/offline.html',
     '/badge.png'];
 

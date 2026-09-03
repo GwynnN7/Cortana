@@ -20,6 +20,9 @@ Adafruit_SHT4x sht4 = Adafruit_SHT4x();
 unsigned long tcpTime;
 const int transmissionTime = 5000;
 
+unsigned long factsTime;
+const unsigned long factsInterval = 300000;
+
 int currentMotion = LOW;
 int lastSentLedState = LOW;
 
@@ -55,6 +58,35 @@ void startI2C()
   Wire.begin();
 }
 
+void announce()
+{
+  client.print(F("{\"type\":\"hello\",\"magic\":\"cortana\",\"version\":1,"
+                 "\"source\":\"station\",\"kind\":\"Station\","
+                 "\"outputs\":[],"
+                 "\"inputs\":[\"motion\",\"light\",\"temperature\",\"humidity\",\"co2\",\"tvoc\",\"air_temperature\"],"
+                 "\"facts\":{\"name\":\"station\",\"os\":\"ESP32\"}}\n"));
+
+  describe();
+}
+
+// What the board says about itself: not a reading, but what it is and how it is doing
+void describe()
+{
+  unsigned long seconds = millis() / 1000UL;
+
+  char buffer[220];
+  snprintf(buffer, sizeof(buffer),
+           "{\"type\":\"facts\",\"values\":{"
+           "\"name\":\"station\",\"os\":\"ESP32\","
+           "\"uptime\":\"%luh %lum\",\"ip\":\"%s\",\"signal\":\"%d dBm\","
+           "\"memory\":\"%u KB free\"}}\n",
+           seconds / 3600UL, (seconds % 3600UL) / 60UL,
+           WiFi.localIP().toString().c_str(), WiFi.RSSI(),
+           (unsigned)(ESP.getFreeHeap() / 1024));
+
+  client.print(buffer);
+}
+
 void setup()
 {
   startI2C();
@@ -72,7 +104,7 @@ void setup()
 
   connectToWiFi();
   checkTCPConnection();
-  client.print("esp32");
+  announce();
 
   tcpTime = millis();
 }
@@ -92,10 +124,16 @@ void loop()
     {
       readSensors();
       tcpTime = millis(); 
+
+      if (millis() - factsTime >= factsInterval)
+      {
+        describe();
+        factsTime = millis();
+      }
     }
 
-    char buff[200]; 
-    snprintf(buff, 200, "{ \"motion\": %d, \"light\": %d, \"temperature\": %.2f, \"humidity\": %.2f, \"eco2\": %u, \"tvoc\": %u, \"airQualityTemperature\": %.2f }", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc, temp);
+    char buff[320];
+    snprintf(buff, 320, "{\"type\":\"reading\",\"values\":{\"motion\":%d,\"light\":%d,\"temperature\":%.2f,\"humidity\":%.2f,\"co2\":%u,\"tvoc\":%u,\"air_temperature\":%.2f}}\n", currentMotion, luxLight, roomTemp, roomHumidity, eco2, tvoc, temp);
 
     client.print(buff);
     lastSentLedState = currentMotion;
@@ -138,7 +176,7 @@ void checkTCPConnection()
       delay(1500);
       connectToWiFi();
     }
-    client.print("esp32");
+    announce();
   }
 }
 

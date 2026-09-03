@@ -101,7 +101,36 @@ window.cortanaScrollChat = () => {
     if (log) log.scrollTop = log.scrollHeight;
 };
 
-window.cortanaChatId = {
-    load: () => { try { return localStorage.getItem('cortana-chat'); } catch { return null; } },
-    save: id => { try { localStorage.setItem('cortana-chat', id); } catch { } }
+// Horizontal swipe over a panel. Vertical scrolling always wins, so a lazy diagonal
+// drag scrolls the page rather than changing tab
+window.cortanaSwipe = {
+    attach: (element, target) => {
+        if (!element || element.dataset.swipe === 'on') return;
+        element.dataset.swipe = 'on';
+
+        let x = 0, y = 0, tracking = false;
+
+        const start = event => {
+            const touch = event.touches ? event.touches[0] : event;
+            x = touch.clientX;
+            y = touch.clientY;
+            tracking = !event.touches || event.touches.length === 1;
+        };
+
+        const end = event => {
+            if (!tracking) return;
+            tracking = false;
+
+            const touch = event.changedTouches ? event.changedTouches[0] : event;
+            const dx = touch.clientX - x;
+            const dy = touch.clientY - y;
+
+            if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+            target.invokeMethodAsync('Swiped', dx < 0 ? 1 : -1);
+        };
+
+        element.addEventListener('touchstart', start, { passive: true });
+        element.addEventListener('touchend', end, { passive: true });
+    }
 };

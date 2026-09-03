@@ -9,7 +9,8 @@ public enum ChatRole
 	Assistant
 }
 
-public sealed record ChatMessage(ChatRole Role, string Text, DateTimeOffset At);
+/// Text keeps the author prefix the model reads; Author is kept apart so a client can strip it
+public sealed record ChatMessage(ChatRole Role, string Text, DateTimeOffset At, string Author = "");
 
 public sealed record Conversation(string Id, IReadOnlyList<ChatMessage> Messages, DateTimeOffset LastUsed);
 

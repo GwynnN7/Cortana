@@ -6,6 +6,8 @@
 <section class="section">
     <header class="section-head">
         <h2>Active</h2>
+        <span class="badge">@_schedules.Count</span>
+        <button class="btn btn-small" disabled="@_busy" @onclick="OpenDraft">New schedule</button>
     </header>
 
     @if (_schedules.Count == 0)
@@ -45,11 +47,8 @@
     }
 </section>
 
-<section class="section">
-    <header class="section-head">
-        <h2>New schedule</h2>
-    </header>
-
+<Modal Open="_open" Title="New schedule" OnClose="Close">
+    <ChildContent>
     <div class="field-row">
         <input type="text" placeholder="Name" @bind="_draft.Name" @bind:event="oninput" disabled="@_busy"/>
     </div>
@@ -111,9 +110,9 @@
         @if (TargetOptions(_draft.ActionType) is { Count: > 0 } targets)
         {
             <select @bind="_draft.Target" disabled="@_busy">
-                @foreach (string target in targets)
+                @foreach ((string id, string label) in targets)
                 {
-                    <option value="@target">@target</option>
+                    <option value="@id">@label</option>
                 }
             </select>
         }
@@ -136,15 +135,19 @@
             <input type="text" placeholder="Value" @bind="_draft.Value" @bind:event="oninput" disabled="@_busy"/>
         }
     </div>
-
-    <button class="btn" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft.Name))" @onclick="Create">Create</button>
-</section>
+    </ChildContent>
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_draft.Name))" @onclick="Create">Create</button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
 
 @code {
     private IDisposable? _subscription;
     private IReadOnlyList<ScheduleView> _schedules = [];
     private string? _message;
     private bool _busy;
+    private bool _open;
 
     private readonly Draft _draft = new();
 
@@ -153,7 +156,7 @@
         public string Name { get; set; } = "";
         public ScheduleTrigger Trigger { get; set; } = ScheduleTrigger.Daily;
         public ScheduleActionType ActionType { get; set; } = ScheduleActionType.SwitchDevice;
-        public string Target { get; set; } = nameof(DeviceId.Lamp);
+        public string Target { get; set; } = "";
         public string Value { get; set; } = nameof(SwitchAction.Toggle);
         public DateTime At { get; set; } = DateTime.Now.AddHours(1);
         public int IntervalSeconds { get; set; } = 3600;
@@ -167,36 +170,53 @@
     {
         _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
         await Reload();
+        _draft.Target = TargetOptions(_draft.ActionType).FirstOrDefault().Id ?? "";
     }
 
     public void Dispose() => _subscription?.Dispose();
 
     private async Task Reload() => _schedules = await State.Schedules();
 
+    private void OpenDraft()
+    {
+        _draft.Target = TargetOptions(_draft.ActionType).FirstOrDefault().Id ?? "";
+        _open = true;
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _draft.Name = "";
+    }
+
     private void OnActionType(ChangeEventArgs args)
     {
         if (!Enum.TryParse(args.Value?.ToString(), out ScheduleActionType action)) return;
 
         _draft.ActionType = action;
-        _draft.Target = TargetOptions(action).FirstOrDefault() ?? "";
+        _draft.Target = TargetOptions(action).FirstOrDefault().Id ?? "";
         _draft.Value = ValueOptions(action).FirstOrDefault() ?? "";
     }
 
-    private static List<string> TargetOptions(ScheduleActionType action) => action switch
+    /// A target is stored by id and shown by whatever the fabric calls it
+    private List<(string Id, string Label)> TargetOptions(ScheduleActionType action) => action switch
     {
-        ScheduleActionType.SwitchDevice => [.. Enum.GetNames<DeviceId>()],
-        ScheduleActionType.CommandComputer => [.. Enum.GetNames<ComputerCommand>()],
-        ScheduleActionType.CommandRaspberry => [.. Enum.GetNames<RaspberryCommand>()],
-        ScheduleActionType.ChangeSetting => [.. Enum.GetNames<SettingKey>()],
-        ScheduleActionType.SendNotification => [.. Enum.GetNames<NotificationChannel>()],
-        ScheduleActionType.ControlService => [.. Enum.GetNames<ServiceId>()],
+        ScheduleActionType.SwitchDevice => [.. (State.Snapshot?.Devices ?? []).Select(view => (view.Device, view.Name))],
+        ScheduleActionType.CommandComputer => Named<ComputerCommand>(),
+        ScheduleActionType.CommandRaspberry => Named<RaspberryCommand>(),
+        ScheduleActionType.ChangeSetting => Named<SettingKey>(),
+        ScheduleActionType.SendNotification => Named<NotificationChannel>(),
+        ScheduleActionType.ControlService => Named<ServiceId>(),
         _ => []
     };
 
+    private static List<(string Id, string Label)> Named<T>() where T : struct, Enum =>
+        [.. Enum.GetNames<T>().Select(name => (name, name))];
+
     private static List<string> ValueOptions(ScheduleActionType action) => action switch
     {
-        ScheduleActionType.SwitchDevice or ScheduleActionType.SwitchRoom
-            or ScheduleActionType.SetSleepMode or ScheduleActionType.SetAutomation => [.. Enum.GetNames<SwitchAction>()],
+        ScheduleActionType.SwitchDevice or ScheduleActionType.SetSleepMode
+            or ScheduleActionType.SetAutomation => [.. Enum.GetNames<SwitchAction>()],
         ScheduleActionType.ControlService => [.. Enum.GetNames<ServiceAction>()],
         _ => []
     };
@@ -223,7 +243,7 @@
                 "web");
 
             _message = await State.CreateSchedule(request);
-            _draft.Name = "";
+            Close();
             await Reload();
         }
         finally
@@ -280,10 +300,14 @@
         return entry.Schedule.LastRun != null ? $"{when} · ran {entry.Schedule.LastRun:dd MMM HH:mm}" : when;
     }
 
-    private static string ActionText(ScheduleAction action) => action.Type switch
+    private string ActionText(ScheduleAction action)
     {
-        ScheduleActionType.SwitchRoom => $"Room {action.Value}",
-        ScheduleActionType.SendNotification => $"Notify {action.Target}: {action.Value}",
-        _ => string.IsNullOrEmpty(action.Value) ? $"{action.Type} {action.Target}" : $"{action.Type} {action.Target} → {action.Value}"
-    };
+        string target = action.Type == ScheduleActionType.SwitchDevice
+            ? (State.Snapshot?.Devices ?? []).FirstOrDefault(view => view.Device == action.Target)?.Name ?? action.Target
+            : action.Target;
+
+        if (action.Type == ScheduleActionType.SendNotification) return $"Notify {target}: {action.Value}";
+
+        return string.IsNullOrEmpty(action.Value) ? $"{action.Type} {target}" : $"{action.Type} {target} → {action.Value}";
+    }
 }

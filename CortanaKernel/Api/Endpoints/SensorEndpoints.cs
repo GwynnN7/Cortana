@@ -13,20 +13,19 @@ public static class SensorEndpoints
 		group.MapGet("", (SensorService sensors, HttpRequest request) =>
 			{
 				IReadOnlyList<SensorView> all = sensors.All();
-				string text = string.Join("\n", all.Select(view => $"{view.Sensor}: {(view.Available ? view.Value + view.Unit : "offline")}"));
-				if (sensors.CalibrationNote() is { Length: > 0 } note) text += $"\n\n{note}";
+				string text = string.Join("\n", all.Select(view => $"{view.Name}: {(view.Available ? view.Value + view.Unit : "offline")}"));
 
 				return ApiResults.Ok(request, text, all);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Latest reading from every sensor.").Produces<IReadOnlyList<SensorView>>();
+			.Access(ApiAccess.ReadOnly).WithSummary("Latest reading from every sensor").Produces<IReadOnlyList<SensorView>>();
 
 		group.MapGet("/{sensor}", (string sensor, SensorService sensors, HttpRequest request) =>
 			{
-				if (!ApiResults.TryParse(sensor, out SensorId parsed)) return ApiResults.Unknown<SensorId>(request, "Sensor", sensor);
+				SensorView? known = sensors.All().FirstOrDefault(view => view.Sensor.Equals(sensor, StringComparison.OrdinalIgnoreCase));
+				if (known is null) return ApiResults.NotFound(request, $"Unknown sensor '{sensor}'");
 
-				return ApiResults.From(request, sensors.Read(parsed),
-					value => (sensors.Describe(parsed), new SensorView(parsed, value, CortanaLib.Runtime.Units.For(parsed), true, null)));
+				return ApiResults.Ok(request, sensors.Describe(sensor), known);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Latest reading from one sensor.").Produces<SensorView>();
+			.Access(ApiAccess.ReadOnly).WithSummary("Latest reading from one sensor").Produces<SensorView>();
 	}
 }

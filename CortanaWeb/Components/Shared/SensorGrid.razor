@@ -1,0 +1,91 @@
+@foreach (Group group in Groups)
+{
+    <div class="metric-body">
+        @if (group.Title.Length > 0)
+        {
+            <p class="metric-device">@group.Title</p>
+        }
+        @foreach (SensorView view in group.Sensors)
+        {
+            <Metric Name="@Label(group, view)" Icon="@(group.Title.Length > 0 ? "" : view.Icon)"
+                    Percent="@Percent(view)" Detail="@Reading(view)" Nested="@(group.Title.Length > 0)" Thermal="@IsThermal(view)"/>
+        }
+    </div>
+}
+
+@if (Tiles.Count > 0)
+{
+    <div class="tiles tiles-fit">
+        @foreach (SensorView view in Tiles)
+        {
+            <StatTile Icon="@view.Icon" Label="@view.Name" Value="@Reading(view)" Muted="!view.Available"/>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<SensorView> Sensors { get; set; } = [];
+
+    private sealed record Group(string Title, IReadOnlyList<SensorView> Sensors);
+
+    private List<SensorView> Bars => [.. Sensors.Where(view => view is { Min: not null, Max: not null })];
+
+    private List<SensorView> Tiles => [.. Sensors.Where(view => view is not { Min: not null, Max: not null })];
+
+    /// Sensors whose names start with the same word belong together, the way CPU and CPU Temp do
+    private List<Group> Groups
+    {
+        get
+        {
+            var groups = new List<Group>();
+            List<SensorView> bars = Bars;
+
+            for (var i = 0; i < bars.Count; i++)
+            {
+                string head = First(bars[i].Name);
+                List<SensorView> family = [.. bars.Where(view => First(view.Name) == head)];
+
+                if (family.Count < 2)
+                {
+                    groups.Add(new Group("", [bars[i]]));
+                    continue;
+                }
+
+                if (bars.FindIndex(view => First(view.Name) == head) != i) continue;
+
+                groups.Add(new Group(head, family));
+            }
+
+            return groups;
+        }
+    }
+
+    private static string First(string name) => name.Split(' ')[0];
+
+    /// Inside a family the shared word is already the heading, so a row keeps what tells it apart
+    private static string Label(Group group, SensorView view)
+    {
+        if (group.Title.Length == 0) return view.Name;
+
+        string rest = view.Name[group.Title.Length..].Trim();
+        return rest.Length > 0 ? rest : view.Unit.Trim();
+    }
+
+    private static bool IsThermal(SensorView view) => view.Unit.Contains("°C");
+
+    private static double Percent(SensorView view)
+    {
+        if (view.Reading is not { } value || view.Min is not { } min || view.Max is not { } max || max <= min) return 0;
+
+        return Math.Clamp((value - min) / (max - min) * 100, 0, 100);
+    }
+
+    private static string Reading(SensorView view)
+    {
+        if (!view.Available || view.Value.Length == 0) return "-";
+
+        return view.Value is "true" or "false"
+            ? view.Value == "true" ? "Yes" : "No"
+            : $"{view.Value}{view.Unit}";
+    }
+}

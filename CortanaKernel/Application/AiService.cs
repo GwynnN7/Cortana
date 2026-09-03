@@ -1,3 +1,4 @@
+using CortanaKernel.Domain.Settings;
 using System.Collections.Concurrent;
 using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Common;
@@ -13,6 +14,7 @@ public sealed class AiService(
 	IConversationRepository conversations,
 	CapabilityRegistry capabilities,
 	AiSettingsStore settings,
+	SettingsStore flags,
 	MemoryStore memories,
 	Lazy<SnapshotService> snapshots,
 	NotificationService notifications,
@@ -79,6 +81,30 @@ public sealed class AiService(
 		}
 	}
 
+	public IReadOnlyList<ChatTurn> History(string conversation) =>
+	[
+		.. (conversations.Load(conversation)?.Messages ?? [])
+			.Select(message => new ChatTurn(message.Role == ChatRole.User, Spoken(message), message.At))
+	];
+
+	/// The author prefix belongs to the model, not to whoever reads the conversation back
+	private static string Spoken(ChatMessage message) =>
+		message.Author.Length > 0 && message.Text.StartsWith($"{message.Author}: ", StringComparison.Ordinal)
+			? message.Text[(message.Author.Length + 2)..]
+			: message.Text;
+
+	/// Cortana speaking first: the turn is stored so the dashboard shows it like any other
+	public void Append(string conversation, string text)
+	{
+		Conversation? current = conversations.Load(conversation);
+		DateTimeOffset now = DateTimeOffset.Now;
+
+		conversations.Save(new Conversation(conversation,
+			[.. current?.Messages ?? [], new ChatMessage(ChatRole.Assistant, text, now)], now));
+
+		bus.Publish(new ConversationUpdated(conversation, now));
+	}
+
 	public void Forget(string conversation)
 	{
 		conversations.Delete(conversation);
@@ -97,6 +123,8 @@ public sealed class AiService(
 
 	private string Recollection(string message)
 	{
+		if (!flags.Flag(SettingKey.MemoryEnabled)) return "";
+
 		var depth = (int)settings.Number(AiSettingKey.MemoryDepth);
 		if (depth <= 0) return "";
 
@@ -185,7 +213,7 @@ public sealed class AiService(
 		List<ChatMessage> messages =
 		[
 			.. conversation?.Messages ?? [],
-			new ChatMessage(ChatRole.User, message, DateTimeOffset.Now),
+			new ChatMessage(ChatRole.User, message, DateTimeOffset.Now, request.Author),
 			new ChatMessage(ChatRole.Assistant, reply.Value, DateTimeOffset.Now)
 		];
 

@@ -15,7 +15,7 @@ public static class SettingEndpoints
 				IReadOnlyList<SettingView> all = settings.All();
 				return ApiResults.Ok(request, string.Join("\n", all.Select(view => $"{view.Setting}: {view.Value}{view.Unit}")), all);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Every automation setting.").Produces<IReadOnlyList<SettingView>>();
+			.Access(ApiAccess.ReadOnly).WithSummary("Every automation setting").Produces<IReadOnlyList<SettingView>>();
 
 		group.MapGet("/{setting}", (string setting, SettingsService settings, HttpRequest request) =>
 			{
@@ -24,7 +24,7 @@ public static class SettingEndpoints
 				SettingView view = settings.Read(parsed);
 				return ApiResults.Ok(request, $"{view.Setting}: {view.Value}{view.Unit}", view);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("One automation setting.").Produces<SettingView>();
+			.Access(ApiAccess.ReadOnly).WithSummary("One automation setting").Produces<SettingView>();
 
 		group.MapPost("/{setting}", (string setting, SettingRequest body, SettingsService settings, HttpRequest request) =>
 			{
@@ -33,7 +33,7 @@ public static class SettingEndpoints
 				return ApiResults.From(request, settings.Write(parsed, body.Value),
 					value => ($"{parsed}: {value}", settings.Read(parsed)));
 			})
-			.Access(ApiAccess.Sensitive).WithSummary("Updates a setting. On/Off settings accept On, Off or Toggle.")
+			.Access(ApiAccess.Sensitive).WithSummary("Updates a setting. On/Off settings accept On, Off or Toggle")
 			.Produces<SettingView>();
 	}
 }

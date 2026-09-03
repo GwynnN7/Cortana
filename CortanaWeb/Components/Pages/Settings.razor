@@ -2,19 +2,15 @@
 @attribute [Authorize(Policy = WebAuth.Policy)]
 @rendermode InteractiveServer
 @inject CortanaState State
+@inherits ActingPage
 @implements IDisposable
 
 <PageTitle>Settings</PageTitle>
 
 <h1>Settings</h1>
-<Toast @bind-Message="_message"/>
+<Toast @bind-Message="Message"/>
 
-<div class="subnav">
-    @foreach ((string key, string label) in Tabs)
-    {
-        <button class="subnav-tab @(_tab == key ? "subnav-active" : "")" @onclick="() => _tab = key">@label</button>
-    }
-</div>
+<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
 
 @if (_tab == "automation")
 {
@@ -31,44 +27,38 @@
             <div class="toggle-actions">
                 @if (State.Automation.Status == AutomationStatus.Holding)
                 {
-                    <button class="btn btn-small" disabled="@_busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
+                    <button class="btn btn-small" disabled="@Busy" @onclick="() => Run(State.ReleaseHolds)">Resume</button>
                 }
                 <button class="switch @SwitchClass"
                         role="switch" aria-checked="@(State.Automation.Enabled ? "true" : "false")" aria-label="Automation"
-                        disabled="@_busy" @onclick="ToggleAutomation">
+                        disabled="@Busy" @onclick="ToggleAutomation">
                     <span class="knob"></span>
                 </button>
             </div>
         </div>
 
-        <div class="toggle-row">
-            <div>
-                <strong>Lamp is a pulse relay</strong>
-                <small>Pulse the pin instead of holding a level</small>
-            </div>
-            <button class="switch @(State.SettingEnabled(SettingKey.LampUsesPulseRelay) ? "switch-on" : "")"
-                    role="switch" aria-checked="@Aria(SettingKey.LampUsesPulseRelay)" aria-label="Lamp is a pulse relay"
-                    disabled="@_busy" @onclick="() => Toggle(SettingKey.LampUsesPulseRelay)">
-                <span class="knob"></span>
-            </button>
-        </div>
-
         <div class="settings-grid">
-            <NumberSetting Setting="SettingKey.LightThreshold" Label="Light Threshold" Hint="lux below which the lamp may turn on" Icon="💡" Max="65535" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.MorningHour" Label="Morning Hour" Hint="0-23, when the night ends" Icon="🌅" Max="23" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.NightHour" Label="Night Hour" Hint="0-23, when the night begins" Icon="🌇" Max="23" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.MotionTimeoutSeconds" Label="Motion Timeout" Hint="seconds without motion before the lamp goes off, unless you are at the desk" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.TemperatureOffset" Label="Temperature Offset" Hint="°C summed to the reading, to threshold the sensor" Icon="🌡" Min="-10" Max="10" Step="0.1" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.Co2Threshold" Label="CO₂ Threshold" Hint="ppm before an air quality warning" Icon="🧪" Max="10000" OnResult="Report"/>
-            <NumberSetting Setting="SettingKey.TvocThreshold" Label="TVOC Threshold" Hint="ppb before an air quality warning" Icon="🦠" Max="10000" OnResult="Report"/>
             <NumberSetting Setting="SettingKey.ComputerShutdownGraceSeconds" Label="Shutdown Hold" Hint="seconds after pc is off before cutting power" Icon="⚡" Max="600" OnResult="Report"/>
         </div>
     </section>
 
     <section class="section">
         <header class="section-head">
+            <h2>Presence</h2>
+        </header>
+
+        <div class="settings-grid">
+            <NumberSetting Setting="SettingKey.MotionTimeoutSeconds" Label="Presence Lingers" Hint="seconds it stays true after the last sensor goes quiet" Icon="⏳" Max="3600" Min="1" OnResult="Report"/>
+        </div>
+
+        <p class="section-hint">Which sensors count is set on <a href="/hardware">Hardware</a></p>
+    </section>
+
+    <section class="section">
+        <header class="section-head">
             <h2>Sleep and overrides</h2>
-            <p class="section-hint">How long a manual touch or a sleep session lasts</p>
         </header>
 
         <div class="settings-grid">
@@ -83,6 +73,35 @@
 else if (_tab == "ai")
 {
     <AiSettingsPanel OnResult="Report"/>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>Memory</h2>
+        </header>
+
+        <AiNumberSetting Setting="AiSettingKey.MemoryDepth" Label="Memories in prompt" Min="0" Max="60" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.MemoryStateHours" Label="Short memory lasts (h)" Min="1" Max="168" Step="1" OnResult="Report"/>
+    </section>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>Wrap-up</h2>
+        </header>
+
+        <AiNumberSetting Setting="AiSettingKey.WrapupHour" Label="Written at (h)" Min="0" Max="23" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.WrapupChance" Label="Chance she says it" Min="0" Max="1" Step="0.05" OnResult="Report"/>
+    </section>
+}
+else if (_tab == "history")
+{
+    <section class="section">
+        <header class="section-head">
+            <h2>History</h2>
+        </header>
+
+        <AiNumberSetting Setting="AiSettingKey.HistorySampleMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.HistoryRetentionDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
+    </section>
 }
 else if (_tab == "notifications")
 {
@@ -100,27 +119,27 @@ else if (_tab == "notifications")
                 </div>
                 <button class="switch @(State.SettingEnabled(setting) ? "switch-on" : "")" role="switch"
                         aria-checked="@Aria(setting)" aria-label="@title"
-                        disabled="@_busy" @onclick="() => Toggle(setting)"><span class="knob"></span></button>
+                        disabled="@Busy" @onclick="() => Toggle(setting)"><span class="knob"></span></button>
             </div>
         }
     </section>
 
     <section class="section">
         <header class="section-head">
-            <h2>History</h2>
-            <p class="section-hint">How often readings are recorded and how long they are kept</p>
+            <h2>Hold</h2>
         </header>
 
-        <AiNumberSetting Setting="AiSettingKey.MemoryDepth" Label="Memories in prompt" Min="0" Max="60" Step="1" OnResult="Report"/>
-        <AiNumberSetting Setting="AiSettingKey.MemoryStateHours" Label="Short memory lasts (h)" Min="1" Max="168" Step="1" OnResult="Report"/>
-        <AiNumberSetting Setting="AiSettingKey.HistorySampleMinutes" Label="Sample every (min)" Min="1" Max="60" Step="1" OnResult="Report"/>
-        <AiNumberSetting Setting="AiSettingKey.HistoryRetentionDays" Label="Keep for (days)" Min="1" Max="3650" Step="1" OnResult="Report"/>
+        <AiNumberSetting Setting="AiSettingKey.PushEventSeconds" Label="Event stays up (s)" Min="1" Max="120" Step="1" OnResult="Report"/>
+
+        <p class="section-hint">How long the persistent notification shows an event before falling back to the status line</p>
     </section>
 }
 
+</TabStrip>
+
 @code {
     private static readonly (string Key, string Label)[] Tabs =
-        [("automation", "Automation"), ("ai", "AI"), ("notifications", "Notifications")];
+        [("automation", "Automation"), ("ai", "AI"), ("history", "History"), ("notifications", "Notifications")];
 
     private static readonly (SettingKey Setting, string Title, string Hint)[] Destinations =
     [
@@ -140,19 +159,19 @@ else if (_tab == "notifications")
     {
         { Status: AutomationStatus.Off } => "Manual control only",
         { Status: AutomationStatus.Holding, HoldingUntil: { } until } => $"Holding until {until:HH:mm}",
-        _ => "Cortana controls the lamp"
+        { Status: AutomationStatus.Idle } => "Nothing is bound yet",
+        { SleepMode: true } => "Sleep rules are active",
+        _ => "Binds are deciding"
     };
 
     private string _tab = "automation";
     private IDisposable? _subscription;
-    private string? _message;
-    private bool _busy;
 
     protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
 
     public void Dispose() => _subscription?.Dispose();
 
-    private void Report(string result) => _message = result;
+    private void Report(string result) => Message = result;
 
     private string Aria(SettingKey setting) => State.SettingEnabled(setting) ? "true" : "false";
 
@@ -160,16 +179,4 @@ else if (_tab == "notifications")
 
     private Task Toggle(SettingKey setting) => Run(() => State.SetSetting(setting, "Toggle"));
 
-    private async Task Run(Func<Task<string>> action)
-    {
-        _busy = true;
-        try
-        {
-            _message = await action();
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
 }

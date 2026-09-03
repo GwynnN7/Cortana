@@ -1,22 +1,21 @@
 using System.Device.Gpio;
-using CortanaKernel.Domain.Devices;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Settings;
 using CortanaKernel.Infrastructure.Raspberry;
+using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
 
 namespace CortanaKernel.Infrastructure.Gpio;
 
 /// The relays on the Pi's header
-public sealed class GpioDeviceController : ILocalDeviceController, IDisposable
+public sealed class GpioDeviceController : IChannelWriter, IDisposable
 {
-	private const int PowerPin = 23;
-	private const int GenericPin = 24;
-	private const int LampPin = 25;
+	private static readonly int[] HeaderPins = [23, 24, 25];
 
 	private static readonly TimeSpan PulseWidth = TimeSpan.FromMilliseconds(100);
 
-	private readonly IReadOnlyDictionary<DeviceId, int> _pins;
+	private readonly IReadOnlyDictionary<string, int> _pins;
 	private readonly SettingsStore _settings;
 	private readonly Lock _gate = new();
 	private readonly Lock _pulseGate = new();
@@ -27,9 +26,7 @@ public sealed class GpioDeviceController : ILocalDeviceController, IDisposable
 	public GpioDeviceController(RaspberryHost host, SettingsStore settings)
 	{
 		_settings = settings;
-		_pins = host.Location == Location.Orvieto
-			? new Dictionary<DeviceId, int> { [DeviceId.Lamp] = LampPin, [DeviceId.Power] = PowerPin, [DeviceId.Generic] = GenericPin }
-			: new Dictionary<DeviceId, int> { [DeviceId.Lamp] = GenericPin, [DeviceId.Power] = PowerPin, [DeviceId.Generic] = GenericPin };
+		_pins = Declared() ?? HeaderPins.ToDictionary(pin => $"pin{pin}", pin => pin, StringComparer.OrdinalIgnoreCase);
 
 		try
 		{
@@ -41,16 +38,29 @@ public sealed class GpioDeviceController : ILocalDeviceController, IDisposable
 		}
 	}
 
-	public bool Controls(DeviceId device) => _pins.ContainsKey(device);
-
-	public IReadOnlyList<DeviceId> Linked(DeviceId device) =>
-		!_pins.TryGetValue(device, out int pin) ? [device] : [.. _pins.Where(entry => entry.Value == pin).Select(entry => entry.Key)];
-
-	public Result<string> Apply(DeviceId device, PowerState state)
+	private static IReadOnlyDictionary<string, int>? Declared()
 	{
-		if (!_pins.TryGetValue(device, out int pin)) return Result.Fail<string>($"{device} has no output on this machine");
+		string path = CortanaEnvironment.Path_(CortanaFolder.Config, "CortanaKernel/Pins.json");
+		Dictionary<string, int>? declared = JsonStore.Read<Dictionary<string, int>>(path);
 
-		if (device == DeviceId.Lamp && _settings.Flag(SettingKey.LampUsesPulseRelay)) return Pulse(pin);
+		if (declared is not { Count: > 0 }) return null;
+
+		Log.Write("Gpio", $"Using the declared pin map: {string.Join(", ", declared.Select(entry => $"{entry.Key}={entry.Value}"))}");
+		return new Dictionary<string, int>(declared, StringComparer.OrdinalIgnoreCase);
+	}
+
+	public bool Handles(string source) => source.Equals(SourceIds.Raspberry, StringComparison.OrdinalIgnoreCase);
+
+	public bool Controls(string channel) => _pins.ContainsKey(channel);
+
+	public IReadOnlyList<string> Linked(string channel) =>
+		!_pins.TryGetValue(channel, out int pin) ? [channel] : [.. _pins.Where(entry => entry.Value == pin).Select(entry => entry.Key)];
+
+	public Result<string> Apply(string channel, PowerState state, bool pulse)
+	{
+		if (!_pins.TryGetValue(channel, out int pin)) return Result.Fail<string>($"{channel} has no output on this machine");
+
+		if (pulse) return Pulse(pin);
 
 		return Write(pin, state == PowerState.On ? PinValue.High : PinValue.Low);
 	}
@@ -91,19 +101,13 @@ public sealed class GpioDeviceController : ILocalDeviceController, IDisposable
 		}
 	}
 
+	/// Closing a pin releases the line, and a released line stops holding its relay. Shutting the
+	/// Kernel down must not switch the house, so the outputs are left exactly as they were written
 	public void Dispose()
 	{
 		lock (_gate)
 		{
-			if (_controller == null) return;
-
-			foreach (int pin in _open)
-			{
-				try { _controller.ClosePin(pin); } catch { /* closing on shutdown */ }
-			}
-
 			_open.Clear();
-			_controller.Dispose();
 			_controller = null;
 		}
 	}

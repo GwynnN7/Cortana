@@ -9,148 +9,50 @@
 <h1>Devices</h1>
 <Toast @bind-Message="_message"/>
 
-<section class="section">
-    <div class="card-grid">
-        <DeviceCard Device="DeviceId.Lamp" Icon="💡" OnResult="Report"/>
-        <DeviceCard Device="DeviceId.Generic" Icon="🔌" OnResult="Report"/>
-        <DeviceCard Device="DeviceId.Computer" Icon="💻" OnResult="Report"/>
-        <DeviceCard Device="DeviceId.Power" Icon="⚡" OnResult="Report"/>
-    </div>
-</section>
-
-<section class="section">
-    <header class="section-head">
-        <h2>Room</h2>
-        <p class="section-hint">Switches the entire room on and off</p>
-    </header>
-
-    <div class="room">
-        <div class="btn-row">
-            <button class="btn btn-on" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(SwitchAction.On))">
-                <span class="btn-emoji" aria-hidden="true">🏠</span> Room on
-            </button>
-            <button class="btn btn-off" disabled="@_busy" @onclick="() => Run(() => State.SwitchRoom(SwitchAction.Off))">
-                <span class="btn-emoji" aria-hidden="true">🌙</span> Room off
-            </button>
+<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
+    <section class="section">
+        <div class="card-grid">
+            @foreach (DeviceView device in Shown)
+            {
+                <DeviceCard Device="@device.Device" Icon="@device.Icon" OnResult="Report"/>
+            }
         </div>
-    </div>
-</section>
-
-<section class="section">
-    <header class="section-head">
-        <h2>Computer</h2>
-        <p class="section-hint">Execute a command on the connected desktop</p>
-        <span class="badge @(State.IsDeviceOn(DeviceId.Computer) ? "badge-ok" : "badge-bad")">
-            @(State.IsDeviceOn(DeviceId.Computer) ? "Connected" : "Not connected")
-        </span>
-    </header>
-
-    <div class="btn-row wrap">
-        <button class="btn btn-off" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Shutdown)">Shutdown</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Reboot)">Reboot</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.Suspend)">Suspend</button>
-        <button class="btn" disabled="@ComputerBusy" @onclick="() => RunPc(ComputerCommand.BootIntoOtherOperatingSystem)">Other OS</button>
-    </div>
-
-    <div class="stack">
-        <div class="field-row">
-            <input type="text" placeholder="Notification text" @bind="_notification" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, SendNotification))"/>
-            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_notification))" @onclick="SendNotification">Notify</button>
-        </div>
-
-        <div class="field-row">
-            <input type="text" placeholder="Application to launch" @bind="_launch" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, LaunchApp))"/>
-            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_launch))" @onclick="LaunchApp">Launch</button>
-        </div>
-
-        <div class="field-row">
-            <input type="text" placeholder="Application to close" @bind="_close" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, CloseApp))"/>
-            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_close))" @onclick="CloseApp">Close</button>
-        </div>
-
-        <div class="field-row">
-            <input type="text" placeholder="Shell command" @bind="_command" @bind:event="oninput"
-                   disabled="@ComputerBusy" @onkeydown="@(args => OnEnter(args, SendCommand))"/>
-            <button class="btn" disabled="@(ComputerBusy || string.IsNullOrWhiteSpace(_command))" @onclick="SendCommand">Run</button>
-        </div>
-    </div>
-
-    @if (!string.IsNullOrEmpty(_output))
-    {
-        <pre class="console">@_output</pre>
-    }
-</section>
+    </section>
+</TabStrip>
 
 @code {
     private IDisposable? _subscription;
+    private string _tab = SourceIds.Raspberry;
     private string? _message;
-    private string _notification = "";
-    private string _command = "";
-    private string _launch = "";
-    private string _close = "";
-    private string? _output;
-    private bool _busy;
 
-    private bool ComputerBusy => _busy || !State.IsDeviceOn(DeviceId.Computer);
-
-    protected override void OnInitialized() => _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
+    protected override void OnInitialized()
+    {
+        _subscription = State.Subscribe(() => InvokeAsync(OnSnapshot));
+        EnsureTab();
+    }
 
     public void Dispose() => _subscription?.Dispose();
 
+    /// The snapshot arrives asynchronously, often after this runs once with nothing loaded yet.
+    /// Only correct the tab once sources are actually known, so a real default is never wiped to ""
+    private void EnsureTab()
+    {
+        if (Sources.Any() && !Sources.Contains(_tab)) _tab = Sources.First();
+    }
+
+    private void OnSnapshot()
+    {
+        EnsureTab();
+        StateHasChanged();
+    }
+
+    private IEnumerable<string> Sources =>
+        (State.Snapshot?.Devices ?? []).Select(view => view.Source).Distinct().Order();
+
+    private IReadOnlyList<(string Key, string Label)> Tabs => [.. Sources.Select(source => (source, source))];
+
+    private IReadOnlyList<DeviceView> Shown =>
+        [.. (State.Snapshot?.Devices ?? []).Where(view => _tab.Length == 0 || view.Source == _tab)];
+
     private void Report(string result) => _message = result;
-
-    private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) => args.Key == "Enter" ? action() : Task.CompletedTask;
-
-    private async Task RunPc(ComputerCommand command, string argument = "")
-    {
-        _busy = true;
-        try
-        {
-            _output = await State.ComputerCommand(command, argument);
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
-
-    private async Task LaunchApp()
-    {
-        await RunPc(ComputerCommand.LaunchApplication, _launch);
-        _launch = "";
-    }
-
-    private async Task CloseApp()
-    {
-        await RunPc(ComputerCommand.CloseApplication, _close);
-        _close = "";
-    }
-
-    private async Task SendNotification()
-    {
-        await RunPc(ComputerCommand.Notify, _notification);
-        _notification = "";
-    }
-
-    private async Task SendCommand()
-    {
-        await RunPc(ComputerCommand.RunShellCommand, _command);
-        _command = "";
-    }
-
-    private async Task Run(Func<Task<string>> action)
-    {
-        _busy = true;
-        try
-        {
-            _message = await action();
-        }
-        finally
-        {
-            _busy = false;
-        }
-    }
 }

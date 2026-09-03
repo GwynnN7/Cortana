@@ -1,5 +1,6 @@
+using CortanaKernel.Domain.Ai;
 using CortanaKernel.Domain.Common;
-using CortanaKernel.Domain.Sensors;
+using CortanaKernel.Domain.Fabric;
 using CortanaKernel.Domain.Settings;
 using CortanaKernel.Domain.Volition;
 using CortanaLib.Contracts;
@@ -12,9 +13,10 @@ namespace CortanaKernel.Application;
 public sealed class VolitionService(
 	VolitionStore store,
 	SettingsStore settings,
+	AiSettingsStore aiSettings,
 	AutomationService automation,
-	SensorRegistry sensors,
 	HistoryService history,
+	MemoryStore memories,
 	Lazy<AiService> ai,
 	NotificationService notifications) : BackgroundService
 {
@@ -53,7 +55,10 @@ public sealed class VolitionService(
 
 			try
 			{
-				await Consider(DateTimeOffset.Now);
+				DateTimeOffset now = DateTimeOffset.Now;
+
+				await Consider(now);
+				await WrapUp(now);
 			}
 			catch (Exception ex)
 			{
@@ -68,28 +73,56 @@ public sealed class VolitionService(
 		if (!VolitionRules.ShouldGreet(store.State, now, morning, automation.View().SleepMode)) return;
 
 		store.Update(state => state with { LastGreeted = DateOnly.FromDateTime(now.LocalDateTime), LastSpokeAt = now });
-		notifications.Raise(NotificationSource.Cortana, await Compose(now), reason: "the first morning greeting of the day");
+
+		string greeting = await Compose(now);
+
+		ai.Value.Append(Conversations.Web, greeting);
+		notifications.Raise(NotificationSource.Cortana, greeting, reason: "the first morning greeting of the day");
+	}
+
+	/// The day, written down every evening. Whether she says it out loud is a coin toss
+	private async Task WrapUp(DateTimeOffset now)
+	{
+		if (!settings.Flag(SettingKey.WrapupEnabled)) return;
+		if (!VolitionRules.ShouldWrapUp(store.State, now, aiSettings.Integer(AiSettingKey.WrapupHour))) return;
+
+		store.Update(state => state with { LastWrapped = DateOnly.FromDateTime(now.LocalDateTime) });
+
+		history.Summarise(DateOnly.FromDateTime(now.LocalDateTime));
+
+		IReadOnlyList<string> digest = history.Digest(now.Date, now);
+		if (digest.Count == 0) return;
+
+		string summary = await ai.Value.Compose(
+			"This is what the house and the computer recorded today:\n" + string.Join("\n", digest) +
+			"\nWrite one or two short sentences about how the day went, in your own voice, as a note to yourself about gwynn7. " +
+			"Pick what is actually worth remarking on and leave the rest out. Do not list numbers he can read himself.",
+			string.Join(", ", digest.Take(3)));
+
+		memories.Remember(summary, MemoryKind.State, "wrapup", ai.Value.StateLifetime);
+
+		if (VolitionRules.Quiet(store.State, now) || automation.View().SleepMode) return;
+		if (Random.Shared.NextDouble() > aiSettings.Number(AiSettingKey.WrapupChance)) return;
+
+		store.Update(state => state with { LastSpokeAt = now });
+
+		ai.Value.Append(Conversations.Web, summary);
+		notifications.Raise(NotificationSource.Cortana, summary, reason: "the daily wrap-up");
 	}
 
 	private Task<string> Compose(DateTimeOffset now) => ai.Value.Compose(
-		"It is morning and gwynn7 has not spoken to you yet. Greet him in one or two short sentences, in your own voice. " +
-		"Look at the house first if something about the night or the state of the room is worth a remark, and say nothing about the tools themselves. " +
-		"Do not ask him a question and do not offer a list of things you could do.",
+		"It is morning and gwynn7 just woke up. This is what the house recorded overnight:\n" +
+		string.Join("\n", history.Digest(now.AddHours(-8), now)) +
+		"\nGreet him in one or two short sentences, in your own voice. Remark on the night only if something " +
+		"about it is worth saying, and say nothing about the tools themselves. ",
 		Greeting(now));
 
 	private string Greeting(DateTimeOffset now)
 	{
 		var parts = new List<string> { now.Hour < 12 ? "Good morning" : "Morning" };
 
-		if (Overnight("temperature", now) is { } temperature) parts.Add($"it got down to {Units.Number(temperature)}°C overnight");
-		if (sensors.Last?.Co2 is { } co2) parts.Add(co2 >= settings.Number(SettingKey.Co2Threshold) ? $"the air is stale at {co2} ppm" : "the air is fine");
+		if (automation.View().WarningActive) parts.Add("a warning is firing");
 
 		return string.Join(", ", parts);
-	}
-
-	private double? Overnight(string metric, DateTimeOffset now)
-	{
-		var request = new AnalysisRequest(AnalysisFunction.Minimum, metric, now.AddHours(-8), now, null, null, null, null, 60);
-		return history.Analyse(request).Match(result => result.Value, _ => null);
 	}
 }

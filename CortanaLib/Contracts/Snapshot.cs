@@ -7,19 +7,20 @@ public sealed record CortanaSnapshot(
 	DateTimeOffset Timestamp,
 	Mood Mood,
 	string MoodReason,
+	IReadOnlyList<SourceView> Sources,
 	IReadOnlyList<DeviceView> Devices,
 	IReadOnlyList<SensorView> Sensors,
 	AutomationView Automation,
 	IReadOnlyList<SettingView> Settings,
 	IReadOnlyList<RaspberryInfoView> Raspberry,
 	IReadOnlyList<ServiceView> Services,
-	MetricsView? ComputerMetrics,
-	MetricsView RaspberryMetrics,
+	IReadOnlyList<PluginView> Plugins,
 	DesktopActivity? Activity);
 
-public sealed record DeviceView(DeviceId Device, PowerState State, DateTimeOffset? OverrideUntil);
+public sealed record DeviceView(string Device, string Name, string Icon, string Source, PowerState State,
+	DateTimeOffset? OverrideUntil, bool Partial = false);
 
-public sealed record SensorView(SensorId Sensor, string Value, string Unit, bool Available, DateTimeOffset? ObservedAt);
+public sealed record SensorView(string Sensor, string Name, string Icon, string Source, string Value, string Unit, bool Available, DateTimeOffset? ObservedAt, double? Reading = null, double? Min = null, double? Max = null, ReadingKind Kind = ReadingKind.Number);
 
 /// Automation, time context, sleep and the temporary suppressions are separate concepts
 public sealed record AutomationView(
@@ -35,8 +36,9 @@ public sealed record AutomationView(
 	bool DesktopHold,
 	bool MotionActive,
 	DateTimeOffset? LastMotionAt,
-	bool AirQualityWarning,
-	bool StationOnline);
+	bool WarningActive,
+	bool SourcesOnline,
+	bool CriticalSourcesOnline);
 
 public sealed record SettingView(SettingKey Setting, string Value, string Unit);
 
@@ -44,25 +46,12 @@ public sealed record RaspberryInfoView(RaspberryInfo Info, string Value, string 
 
 public sealed record ServiceView(ServiceId Service, bool Running);
 
-public sealed record MetricsView(
-	string Host,
-	string Os,
-	double CpuLoad,
-	double CpuTemp,
-	double MemoryUsed,
-	double MemoryTotal,
-	double GpuLoad,
-	double GpuTemp,
-	double DiskUsed,
-	double DiskTotal,
-	long Uptime,
-	DateTimeOffset Timestamp,
-	bool Stale);
 
 /// Everything the Kernel can say about why automation did or did not act
 public sealed record AutomationDiagnostics(
 	AutomationView Automation,
 	string LastDecision,
+	IReadOnlyList<SourceView> Sources,
 	IReadOnlyList<DeviceView> Devices,
 	IReadOnlyList<SensorView> Sensors,
 	IReadOnlyList<SettingView> RelevantSettings,

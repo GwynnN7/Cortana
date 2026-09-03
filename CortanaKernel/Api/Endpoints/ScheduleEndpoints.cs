@@ -15,7 +15,7 @@ public static class ScheduleEndpoints
 				string text = views.Count == 0 ? "No schedules" : string.Join("\n", views.Select(Describe));
 				return ApiResults.Ok(request, text, new ScheduleListResponse(views));
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("Every schedule with its next run time.").Produces<ScheduleListResponse>();
+			.Access(ApiAccess.ReadOnly).WithSummary("Every schedule with its next run time").Produces<ScheduleListResponse>();
 
 		group.MapGet("/{id}", (string id, ScheduleService schedules, HttpRequest request) =>
 			{
@@ -25,7 +25,7 @@ public static class ScheduleEndpoints
 				var view = new ScheduleView(schedule, CortanaKernel.Domain.Scheduling.ScheduleTiming.NextRun(schedule, DateTimeOffset.Now));
 				return ApiResults.Ok(request, Describe(view), view);
 			})
-			.Access(ApiAccess.ReadOnly).WithSummary("One schedule.").Produces<ScheduleView>();
+			.Access(ApiAccess.ReadOnly).WithSummary("One schedule").Produces<ScheduleView>();
 
 		group.MapPost("", (CreateScheduleRequest body, ScheduleService schedules, HttpRequest request) =>
 				schedules.Create(body).Match(
@@ -35,7 +35,7 @@ public static class ScheduleEndpoints
 						return ApiResults.Ok(request, Describe(view), view);
 					},
 					error => ApiResults.BadRequest(request, error)))
-			.Access(ApiAccess.Sensitive).WithSummary("Creates a schedule. Triggers: Once, Interval, Daily, Weekly, Event.")
+			.Access(ApiAccess.Sensitive).WithSummary("Creates a schedule that runs an action at a time, on an interval, or when something happens")
 			.Produces<ScheduleView>();
 
 		group.MapPost("/{id}", async (string id, ScheduleCommandRequest body, ScheduleService schedules, HttpRequest request) =>
@@ -57,13 +57,13 @@ public static class ScheduleEndpoints
 						return ApiResults.BadRequest(request, "The command must be enable, disable or run");
 				}
 			})
-			.Access(ApiAccess.Sensitive).WithSummary("Commands: enable, disable, run.");
+			.Access(ApiAccess.Sensitive).WithSummary("Runs a schedule now, or turns it on and off");
 
 		group.MapDelete("/{id}", (string id, ScheduleService schedules, HttpRequest request) =>
 				schedules.Delete(id)
 					? ApiResults.Message(request, $"Schedule '{id}' deleted")
 					: ApiResults.NotFound(request, $"Schedule '{id}' not found"))
-			.Access(ApiAccess.Sensitive).WithSummary("Removes a schedule.");
+			.Access(ApiAccess.Sensitive).WithSummary("Removes a schedule");
 	}
 
 	private static string Describe(ScheduleView view)

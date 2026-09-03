@@ -1,0 +1,30 @@
+@if (Open)
+{
+    <div class="modal-veil" @onclick="OnClose">
+        <div class="modal" @onclick:stopPropagation="true">
+            <header class="modal-head">
+                <h2>@Title</h2>
+                <button class="btn btn-ghost btn-small" @onclick="OnClose">Close</button>
+            </header>
+
+            <div class="modal-body">
+                @ChildContent
+            </div>
+
+            @if (Footer is not null)
+            {
+                <footer class="modal-foot">
+                    @Footer
+                </footer>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}
