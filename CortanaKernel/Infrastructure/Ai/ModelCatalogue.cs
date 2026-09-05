@@ -10,7 +10,13 @@ namespace CortanaKernel.Infrastructure.Ai;
 /// Provider-specific model ids, ranked per family, refreshed daily and removed when rate limited
 public sealed partial class ModelCatalogue : BackgroundService
 {
-	private static readonly TimeSpan MinuteCooldown = TimeSpan.FromSeconds(90);
+	/// What a limit turned out to be. Daily means the model is spent; anything else is a queue it is
+	/// standing in, and it will take requests again in seconds
+	public sealed record Limit(TimeSpan Wait, bool Daily, string Reason);
+
+	/// A per-minute limit clears inside a minute, and Google usually says exactly when. Parking for
+	/// longer than it lasts is what handed a whole day of the weaker models away one burst at a time
+	private static readonly TimeSpan BriefCooldown = TimeSpan.FromSeconds(10);
 	private static readonly TimeSpan RefreshTimeout = TimeSpan.FromSeconds(20);
 	private static readonly string[] Excluded = ["tts", "image", "embedding", "omni", "vision", "live", "native-audio", "latest"];
 
@@ -50,12 +56,13 @@ public sealed partial class ModelCatalogue : BackgroundService
 		return index < 0 ? chain.FirstOrDefault(Available) : chain.Skip(index + 1).FirstOrDefault(Available);
 	}
 
-	public void Penalise(string model, string payload)
+	public Limit Penalise(string model, string payload)
 	{
-		TimeSpan cooldown = ReadCooldown(payload);
-		_cooldowns[model] = DateTime.Now + cooldown;
+		Limit limit = ReadLimit(payload);
+		_cooldowns[model] = DateTime.Now + limit.Wait;
 
-		Log.Write("Ai", $"{model} is unavailable, parked for {Describe(cooldown)}");
+		Log.Write("Ai", $"{model} hit a {limit.Reason} limit, parked for {Describe(limit.Wait)}");
+		return limit;
 	}
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -138,24 +145,32 @@ public sealed partial class ModelCatalogue : BackgroundService
 
 	private static TimeSpan UntilTomorrow() => DateTime.Today.AddDays(1).AddMinutes(1) - DateTime.Now;
 
-	/// Google says how long to wait
-	private static TimeSpan ReadCooldown(string payload)
+	/// Google says which quota was hit and how long to wait, and the difference matters: a day is the
+	/// model spent, a minute is the model busy. The quota id is kept for the log, because a 429 nobody
+	/// can name is the reason this was tuned blind for so long
+	private static Limit ReadLimit(string payload)
 	{
 		try
 		{
 			if (JsonNode.Parse(payload)?["error"]?["details"] is JsonArray entries)
 			{
+				// Every violation has to be tested, not just the last one seen: Google lists the per-day and
+				// the per-minute quota together, and reading only the last would call a spent model merely busy
 				var perDay = false;
+				var quota = "";
 				TimeSpan? retry = null;
 
 				foreach (JsonNode? entry in entries)
 				{
 					string type = entry?["@type"]?.GetValue<string>() ?? "";
 
-					if (type.EndsWith("QuotaFailure", StringComparison.Ordinal)
-						&& entry?["violations"] is JsonArray violations
-						&& violations.Any(violation => violation?["quotaId"]?.GetValue<string>()?.Contains("PerDay", StringComparison.OrdinalIgnoreCase) == true))
-						perDay = true;
+					if (type.EndsWith("QuotaFailure", StringComparison.Ordinal) && entry?["violations"] is JsonArray violations)
+						foreach (JsonNode? violation in violations)
+							if (violation?["quotaId"]?.GetValue<string>() is { Length: > 0 } id)
+							{
+								perDay |= id.Contains("PerDay", StringComparison.OrdinalIgnoreCase);
+								quota = id;
+							}
 
 					if (type.EndsWith("RetryInfo", StringComparison.Ordinal)
 						&& entry?["retryDelay"]?.GetValue<string>() is { Length: > 1 } delay
@@ -163,12 +178,15 @@ public sealed partial class ModelCatalogue : BackgroundService
 						retry = TimeSpan.FromSeconds(seconds + 2);
 				}
 
-				if (perDay) return UntilTomorrow();
-				if (retry is { } value) return value;
+				if (perDay) return new Limit(UntilTomorrow(), true, quota.Length > 0 ? $"daily/{quota}" : "daily");
+				if (retry is { } value) return new Limit(value, false, quota.Length > 0 ? quota : "rate");
+				if (quota.Length > 0) return new Limit(BriefCooldown, false, quota);
 			}
 		}
 		catch (Exception) { }
 
-		return payload.Contains("PerDay", StringComparison.OrdinalIgnoreCase) ? UntilTomorrow() : MinuteCooldown;
+		return payload.Contains("PerDay", StringComparison.OrdinalIgnoreCase)
+			? new Limit(UntilTomorrow(), true, "daily")
+			: new Limit(BriefCooldown, false, "unnamed");
 	}
 }

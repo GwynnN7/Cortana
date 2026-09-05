@@ -117,9 +117,24 @@ public sealed class AiService(
 	public Result<MemoryEntry> Remember(string text, MemoryKind kind, string source) =>
 		memories.Remember(text, kind, source, StateLifetime);
 
-	public TimeSpan StateLifetime => TimeSpan.FromHours(Math.Clamp(settings.Number(AiSettingKey.MemoryStateHours), 1, 168));
+	/// The longest a state may be asked to last. Beyond a month it is not where he is, it is who he is
+	private const double LongestState = 720;
+
+	public TimeSpan StateLifetime => StateHorizon(null);
+
+	/// How long a state should hold. She is the one who heard whether he said "back in an hour" or
+	/// "away for a few days", so she is allowed to say; the setting is only what it falls back to
+	public TimeSpan StateHorizon(int? hours) => TimeSpan.FromHours(hours is { } wanted
+		? Math.Clamp(wanted, 1, LongestState)
+		: Math.Clamp(settings.Number(AiSettingKey.MemoryStateHours), 1, LongestState));
 
 	public Result<string> ForgetMemory(string id) => memories.Forget(id);
+
+	/// What she currently believes about where he is, put in front of her every turn so a belief that
+	/// has gone stale, or was never written down, is obvious while there is still someone to ask
+	private string Standing() =>
+		memories.All().FirstOrDefault(memory => memory.Kind == MemoryKind.State)?.Text
+		?? "nothing written down, so presumably going about his day here";
 
 	private string Recollection(string message)
 	{
@@ -132,14 +147,23 @@ public sealed class AiService(
 		return string.Join("\n", recalled.Select(memory => $"- ({memory.Kind.ToString().ToLowerInvariant()}) {memory.Text}"));
 	}
 
-	/// Phrase something in her own voice, falling back to a plain line when no model can answer
+	/// The morning greeting and the wrap-up are two short sentences that nobody is waiting on, so they
+	/// are never worth a request from a family that gets five a day. They take the cheap one, and when
+	/// even that is spent Compose falls back to a plain line rather than borrowing from the good model
+	private const LlmFamily Narration = LlmFamily.FlashLite;
+
+	/// Phrase something in her own voice, falling back to a plain line when no model can answer.
+	/// She is writing a line here, not running the house, so she is handed no tools: given them she
+	/// uses them, and the wrap-up that should have summarised the day called Remember and then stored
+	/// its own "I've saved that note" as the summary
 	public async Task<string> Compose(string brief, string fallback, int limit = 240, CancellationToken token = default)
 	{
 		if (!provider.IsConfigured) return fallback;
 
 		try
 		{
-			Result<string> reply = await Ask(new AskRequest(brief, "cortana", "gwynn7", Remember: false), CommandOrigin.Internal, token);
+			Result<string> reply = await Ask(new AskRequest(brief, "cortana", "gwynn7", Remember: false),
+				CommandOrigin.Internal, tools: false, Narration, token);
 			if (!reply.IsOk) return fallback;
 
 			string spoken = reply.Value.ReplaceLineEndings(" ").Trim();
@@ -154,7 +178,10 @@ public sealed class AiService(
 		}
 	}
 
-	public async Task<Result<string>> Ask(AskRequest request, CommandOrigin origin, CancellationToken token = default)
+	public Task<Result<string>> Ask(AskRequest request, CommandOrigin origin, CancellationToken token = default) =>
+		Ask(request, origin, tools: true, model: null, token);
+
+	private async Task<Result<string>> Ask(AskRequest request, CommandOrigin origin, bool tools, LlmFamily? model, CancellationToken token)
 	{
 		if (!provider.IsConfigured) return Result.Fail<string>("No language model is configured");
 		if (string.IsNullOrWhiteSpace(request.Message)) return Result.Fail<string>("Nothing to answer");
@@ -165,7 +192,7 @@ public sealed class AiService(
 
 		try
 		{
-			return await Exchange(request, origin, token);
+			return await Exchange(request, origin, tools, model, token);
 		}
 		catch (Exception ex)
 		{
@@ -178,14 +205,16 @@ public sealed class AiService(
 		}
 	}
 
-	private async Task<Result<string>> Exchange(AskRequest request, CommandOrigin origin, CancellationToken token)
+	private async Task<Result<string>> Exchange(AskRequest request, CommandOrigin origin, bool withTools, LlmFamily? model, CancellationToken token)
 	{
 		Conversation? conversation = request.Remember ? conversations.Load(request.Conversation) : null;
-		IReadOnlyCollection<AiCapability> tools = capabilities.For(request.Trusted);
+		IReadOnlyCollection<AiCapability> tools = withTools ? capabilities.For(request.Trusted) : [];
 
 		SnapshotService snapshot = snapshots.Value;
 		string mood = $"\n- Current mood: {await snapshot.Mood(token)}, because {await snapshot.MoodReason(token)}.";
 		if (snapshot.Doing() is { Length: > 0 } doing) mood += $"\n- {doing}";
+
+		if (request.Trusted) mood += $"\n- Where you believe gwynn7 is: {Standing()}";
 
 		if (request.Trusted && Recollection(request.Message) is { Length: > 0 } known)
 			mood += $"\n\nWhat you know about gwynn7:\n{known}";
@@ -203,7 +232,8 @@ public sealed class AiService(
 			conversation?.Messages ?? [],
 			message,
 			[.. tools.Select(capability => capability.Descriptor)],
-			settings.Number(AiSettingKey.Temperature));
+			settings.Number(AiSettingKey.Temperature),
+			model);
 
 		Result<string> reply = await provider.Complete(aiRequest, call => Invoke(call, request.Trusted, origin, token), token);
 		if (!reply.IsOk) return reply;

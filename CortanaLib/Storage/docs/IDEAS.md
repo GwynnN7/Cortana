@@ -32,7 +32,7 @@ Built, in rough order of how much they changed the system:
 | **Mood** | one word for the whole house, with the sentence behind it, on the status pill and in her prompt |
 | **Activity** | the desktop's focus category *and* MPRIS playback as two independent axes, privacy-bounded on the agent |
 | **Do not disturb** | a fullscreen game or film holds back desktop notifications and automation |
-| **Presence** | idle and lock via `ext-idle-notify`, feeding a single motion timeout instead of two crude ones |
+| **Presence** | idle and lock from the desktop, composed from sensors that either *report* somebody or only *sustain* an existing presence, on one motion timeout instead of two crude ones |
 | **Baselines** | median + MAD per hour-of-day, so "unusual" is computable rather than a fixed threshold |
 | **Memory** | what she knows about you, weighted, decaying, inspectable, trusted-only |
 | **Correlation** | room against desk, including the drift across the current session |
@@ -112,19 +112,20 @@ in sleep mode and motion, and the room data over those hours is already recorded
 
 ---
 
-## 3. The daily digest — **half built**
+## 3. The daily digest — **mostly built**
 
 `HistoryService.Digest` reduces a window to plain lines — every sensor's range, every device's on-time,
-minutes per activity category, music — and the evening wrap-up turns that into a sentence she stores
-as a short-term memory and sometimes says.
+minutes per activity category, music — and the evening wrap-up turns that into a sentence, now stored
+as a `Day` memory that keeps a week, and sometimes said.
 
-What is left is the part §2 wants: **keeping the digests**. They are composed and thrown away, so
-there is no series of days to model a rhythm over. Persisting one row per day is the next step, and it
-is small.
+**Keeping the digests is done**, which was the part §2 wanted: `Days.json` holds a `DaySummary` per
+day, `POST /history/days` backfills from the CSVs already on disk, `Rhythm(metric)` compares today
+against the median of the same weekday, and the model reaches it as `CompareToUsualDay`. There is a
+series to model a rhythm over now.
 
-Pair it with an **end-of-session digest** — when a long gaming or coding stretch ends, one line about
-what it cost: how long, what the air did, how far the room warmed. `Digest` already takes an arbitrary
-window, so this is a trigger away.
+What is left is the **end-of-session digest** — when a long gaming or coding stretch ends, one line
+about what it cost: how long, what the air did, how far the room warmed. `Digest` already takes an
+arbitrary window, so this is a trigger away.
 
 ---
 

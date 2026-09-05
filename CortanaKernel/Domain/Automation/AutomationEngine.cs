@@ -17,7 +17,8 @@ public interface IAutomationWorld
 	bool CriticalSourcesOnline { get; }
 	bool WarningActive { get; }
 	bool DesktopBusy { get; }
-	bool Present { get; }
+	bool Reported { get; }
+	bool Sustained { get; }
 	Fabric.Reading? Read(string sensor);
 	string DeviceName(string device);
 	IReadOnlyList<Bind> Binds { get; }
@@ -283,7 +284,8 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 	private string[] Managed => [.. world.Binds.Where(bind => bind.HoldsOnManualAction).Select(bind => bind.Device)];
 
 	private bool MotionActive(DateTimeOffset now) => AutomationRules.Present(
-		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds), world.Present);
+		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds),
+		world.Reported, world.Sustained, _lastMotionActive);
 
 	private bool Due(ref DateTimeOffset? deadline, DateTimeOffset now)
 	{

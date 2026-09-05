@@ -9,7 +9,7 @@
 <h1>Devices</h1>
 <Toast @bind-Message="_message"/>
 
-<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
+<TabStrip Tabs="Tabs" Current="@_tab" CurrentChanged="tab => _tab = tab">
     <section class="section">
         <div class="card-grid">
             @foreach (DeviceView device in Shown)
@@ -18,6 +18,11 @@
             }
         </div>
     </section>
+
+    @if (Machine)
+    {
+        <ComputerPanel/>
+    }
 </TabStrip>
 
 @code {
@@ -53,6 +58,11 @@
 
     private IReadOnlyList<DeviceView> Shown =>
         [.. (State.Snapshot?.Devices ?? []).Where(view => _tab.Length == 0 || view.Source == _tab)];
+
+    /// A computer source is the one that can be told to do things as well as switched, so the tab
+    /// showing it gets the panel the web restructure dropped
+    private bool Machine => (State.Snapshot?.Sources ?? [])
+        .Any(source => source.Id == _tab && source.Kind == SourceKind.Computer);
 
     private void Report(string result) => _message = result;
 }

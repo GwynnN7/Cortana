@@ -1,0 +1,104 @@
+@inject CortanaState State
+
+@* Power, applications and a shell on the desktop. This was on the old Devices page and was dropped
+   in the web restructure, which left the API able to do all of it and nothing able to ask *@
+
+<section class="section">
+    <header class="section-head">
+        <h2>Computer</h2>
+        <p class="section-hint">Execute a command on the connected desktop</p>
+        <span class="badge @(Connected ? "badge-ok" : "badge-bad")">@(Connected ? "Connected" : "Not connected")</span>
+    </header>
+
+    <div class="btn-row wrap">
+        <button class="btn btn-off" disabled="@Busy" @onclick="() => Run(ComputerCommand.Shutdown)">Shutdown</button>
+        <button class="btn" disabled="@Busy" @onclick="() => Run(ComputerCommand.Reboot)">Reboot</button>
+        <button class="btn" disabled="@Busy" @onclick="() => Run(ComputerCommand.Suspend)">Suspend</button>
+        <button class="btn" disabled="@Busy" @onclick="() => Run(ComputerCommand.BootIntoOtherOperatingSystem)">Other OS</button>
+    </div>
+
+    <div class="stack">
+        <div class="field-row">
+            <input type="text" placeholder="Notification text" @bind="_notification" @bind:event="oninput"
+                   disabled="@Busy" @onkeydown="@(args => OnEnter(args, Notify))"/>
+            <button class="btn" disabled="@(Busy || string.IsNullOrWhiteSpace(_notification))" @onclick="Notify">Notify</button>
+        </div>
+
+        <div class="field-row">
+            <input type="text" placeholder="Application to launch" @bind="_launch" @bind:event="oninput"
+                   disabled="@Busy" @onkeydown="@(args => OnEnter(args, Launch))"/>
+            <button class="btn" disabled="@(Busy || string.IsNullOrWhiteSpace(_launch))" @onclick="Launch">Launch</button>
+        </div>
+
+        <div class="field-row">
+            <input type="text" placeholder="Application to close" @bind="_close" @bind:event="oninput"
+                   disabled="@Busy" @onkeydown="@(args => OnEnter(args, Close))"/>
+            <button class="btn" disabled="@(Busy || string.IsNullOrWhiteSpace(_close))" @onclick="Close">Close</button>
+        </div>
+
+        <div class="field-row">
+            <input type="text" placeholder="Shell command" @bind="_command" @bind:event="oninput"
+                   disabled="@Busy" @onkeydown="@(args => OnEnter(args, Shell))"/>
+            <button class="btn" disabled="@(Busy || string.IsNullOrWhiteSpace(_command))" @onclick="Shell">Run</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_output))
+    {
+        <pre class="console">@_output</pre>
+    }
+</section>
+
+@code {
+    private string _notification = "";
+    private string _launch = "";
+    private string _close = "";
+    private string _command = "";
+    private string? _output;
+    private bool _busy;
+
+    private bool Connected => State.IsDeviceOn(DeviceIds.Computer);
+
+    /// Nothing here reaches a desktop that is not listening, so the whole panel goes quiet with it
+    private bool Busy => _busy || !Connected;
+
+    private static Task OnEnter(KeyboardEventArgs args, Func<Task> action) => args.Key == "Enter" ? action() : Task.CompletedTask;
+
+    private async Task Run(ComputerCommand command, string argument = "")
+    {
+        _busy = true;
+
+        try
+        {
+            _output = await State.ComputerCommand(command, argument);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Notify()
+    {
+        await Run(ComputerCommand.Notify, _notification);
+        _notification = "";
+    }
+
+    private async Task Launch()
+    {
+        await Run(ComputerCommand.LaunchApplication, _launch);
+        _launch = "";
+    }
+
+    private async Task Close()
+    {
+        await Run(ComputerCommand.CloseApplication, _close);
+        _close = "";
+    }
+
+    private async Task Shell()
+    {
+        await Run(ComputerCommand.RunShellCommand, _command);
+        _command = "";
+    }
+}

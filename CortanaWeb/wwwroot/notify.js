@@ -105,8 +105,17 @@ window.cortanaScrollChat = () => {
 // drag scrolls the page rather than changing tab
 window.cortanaSwipe = {
     attach: (element, target) => {
-        if (!element || element.dataset.swipe === 'on') return;
-        element.dataset.swipe = 'on';
+        if (!element) {
+            console.error('cortanaSwipe: the element reference did not resolve');
+            return;
+        }
+
+        // The target belongs to a component instance and the listeners to a DOM node, and those two do
+        // not share a lifetime. Refreshing the target on every attach means a new strip rendered over a
+        // node that survived talks to itself, instead of a listener holding a disposed reference
+        element.__swipeTarget = target;
+        if (element.__swipeBound) return;
+        element.__swipeBound = true;
 
         let x = 0, y = 0, tracking = false;
 
@@ -117,6 +126,9 @@ window.cortanaSwipe = {
             tracking = !event.touches || event.touches.length === 1;
         };
 
+        // The browser taking the gesture for a scroll is not a swipe that ended
+        const cancel = () => { tracking = false; };
+
         const end = event => {
             if (!tracking) return;
             tracking = false;
@@ -126,11 +138,14 @@ window.cortanaSwipe = {
             const dy = touch.clientY - y;
 
             if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+            if (!element.__swipeTarget) return;
 
-            target.invokeMethodAsync('Swiped', dx < 0 ? 1 : -1);
+            element.__swipeTarget.invokeMethodAsync('Swiped', dx < 0 ? 1 : -1)
+                .catch(error => console.error('cortanaSwipe: the swipe never reached Cortana', error));
         };
 
         element.addEventListener('touchstart', start, { passive: true });
         element.addEventListener('touchend', end, { passive: true });
+        element.addEventListener('touchcancel', cancel, { passive: true });
     }
 };

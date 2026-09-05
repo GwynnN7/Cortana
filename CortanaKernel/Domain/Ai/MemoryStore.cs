@@ -13,12 +13,21 @@ public sealed class MemoryStore(IMemoryRepository repository)
 {
 	private const int Capacity = 300;
 
+	/// How long the wrap-ups stay. Long enough to notice a rhythm, short enough not to become history
+	private static readonly TimeSpan DayLifetime = TimeSpan.FromDays(7);
+
 	private readonly List<MemoryEntry> _memories = [.. repository.Load()];
 	private readonly Lock _gate = new();
 
+	/// An expired memory is not a memory. Pruning only runs at midnight, and until it did, a state that
+	/// had already lapsed still showed on the Memory page and read as something she currently believes
 	public IReadOnlyList<MemoryEntry> All()
 	{
-		lock (_gate) return [.. _memories.OrderByDescending(memory => memory.CreatedAt)];
+		DateTimeOffset now = DateTimeOffset.Now;
+
+		lock (_gate)
+			return [.. _memories.Where(memory => memory.ExpiresAt is not { } expires || expires > now)
+				.OrderByDescending(memory => memory.CreatedAt)];
 	}
 
 	public Result<MemoryEntry> Remember(string text, MemoryKind kind, string source, TimeSpan stateLifetime)
@@ -31,12 +40,27 @@ public sealed class MemoryStore(IMemoryRepository repository)
 
 		lock (_gate)
 		{
+			// A lapsed memory is not one she holds, and All() no longer shows it, so leaving it sitting in
+			// front of the duplicate check would block that sentence for ever - and with no visible id,
+			// nothing could forget it either. Pruning here rather than only at midnight closes that trap
+			_memories.RemoveAll(memory => memory.ExpiresAt is { } lapsed && lapsed <= now);
+
+			// There is only ever one state, because there is only one place he currently is. Evicting
+			// before the duplicate check is what lets him repeat himself: "still away" an hour later has
+			// to push the expiry out, not be turned away as something already known.
+			// A day is not a state - it used to be stored as one, and every evening's wrap-up quietly
+			// deleted whatever he had said about being away, which is exactly what the morning greeting needed
+			if (kind == MemoryKind.State) _memories.RemoveAll(memory => memory.Kind == MemoryKind.State);
+
 			if (_memories.FirstOrDefault(memory => string.Equals(memory.Text, trimmed, StringComparison.OrdinalIgnoreCase)) is { } existing)
 				return Result.Fail<MemoryEntry>($"Already remembered that on {existing.CreatedAt:dd MMM}");
 
-			if (kind == MemoryKind.State) _memories.RemoveAll(memory => memory.Kind == MemoryKind.State);
-
-			DateTimeOffset? expires = kind == MemoryKind.State ? now + stateLifetime : null;
+			DateTimeOffset? expires = kind switch
+			{
+				MemoryKind.State => now + stateLifetime,
+				MemoryKind.Day => now + DayLifetime,
+				_ => null
+			};
 
 			var entry = new MemoryEntry(Guid.NewGuid().ToString("N")[..8], trimmed, kind, source, now, now, 0, expires);
 			_memories.Add(entry);

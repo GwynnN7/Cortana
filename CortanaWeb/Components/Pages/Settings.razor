@@ -10,7 +10,7 @@
 <h1>Settings</h1>
 <Toast @bind-Message="Message"/>
 
-<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
+<TabStrip Tabs="Tabs" Current="@_tab" CurrentChanged="tab => _tab = tab">
 
 @if (_tab == "automation")
 {

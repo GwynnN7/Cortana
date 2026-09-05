@@ -19,6 +19,18 @@ public readonly record struct MoodInput(
 	DateTimeOffset? ComputerSeenAt,
 	DateTimeOffset Now);
 
+/// Everything worth worrying about, kept apart so each one is reacted to on its own. A caller that
+/// has already shrugged off a silent station should still notice the disk filling up behind it
+[Flags]
+public enum Worry
+{
+	None = 0,
+	Intruder = 1,
+	Silence = 2,
+	Service = 4,
+	Disk = 8
+}
+
 public static class MoodRules
 {
 	public static readonly TimeSpan AloneAfter = TimeSpan.FromHours(3);
@@ -30,23 +42,37 @@ public static class MoodRules
 
 	private static readonly ActivityCategory[] AtThePc = [ActivityCategory.Coding, ActivityCategory.Browsing, ActivityCategory.Studying];
 
+	/// Which one she reacts to when several land together, worst first
+	private static readonly Worry[] Ranked = [Worry.Intruder, Worry.Service, Worry.Silence, Worry.Disk];
+
 	public static bool IsNominal(Mood mood) => Array.IndexOf(Nominal, mood) >= 0;
 
 	private const double QuietLoad = 70;
 	private const double FullDisk = 0.9;
 
-	public static Mood Decide(MoodInput input) => IsWorrying(input) ? Mood.Worried : NonWorried(input);
+	/// The raw conditions, before any damping. A caller may choose to express none of them
+	public static Worry Worries(MoodInput input)
+	{
+		if (input.SleepMode) return Worry.None;
 
-	/// The raw condition, before any damping. A caller may choose not to express this as Worried
-	public static bool IsWorrying(MoodInput input) =>
-		(input.WarningActive && input.MotionActive)
-		|| !input.CriticalSourcesOnline
-		|| input.AnyServiceDown
-		|| input.DiskUsedFraction >= FullDisk;
+		var worries = Worry.None;
 
-	/// What the mood would be if she is not (or is no longer) expressing worry
+		if (input.WarningActive && input.MotionActive) worries |= Worry.Intruder;
+		if (!input.CriticalSourcesOnline) worries |= Worry.Silence;
+		if (input.AnyServiceDown) worries |= Worry.Service;
+		if (input.DiskUsedFraction >= FullDisk) worries |= Worry.Disk;
+
+		return worries;
+	}
+
+	/// The one of them she would speak about
+	public static Worry Worst(Worry worries) => Array.Find(Ranked, worry => worries.HasFlag(worry));
+
+	/// What the mood is when she is not (or is no longer) expressing worry
 	public static Mood NonWorried(MoodInput input)
 	{
+		if (input.SleepMode) return Mood.Resting;
+
 		if (input.DesktopBusy || input.Fullscreen) return Mood.Watching;
 		if (input.ComputerConnected && input.MachineLoad >= QuietLoad) return Mood.Watching;
 
@@ -67,14 +93,18 @@ public static class MoodRules
 		|| (!input.ComputerConnected &&
 			(input.ComputerSeenAt is null || input.Now - input.ComputerSeenAt.Value >= OffAWhile));
 
-	/// Explains whichever mood is actually being shown, which a damped Worried may not be
-	public static string Explain(Mood mood, MoodInput input) => mood switch
+	/// Explains whichever mood is actually being shown, which a damped Worried may not be, and for a
+	/// worry the one cause being reacted to rather than whatever is worst in the room
+	public static string Explain(Mood mood, Worry shown, MoodInput input) => mood switch
 	{
 		Mood.Resting => "sleep mode is active",
-		Mood.Worried when input.WarningActive && input.MotionActive => "a warning is firing and someone is in the room",
-		Mood.Worried when !input.CriticalSourcesOnline => "something stopped reporting",
-		Mood.Worried when input.AnyServiceDown => "one of the services is down",
-		Mood.Worried => "the disk is nearly full",
+		Mood.Worried => shown switch
+		{
+			Worry.Intruder => "a warning is firing and someone is in the room",
+			Worry.Silence => "something stopped reporting",
+			Worry.Service => "one of the services is down",
+			_ => "the disk is nearly full"
+		},
 		Mood.Watching when input.Activity == ActivityCategory.Gaming => "a game is running",
 		Mood.Watching when input.Fullscreen => "something is playing fullscreen",
 		Mood.Watching => $"the computer is loaded at {input.MachineLoad:F0}%",

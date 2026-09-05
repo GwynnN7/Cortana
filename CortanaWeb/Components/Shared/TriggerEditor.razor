@@ -13,14 +13,16 @@
     </select>
     @if (Needs(Draft.Kind) > 0)
     {
-        <input type="text" class="icon-field" disabled="@Busy"
-               placeholder="@(Draft.Kind == TriggerKind.Outside ? "Low" : "Threshold")"
-               @bind="Draft.Low" @bind:event="oninput"/>
-    }
-    @if (Needs(Draft.Kind) > 1)
-    {
-        <input type="text" class="icon-field" placeholder="High" disabled="@Busy"
-               @bind="Draft.High" @bind:event="oninput"/>
+        <div class="icon-pair">
+            <input type="text" class="icon-field" disabled="@Busy"
+                   placeholder="@(Draft.Kind == TriggerKind.Outside ? "Low" : "Threshold")"
+                   @bind="Draft.Low" @bind:event="oninput"/>
+            @if (Needs(Draft.Kind) > 1)
+            {
+                <input type="text" class="icon-field" placeholder="High" disabled="@Busy"
+                       @bind="Draft.High" @bind:event="oninput"/>
+            }
+        </div>
     }
     <label class="inline-check" title="Off means it only has to be true once, to switch it on">
         <input type="checkbox" @bind="Draft.Sustains" disabled="@Busy"/> @SustainLabel

@@ -31,7 +31,7 @@ public static class FabricDefaults
 	],
 	[
 		new VirtualSensor(SensorIds.Motion, "Motion", SourceIds.Station, SensorIds.Motion, "", ReadingKind.Boolean, "💠", "🔮",
-			FeedsPresence: true, InStatus: true),
+			Presence: PresenceRole.Reports, InStatus: true),
 		new VirtualSensor(SensorIds.Light, "Light", SourceIds.Station, SensorIds.Light, " lux", ReadingKind.Number, "🔆", "🌑", Min: 0, Max: 1000),
 		new VirtualSensor(SensorIds.Temperature, "Temperature", SourceIds.Station, SensorIds.Temperature, "°C", ReadingKind.Number, "🔥", "🌡",
 			Min: 10, Max: 40, InStatus: true),
@@ -51,7 +51,10 @@ public static class FabricDefaults
 		new VirtualSensor("pi_cpu_temp", "CPU Temp", SourceIds.Raspberry, "cpu_temp", "°C", ReadingKind.Number, "🔥", "🌡", Min: 25, Max: 100),
 		new VirtualSensor("pi_ram", "RAM", SourceIds.Raspberry, "ram", " %", ReadingKind.Number, "🔥", "🧠", Min: 0, Max: 100),
 		new VirtualSensor("pi_disk", "Disk", SourceIds.Raspberry, "disk", " %", ReadingKind.Number, "🔥", "💾", Min: 0, Max: 100),
-		new VirtualSensor("at_desk", "Active", SourceIds.Computer, "at_desk", "", ReadingKind.Boolean, "🪑", "🚪", FeedsPresence: true),
+		// The desk keeps presence alive while it is in use, but a machine can be woken from anywhere,
+		// so it never gets to announce that somebody is here
+		new VirtualSensor("at_desk", "Active", SourceIds.Computer, "at_desk", "", ReadingKind.Boolean, "🪑", "🚪",
+			Presence: PresenceRole.Sustains),
 		new VirtualSensor("locked", "LockScreen", SourceIds.Computer, "locked", "", ReadingKind.Boolean, "🔒", "🔓")
 	]);
 

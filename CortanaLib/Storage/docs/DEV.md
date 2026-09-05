@@ -141,7 +141,7 @@ registered on it:
 ```
 VirtualDevice { Id, Name, IconOn, IconOff, Channels[] (source + channel), Pulse, PoweredBy, InStatus }
 VirtualSensor { Id, Name, IconHigh, IconLow, Source, Channel, Unit, Kind,
-                Min, Max, Offset, FeedsPresence, InStatus }
+                Min, Max, Offset, Presence, InStatus }
 ```
 
 Only a boolean sensor has two icons to draw; a number carries one and says the rest with its value.
@@ -233,13 +233,21 @@ trigger is satisfied. That reproduces hand-written hysteresis for any device
 readings for the Pi. So "warn when the GPU passes 80 °C" is an ordinary warning, and nothing about it
 is special-cased
 
-**Presence is composed, not hardcoded.** Any sensor marked `FeedsPresence` contributes. Today that is
-the PIR and the desktop's `at_desk`, which is why sitting still at the computer keeps the lamp on
-without the engine knowing what a desk is. Two motion sensors can therefore be split: one feeding
-presence, one driving a fan through its own bind
+**Presence is composed, not hardcoded.** Every sensor carries a `PresenceRole`, and the two roles are
+not the same evidence. A sensor that **Reports** — the PIR — says somebody is here. One that
+**Sustains** — the desktop's `at_desk` — says whoever is here has not left, which is why sitting still
+at the computer keeps the lamp on without the engine knowing what a desk is. Two motion sensors can
+still be split: one taking part in presence, one driving a fan through its own bind
 
-`AutomationRules.Present` is `live || MotionActive(lastMotionAt, now, timeout)` — a level sensor such
-as `at_desk` holds presence directly, while a momentary one such as the PIR is carried by the timeout
+The distinction exists because a machine can be switched on from anywhere. A desk woken over the
+network is evidence that a machine booted and none at all that a person arrived, and the old single
+`FeedsPresence` bool could not say the difference — so wake-on-LAN from away lit the lamp
+
+`AutomationRules.Present` is `reported || MotionActive(lastMotionAt, now, timeout) || (wasPresent &&
+sustained)`. Only a reporting sensor moves `LastMotionAt`, the window carries a momentary one such as
+the PIR, and the last clause is the latch: a sustaining sensor extends a presence that is already
+alive and can never start one. `AutomationEngine` holds `wasPresent` as `_lastMotionActive`, so the
+rule itself stays a function
 
 **The Kernel is a source as well** (`kernel`), publishing the composed `presence` so binds can
 reference it like any other reading
@@ -310,11 +318,21 @@ boundary, the sleep entry delay, a daytime sleep, the sleep hold, device holds a
 One cheap tick is easier to reason about than six interacting timers, and every expiry is reachable
 from one place
 
-**Presence is composed, not measured.** Every sensor marked `FeedsPresence` feeds it — the PIR, being
-at the desk — and it lingers for `MotionTimeoutSeconds` after the last goes quiet. `at_desk` requires a
+**Presence is composed, not measured.** Every sensor with a `PresenceRole` feeds it — the PIR
+**Reports**, the desk **Sustains** — and it lingers for `MotionTimeoutSeconds` after the last goes
+quiet. Only a reporting sensor moves `LastMotionAt`. `at_desk` requires a
 *positive* report of not-idle, never merely the absence of an idle signal: `IdleSeconds` is `-1` when
 idle cannot be observed, and a `systemd-inhibit --what=idle` lock stops hypridle reporting, so
 treating silence as presence would pin the lamp on after leaving with the inhibitor set
+
+**Silence includes a marker that was never written, and one written before the machine slept.**
+hypridle reports through `$XDG_RUNTIME_DIR/cortana/idle`, which a cold boot wipes and a suspend
+leaves stale, so a desktop switched on from away used to report somebody at the desk until hypridle's
+first timeout — long enough to light the lamp in an empty room. A missing or unparseable marker is
+`-1`, and the lock loop notices when it falls further behind than the machine could while awake and
+stops trusting anything hypridle wrote before that. The cost is the few minutes after a cold boot
+where the desk cannot hold the lamp on by itself, which the PIR covers and which heals as soon as
+hypridle completes one idle cycle
 
 **A dropped source loses its readings.** `Fabric.Dropped` clears them, or the last value of a source
 that went away is believed for ever — `at_desk` stayed true all night with the computer off, and
@@ -340,16 +358,58 @@ on a warning or a service down. The nominal state is one of `Calm`/`Friendly`/`H
 entering the state and held until it leaves, because rolling it per snapshot would flicker every few
 seconds. `Happy` left that rotation once it started meaning something
 
-**Memory** has two horizons. `Fact`, `Preference` and `Event` are permanent and announced when
+**Memory** has three horizons. `Fact`, `Preference` and `Event` are permanent and announced when
 stored. `State` is where the owner is right now: it expires, a new one replaces the old, and it is
-stored without ceremony. `Prune` removes only expired entries — nothing decays for going unused
+stored without ceremony. **How long a state lasts is hers to decide** — she heard whether he said
+"back in an hour" or "away for a few days", so `Remember` takes an `hours` argument and
+`AiService.StateHorizon` clamps it to a month; `MemoryStateHours` is only the fallback for when she
+does not say. A fixed constant cannot be right for both, and an away that expires while he is still
+away is worse than no state at all. `Day` is one evening's wrap-up, keeping a week so a rhythm has something to
+be read from. `Prune` removes only expired entries — nothing decays for going unused, and `All`
+already hides an expired one, because a memory that has lapsed is not something she believes
+
+**Only one thing may evict another, and only its own kind.** The wrap-up used to be filed as a
+`State`, so every evening it deleted whatever the owner had said about being away — the one fact the
+next morning's greeting needed. `Day` exists so the two never touch
+
+**A string parameter needs the `@`.** `<TabStrip Current="_tab">` compiles to
+`AddComponentParameter(nameof(Current), "_tab")` — Razor treats a bare quoted value as literal text
+when the parameter is a `string`, and only as an expression when it is not. That is why `Tabs="Tabs"`
+on the same tag was fine and hid it. Written `Current="@_tab"` it passes the field. `TabStrip` logs
+once if `Current` is not one of its tabs, because the failure mode is otherwise completely silent
+
+**A per-minute limit is not a spent model.** `ModelCatalogue.ReadLimit` reads the `quotaId` out of a
+429 and says whether it was `PerDay` — the model is done until tomorrow — or anything else, which is
+a queue that clears in seconds. `GeminiProvider.Send` waits out the second kind on the model it is
+already on, up to `Patience`, and only walks down the chain for a daily exhaustion or a wait too long
+to be worth it. Stepping down on a per-minute limit is what drained the older models while the newest
+one still had requests left, because a request handed down the chain is gone until tomorrow
+
+**Unprompted lines take the cheap family.** `AiRequest.Model` overrides the configured family for one
+request, and `AiService.Narration` pins `Compose` to `FlashLite`. The greeting and the wrap-up are two
+sentences nobody is waiting on, and on a free tier the good family gets a handful of requests a day —
+two of them should not go to small talk. When even the cheap family is spent, `Compose` falls back to
+its plain line rather than borrowing from the good one
 
 **Volition** is the one place she speaks unprompted. Deliberately almost empty: a persisted `Quiet`
 period, a once-daily greeting inside a window after `MorningHour`, a once-daily wrap-up at
 `WrapupHour`, and everything logged. Both go through `AiService.Compose(brief, fallback)`, which falls
 back to a plain line when no model answers, and both read `HistoryService.Digest` rather than naming a
-metric. The wrap-up is always written as a short-term memory and only *said* with probability
-`WrapupChance`
+metric. The wrap-up is written as a `Day` memory and only *said* with probability `WrapupChance`
+
+**Compose is handed no tools.** She is writing a line, not running the house, and given tools she uses
+them: the wrap-up that should have summarised a day called `Remember`, filed a permanent `Event`, and
+then stored its own *"I've saved that note"* as the summary. `Exchange` takes the tool list as an
+argument for that one reason
+
+**Both briefs also carry what was actually said.** A digest is what the house measured; a plan — away
+for a few days, an early start — only ever exists in the conversation, and a greeting composed from
+sensors alone greets whoever the thermometer thinks is in the room. `VolitionService.Lately` puts the
+recent turns of the web conversation into the brief
+
+**She is shown what she currently believes.** Every trusted turn carries `Where you believe gwynn7 is`
+above the recalled memories, so a belief that has gone stale — or was never written down — is visible
+while there is still somebody in front of her to correct it
 
 **Features are switchable.** `PluginService` is the one list of what she runs, the switch behind each
 one, and whether it can be switched at all. It is carried in the snapshot, so a page can say it is off

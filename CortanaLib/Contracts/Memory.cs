@@ -5,7 +5,8 @@ public enum MemoryKind
 	Fact,
 	Preference,
 	Event,
-	State
+	State,
+	Day
 }
 
 public sealed record MemoryEntry(

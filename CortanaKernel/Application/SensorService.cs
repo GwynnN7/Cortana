@@ -65,22 +65,24 @@ public sealed class SensorService(
 		}
 
 		bool wasOnline = fabric.IsOnline(source);
-		bool hadMotion = Present();
+		bool wasReported = Reported();
 
 		fabric.Observe(source, readings, at);
 
-		bool motion = Present();
-		if (motion) presence.LastMotionAt = at;
+		// Only a sensor allowed to announce somebody moves the window. A sustaining one keeps presence
+		// going through the engine, so a desk that woke on its own never backdates a person into it
+		bool reported = Reported();
+		if (reported) presence.LastMotionAt = at;
 
 		if (!wasOnline) bus.Publish(new SensorAvailabilityChanged(true, at));
-		if (motion && !hadMotion) bus.Publish(new MotionDetected(at));
+		if (reported && !wasReported) bus.Publish(new MotionDetected(at));
 
-		EvaluateWarnings(motion, at);
+		EvaluateWarnings(at);
 		bus.Publish(new SensorReadingReceived(at));
 	}
 
-	private bool Present() =>
-		fabric.Registered.Where(sensor => sensor.FeedsPresence)
+	private bool Reported() =>
+		fabric.Registered.Where(sensor => sensor.Presence == PresenceRole.Reports)
 			.Any(sensor => fabric.Read(sensor.Id) is { Value: >= 0.5 });
 
 	public void SetSourceOnline(string source, bool online)
@@ -98,7 +100,7 @@ public sealed class SensorService(
 			online ? $"{name} reconnected and sent a reading" : $"{name} stopped sending readings");
 	}
 
-	private void EvaluateWarnings(bool present, DateTimeOffset now)
+	private void EvaluateWarnings(DateTimeOffset now)
 	{
 		if (!flags.Flag(SettingKey.WarningsEnabled)) return;
 

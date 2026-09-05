@@ -95,11 +95,13 @@ public sealed class VolitionService(
 
 		string summary = await ai.Value.Compose(
 			"This is what the house and the computer recorded today:\n" + string.Join("\n", digest) +
+			Lately(now.Date, 10) +
 			"\nWrite one or two short sentences about how the day went, in your own voice, as a note to yourself about gwynn7. " +
-			"Pick what is actually worth remarking on and leave the rest out. Do not list numbers he can read himself.",
+			"Pick what is actually worth remarking on and leave the rest out, and weigh what he said over what the " +
+			"sensors counted. Do not list numbers he can read himself.",
 			string.Join(", ", digest.Take(3)));
 
-		memories.Remember(summary, MemoryKind.State, "wrapup", ai.Value.StateLifetime);
+		memories.Remember(summary, MemoryKind.Day, "wrapup", ai.Value.StateLifetime);
 
 		if (VolitionRules.Quiet(store.State, now) || automation.View().SleepMode) return;
 		if (Random.Shared.NextDouble() > aiSettings.Number(AiSettingKey.WrapupChance)) return;
@@ -113,9 +115,27 @@ public sealed class VolitionService(
 	private Task<string> Compose(DateTimeOffset now) => ai.Value.Compose(
 		"It is morning and gwynn7 just woke up. This is what the house recorded overnight:\n" +
 		string.Join("\n", history.Digest(now.AddHours(-8), now)) +
+		Lately(now.AddDays(-1), 8) +
 		"\nGreet him in one or two short sentences, in your own voice. Remark on the night only if something " +
-		"about it is worth saying, and say nothing about the tools themselves. ",
+		"about it is worth saying, and say nothing about the tools themselves. If the last thing he said means " +
+		"he is not at home, greet somebody who is away rather than somebody who just got up. ",
 		Greeting(now));
+
+	/// The digest is what the house measured. This is what was actually said, and a plan only ever
+	/// lives here - away for a few days, a bad night, an early start. A greeting composed from
+	/// sensors alone greets whoever the thermometer thinks is in the room
+	private string Lately(DateTimeOffset since, int turns)
+	{
+		string[] spoken =
+		[
+			.. ai.Value.History(Conversations.Web)
+				.Where(turn => turn.At >= since)
+				.TakeLast(turns)
+				.Select(turn => $"{(turn.Mine ? "gwynn7" : "you")}: {turn.Text}")
+		];
+
+		return spoken.Length == 0 ? "" : "\nAnd this is what was said between you:\n" + string.Join("\n", spoken);
+	}
 
 	private string Greeting(DateTimeOffset now)
 	{

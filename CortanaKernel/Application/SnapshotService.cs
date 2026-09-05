@@ -19,43 +19,45 @@ public sealed class SnapshotService(
 	private CortanaLib.Primitives.Mood _flavour = CortanaLib.Primitives.Mood.Calm;
 	private bool _nominal;
 
-	// A worrying condition does not hold Worried indefinitely: it only has a chance of being shown
-	// at all, and when it is, only for a bounded burst. An outage that lasts all day should not read
-	// as permanent alarm - the reaction is real but it does not linger
+	// A worrying condition does not hold Worried for as long as it lasts. Each one that turns up only
+	// has a chance of being reacted to at all, and when it is, for a bounded burst: a station left off
+	// all day should not read as permanent alarm, because the reaction is real but it does not linger.
+	// Each cause is judged on its own, so shrugging one off never makes her deaf to the next
 	private static readonly TimeSpan WorryMin = TimeSpan.FromMinutes(30);
 	private static readonly TimeSpan WorryMax = TimeSpan.FromHours(2);
 	private const double WorryChance = 0.6;
 
-	private bool _worrying;
-	private bool _worried;
-	private DateTimeOffset? _worryUntil;
+	private Worry _worries;
+	private Worry _shown;
+	private DateTimeOffset? _shownUntil;
 
 	/// Decides the mood to show and the sentence behind it, atomically, so the two can never mismatch
 	private (CortanaLib.Primitives.Mood Mood, string Reason) Evaluate(MoodInput input)
 	{
 		lock (_flavourGate)
 		{
-			bool worrying = MoodRules.IsWorrying(input);
+			Worry worries = MoodRules.Worries(input);
+			Worry appeared = worries & ~_worries;
+			_worries = worries;
 
-			if (worrying && !_worrying)
+			// She stops expressing a worry once the cause is gone, or once she has expressed it enough
+			if (!worries.HasFlag(_shown) || (_shownUntil is { } until && input.Now >= until))
 			{
-				_worried = Random.Shared.NextDouble() < WorryChance;
-				_worryUntil = _worried ? input.Now + WorryMin + (WorryMax - WorryMin) * Random.Shared.NextDouble() : null;
-			}
-			else if (!worrying)
-			{
-				_worried = false;
-				_worryUntil = null;
-			}
-			else if (_worried && _worryUntil is { } until && input.Now >= until)
-			{
-				_worried = false;
+				_shown = Worry.None;
+				_shownUntil = null;
 			}
 
-			_worrying = worrying;
+			if (_shown == Worry.None && appeared != Worry.None && Random.Shared.NextDouble() < WorryChance)
+			{
+				_shown = MoodRules.Worst(appeared);
+				_shownUntil = input.Now + WorryMin + (WorryMax - WorryMin) * Random.Shared.NextDouble();
+			}
 
-			CortanaLib.Primitives.Mood decided = _worried ? CortanaLib.Primitives.Mood.Worried : MoodRules.NonWorried(input);
-			string reason = MoodRules.Explain(decided, input);
+			CortanaLib.Primitives.Mood decided = _shown == Worry.None
+				? MoodRules.NonWorried(input)
+				: CortanaLib.Primitives.Mood.Worried;
+
+			string reason = MoodRules.Explain(decided, _shown, input);
 
 			if (!MoodRules.IsNominal(decided))
 			{

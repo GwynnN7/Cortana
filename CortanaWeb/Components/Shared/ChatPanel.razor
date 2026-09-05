@@ -88,11 +88,25 @@
         }
     }
 
+    /// Called from the dashboard as well as from the header, so it renders itself rather than trusting
+    /// whoever asked to. The log is read back instead of just emptied: if the Kernel kept the
+    /// conversation the turns come straight back, rather than a clear that only looked like one
     public async Task ClearAsync()
     {
-        _turns.Clear();
-        _message = await State.ResetChat(_conversation);
-        StateHasChanged();
+        if (_busy) return;
+
+        _busy = true;
+
+        try
+        {
+            _message = await State.ResetChat(_conversation);
+            await Reload();
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
     }
 
     private async Task Scroll()

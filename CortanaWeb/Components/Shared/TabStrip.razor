@@ -24,12 +24,35 @@
     private DotNetObjectReference<TabStrip>? _self;
     private string _slide = "";
 
+    /// A string parameter written Current="_tab" rather than Current="@_tab" is passed by Razor as the
+    /// literal text, and that is exactly how this shipped: At(Current) was -1 so every swipe returned
+    /// without doing anything, no tab pill was ever highlighted, @key never changed so the slide never
+    /// played, and nothing anywhere said so. Taps hid it, because Go() only ever compares against it
+    private bool _warned;
+
+    protected override void OnParametersSet()
+    {
+        if (_warned || Tabs.Count == 0 || At(Current) >= 0) return;
+
+        _warned = true;
+        Log.Error("Web", $"TabStrip.Current is '{Current}', which is none of [{string.Join(", ", Tabs.Select(tab => tab.Key))}]. " +
+            "A string parameter needs Current=\"@_tab\" - written bare it passes the text '_tab' itself");
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
 
         _self = DotNetObjectReference.Create(this);
-        await Js.InvokeVoidAsync("cortanaSwipe.attach", _panel, _self);
+
+        try
+        {
+            await Js.InvokeVoidAsync("cortanaSwipe.attach", _panel, _self);
+        }
+        catch (JSDisconnectedException)
+        {
+            // The circuit went away between the render and this call, and a new one will attach again
+        }
     }
 
     private int At(string key)

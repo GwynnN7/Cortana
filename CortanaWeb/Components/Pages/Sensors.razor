@@ -8,7 +8,7 @@
 
 <h1>Sensors</h1>
 
-<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="tab => _tab = tab">
+<TabStrip Tabs="Tabs" Current="@_tab" CurrentChanged="tab => _tab = tab">
     <SourceCard Source="State.Source(_tab)" Sensors="Readings"
                 Activity="@(_tab == SourceIds.Computer ? State.Activity : null)"/>
 

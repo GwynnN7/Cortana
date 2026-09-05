@@ -84,9 +84,16 @@ internal static class Activity
 
 	private static readonly TimeSpan LockPoll = TimeSpan.FromSeconds(10);
 
+	/// How far behind the lock poll has to fall before the only explanation is that the machine slept
+	private static readonly TimeSpan Slept = TimeSpan.FromSeconds(60);
+
 	private static ActivityDetail _detail = ActivityDetail.NowPlaying;
 	private static bool _locked;
 	private static int _idleSeconds;
+
+	/// Anything hypridle wrote before this belongs to the session that was suspended, not to this one.
+	/// Only the lock loop touches it, and it is the only caller of IdleSeconds, so it needs no gate
+	private static DateTime _idleTrustedFrom = DateTime.MinValue;
 	private static NowPlaying? _playing;
 	private static DesktopActivity? _reported;
 	private static DateTimeOffset _since = DateTimeOffset.Now;
@@ -227,10 +234,20 @@ internal static class Activity
 
 	private static async Task LockLoop()
 	{
+		DateTime polled = DateTime.Now;
+
 		while (true)
 		{
 			try
 			{
+				DateTime now = DateTime.Now;
+
+				// This loop cannot fall this far behind while the machine is awake, so it was suspended.
+				// Waking it from somewhere else is not somebody sitting down, and what hypridle last
+				// said described the session that was interrupted
+				if (now - polled > LockPoll + Slept) _idleTrustedFrom = now;
+				polled = now;
+
 				bool locked = ScreenLocked();
 				int idle = IdleSeconds();
 
@@ -253,19 +270,32 @@ internal static class Activity
 		}
 	}
 
+	/// Zero says somebody is definitely using the machine, a positive number how long they have not
+	/// been, and Unknown that nothing trustworthy has been said. Only hypridle can reach the first of
+	/// those: a marker that is missing, unreadable or older than the last resume is silence, and
+	/// silence is never a person. A fresh boot wipes the runtime directory, so reading the missing
+	/// marker as "not idle" is what put someone at the desk of a machine switched on from away
 	private static int IdleSeconds()
 	{
 		if (!IdleDaemons.Any(Running)) return Unknown;
 		if (IdleInhibited()) return Unknown;
 
 		string path = Path.Combine(CortanaEnvironment.Read("XDG_RUNTIME_DIR", "/tmp"), "cortana", "idle");
-		if (!File.Exists(path)) return 0;
+		if (!File.Exists(path)) return Unknown;
 
 		try
 		{
-			if (File.ReadAllText(path).Trim() != "1") return 0;
+			DateTime written = File.GetLastWriteTime(path);
+			if (written < _idleTrustedFrom) return Unknown;
 
-			var since = (int)(DateTimeOffset.Now - File.GetLastWriteTime(path)).TotalSeconds;
+			switch (File.ReadAllText(path).Trim())
+			{
+				case "0": return 0;
+				case "1": break;
+				default: return Unknown;
+			}
+
+			var since = (int)(DateTime.Now - written).TotalSeconds;
 			return Math.Max(since, 1);
 		}
 		catch (IOException)

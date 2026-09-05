@@ -402,8 +402,12 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
 .field-row > .btn, .field-row > select { flex: 0 0 auto; }
 .field-row > input[type="text"] { flex: 1 1 14rem; min-width: 14rem; }
 
-/* The short ones share a line instead of each claiming their own, and never stretch to fill it */
-.field-row > input.icon-field { flex: 0 1 5rem; min-width: 4.5rem; max-width: 7rem; }
+/* The short ones travel as one block, so wrapping can never strand an icon on a line of its own */
+.field-row > .icon-pair { display: flex; gap: 0.5rem; flex: 0 1 auto; }
+
+/* and wherever that line ends up they keep their own width rather than stretching to fill it */
+.field-row > input.icon-field,
+.icon-pair > input.icon-field { flex: 0 1 5rem; min-width: 4.5rem; max-width: 7rem; }
 
 @media (max-width: 760px) {
     .field-row > input[type="text"]:not(.icon-field) { flex: 1 1 100%; }
@@ -836,6 +840,7 @@ input:disabled, select:disabled, textarea:disabled { opacity: 0.5; cursor: not-a
 .memory-feature { color: #d8a45c; border-color: rgba(216, 164, 92, 0.35); }
 .memory-link { color: var(--text-muted); }
 .memory-state { color: var(--accent-strong); border-color: rgba(126, 224, 255, 0.35); }
+.memory-day { color: #9a8fd0; border-color: rgba(154, 143, 208, 0.35); }
 
 .mood-reason { margin: 0; color: var(--text); font-size: 0.92rem; }
 .mood-reason::first-letter { text-transform: uppercase; }

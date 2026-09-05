@@ -23,12 +23,15 @@ public interface IConversationRepository
 }
 
 /// What the AI domain hands to a provider
+/// Model is the family this one request wants, overriding the configured one. An unprompted line is
+/// not worth a request from a family with five a day, and it is nobody's turn to wait on it
 public sealed record AiRequest(
 	string SystemPrompt,
 	IReadOnlyList<ChatMessage> History,
 	string Message,
 	IReadOnlyList<AiToolDescriptor> Tools,
-	double Temperature);
+	double Temperature,
+	LlmFamily? Model = null);
 
 public sealed record AiToolDescriptor(string Name, string Description, IReadOnlyList<AiToolParameter> Parameters);
 

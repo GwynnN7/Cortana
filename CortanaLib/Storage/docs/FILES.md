@@ -19,10 +19,10 @@ the API see it; nothing else needs touching*
 
 | File | What it carries |
 | :--- | :--- |
-| `Snapshot.cs` | `CortanaSnapshot`, the single object every client renders, plus `DeviceView`, `SensorView`, `AutomationView`, `MetricsView` |
-| `Fabric.cs` | The hardware vocabulary: `SourceDescriptor`, `DeviceDescriptor`, `SensorDescriptor`, `Trigger`, `Bind` |
+| `Snapshot.cs` | `CortanaSnapshot`, the single object every client renders, plus `DeviceView`, `SensorView`, `AutomationView`, `ServiceView` |
+| `Fabric.cs` | The hardware vocabulary: `SourceDescriptor`, `VirtualDevice`, `VirtualSensor`, `PresenceRole`, `Trigger`, `Bind` |
 | `Activity.cs` | The desktop's focus category and, separately, what is playing |
-| `Memory.cs` | What Cortana remembers, and its two horizons |
+| `Memory.cs` | What Cortana remembers, and its three horizons: permanent, the one current state, and a week of days |
 | `Ai.cs` | Ask/reply shapes, AI settings, `VolitionState` |
 | `History.cs` | Series, analysis results, baselines, correlations, session insights |
 | `Metrics.cs` | `MachineSample`, what a machine reports about itself |
@@ -54,6 +54,7 @@ plumbing shared by all processes*
 | `Runtime/JsonStore.cs` | Read and write JSON through a temp file, so a crash cannot truncate a config |
 | `Runtime/MachineMetrics.cs` | What a Linux box can say about itself: CPU, memory, disk, GPU load, GPU power |
 | `Runtime/Units.cs` | Units and number formatting, in one place so every surface agrees |
+| `Runtime/TriggerText.cs`, `PresenceText.cs` | How a trigger and a sensor's part in presence read on a screen, so every client says it the same way |
 | `Runtime/Log.cs`, `Shell.cs`, `ProcessSignals.cs` | Logging, shelling out, and signal handling |
 | `Media/MediaLibrary.cs` | The shipped assets: icon, prompt, sounds |
 
@@ -213,9 +214,10 @@ Blazor Server dashboard. *Change `Pages/` for a screen, `Shared/` for a piece re
 | `Components/Shared/HistoryChart.razor`, `HistoryPanel.razor` | The SVG plot and its pickers |
 | `Components/Shared/ChatPanel.razor`, `SchedulePanel.razor`, `AiSettingsPanel.razor` | Conversation, schedules, model settings |
 | `Components/Shared/DeviceCard.razor`, `StatTile.razor`, `Metric.razor`, `Icon.razor`, `Toast.razor`, `StatusPill.razor` | The repeated display pieces |
+| `Components/Shared/ComputerPanel.razor` | Power, applications and a shell on a desktop, shown on any tab whose source is a `Computer` |
 | `Components/Shared/NumberSetting.razor`, `AiNumberSetting.razor` | Editable settings, integer or decimal |
 | `Components/Shared/Modal.razor`, `TriggerEditor.razor` | The one dialog every create and edit opens in, and the condition row inside it |
-| `Components/Shared/TabStrip.razor` | Every tabbed page's strip, swipeable on touch. Vertical scrolling always wins over a lazy diagonal drag |
+| `Components/Shared/TabStrip.razor` | Every tabbed page's strip, swipeable on touch. Vertical scrolling always wins over a lazy diagonal drag. `Current` **must** be passed as `@_tab` — a string parameter written bare passes its own text |
 | `Components/Shared/ActingPage.cs`, `Models/TriggerDraft.cs` | The busy/message/run base every acting page shares, and what a typed form parses back into |
 | `Components/App.razor`, `Routes.razor`, `Layout/MainLayout.razor`, `NavMenu.razor`, `EmptyLayout.razor` | The shell: document, routing, navigation. **Add a page to `NavMenu.razor` and the Dashboard "More" grid, or it is unreachable on mobile** |
 | `Components/Shared/RedirectToLogin.razor` | Sends unauthenticated visitors to the login page |

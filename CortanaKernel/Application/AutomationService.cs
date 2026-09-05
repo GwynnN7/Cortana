@@ -28,8 +28,14 @@ public sealed class AutomationWorld(Fabric fabric, PresenceState presence, Warni
 	public bool DesktopBusy => activity.Current is { } current
 		&& (current.Fullscreen || current.Category == ActivityCategory.Gaming);
 
-	public bool Present => fabric.Registered
-		.Where(sensor => sensor.FeedsPresence)
+	/// Somebody is here, said by a sensor allowed to say it
+	public bool Reported => AnyHigh(sensor => sensor.Presence == PresenceRole.Reports);
+
+	/// Whoever is here has not left: reporting counts, and so does the desk being in use
+	public bool Sustained => AnyHigh(sensor => sensor.Presence != PresenceRole.None);
+
+	private bool AnyHigh(Func<VirtualSensor, bool> counts) => fabric.Registered
+		.Where(counts)
 		.Any(sensor => fabric.Read(sensor.Id) is { Value: >= 0.5 });
 
 	public Reading? Read(string sensor) => fabric.Read(sensor);

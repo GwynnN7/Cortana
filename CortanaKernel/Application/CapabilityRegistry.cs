@@ -100,13 +100,24 @@ public sealed class CapabilityRegistry
 				(_, _, _) => Task.FromResult(volition.Value.Speak().Match(value => value, error => error))),
 
 			Management("Remember",
-				"Keep one short thing about gwynn7. Fact, Preference and Event are permanent and are for what is still true in a month, so use them for who he is and what he likes. State is for where he is or what he is doing right now, such as going out or being busy: it replaces any previous state, expires on its own, and is what you should use for anything he did not explicitly ask you to remember. Tell him plainly when you store something permanent.",
-				(arguments, origin, _) => Task.FromResult(
-					memories.Remember(arguments.Text("text"),
-						arguments.TryEnum("kind", out MemoryKind kind) ? kind : MemoryKind.Fact,
-						origin.Surface.ToString(), ai.Value.StateLifetime).Match(memory => $"Remembered: {memory.Text}", error => error)),
+				"Keep one short thing about gwynn7. Fact, Preference and Event are permanent and are for what is still true in a month, so use them for who he is and what he likes. State is for where he is or what he is doing right now, such as going out, being away for days or being busy tonight: it replaces any previous state, expires on its own, and is what you should use for anything he did not explicitly ask you to remember. Store a State every time he tells you where he is or will be, even in passing, because tomorrow it is the only thing left of it. Tell him plainly when you store something permanent.",
+				(arguments, origin, _) =>
+				{
+					MemoryKind kind = arguments.TryEnum("kind", out MemoryKind wanted) ? wanted : MemoryKind.Fact;
+
+					// Days belong to the evening wrap-up. Letting her file one here would put a note about
+					// today where the last week of them lives, and quietly age out in seven days
+					if (kind == MemoryKind.Day) return Task.FromResult("Day is the wrap-up's own kind, pick another");
+
+					int hours = arguments.Integer("hours", 0);
+
+					return Task.FromResult(memories.Remember(arguments.Text("text"), kind,
+							origin.Surface.ToString(), ai.Value.StateHorizon(hours > 0 ? hours : null))
+						.Match(memory => $"Remembered: {memory.Text}", error => error));
+				},
 				new AiToolParameter("text", "One sentence, in your own words", AiParameterType.String, true),
-				new AiToolParameter("kind", $"One of: {string.Join(", ", Enum.GetNames<MemoryKind>())}", AiParameterType.String, false)),
+				new AiToolParameter("kind", $"One of: {string.Join(", ", Enum.GetNames<MemoryKind>().Where(name => name != nameof(MemoryKind.Day)))}", AiParameterType.String, false),
+				new AiToolParameter("hours", "State only: how long it should hold, from what he actually said. Out for the evening is 6, away for a few days is 96, a fortnight is 336. Leave it out and a default is used", AiParameterType.Integer, false)),
 
 			Management("Forget",
 				"Drop one thing you remembered about gwynn7, by its id. Use this whenever he asks you to forget something, and also to clear a State once it stops being true, such as when he says he is back.",

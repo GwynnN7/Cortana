@@ -9,7 +9,7 @@
 <h1>Hardware</h1>
 <Toast @bind-Message="_message"/>
 
-<TabStrip Tabs="Tabs" Current="_tab" CurrentChanged="Show">
+<TabStrip Tabs="Tabs" Current="@_tab" CurrentChanged="Show">
 
 @if (_tab == "sources")
 {
@@ -130,9 +130,9 @@ else if (_tab == "sensors")
                             {
                                 <text> · offset @sensor.Offset</text>
                             }
-                            @if (sensor.FeedsPresence)
+                            @if (sensor.Presence != PresenceRole.None)
                             {
-                                <span class="memory-kind memory-preference">presence</span>
+                                <span class="memory-kind memory-preference">@PresenceText.Badge(sensor.Presence)</span>
                             }
                             @if (sensor.InStatus)
                             {
@@ -267,9 +267,11 @@ else
     <ChildContent>
     <div class="field-row">
         <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
-        <input type="text" placeholder="On" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
-        <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"
-               title="Leave empty to keep the same icon when it is off"/>
+        <div class="icon-pair">
+            <input type="text" placeholder="On" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"
+                   title="Leave empty to keep the same icon when it is off"/>
+        </div>
     </div>
 
     <div class="field-row">
@@ -311,11 +313,13 @@ else
     <ChildContent>
     <div class="field-row">
         <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
-        <input type="text" placeholder="Icon" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
-        @if (_kind == ReadingKind.Boolean)
-        {
-            <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
-        }
+        <div class="icon-pair">
+            <input type="text" placeholder="Icon" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            @if (_kind == ReadingKind.Boolean)
+            {
+                <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            }
+        </div>
         <input type="text" placeholder="Unit" @bind="_unit" @bind:event="oninput" disabled="@_busy"/>
     </div>
 
@@ -343,14 +347,24 @@ else
     @if (_kind == ReadingKind.Number)
     {
         <div class="field-row">
-            <input type="text" placeholder="Min" @bind="_min" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
-            <input type="text" placeholder="Max" @bind="_max" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
-            <input type="text" placeholder="Offset" @bind="_offset" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            <div class="icon-pair">
+                <input type="text" placeholder="Min" @bind="_min" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+                <input type="text" placeholder="Max" @bind="_max" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+                <input type="text" placeholder="Offset" @bind="_offset" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            </div>
         </div>
     }
 
+    <div class="field-row">
+        <select @bind="_presence" disabled="@_busy" title="Only a sensor that reports presence may announce somebody. One that sustains it keeps an existing presence going, and never starts one">
+            @foreach (PresenceRole role in Enum.GetValues<PresenceRole>())
+            {
+                <option value="@role">@PresenceText.Choice(role)</option>
+            }
+        </select>
+    </div>
+
     <div class="options">
-        <label><input type="checkbox" @bind="_feedsPresence"/> Counts as presence</label>
         <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
     </div>
     </ChildContent>
@@ -504,7 +518,7 @@ else
     private string _cooldown = "45";
     private string _warnMessage = "";
     private string _bindDevice = "";
-    private bool _feedsPresence;
+    private PresenceRole _presence;
     private bool _inStatus;
     private bool _holds = true;
     private BindMode _bindMode = BindMode.All;
@@ -544,7 +558,7 @@ else
         _cooldown = "45";
         _warnMessage = "";
         _inStatus = false;
-        _feedsPresence = false;
+        _presence = PresenceRole.None;
         _holds = true;
         _bindMode = BindMode.All;
         _level = NotificationLevel.Alert;
@@ -672,7 +686,7 @@ else
         _min = sensor.Min?.ToString(CultureInfo.InvariantCulture) ?? "";
         _max = sensor.Max?.ToString(CultureInfo.InvariantCulture) ?? "";
         _offset = sensor.Offset.ToString(CultureInfo.InvariantCulture);
-        _feedsPresence = sensor.FeedsPresence;
+        _presence = sensor.Presence;
         _inStatus = sensor.InStatus;
     }
 
@@ -721,7 +735,7 @@ else
             _unit.Trim(), _kind,
             _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "🔵",
             _iconLow.Trim(),
-            Drafts.Number(_min), Drafts.Number(_max), Drafts.Number(_offset) ?? 0, _feedsPresence, _inStatus));
+            Drafts.Number(_min), Drafts.Number(_max), Drafts.Number(_offset) ?? 0, _presence, _inStatus));
 
         await Done();
     }

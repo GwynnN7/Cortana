@@ -56,6 +56,16 @@ public sealed record VirtualDevice(
 	string? PoweredBy = null,
 	bool InStatus = false);
 
+/// How a sensor takes part in presence. The two are not the same evidence: a machine can be switched
+/// on from anywhere, so the desk being in use says whoever is here has not left yet, and says nothing
+/// at all about anybody arriving. Same distinction `Trigger.Sustains` already makes for a bind
+public enum PresenceRole
+{
+	None,
+	Sustains,
+	Reports
+}
+
 public sealed record VirtualSensor(
 	string Id,
 	string Name,
@@ -68,7 +78,7 @@ public sealed record VirtualSensor(
 	double? Min = null,
 	double? Max = null,
 	double Offset = 0,
-	bool FeedsPresence = false,
+	PresenceRole Presence = PresenceRole.None,
 	bool InStatus = false);
 
 public sealed record Registrations(

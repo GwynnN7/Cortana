@@ -8,6 +8,7 @@ using CortanaKernel.Domain.Volition;
 using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
+using System.Text.Json.Nodes;
 
 namespace CortanaKernel.Infrastructure.Persistence;
 
@@ -200,7 +201,48 @@ public sealed class JsonFabricRepository : IFabricRepository
 
 	public void SaveSources(IReadOnlyList<SourceDescriptor> sources) => JsonStore.Write(Sources, sources);
 
-	public Registrations LoadRegistrations() => JsonStore.Read<Registrations>(Registered) ?? new Registrations([], []);
+	public Registrations LoadRegistrations()
+	{
+		UpgradePresence();
+		return JsonStore.Read<Registrations>(Registered) ?? new Registrations([], []);
+	}
+
+	/// Presence used to be one bool, which could only ever mean "reports somebody is here". A file
+	/// written before the split still says `feedsPresence`, and dropping it silently would leave the
+	/// house with no presence at all, so it is carried over once. Which sensors should only *sustain*
+	/// presence is a judgement about the room, not something to infer here - that is set on the
+	/// Hardware page, and the shipped defaults already say it for a fresh install
+	private static void UpgradePresence()
+	{
+		if (!File.Exists(Registered)) return;
+
+		try
+		{
+			if (JsonNode.Parse(File.ReadAllText(Registered)) is not JsonObject root) return;
+			if (root["sensors"] is not JsonArray sensors) return;
+
+			var carried = 0;
+
+			foreach (JsonNode? node in sensors)
+			{
+				if (node is not JsonObject sensor) continue;
+				if (sensor.ContainsKey("presence") || !sensor.TryGetPropertyValue("feedsPresence", out JsonNode? legacy)) continue;
+
+				sensor.Remove("feedsPresence");
+				sensor["presence"] = (legacy?.GetValue<bool>() ?? false ? PresenceRole.Reports : PresenceRole.None).ToString();
+				carried++;
+			}
+
+			if (carried == 0) return;
+
+			JsonStore.Write(Registered, root);
+			Log.Write("Storage", $"Carried {carried} sensor{(carried == 1 ? "" : "s")} over to the new presence roles");
+		}
+		catch (Exception ex)
+		{
+			Log.Write("Storage", $"Could not carry the presence flags over: {ex.Message}");
+		}
+	}
 
 	public void SaveRegistrations(Registrations registrations) => JsonStore.Write(Registered, registrations);
 

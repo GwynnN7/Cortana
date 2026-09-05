@@ -24,7 +24,7 @@ public sealed class AiSettingsStore(IAiSettingsRepository repository)
 			[AiSettingKey.HistoryRetentionDays] = (180, 1, 3650),
 			[AiSettingKey.PushEventSeconds] = (5, 1, 120),
 			[AiSettingKey.MemoryDepth] = (12, 0, 60),
-			[AiSettingKey.MemoryStateHours] = (8, 1, 168),
+			[AiSettingKey.MemoryStateHours] = (72, 1, 168),
 			[AiSettingKey.WrapupHour] = (22, 0, 23),
 			[AiSettingKey.WrapupChance] = (0.5, 0, 1)
 		};

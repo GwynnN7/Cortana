@@ -78,9 +78,29 @@
     private (double? Low, double? High) Bounds() =>
         IsBinary ? (0, 1) : Registered(_metric) is { Min: { } low, Max: { } high } ? (low, high) : (null, null);
 
-    private string Pretty(string metric) =>
+    /// The series the Kernel records itself, which are not registered sensors and so have no name to
+    /// look up. Title-casing the id gave the desktop one "Activity", the same label as a renamed
+    /// at_desk, and the chart picker showed two rows that read identically
+    private static readonly Dictionary<string, string> Recorded = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["activity"] = "Desktop activity",
+        ["music"] = "Music"
+    };
+
+    /// Two metrics can still land on the same name, because any sensor can be renamed to anything.
+    /// A picker with two identical rows is unusable, so the id breaks the tie rather than the label
+    private string Pretty(string metric)
+    {
+        string name = Name(metric);
+        return Metrics.Count(other => Name(other).Equals(name, StringComparison.OrdinalIgnoreCase)) > 1
+            ? $"{name} ({metric})"
+            : name;
+    }
+
+    private string Name(string metric) =>
         Registered(metric)?.Name
         ?? (State.Snapshot?.Devices ?? []).FirstOrDefault(view => view.Device.Equals(metric, StringComparison.OrdinalIgnoreCase))?.Name
+        ?? Recorded.GetValueOrDefault(metric)
         ?? char.ToUpper(metric[0]) + metric[1..];
 
     protected override async Task OnParametersSetAsync()

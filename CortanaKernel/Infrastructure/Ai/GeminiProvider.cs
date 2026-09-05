@@ -10,6 +10,10 @@ public sealed class GeminiProvider(ModelCatalogue catalogue, AiSettingsStore set
 {
 	private const int MaxToolRounds = 6;
 
+	/// How long we will stand in a queue on a good model before spending a weaker model's day instead.
+	/// A per-minute limit clears in seconds; a request handed down the chain is gone until tomorrow
+	private static readonly TimeSpan Patience = TimeSpan.FromSeconds(25);
+
 	private static readonly IReadOnlyDictionary<LlmFamily, string> DisplayNames = new Dictionary<LlmFamily, string>
 	{
 		[LlmFamily.Flash] = "Flash",
@@ -52,6 +56,8 @@ public sealed class GeminiProvider(ModelCatalogue catalogue, AiSettingsStore set
 		string? key = CortanaEnvironment.Read("CORTANA_GEMINI_KEY");
 		if (string.IsNullOrWhiteSpace(key)) return Result.Fail<string>("CORTANA_GEMINI_KEY is not configured");
 
+		LlmFamily family = request.Model ?? Family;
+
 		JsonArray declarations = Declarations(request.Tools);
 		var contents = new JsonArray();
 
@@ -72,7 +78,7 @@ public sealed class GeminiProvider(ModelCatalogue catalogue, AiSettingsStore set
 			if (declarations.Count > 0)
 				body["tools"] = new JsonArray { new JsonObject { ["functionDeclarations"] = declarations.DeepClone() } };
 
-			(bool ok, string payload, int status) = await Send(body, key, token);
+			(bool ok, string payload, int status) = await Send(body, key, family, token);
 			if (!ok)
 			{
 				Log.Error("Ai", $"{status} {Detail(payload)}");
@@ -111,10 +117,11 @@ public sealed class GeminiProvider(ModelCatalogue catalogue, AiSettingsStore set
 		return Result.Fail<string>("I got stuck checking the house, try asking again");
 	}
 
-	private async Task<(bool Ok, string Payload, int Status)> Send(JsonObject body, string key, CancellationToken token)
+	private async Task<(bool Ok, string Payload, int Status)> Send(JsonObject body, string key, LlmFamily family, CancellationToken token)
 	{
-		string model = catalogue.Current(Family);
-		var attempts = 0;
+		string model = catalogue.Current(family);
+		var stepped = 0;
+		TimeSpan waited = TimeSpan.Zero;
 
 		while (true)
 		{
@@ -125,11 +132,22 @@ public sealed class GeminiProvider(ModelCatalogue catalogue, AiSettingsStore set
 			if (response.IsSuccessStatusCode) return (true, payload, 200);
 
 			var status = (int)response.StatusCode;
-			if (status is not (429 or 503) || ++attempts > catalogue.Chain(Family).Length) return (false, payload, status);
+			if (status is not (429 or 503)) return (false, payload, status);
 
-			catalogue.Penalise(model, payload);
+			ModelCatalogue.Limit limit = catalogue.Penalise(model, payload);
 
-			if (catalogue.Next(Family, model) is not { } fallback) return (false, payload, status);
+			// A per-minute limit is a queue this model is standing in, not a model that is spent. Waiting
+			// it out costs seconds; stepping down instead spends a whole day's allowance of a weaker one,
+			// which is how the older models ran dry while the good one still had requests left
+			if (!limit.Daily && waited + limit.Wait <= Patience)
+			{
+				waited += limit.Wait;
+				await Task.Delay(limit.Wait, token);
+				continue;
+			}
+
+			if (++stepped > catalogue.Chain(family).Length || catalogue.Next(family, model) is not { } fallback)
+				return (false, payload, status);
 
 			Log.Write("Ai", $"Falling back to {fallback}");
 			model = fallback;
