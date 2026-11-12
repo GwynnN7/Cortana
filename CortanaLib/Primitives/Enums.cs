@@ -142,7 +142,9 @@ public enum SettingKey
 	NotesEnabled,
 	MemoryEnabled,
 	HistoryEnabled,
-	WrapupEnabled
+	WrapupEnabled,
+	VolitionEnabled,
+	MorningGreetingEnabled
 }
 
 public enum VideoQuality

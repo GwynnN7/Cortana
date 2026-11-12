@@ -56,16 +56,6 @@ public sealed record VirtualDevice(
 	string? PoweredBy = null,
 	bool InStatus = false);
 
-/// How a sensor takes part in presence. The two are not the same evidence: a machine can be switched
-/// on from anywhere, so the desk being in use says whoever is here has not left yet, and says nothing
-/// at all about anybody arriving. Same distinction `Trigger.Sustains` already makes for a bind
-public enum PresenceRole
-{
-	None,
-	Sustains,
-	Reports
-}
-
 public sealed record VirtualSensor(
 	string Id,
 	string Name,
@@ -78,12 +68,34 @@ public sealed record VirtualSensor(
 	double? Min = null,
 	double? Max = null,
 	double Offset = 0,
-	PresenceRole Presence = PresenceRole.None,
 	bool InStatus = false);
+
+/// A reading Cortana works out from other readings — the one kind of sensor no hardware can announce.
+/// Presence is one of these and nothing more: motion and the desk, OR'd, held for a while
+public sealed record Composite(
+	string Id,
+	string Name,
+	IReadOnlyList<CompositeInput> Inputs,
+	BindMode Mode = BindMode.Any,
+	int? HoldSeconds = null,
+	string IconHigh = "\U0001F6B6",
+	string IconLow = "\U0001FAE5",
+	bool InStatus = false);
+
+/// `Starts` may switch the composite on; an input without it can only keep one that is already on.
+/// That is the whole reason a desktop woken from the other side of the country lights nothing: the
+/// desk holds a presence somebody else established, and never announces one of its own
+public sealed record CompositeInput(
+	string Sensor,
+	TriggerKind Kind = TriggerKind.IsTrue,
+	double? Low = null,
+	double? High = null,
+	bool Starts = true);
 
 public sealed record Registrations(
 	IReadOnlyList<VirtualDevice> Devices,
-	IReadOnlyList<VirtualSensor> Sensors);
+	IReadOnlyList<VirtualSensor> Sensors,
+	IReadOnlyList<Composite> Composites);
 
 public sealed record ChannelView(
 	string Source,

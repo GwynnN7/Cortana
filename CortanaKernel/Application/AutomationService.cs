@@ -8,13 +8,11 @@ using CortanaLib.Primitives;
 
 namespace CortanaKernel.Application;
 
-public sealed class AutomationWorld(Fabric fabric, PresenceState presence, WarningState warnings, BindStore binds, IComputerEndpoint computer, ActivityRegistry activity) : IAutomationWorld
+public sealed class AutomationWorld(Fabric fabric, WarningState warnings, BindStore binds, IComputerEndpoint computer, ActivityRegistry activity) : IAutomationWorld
 {
 	public PowerState DeviceState(string device) => fabric.State(device);
 
 	public bool ComputerConnected => computer.Connected;
-
-	public DateTimeOffset? LastMotionAt => presence.LastMotionAt;
 
 	public bool SourcesOnline => fabric.Sources.All(source => fabric.IsOnline(source.Id));
 
@@ -28,15 +26,7 @@ public sealed class AutomationWorld(Fabric fabric, PresenceState presence, Warni
 	public bool DesktopBusy => activity.Current is { } current
 		&& (current.Fullscreen || current.Category == ActivityCategory.Gaming);
 
-	/// Somebody is here, said by a sensor allowed to say it
-	public bool Reported => AnyHigh(sensor => sensor.Presence == PresenceRole.Reports);
-
-	/// Whoever is here has not left: reporting counts, and so does the desk being in use
-	public bool Sustained => AnyHigh(sensor => sensor.Presence != PresenceRole.None);
-
-	private bool AnyHigh(Func<VirtualSensor, bool> counts) => fabric.Registered
-		.Where(counts)
-		.Any(sensor => fabric.Read(sensor.Id) is { Value: >= 0.5 });
+	public IReadOnlyList<Composite> Composites => fabric.Composites;
 
 	public Reading? Read(string sensor) => fabric.Read(sensor);
 
@@ -57,21 +47,15 @@ public sealed class AutomationEffects(
 	public void Observe(string sensor, double value) =>
 		fabric.Observe(SourceIds.Kernel, new Dictionary<string, double> { [sensor] = value }, DateTimeOffset.Now);
 
+	public void Compute(string composite, double value) => fabric.Compute(composite, value, DateTimeOffset.Now);
+
 	public void TellComputer(string message) =>
 		_ = devices.Value.CommandComputer(ComputerCommand.Notify, message, CommandOrigin.Automation);
 
 	public void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null) =>
 		notifications.Raise(source, message, level, reason);
 
-	public void Publish(IDomainEvent domainEvent)
-	{
-		switch (domainEvent)
-		{
-			case SleepModeChanged sleep: bus.Publish(sleep); break;
-			case TimeContextChanged context: bus.Publish(context); break;
-			default: bus.Publish(domainEvent); break;
-		}
-	}
+	public void Publish(IDomainEvent domainEvent) => bus.Publish(domainEvent);
 }
 
 public sealed class AutomationService(
@@ -134,6 +118,7 @@ public sealed class AutomationService(
 	private void Subscribe()
 	{
 		bus.Subscribe<SensorReadingReceived>(_ => engine.OnSensorReading());
+		bus.Subscribe<SensorAvailabilityChanged>(_ => engine.OnSensorReading());
 		bus.Subscribe<ComputerConnectionChanged>(fact =>
 		{
 			if (fact.Connected) engine.OnComputerConnected();

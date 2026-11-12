@@ -157,13 +157,12 @@
     private string _command = "";
     private string? _output;
     private bool _busy;
-    private IReadOnlyList<PluginView> _plugins = [];
+    private IReadOnlyList<PluginView> _plugins => State.Snapshot?.Plugins ?? [];
     private RaspberryCommand? _confirming;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         _subscription = State.Subscribe(() => InvokeAsync(StateHasChanged));
-        _plugins = await State.Plugins();
     }
 
     private async Task SwitchPlugin(PluginView plugin)
@@ -172,7 +171,6 @@
         try
         {
             _message = await State.SwitchPlugin(plugin.Id, SwitchAction.Toggle);
-            _plugins = await State.Plugins();
         }
         finally
         {

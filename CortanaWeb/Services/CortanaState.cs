@@ -101,10 +101,12 @@ public sealed class CortanaState(ILogger<CortanaState> logger) : BackgroundServi
 
 	public Task<string> RegisterSensor(VirtualSensor sensor) => Act(() => _client.RegisterSensor(sensor));
 
+	public Task<string> RegisterComposite(Composite composite) => Act(() => _client.RegisterComposite(composite));
+
 	public Task<string> Unregister(string id) => Act(() => _client.Unregister(id));
 
 	public async Task<Registrations> Registered() =>
-		(await _client.Registrations()).Match(value => value, _ => new Registrations([], []));
+		(await _client.Registrations()).Match(value => value, _ => new Registrations([], [], []));
 
 	public async Task<IReadOnlyList<Bind>> Binds() => (await _client.Binds()).Match(list => list.Binds, _ => []);
 

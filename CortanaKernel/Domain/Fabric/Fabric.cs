@@ -25,6 +25,7 @@ public sealed class Fabric(IFabricRepository repository)
 
 	private readonly List<VirtualDevice> _devices = [.. repository.LoadRegistrations().Devices];
 	private readonly List<VirtualSensor> _sensors = [.. repository.LoadRegistrations().Sensors];
+	private readonly List<Composite> _composites = [.. repository.LoadRegistrations().Composites];
 
 	private readonly Dictionary<string, DateTimeOffset> _seen = new(StringComparer.OrdinalIgnoreCase);
 	/// State belongs to the channel, so two devices sharing an output never disagree about it.
@@ -52,12 +53,20 @@ public sealed class Fabric(IFabricRepository repository)
 
 			var added = false;
 
+			// Only the built-in kernel source is ours to refresh. Keep hardware announcements across
+			// restarts, including a Pi pin map which may already have been loaded by the GPIO writer.
 			foreach (SourceDescriptor source in sources)
-				if (!_sources.ContainsKey(source.Id))
-				{
-					_sources[source.Id] = source;
-					added = true;
-				}
+			{
+				if (_sources.TryGetValue(source.Id, out SourceDescriptor? existing)
+					&& (!source.Id.Equals(SourceIds.Kernel, StringComparison.OrdinalIgnoreCase)
+					|| (existing.Kind == source.Kind
+					&& existing.Outputs.SequenceEqual(source.Outputs, StringComparer.OrdinalIgnoreCase)
+					&& existing.Inputs.SequenceEqual(source.Inputs, StringComparer.OrdinalIgnoreCase))))
+					continue;
+
+				_sources[source.Id] = source;
+				added = true;
+			}
 
 			if (added) repository.SaveSources([.. _sources.Values]);
 
@@ -70,16 +79,31 @@ public sealed class Fabric(IFabricRepository repository)
 			VirtualSensor[] freshSensors =
 			[
 				.. registrations.Sensors.Where(sensor =>
-					!_sensors.Any(entry => entry.Id.Equals(sensor.Id, StringComparison.OrdinalIgnoreCase)))
+					!_sensors.Any(entry => entry.Id.Equals(sensor.Id, StringComparison.OrdinalIgnoreCase))
+					&& !_composites.Any(entry => entry.Id.Equals(sensor.Id, StringComparison.OrdinalIgnoreCase)))
 			];
 
-			if (freshDevices.Length > 0 || freshSensors.Length > 0)
+			// Only remove the old built-in derived sensor, never a user's hardware sensor with the
+			// same id as a new shipped default.
+			int stale = _sensors.RemoveAll(sensor =>
+				sensor.Id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)
+				&& sensor.Source.Equals(SourceIds.Kernel, StringComparison.OrdinalIgnoreCase)
+				&& sensor.Channel.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase));
+
+			Composite[] freshComposites =
+			[
+				.. registrations.Composites.Where(composite =>
+					!_composites.Any(entry => entry.Id.Equals(composite.Id, StringComparison.OrdinalIgnoreCase))
+					&& !_sensors.Any(entry => entry.Id.Equals(composite.Id, StringComparison.OrdinalIgnoreCase)))
+			];
+
+			if (freshDevices.Length > 0 || freshSensors.Length > 0 || freshComposites.Length > 0 || stale > 0)
 			{
 				_devices.AddRange(freshDevices);
 				_sensors.AddRange(freshSensors);
-				repository.SaveRegistrations(new Registrations(_devices, _sensors));
+				_composites.AddRange(freshComposites);
+				Save();
 			}
-
 		}
 	}
 
@@ -166,8 +190,82 @@ public sealed class Fabric(IFabricRepository repository)
 	public VirtualSensor? Sensor(string sensor)
 	{
 		lock (_gate)
-			return _sensors.FirstOrDefault(entry => entry.Id.Equals(sensor, StringComparison.OrdinalIgnoreCase))
-				?? _sensors.FirstOrDefault(entry => entry.Name.Equals(sensor, StringComparison.OrdinalIgnoreCase));
+		{
+			List<VirtualSensor> all = [.. _sensors, .. _composites.Select(AsSensor)];
+
+			return all.FirstOrDefault(entry => entry.Id.Equals(sensor, StringComparison.OrdinalIgnoreCase))
+				?? all.FirstOrDefault(entry => entry.Name.Equals(sensor, StringComparison.OrdinalIgnoreCase));
+		}
+	}
+
+	/// A composite is a sensor everywhere except where it is defined, so it is drawn, charted, bound
+	/// and read exactly like one. Its channel is its own id: nothing announced it, Cortana works it out
+	private static VirtualSensor AsSensor(Composite composite) => new(
+		composite.Id, composite.Name, SourceIds.Kernel, composite.Id, "", ReadingKind.Boolean,
+		composite.IconHigh, composite.IconLow, InStatus: composite.InStatus);
+
+	public IReadOnlyList<Composite> Composites
+	{
+		get { lock (_gate) return [.. _composites]; }
+	}
+
+	public Result<Composite> Register(Composite composite)
+	{
+		lock (_gate)
+		{
+			if (string.IsNullOrWhiteSpace(composite.Id) || string.IsNullOrWhiteSpace(composite.Name))
+				return Result.Fail<Composite>("A composite needs an id and a name");
+
+			if (composite.Inputs is not { Count: > 0 })
+				return Result.Fail<Composite>("A composite with no inputs is never true");
+
+			if (composite.HoldSeconds < 0)
+				return Result.Fail<Composite>("Hold seconds cannot be negative");
+
+			if (!Enum.IsDefined(composite.Mode)) return Result.Fail<Composite>("Choose Any or All inputs");
+			var inputs = new List<CompositeInput>();
+			foreach (CompositeInput input in composite.Inputs)
+			{
+				if (input is null || string.IsNullOrWhiteSpace(input.Sensor) || Sensor(input.Sensor) is not { } sensor)
+					return Result.Fail<Composite>("Every input must name an existing sensor or composite");
+				if (!Enum.IsDefined(input.Kind) || input.Kind == TriggerKind.Changed)
+					return Result.Fail<Composite>("A composite needs a level condition, not Changed");
+				if ((input.Low.HasValue && !double.IsFinite(input.Low.Value))
+					|| (input.High.HasValue && !double.IsFinite(input.High.Value))
+					|| (input.Kind == TriggerKind.Below && !input.Low.HasValue)
+					|| (input.Kind == TriggerKind.Above && !input.High.HasValue)
+					|| (input.Kind == TriggerKind.Outside && (!input.Low.HasValue || !input.High.HasValue || input.Low > input.High)))
+					return Result.Fail<Composite>("Supply valid thresholds for each input condition");
+				inputs.Add(input with { Sensor = sensor.Id });
+			}
+			composite = composite with { Inputs = inputs };
+
+			if (_sensors.Any(entry => entry.Id.Equals(composite.Id, StringComparison.OrdinalIgnoreCase)))
+				return Result.Fail<Composite>($"'{composite.Id}' is already a sensor");
+
+			if (CompositeRules.Cycles(composite, _composites))
+				return Result.Fail<Composite>($"'{composite.Id}' would end up reading itself");
+
+			_composites.RemoveAll(entry => entry.Id.Equals(composite.Id, StringComparison.OrdinalIgnoreCase));
+			_composites.Add(composite);
+
+			Save();
+			return Result.Ok(composite);
+		}
+	}
+
+	/// Written by the engine rather than by a source, because nothing out there measures it
+	public bool Compute(string composite, double value, DateTimeOffset at)
+	{
+		lock (_gate)
+		{
+			if (!_composites.Any(entry => entry.Id.Equals(composite, StringComparison.OrdinalIgnoreCase))) return false;
+			bool moved = !_readings.TryGetValue(composite, out Reading? previous)
+				|| Math.Abs(previous.Value - value) >= double.Epsilon;
+
+			_readings[composite] = moved ? new Reading(value, at) : previous! with { At = at };
+			return moved;
+		}
 	}
 
 	public Result<VirtualDevice> Register(VirtualDevice device)
@@ -189,7 +287,7 @@ public sealed class Fabric(IFabricRepository repository)
 			_devices.RemoveAll(entry => entry.Id.Equals(device.Id, StringComparison.OrdinalIgnoreCase));
 			_devices.Add(device);
 
-			repository.SaveRegistrations(new Registrations(_devices, _sensors));
+			Save();
 			return Result.Ok(device);
 		}
 	}
@@ -207,10 +305,13 @@ public sealed class Fabric(IFabricRepository repository)
 			if (!source.Inputs.Contains(sensor.Channel, StringComparer.OrdinalIgnoreCase))
 				return Result.Fail<VirtualSensor>($"'{sensor.Source}' has no input called '{sensor.Channel}'");
 
+			if (_composites.Any(entry => entry.Id.Equals(sensor.Id, StringComparison.OrdinalIgnoreCase)))
+				return Result.Fail<VirtualSensor>($"'{sensor.Id}' is already a composite");
+
 			_sensors.RemoveAll(entry => entry.Id.Equals(sensor.Id, StringComparison.OrdinalIgnoreCase));
 			_sensors.Add(sensor);
 
-			repository.SaveRegistrations(new Registrations(_devices, _sensors));
+			Save();
 			return Result.Ok(sensor);
 		}
 	}
@@ -219,14 +320,20 @@ public sealed class Fabric(IFabricRepository repository)
 	{
 		lock (_gate)
 		{
+			string[] dependents = [.. _composites.Where(composite => composite.Inputs.Any(input =>
+				input.Sensor.Equals(id, StringComparison.OrdinalIgnoreCase))).Select(composite => composite.Name)];
+			if (dependents.Length > 0)
+				return Result.Fail<string>($"Used by composites: {string.Join(", ", dependents)}. Edit or remove those first");
+
 			int removed = _devices.RemoveAll(entry => entry.Id.Equals(id, StringComparison.OrdinalIgnoreCase))
-				+ _sensors.RemoveAll(entry => entry.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
+				+ _sensors.RemoveAll(entry => entry.Id.Equals(id, StringComparison.OrdinalIgnoreCase))
+				+ _composites.RemoveAll(entry => entry.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
 
 			if (removed == 0) return Result.Fail<string>($"Nothing registered as '{id}'");
 
 			_readings.Remove(id);
 
-			repository.SaveRegistrations(new Registrations(_devices, _sensors));
+			Save();
 			return Result.Ok($"'{id}' removed");
 		}
 	}
@@ -411,10 +518,20 @@ public sealed class Fabric(IFabricRepository repository)
 		];
 	}
 
+	/// Everything readable, composites included, because to a reader they are sensors
 	public IReadOnlyList<VirtualSensor> Registered
+	{
+		get { lock (_gate) return [.. _sensors, .. _composites.Select(AsSensor)]; }
+	}
+
+	/// Only what is registered on a hardware channel. Composites are edited as composites, so listing
+	/// their stand-in sensors here would offer an edit that cannot be saved
+	public IReadOnlyList<VirtualSensor> Declared
 	{
 		get { lock (_gate) return [.. _sensors]; }
 	}
+
+	private void Save() => repository.SaveRegistrations(new Registrations(_devices, _sensors, _composites));
 
 	public IReadOnlyList<VirtualDevice> RegisteredDevices
 	{
@@ -426,7 +543,7 @@ public sealed class Fabric(IFabricRepository repository)
 		lock (_gate)
 			return
 			[
-				.. _sensors.Select(sensor =>
+				.. _sensors.Concat(_composites.Select(AsSensor)).Select(sensor =>
 				{
 					Reading? reading = _readings.GetValueOrDefault(sensor.Id);
 					return new SensorView(sensor.Id, sensor.Name, Icon(sensor, reading), sensor.Source,

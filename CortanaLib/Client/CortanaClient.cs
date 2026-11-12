@@ -176,6 +176,8 @@ public sealed class CortanaClient
 
 	public Task<Result<string>> RegisterSensor(VirtualSensor sensor) => PostText("registrations/sensors", sensor);
 
+	public Task<Result<string>> RegisterComposite(Composite composite) => PostText("registrations/composites", composite);
+
 	public Task<Result<string>> Unregister(string id) => DeleteText($"registrations/{id}");
 
 	public Task<Result<BindListResponse>> Binds() => GetJson<BindListResponse>("binds");

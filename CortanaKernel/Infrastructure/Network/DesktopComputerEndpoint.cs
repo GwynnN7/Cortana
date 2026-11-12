@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
@@ -102,18 +103,25 @@ public sealed class DesktopComputerEndpoint(IComputerPresence presence, Raspberr
 	/// The agent process dies before powering down, so also ping the address and then wait out a configured time
 	public async Task WaitUntilPoweredOff(TimeSpan grace, CancellationToken token = default)
 	{
-		DateTimeOffset start = DateTimeOffset.Now;
 		string address = host.Profile.DesktopIp;
 
 		await Task.Delay(TimeSpan.FromSeconds(1), token);
+		await WaitForPowerOff(() => Connected || RaspberryHost.Ping(address), grace, MaxShutdownWait, PollInterval, token);
+	}
 
-		while (DateTimeOffset.Now - start < MaxShutdownWait)
+	private static async Task WaitForPowerOff(Func<bool> online, TimeSpan grace, TimeSpan timeout,
+		TimeSpan poll, CancellationToken token = default)
+	{
+		long start = Stopwatch.GetTimestamp();
+		while (online())
 		{
-			if (!Connected && !RaspberryHost.Ping(address)) break;
-			await Task.Delay(PollInterval, token);
+			if (Stopwatch.GetElapsedTime(start) >= timeout)
+				throw new TimeoutException("The computer did not shut down; its power has been left on");
+			await Task.Delay(poll, token);
 		}
 
 		await Task.Delay(grace, token);
+		if (online()) throw new InvalidOperationException("The computer came back online; its power has been left on");
 	}
 
 	private void Dispatch(AgentMessage message)

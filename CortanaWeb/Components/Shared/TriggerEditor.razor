@@ -24,9 +24,12 @@
             }
         </div>
     }
-    <label class="inline-check" title="Off means it only has to be true once, to switch it on">
-        <input type="checkbox" @bind="Draft.Sustains" disabled="@Busy"/> @SustainLabel
-    </label>
+    @if (ShowSustains)
+    {
+        <label class="inline-check" title="Off means it only has to be true once, to switch it on">
+            <input type="checkbox" @bind="Draft.Sustains" disabled="@Busy"/> @SustainLabel
+        </label>
+    }
     <button class="btn" disabled="@(Busy || Draft.Sensor.Length == 0)" @onclick="OnAdd">@Label</button>
 </div>
 
@@ -37,6 +40,14 @@
     [Parameter] public bool Busy { get; set; }
     [Parameter] public string Label { get; set; } = "Add";
     [Parameter] public string SustainLabel { get; set; } = "Must stay true";
+    [Parameter] public bool ShowSustains { get; set; } = true;
+
+    protected override void OnParametersSet()
+    {
+        if (Sensors.Any(sensor => sensor.Id.Equals(Draft.Sensor, StringComparison.OrdinalIgnoreCase))) return;
+        Draft.Sensor = Sensors.FirstOrDefault()?.Id ?? "";
+        Suggest();
+    }
 
     /// Any kind works on any sensor — a number is true above 0.5, a boolean compares as 0 or 1 —
     /// so this only moves to the kind that usually fits, and never takes the others away

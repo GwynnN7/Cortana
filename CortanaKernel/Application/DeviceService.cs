@@ -24,6 +24,10 @@ public sealed class DeviceService(
 	ActivityRegistry activity,
 	IEventBus bus)
 {
+	private readonly Lock _switchGate = new();
+	private readonly Dictionary<string, (VirtualDevice Device, CommandOrigin Origin)> _pendingOff = new(StringComparer.OrdinalIgnoreCase);
+	private CancellationTokenSource? _shutdown;
+
 	public IReadOnlyList<DeviceView> All() => devices.Devices(automation.OverrideUntil);
 
 	public PowerState State(string device) => devices.State(device);
@@ -52,7 +56,7 @@ public sealed class DeviceService(
 		Result<string> result = device switch
 		{
 			_ when device.Equals(devices.Machine?.Id, StringComparison.OrdinalIgnoreCase) => SwitchComputer(resolved),
-			_ when device.Equals(Supply, StringComparison.OrdinalIgnoreCase) => SwitchPower(resolved),
+			_ when device.Equals(Supply, StringComparison.OrdinalIgnoreCase) => SwitchPower(resolved, origin),
 			_ => Apply(device, resolved == SwitchAction.On ? PowerState.On : PowerState.Off, origin)
 		};
 
@@ -83,8 +87,34 @@ public sealed class DeviceService(
 
 	private Result<string> Apply(string device, PowerState state, CommandOrigin origin)
 	{
-		if (devices.Device(device) is not { } registered) return Result.Fail<string>($"'{device}' is not registered");
+		lock (_switchGate)
+		{
+			if (devices.Device(device) is not { } registered) return Result.Fail<string>($"'{device}' is not registered");
 
+			if (state == PowerState.On && _pendingOff.Values.Any(pending => Overlaps(registered, pending.Device)))
+				CancelShutdown();
+
+			// Protect the physical supply even when reached through a group or another channel alias.
+			// A disconnect during the grace period must not let a second request cut power early.
+			if (state == PowerState.Off && Supply is { } supply && devices.Device(supply) is { } power
+				&& Overlaps(registered, power) && (computer.Connected || _shutdown is not null))
+				return QueuePowerOff(registered, origin);
+
+			return Write(registered, state, origin);
+		}
+	}
+
+	private bool Overlaps(VirtualDevice first, VirtualDevice second)
+	{
+		HashSet<string> channels = PhysicalChannels(first).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		return PhysicalChannels(second).Any(channels.Contains);
+	}
+
+	private IEnumerable<string> PhysicalChannels(VirtualDevice device) => device.Channels.SelectMany(channel =>
+		(Writer(channel)?.Linked(channel.Channel) ?? [channel.Channel]).Select(linked => $"{channel.Source}/{linked}"));
+
+	private Result<string> Write(VirtualDevice registered, PowerState state, CommandOrigin origin)
+	{
 		(ChannelRef Channel, IChannelWriter Writer)[] channels =
 		[
 			.. registered.Channels
@@ -124,6 +154,7 @@ public sealed class DeviceService(
 	{
 		if (action == SwitchAction.On)
 		{
+			lock (_switchGate) CancelShutdown();
 			if (Supply is { } supplied && devices.State(supplied) == PowerState.Off)
 			{
 				Result<string> supply = Apply(supplied, PowerState.On, CommandOrigin.Internal);
@@ -142,31 +173,82 @@ public sealed class DeviceService(
 		return Result.Ok("Shutting the computer down");
 	}
 
-	private Result<string> SwitchPower(SwitchAction action)
+	private Result<string> SwitchPower(SwitchAction action, CommandOrigin origin)
 	{
 		if (action == SwitchAction.On) return SwitchComputer(SwitchAction.On);
 
 		if (Supply is not { } supply) return Result.Fail<string>("The computer declares no supply to cut");
-		if (!computer.Connected) return Apply(supply, PowerState.Off, CommandOrigin.Internal);
+		return Apply(supply, PowerState.Off, origin);
+	}
 
+	/// Called under the switch lock. Concurrent requests share one shutdown and retain their targets.
+	private Result<string> QueuePowerOff(VirtualDevice device, CommandOrigin origin)
+	{
+		_pendingOff[device.Id] = (device, origin);
+		if (_shutdown is not null) return Result.Ok($"Waiting for the computer to shut down before switching {device.Name} off");
 
+		var shutdown = new CancellationTokenSource();
+		_shutdown = shutdown;
 		_ = Task.Run(async () =>
 		{
 			try
 			{
-				await computer.Send(ComputerCommand.Shutdown, "");
-				await computer.WaitUntilPoweredOff(settings.Seconds(SettingKey.ComputerShutdownGraceSeconds));
-				Apply(supply, PowerState.Off, CommandOrigin.Internal);
-				notifications.Raise(NotificationSource.Computer, "Computer off, power cut",
-					reason: $"the desktop went quiet, then a {settings.Seconds(SettingKey.ComputerShutdownGraceSeconds).TotalSeconds:0}s grace period elapsed");
+				Result<string> sent = await computer.Send(ComputerCommand.Shutdown, "", shutdown.Token);
+				if (!sent.IsOk) throw new InvalidOperationException(sent.Error);
+				await computer.WaitUntilPoweredOff(settings.Seconds(SettingKey.ComputerShutdownGraceSeconds), shutdown.Token);
+
+				string[] names;
+				lock (_switchGate)
+				{
+					if (shutdown.IsCancellationRequested || !ReferenceEquals(_shutdown, shutdown)) return;
+					if (computer.Connected) throw new InvalidOperationException("The computer is still connected");
+
+					names = [.. _pendingOff.Values.Select(pending => pending.Device.Name)];
+					foreach (var pending in _pendingOff.Values.ToArray())
+					{
+						Result<string> applied = Write(pending.Device, PowerState.Off, pending.Origin);
+						if (!applied.IsOk) throw new InvalidOperationException(applied.Error);
+					}
+					// Complete under the same lock, so a new request cannot join a finished batch.
+					_shutdown = null;
+					_pendingOff.Clear();
+				}
+
+				notifications.Raise(NotificationSource.Computer, $"Computer off; {string.Join(", ", names)} switched off",
+					reason: "the desktop stopped responding and the shutdown grace period elapsed");
+			}
+			catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
+			{
+				// A newer On command wins. It cannot undo an OS shutdown already sent, but keeps power on.
 			}
 			catch (Exception ex)
 			{
 				Log.Error("Devices", $"The shutdown sequence failed: {ex.Message}");
+				notifications.Raise(NotificationSource.Computer, "Could not finish switching the requested devices off",
+					NotificationLevel.Warning, ex.Message);
+			}
+			finally
+			{
+				lock (_switchGate)
+				{
+					if (ReferenceEquals(_shutdown, shutdown))
+					{
+						_shutdown = null;
+						_pendingOff.Clear();
+					}
+				}
+				shutdown.Dispose();
 			}
 		});
 
-		return Result.Ok("Shutting the computer down, power will be cut once it is off");
+		return Result.Ok($"Shutting the computer down before switching {device.Name} off");
+	}
+
+	private void CancelShutdown()
+	{
+		_shutdown?.Cancel();
+		_shutdown = null;
+		_pendingOff.Clear();
 	}
 
 	// ---------- the desktop machine ----------

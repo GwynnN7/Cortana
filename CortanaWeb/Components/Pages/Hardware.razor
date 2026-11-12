@@ -130,10 +130,6 @@ else if (_tab == "sensors")
                             {
                                 <text> · offset @sensor.Offset</text>
                             }
-                            @if (sensor.Presence != PresenceRole.None)
-                            {
-                                <span class="memory-kind memory-preference">@PresenceText.Badge(sensor.Presence)</span>
-                            }
                             @if (sensor.InStatus)
                             {
                                 <text> · status line</text>
@@ -160,6 +156,50 @@ else if (_tab == "sensors")
         </div>
 
         <p class="section-hint">A minimum and a maximum make it a bar, without they make a tile</p>
+    </section>
+
+    <section class="section">
+        <header class="section-head">
+            <h2>Composites</h2>
+            <span class="badge">@_registered.Composites.Count</span>
+            <button class="btn btn-small" disabled="@(_busy || Readable.Count == 0)" @onclick="() => Open(Form.Composite)">New composite</button>
+        </header>
+
+        <div class="memory-list">
+            @foreach (Composite composite in _registered.Composites)
+            {
+                <article class="memory">
+                    <div class="memory-main">
+                        <span class="memory-text">@composite.IconHigh @composite.Name</span>
+                        <span class="memory-meta">
+                            @string.Join(composite.Mode == BindMode.All ? " and " : " or ", composite.Inputs.Select(Describe))
+                            <text> · holds @(composite.HoldSeconds is { } seconds ? $"{seconds}s" : "the motion timeout")</text>
+                            @if (composite.InStatus)
+                            {
+                                <text> · status line</text>
+                            }
+                        </span>
+                    </div>
+                    <div class="btn-row wrap">
+                        <button class="btn btn-small" disabled="@_busy" @onclick="() => Edit(composite)">Edit</button>
+                        <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(composite.Id)">Remove</button>
+                    </div>
+
+                    @if (_confirming == composite.Id)
+                    {
+                        <div class="memory-edit">
+                            <span class="memory-meta is-suspended">Also removes @string.Join(" and ", Cascade(composite.Id))</span>
+                            <div class="btn-row">
+                                <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => Remove(composite.Id)">Confirm</button>
+                                <button class="btn btn-small" disabled="@_busy" @onclick="() => _confirming = null">Keep</button>
+                            </div>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+
+        <p class="section-hint">A sensor Cortana works out from other sensors. Presence is one of these: an input that starts it may switch it on, the rest can only keep it on, and the hold is what turns a momentary sensor into something a bind can follow</p>
     </section>
 }
 else if (_tab == "binds")
@@ -355,15 +395,6 @@ else
         </div>
     }
 
-    <div class="field-row">
-        <select @bind="_presence" disabled="@_busy" title="Only a sensor that reports presence may announce somebody. One that sustains it keeps an existing presence going, and never starts one">
-            @foreach (PresenceRole role in Enum.GetValues<PresenceRole>())
-            {
-                <option value="@role">@PresenceText.Choice(role)</option>
-            }
-        </select>
-    </div>
-
     <div class="options">
         <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
     </div>
@@ -415,12 +446,74 @@ else
         }
     </div>
 
-    <TriggerEditor Draft="_trigger" Sensors="_registered.Sensors" Busy="_busy" OnAdd="Collect"
+    <TriggerEditor Draft="_trigger" Sensors="Readable" Busy="_busy" OnAdd="Collect"
                    SustainLabel="Has to stay true"/>
     </ChildContent>
 
     <Footer>
         <button class="btn btn-primary" disabled="@(_busy || _triggers.Count == 0)" @onclick="SaveBind">
+            @(_editing is null ? "Create" : "Save")
+        </button>
+        <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
+    </Footer>
+</Modal>
+
+<Modal Open="_form == Form.Composite" Title="@(_editing is null ? "New composite" : $"Editing {_name}")" OnClose="Close">
+    <ChildContent>
+    <div class="field-row">
+        <input type="text" placeholder="Name" @bind="_name" @bind:event="oninput" disabled="@_busy"/>
+        <div class="icon-pair">
+            <input type="text" placeholder="On" @bind="_iconHigh" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+            <input type="text" placeholder="Off" @bind="_iconLow" @bind:event="oninput" disabled="@_busy" class="icon-field"/>
+        </div>
+    </div>
+
+    <div class="field-row">
+        <select @bind="_compositeMode" disabled="@_busy">
+            @foreach (BindMode mode in Enum.GetValues<BindMode>())
+            {
+                <option value="@mode">@(mode == BindMode.All ? "Every input" : "Any input")</option>
+            }
+        </select>
+        <input type="text" placeholder="Hold seconds" @bind="_hold" @bind:event="oninput" disabled="@_busy" class="icon-field"
+               title="How long it stays true after the last input goes quiet. Empty uses the motion timeout"/>
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_inStatus"/> Show in the status line</label>
+    </div>
+
+    <p class="section-hint">Inputs</p>
+
+    <div class="memory-list">
+        @foreach (CompositeInput input in _inputs)
+        {
+            <article class="memory">
+                <div class="memory-main">
+                    <span class="memory-text">@SensorName(input.Sensor)</span>
+                    <span class="memory-meta">@TriggerText.Describe(new Trigger(input.Sensor, input.Kind, input.Low, input.High), SensorName)</span>
+                </div>
+                <div class="btn-row wrap">
+                    <button class="btn btn-small" disabled="@_busy" @onclick="() => FlipInput(input)">
+                        @(input.Starts ? "May start it" : "Holds only")
+                    </button>
+                    <button class="btn btn-off btn-small" disabled="@_busy" @onclick="() => DropInput(input)">Remove</button>
+                </div>
+            </article>
+        }
+    </div>
+
+    <div class="options">
+        <label><input type="checkbox" @bind="_startsPresence"/> The next input may start it</label>
+    </div>
+
+    <TriggerEditor Draft="_trigger" Sensors="Feeders" Busy="_busy" OnAdd="CollectInput" ShowSustains="false"/>
+
+    <p class="section-hint">An input that may start it switches the composite on. One that holds only keeps it on once something else has, which is how a desk keeps presence alive without a machine woken from away ever announcing anybody</p>
+    </ChildContent>
+
+    <Footer>
+        <button class="btn btn-primary" disabled="@(_busy || _name.Trim().Length == 0 || _inputs.Count == 0)" @onclick="SaveComposite">
             @(_editing is null ? "Create" : "Save")
         </button>
         <button class="btn btn-ghost" disabled="@_busy" @onclick="Close">Cancel</button>
@@ -470,7 +563,7 @@ else
         }
     </div>
 
-    <TriggerEditor Draft="_trigger" Sensors="_registered.Sensors" Busy="_busy" OnAdd="Collect"
+    <TriggerEditor Draft="_trigger" Sensors="Readable" Busy="_busy" OnAdd="Collect"
                    SustainLabel="Has to stay true"/>
     </ChildContent>
 
@@ -483,7 +576,7 @@ else
 </Modal>
 
 @code {
-    private enum Form { None, Device, Sensor, Bind, Warning }
+    private enum Form { None, Device, Sensor, Composite, Bind, Warning }
 
     private static readonly (string Key, string Label)[] Tabs =
     [
@@ -497,7 +590,7 @@ else
     private IReadOnlyList<WarningView> _warnings = [];
     private IReadOnlyList<string> _adriftBinds = [];
     private IReadOnlyList<string> _adriftWarnings = [];
-    private Registrations _registered = new([], []);
+    private Registrations _registered = new([], [], []);
     private readonly HashSet<string> _picked = [];
     private readonly List<Trigger> _triggers = [];
     private readonly TriggerDraft _trigger = new();
@@ -518,7 +611,10 @@ else
     private string _cooldown = "45";
     private string _warnMessage = "";
     private string _bindDevice = "";
-    private PresenceRole _presence;
+    private readonly List<CompositeInput> _inputs = [];
+    private bool _startsPresence = true;
+    private BindMode _compositeMode = BindMode.Any;
+    private string _hold = "";
     private bool _inStatus;
     private bool _holds = true;
     private BindMode _bindMode = BindMode.All;
@@ -558,7 +654,10 @@ else
         _cooldown = "45";
         _warnMessage = "";
         _inStatus = false;
-        _presence = PresenceRole.None;
+        _inputs.Clear();
+        _startsPresence = true;
+        _compositeMode = BindMode.Any;
+        _hold = "";
         _holds = true;
         _bindMode = BindMode.All;
         _level = NotificationLevel.Alert;
@@ -622,7 +721,18 @@ else
 
     private string DeviceName(string id) => _registered.Devices.FirstOrDefault(device => device.Id == id)?.Name ?? id;
 
-    private string SensorName(string id) => _registered.Sensors.FirstOrDefault(sensor => sensor.Id == id)?.Name ?? id;
+    private IReadOnlyList<VirtualSensor> Readable =>
+        [.. _registered.Sensors.Concat(_registered.Composites.Select(composite =>
+            new VirtualSensor(composite.Id, composite.Name, SourceIds.Kernel, composite.Id, Kind: ReadingKind.Boolean)))];
+
+    /// What a composite may read: every sensor except the one being edited, so it cannot feed itself
+    private IReadOnlyList<VirtualSensor> Feeders =>
+        [.. Readable.Where(sensor => _editing is null || !sensor.Id.Equals(_editing, StringComparison.OrdinalIgnoreCase))];
+
+    private string SensorName(string id) =>
+        _registered.Sensors.FirstOrDefault(sensor => sensor.Id == id)?.Name
+        ?? _registered.Composites.FirstOrDefault(composite => composite.Id == id)?.Name
+        ?? id;
 
     private string BindName(string id) =>
         _binds.FirstOrDefault(bind => bind.Id == id) is { } bind && bind.Name.Length > 0 ? bind.Name : id;
@@ -686,8 +796,69 @@ else
         _min = sensor.Min?.ToString(CultureInfo.InvariantCulture) ?? "";
         _max = sensor.Max?.ToString(CultureInfo.InvariantCulture) ?? "";
         _offset = sensor.Offset.ToString(CultureInfo.InvariantCulture);
-        _presence = sensor.Presence;
         _inStatus = sensor.InStatus;
+    }
+
+    private void Edit(Composite composite)
+    {
+        Open(Form.Composite);
+        _editing = composite.Id;
+        _name = composite.Name;
+        _iconHigh = composite.IconHigh;
+        _iconLow = composite.IconLow;
+        _compositeMode = composite.Mode;
+        _hold = composite.HoldSeconds?.ToString(CultureInfo.InvariantCulture) ?? "";
+        _inStatus = composite.InStatus;
+
+        _inputs.Clear();
+        _inputs.AddRange(composite.Inputs);
+    }
+
+    private async Task SaveComposite()
+    {
+        int? hold = null;
+        if (!string.IsNullOrWhiteSpace(_hold))
+        {
+            if (!int.TryParse(_hold, NumberStyles.Integer, CultureInfo.InvariantCulture, out int seconds) || seconds < 0)
+            {
+                _message = "Hold seconds must be a non-negative whole number, or empty for the motion timeout";
+                return;
+            }
+            hold = seconds;
+        }
+
+        _busy = true;
+        _message = await State.RegisterComposite(new Composite(
+            _editing ?? Drafts.Slug(_name), _name.Trim(), [.. _inputs], _compositeMode,
+            hold,
+            _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "🚶",
+            _iconLow.Trim().Length > 0 ? _iconLow.Trim() : "🫥",
+            _inStatus));
+
+        await Done();
+    }
+
+    /// A composite input reads as a trigger does, plus whether it is allowed to start the thing
+    private string Describe(CompositeInput input) =>
+        $"{TriggerText.Describe(new Trigger(input.Sensor, input.Kind, input.Low, input.High), SensorName)}{(input.Starts ? "" : " (holds only)")}";
+
+    private void CollectInput()
+    {
+        Trigger read = _trigger.Read();
+        if (read.Sensor.Length == 0) return;
+
+        _inputs.RemoveAll(input => input.Sensor.Equals(read.Sensor, StringComparison.OrdinalIgnoreCase));
+        _inputs.Add(new CompositeInput(read.Sensor, read.Kind, read.Low, read.High, _startsPresence));
+
+        _trigger.Clear();
+    }
+
+    private void DropInput(CompositeInput input) => _inputs.Remove(input);
+
+    private void FlipInput(CompositeInput input)
+    {
+        int index = _inputs.IndexOf(input);
+        if (index >= 0) _inputs[index] = input with { Starts = !input.Starts };
     }
 
     private void Edit(Bind bind)
@@ -735,7 +906,7 @@ else
             _unit.Trim(), _kind,
             _iconHigh.Trim().Length > 0 ? _iconHigh.Trim() : "🔵",
             _iconLow.Trim(),
-            Drafts.Number(_min), Drafts.Number(_max), Drafts.Number(_offset) ?? 0, _presence, _inStatus));
+            Drafts.Number(_min), Drafts.Number(_max), Drafts.Number(_offset) ?? 0, _inStatus));
 
         await Done();
     }

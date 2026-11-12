@@ -35,9 +35,13 @@ public static class VolitionRules
 	public static bool Quiet(VolitionState state, DateTimeOffset now) =>
 		state.QuietUntil is { } until && until > now;
 
-	public static bool ShouldGreet(VolitionState state, DateTimeOffset now, int morningHour, bool sleepMode)
+	public static bool CanSpeak(VolitionState state, DateTimeOffset now, bool enabled, bool sleepMode) =>
+		enabled && !sleepMode && !Quiet(state, now);
+
+	public static bool ShouldGreet(VolitionState state, DateTimeOffset now, int morningHour,
+		bool sleepMode, bool enabled, bool greetingEnabled)
 	{
-		if (sleepMode || Quiet(state, now)) return false;
+		if (!greetingEnabled || !CanSpeak(state, now, enabled, sleepMode)) return false;
 
 		DateOnly today = DateOnly.FromDateTime(now.LocalDateTime);
 		if (state.LastGreeted == today) return false;

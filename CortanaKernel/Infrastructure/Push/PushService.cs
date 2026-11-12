@@ -42,7 +42,9 @@ public sealed class PushService : BackgroundService
 	private readonly SemaphoreSlim _pending = new(0, 1);
 	private DateTimeOffset _overlayUntil = DateTimeOffset.MinValue;
 	private readonly Lock _statusGate = new();
+	private readonly SemaphoreSlim _refreshGate = new(1, 1);
 	private string _lastStatus = "";
+	private DateTimeOffset OverlayUntil { get { lock (_statusGate) return _overlayUntil; } }
 
 	public PushService(
 		Fabric fabric,
@@ -80,7 +82,7 @@ public sealed class PushService : BackgroundService
 		_devices[device.Endpoint] = device;
 		Save();
 
-		_ = RefreshStatus();
+		_ = RefreshStatus(force: true);
 		return Result.Ok(known ? "This browser was already registered" : "Browser registered");
 	}
 
@@ -147,15 +149,33 @@ public sealed class PushService : BackgroundService
 
 	public async Task RefreshStatus(bool force = false)
 	{
-		string line = await StatusLine();
-
-		lock (_statusGate)
+		await _refreshGate.WaitAsync();
+		try
 		{
-			if (!force && line == _lastStatus) return;
-			_lastStatus = line;
-		}
+			lock (_statusGate)
+			{
+				if (DateTimeOffset.Now < _overlayUntil) return;
+				// An overlay changed the phone's notification even if the house itself did not change.
+				force |= _overlayUntil != DateTimeOffset.MinValue;
+				_overlayUntil = DateTimeOffset.MinValue;
+			}
 
-		await Deliver("", line, device => device.StatusNotification, StatusTag, _ => false, "/");
+			string line = await StatusLine();
+			if (!force && line == _lastStatus) return;
+			// A failed attempt must remain eligible for retry on the next event or safeguard.
+			if (await Deliver("", line, device => device.StatusNotification, StatusTag, _ => false, "/"))
+				_lastStatus = line;
+			else _lastStatus = "";
+		}
+		catch (Exception ex)
+		{
+			_lastStatus = "";
+			Log.Error("Push", $"Could not refresh status: {ex.Message}");
+		}
+		finally
+		{
+			_refreshGate.Release();
+		}
 	}
 
 	public async Task ShowMessage(NotificationEntry entry)
@@ -182,35 +202,38 @@ public sealed class PushService : BackgroundService
 			return;
 		}
 
-		await Deliver("", Shorten(entry.Message), Wants, StatusTag, device => device.Vibrate, "/logs");
-
-		var hold = TimeSpan.FromSeconds(Math.Clamp(_aiSettings.Number(AiSettingKey.PushEventSeconds), 1, 120));
-		DateTimeOffset until = DateTimeOffset.Now + hold;
-		_overlayUntil = until;
-
-		_ = Task.Run(async () =>
+		await _refreshGate.WaitAsync();
+		try
 		{
-			await Task.Delay(hold);
-			// A newer event may have taken over the overlay and it owns the restore
-			if (_overlayUntil == until) await RefreshStatus();
-		});
+			await Deliver("", Shorten(entry.Message), Wants, StatusTag, device => device.Vibrate, "/logs");
+			_lastStatus = "";
+			var hold = TimeSpan.FromSeconds(Math.Clamp(_aiSettings.Number(AiSettingKey.PushEventSeconds), 1, 120));
+			lock (_statusGate) _overlayUntil = DateTimeOffset.Now + hold;
+		}
+		finally
+		{
+			_refreshGate.Release();
+		}
+		Signal();
 	}
 
 	// ---------- lifecycle ----------
 
 	protected override async Task ExecuteAsync(CancellationToken stoppingToken)
 	{
-		_bus.SubscribeAll(_ => { try { _pending.Release(); } catch (SemaphoreFullException) { /* already queued */ } });
+		using IDisposable subscription = _bus.SubscribeAll(_ => Signal());
 
 		await RefreshStatus();
+		DateTimeOffset nextRefresh = DateTimeOffset.Now + Safeguard;
 
 		while (!stoppingToken.IsCancellationRequested)
 		{
-			bool signalled;
-
 			try
 			{
-				signalled = await _pending.WaitAsync(Safeguard, stoppingToken);
+				DateTimeOffset now = DateTimeOffset.Now;
+				DateTimeOffset overlay = OverlayUntil;
+				DateTimeOffset due = overlay > now ? overlay : nextRefresh;
+				await _pending.WaitAsync(due > now ? due - now : TimeSpan.Zero, stoppingToken);
 				await Task.Delay(Coalesce, stoppingToken);
 			}
 			catch (OperationCanceledException)
@@ -218,21 +241,30 @@ public sealed class PushService : BackgroundService
 				return;
 			}
 
-			// While an event overlay is up, its own restore is what puts the newest status back
-			if (DateTimeOffset.Now < _overlayUntil) continue;
+			if (DateTimeOffset.Now < OverlayUntil) continue;
 
-			await RefreshStatus(force: !signalled);
+			// A deadline, not an idle timeout: a busy sensor stream must not postpone the safeguard.
+			bool force = DateTimeOffset.Now >= nextRefresh;
+			await RefreshStatus(force);
+			if (force) nextRefresh = DateTimeOffset.Now + Safeguard;
 		}
+	}
+
+	private void Signal()
+	{
+		try { _pending.Release(); }
+		catch (SemaphoreFullException) { /* already queued */ }
 	}
 
 	// ---------- delivery ----------
 
-	private async Task Deliver(string title, string body, Func<PushDeviceRequest, bool> wants, string? tag, Func<PushDeviceRequest, bool> vibrates, string url)
+	private async Task<bool> Deliver(string title, string body, Func<PushDeviceRequest, bool> wants, string? tag, Func<PushDeviceRequest, bool> vibrates, string url)
 	{
-		if (_devices.IsEmpty || string.IsNullOrWhiteSpace(_keys.PrivateKey)) return;
+		if (_devices.IsEmpty || string.IsNullOrWhiteSpace(_keys.PrivateKey)) return false;
 
 		var details = new VapidDetails(Subject, _keys.PublicKey, _keys.PrivateKey);
 		var stale = new List<string>();
+		bool delivered = true;
 
 		foreach (PushDeviceRequest device in _devices.Values)
 		{
@@ -265,15 +297,17 @@ public sealed class PushService : BackgroundService
 			}
 			catch (Exception ex)
 			{
+				delivered = false;
 				Log.Error("Push", $"Send failed: {ex.Message}");
 			}
 		}
 
-		if (stale.Count == 0) return;
+		if (stale.Count == 0) return delivered;
 
 		foreach (string endpoint in stale) _devices.TryRemove(endpoint, out _);
 		Save();
 		Log.Write("Push", $"Dropped {stale.Count} expired browser(s)");
+		return delivered;
 	}
 
 	private void Save() => JsonStore.Write(DevicePath, _devices.Values.ToList());

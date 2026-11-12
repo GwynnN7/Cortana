@@ -20,7 +20,7 @@ the API see it; nothing else needs touching*
 | File | What it carries |
 | :--- | :--- |
 | `Snapshot.cs` | `CortanaSnapshot`, the single object every client renders, plus `DeviceView`, `SensorView`, `AutomationView`, `ServiceView` |
-| `Fabric.cs` | The hardware vocabulary: `SourceDescriptor`, `VirtualDevice`, `VirtualSensor`, `PresenceRole`, `Trigger`, `Bind` |
+| `Fabric.cs` | The hardware vocabulary: `SourceDescriptor`, `VirtualDevice`, `VirtualSensor`, `Composite`, `Trigger`, `Bind` |
 | `Activity.cs` | The desktop's focus category and, separately, what is playing |
 | `Memory.cs` | What Cortana remembers, and its three horizons: permanent, the one current state, and a week of days |
 | `Ai.cs` | Ask/reply shapes, AI settings, `VolitionState` |
@@ -54,7 +54,7 @@ plumbing shared by all processes*
 | `Runtime/JsonStore.cs` | Read and write JSON through a temp file, so a crash cannot truncate a config |
 | `Runtime/MachineMetrics.cs` | What a Linux box can say about itself: CPU, memory, disk, GPU load, GPU power |
 | `Runtime/Units.cs` | Units and number formatting, in one place so every surface agrees |
-| `Runtime/TriggerText.cs`, `PresenceText.cs` | How a trigger and a sensor's part in presence read on a screen, so every client says it the same way |
+| `Runtime/TriggerText.cs` | How a trigger reads on a screen, so every client says it the same way |
 | `Runtime/Log.cs`, `Shell.cs`, `ProcessSignals.cs` | Logging, shelling out, and signal handling |
 | `Media/MediaLibrary.cs` | The shipped assets: icon, prompt, sounds |
 
@@ -77,10 +77,10 @@ in this folder knows about HTTP, sockets or files*
 | :--- | :--- |
 | `Fabric.cs` | Sources and their channels, the virtual devices and sensors registered on them, and the live state |
 | `BindRules.cs` | The pure decision: given a bind and the readings, should this device be on |
+| `CompositeRules.cs` | A sensor worked out from other sensors: what opens it, what merely holds it, the hold window, and refusing one that would read itself |
 | `BindStore.cs` | The bindings themselves, persisted and editable |
 | `WarningRules.cs` | What Cortana watches for, with fixed hysteresis, plus `WarningStore` and `WarningState`. Warnings take the same `Trigger` as binds |
 | `FabricDefaults.cs` | The shipped channels and the registrations seeded on first boot. **Edit this to change what exists out of the box** |
-| `PresenceState.cs` | The last-motion latch, which outlives one reading |
 | `Hardware.cs` | The seams Infrastructure implements: `IChannelWriter` per source, and the desktop link |
 
 ### `Domain/Automation/`
@@ -89,9 +89,9 @@ in this folder knows about HTTP, sockets or files*
 
 | File | What it does |
 | :--- | :--- |
-| `AutomationEngine.cs` | Owns automation authority, sleep mode, device holds and the sleep hold. Ticks once a second, then evaluates every bind |
+| `AutomationEngine.cs` | Owns automation authority, device holds and composite latches; delegates sleep to `SleepEngine`. Ticks once a second, then evaluates every bind |
 | `SleepEngine.cs` | The sleep state machine: entry delay, hold, the daytime nap, and what wakes it |
-| `AutomationRules.cs` | The pure decisions that are not per-device: day/night and presence |
+| `AutomationRules.cs` | The pure day/night decision; composite presence is in `CompositeRules` |
 | `DayNightClock.cs` | Produces the time context, so nothing else has to know the hours |
 | `MoodRules.cs` | The mood word and the sentence behind it |
 
@@ -122,7 +122,7 @@ in this folder knows about HTTP, sockets or files*
 | `Settings/SettingsStore.cs` | Runtime settings with bounds and validation. **Add a `SettingKey` here to expose a new tunable** |
 | `Scheduling/ScheduleRepository.cs` | Schedule persistence interface and the timing rules |
 | `Services/ServiceSupervisor.cs` | Process supervision and host-machine interfaces |
-| `Common/EventBus.cs` | The typed in-process publish/subscribe |
+| `Common/EventBus.cs` | In-process publish/subscribe, dispatched by the fact's runtime type even when published through `IDomainEvent` |
 | `Common/DomainEvents.cs` | Every event that can be published. **Add one here to let anything react to a new fact** |
 | `Common/CommandOrigin.cs` | Who asked, from where, and whether the AI relayed it |
 
@@ -134,10 +134,10 @@ is the layer that turns one request into domain calls plus an event*
 | File | What it does |
 | :--- | :--- |
 | `SnapshotService.cs` | Builds the read model every client renders, and the mood |
-| `DeviceService.cs` | The one place device commands run: name resolution, wake-on-LAN, the PC shutdown sequence, and re-asserting outputs on boot |
+| `DeviceService.cs` | The one place device commands run: name resolution, wake-on-LAN, shared shutdown protection for the PC supply and overlapping groups, and re-asserting outputs on boot |
 | `SensorService.cs` | Turns source observations into facts; applies each sensor's offset; evaluates warnings |
 | `AutomationService.cs` | Wires the engine to the bus and drives its tick; also the world and effects adapters |
-| `VolitionService.cs` | The one place she decides to speak first: the morning greeting, the daily wrap-up and quiet |
+| `VolitionService.cs` | Persistent opt-in volition and morning greetings, temporary Quiet, and a daily digest that uses no model unless it will be spoken |
 | `AiService.cs` | The conversation loop, the system prompt, memory recall, and `Compose` for phrasing anything |
 | `CapabilityRegistry.cs` | Every capability the AI can reach. **Add a capability here to give her a new ability** |
 | `NotificationService.cs` | Channel policy and fan-out to the sinks |
@@ -184,7 +184,7 @@ one implements an interface declared in `Domain`*
 | `Network/DesktopComputerEndpoint.cs` | The agent link: commands out, replies and activity in |
 | `Ai/GeminiProvider.cs` | The only Gemini-aware file in the codebase |
 | `Ai/ModelCatalogue.cs` | Which models exist and which is selected |
-| `Push/PushService.cs` | Web push: the persistent status line and her own messages |
+| `Push/PushService.cs` | Web push: serialized status and event overlays, retries after failures, periodic refresh, and her own messages |
 | `Persistence/JsonRepositories.cs` | Every JSON-backed repository, in one file |
 | `Persistence/CsvHistoryRepository.cs` | One CSV per day, columns discovered from the sample and widened as registrations appear |
 | `Process/SystemdSupervisor.cs` | Starting, stopping and reading the journal |

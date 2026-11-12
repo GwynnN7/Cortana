@@ -40,9 +40,11 @@ public static class FabricEndpoints
 			{
 				var all = new Registrations(
 					[.. fabric.Devices(_ => null).Select(view => fabric.Device(view.Device)!)],
-					[.. fabric.Sensors().Select(view => fabric.Sensor(view.Sensor)!)]);
+					fabric.Declared,
+					fabric.Composites);
 
-				return ApiResults.Ok(request, $"{all.Devices.Count} devices, {all.Sensors.Count} sensors", all);
+				return ApiResults.Ok(request,
+					$"{all.Devices.Count} devices, {all.Sensors.Count} sensors, {all.Composites.Count} composites", all);
 			})
 			.Access(ApiAccess.ReadOnly).WithSummary("Every virtual device and sensor you have registered").Produces<Registrations>();
 
@@ -53,6 +55,16 @@ public static class FabricEndpoints
 		registrations.MapPost("/sensors", (VirtualSensor body, Fabric fabric, HttpRequest request) =>
 				ApiResults.From(request, fabric.Register(body), sensor => $"{sensor.Name} reads {sensor.Source}/{sensor.Channel}"))
 			.Access(ApiAccess.Sensitive).WithSummary("Create a virtual sensor on a hardware channel");
+
+		registrations.MapPost("/composites", (Composite body, Fabric fabric, AutomationService automation, HttpRequest request) =>
+			{
+				Result<Composite> saved = fabric.Register(body);
+				if (saved.IsOk) automation.Engine.Reevaluate();
+
+				return ApiResults.From(request, saved,
+					composite => $"{composite.Name} is {string.Join(composite.Mode == BindMode.All ? " and " : " or ", composite.Inputs.Select(input => input.Sensor))}");
+			})
+			.Access(ApiAccess.Sensitive).WithSummary("Create a sensor Cortana works out from other sensors, such as presence");
 
 		registrations.MapDelete("/{id}", (string id, Fabric fabric, BindStore binds, WarningStore alerts,
 				AutomationService automation, HttpRequest request) =>

@@ -22,8 +22,6 @@ public sealed class PluginService(
 {
 	public IReadOnlyList<PluginView> All()
 	{
-		bool quiet = volition.Value.State.QuietUntil is { } until && until > DateTimeOffset.Now;
-
 		return
 		[
 			new("fabric", "Fabric", "Sources, devices and sensors", true, false,
@@ -44,11 +42,14 @@ public sealed class PluginService(
 			new("notes", "Notes", "What you asked her to note",
 				settings.Flag(SettingKey.NotesEnabled), true,
 				$"{notes.Open().Count} open of {notes.All().Count}"),
-			new("volition", "Volition", "What she says unprompted", !quiet, true,
-				quiet ? $"quiet until {volition.Value.State.QuietUntil:HH:mm}" : "free to speak"),
+			new("volition", "Volition", "What she says unprompted", volition.Value.Enabled, true,
+				volition.Value.Status),
+			new("greeting", "Morning greeting", "An optional greeting after the morning hour",
+				settings.Flag(SettingKey.MorningGreetingEnabled), true,
+				"requires volition; off by default"),
 			new("wrapup", "Wrap-up", "The day, every evening",
 				settings.Flag(SettingKey.WrapupEnabled), true,
-				$"at {ai.Integer(AiSettingKey.WrapupHour):00}:00, said {ai.Number(AiSettingKey.WrapupChance) * 100:0}% of the time"),
+				$"at {ai.Integer(AiSettingKey.WrapupHour):00}:00; no AI request unless volition can speak and the {ai.Number(AiSettingKey.WrapupChance) * 100:0}% chance is selected"),
 			new("history", "History", "Records the house",
 				settings.Flag(SettingKey.HistoryEnabled), true,
 				$"every {ai.Number(AiSettingKey.HistorySampleMinutes):0} min"),
@@ -72,17 +73,6 @@ public sealed class PluginService(
 			case "automation":
 				return automation.SetAutomation(action, CommandOrigin.Internal with { Reason = "the services page" });
 
-			case "volition":
-				bool quiet = volition.Value.State.QuietUntil is { } until && until > DateTimeOffset.Now;
-				bool speaking = action switch
-				{
-					SwitchAction.On => true,
-					SwitchAction.Off => false,
-					_ => quiet
-				};
-
-				return speaking ? volition.Value.Speak() : volition.Value.Quiet(1440);
-
 			default:
 				if (Behind(plugin) is not { } key) return Result.Fail<string>($"'{plugin}' has no switch of its own");
 
@@ -102,6 +92,8 @@ public sealed class PluginService(
 		"notes" => SettingKey.NotesEnabled,
 		"history" => SettingKey.HistoryEnabled,
 		"wrapup" => SettingKey.WrapupEnabled,
+		"volition" => SettingKey.VolitionEnabled,
+		"greeting" => SettingKey.MorningGreetingEnabled,
 		"push" => SettingKey.NotifyWeb,
 		"telegram" => SettingKey.NotifyTelegram,
 		"discord" => SettingKey.NotifyDiscord,

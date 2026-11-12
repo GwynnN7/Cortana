@@ -46,7 +46,6 @@ builder.Services.AddCors(options => options.AddPolicy("Cortana", policy => polic
 builder.Services.AddSingleton<IEventBus, EventBus>();
 builder.Services.AddSingleton<IFabricRepository, JsonFabricRepository>();
 builder.Services.AddSingleton<Fabric>();
-builder.Services.AddSingleton<PresenceState>();
 builder.Services.AddSingleton<WarningState>();
 builder.Services.AddSingleton<IBindRepository, JsonBindRepository>();
 builder.Services.AddSingleton<BindStore>();
@@ -194,6 +193,8 @@ catch (Exception ex)
 app.Services.GetRequiredService<StateBroadcaster>();
 app.Services.GetRequiredService<SettingsService>();
 app.Services.GetRequiredService<AiService>();
+app.Services.GetRequiredService<IEventBus>().Subscribe<CompositeReadingsChanged>(fact =>
+	app.Services.GetRequiredService<SensorService>().EvaluateWarnings(fact.At));
 
 Log.Write("Kernel", "Online");
 Fabric fabric = app.Services.GetRequiredService<Fabric>();

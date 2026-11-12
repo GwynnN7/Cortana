@@ -9,6 +9,7 @@ using CortanaLib.Contracts;
 using CortanaLib.Primitives;
 using CortanaLib.Runtime;
 using System.Text.Json.Nodes;
+using System.Text.Json;
 
 namespace CortanaKernel.Infrastructure.Persistence;
 
@@ -201,47 +202,60 @@ public sealed class JsonFabricRepository : IFabricRepository
 
 	public void SaveSources(IReadOnlyList<SourceDescriptor> sources) => JsonStore.Write(Sources, sources);
 
+	/// A file written before composites existed has no `composites` key at all, and a positional record
+	/// leaves that null rather than empty, so every list is normalised on the way in
 	public Registrations LoadRegistrations()
 	{
-		UpgradePresence();
-		return JsonStore.Read<Registrations>(Registered) ?? new Registrations([], []);
-	}
-
-	/// Presence used to be one bool, which could only ever mean "reports somebody is here". A file
-	/// written before the split still says `feedsPresence`, and dropping it silently would leave the
-	/// house with no presence at all, so it is carried over once. Which sensors should only *sustain*
-	/// presence is a judgement about the room, not something to infer here - that is set on the
-	/// Hardware page, and the shipped defaults already say it for a fresh install
-	private static void UpgradePresence()
-	{
-		if (!File.Exists(Registered)) return;
-
+		JsonObject? stored = JsonStore.Read<JsonObject>(Registered);
 		try
 		{
-			if (JsonNode.Parse(File.ReadAllText(Registered)) is not JsonObject root) return;
-			if (root["sensors"] is not JsonArray sensors) return;
-
-			var carried = 0;
-
-			foreach (JsonNode? node in sensors)
-			{
-				if (node is not JsonObject sensor) continue;
-				if (sensor.ContainsKey("presence") || !sensor.TryGetPropertyValue("feedsPresence", out JsonNode? legacy)) continue;
-
-				sensor.Remove("feedsPresence");
-				sensor["presence"] = (legacy?.GetValue<bool>() ?? false ? PresenceRole.Reports : PresenceRole.None).ToString();
-				carried++;
-			}
-
-			if (carried == 0) return;
-
-			JsonStore.Write(Registered, root);
-			Log.Write("Storage", $"Carried {carried} sensor{(carried == 1 ? "" : "s")} over to the new presence roles");
+			return DecodeRegistrations(stored);
 		}
-		catch (Exception ex)
+		catch (JsonException ex)
 		{
-			Log.Write("Storage", $"Could not carry the presence flags over: {ex.Message}");
+			Log.Write("Storage", $"Could not read registrations: {ex.Message}");
+			return new Registrations([], [], []);
 		}
+	}
+
+	/// Preserve the user's reporting/holding choices, including the older boolean format. The next
+	/// save writes the new shape; loading never edits the source file or guesses which sensor starts.
+	internal static Registrations DecodeRegistrations(JsonObject? stored)
+	{
+		Registrations? parsed = stored?.Deserialize<Registrations>(CortanaEnvironment.FileJson);
+		if (parsed is null) return new Registrations([], [], []);
+
+		var result = new Registrations(parsed.Devices ?? [], parsed.Sensors ?? [], parsed.Composites ?? []);
+		if (result.Composites.Any(composite => composite.Id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)))
+			return result;
+
+		JsonArray? sensors = stored?["sensors"] as JsonArray;
+		if (sensors is null || !sensors.OfType<JsonObject>().Any(sensor => sensor.ContainsKey("presence") || sensor.ContainsKey("feedsPresence")))
+			return result;
+
+		VirtualSensor? legacy = result.Sensors.FirstOrDefault(sensor =>
+			sensor.Id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)
+			&& sensor.Source.Equals(SourceIds.Kernel, StringComparison.OrdinalIgnoreCase)
+			&& sensor.Channel.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase));
+		if (legacy is null && result.Sensors.Any(sensor => sensor.Id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)))
+			return result;
+
+		var inputs = new List<CompositeInput>();
+		foreach (JsonObject sensor in sensors.OfType<JsonObject>())
+		{
+			string role = sensor["presence"]?.ToString() ??
+				(sensor["feedsPresence"]?.GetValue<bool>() == true ? "Reports" : "None");
+			bool reports = role.Equals("Reports", StringComparison.OrdinalIgnoreCase) || role == "2";
+			bool sustains = role.Equals("Sustains", StringComparison.OrdinalIgnoreCase) || role == "1";
+			string? id = sensor["id"]?.GetValue<string>();
+			if ((!reports && !sustains) || string.IsNullOrWhiteSpace(id)
+				|| id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)) continue;
+			inputs.Add(new CompositeInput(id, Starts: reports));
+		}
+
+		var presence = new Composite(SensorIds.Presence, legacy?.Name ?? "Presence", inputs,
+			IconHigh: legacy?.IconHigh ?? "🚶", IconLow: legacy?.IconLow ?? "🫥", InStatus: legacy?.InStatus ?? false);
+		return result with { Composites = [.. result.Composites, presence] };
 	}
 
 	public void SaveRegistrations(Registrations registrations) => JsonStore.Write(Registered, registrations);

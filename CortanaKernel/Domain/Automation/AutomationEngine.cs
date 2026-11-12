@@ -12,13 +12,11 @@ public interface IAutomationWorld
 {
 	PowerState DeviceState(string device);
 	bool ComputerConnected { get; }
-	DateTimeOffset? LastMotionAt { get; }
 	bool SourcesOnline { get; }
 	bool CriticalSourcesOnline { get; }
 	bool WarningActive { get; }
 	bool DesktopBusy { get; }
-	bool Reported { get; }
-	bool Sustained { get; }
+	IReadOnlyList<Composite> Composites { get; }
 	Fabric.Reading? Read(string sensor);
 	string DeviceName(string device);
 	IReadOnlyList<Bind> Binds { get; }
@@ -29,6 +27,7 @@ public interface IAutomationEffects
 {
 	void SwitchDevice(string device, PowerState state, string reason);
 	void Observe(string sensor, double value);
+	void Compute(string composite, double value);
 	void TellComputer(string message);
 	void Notify(NotificationSource source, string message, NotificationLevel level = NotificationLevel.Info, string? reason = null);
 	void Publish(IDomainEvent domainEvent);
@@ -70,7 +69,10 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 
 	private readonly Dictionary<string, DateTimeOffset> _overrides = new();
 
-	private bool _lastMotionActive;
+	/// What each composite was worth last time it was worked out. This is the whole of presence's
+	/// memory now: the hold window and the "may keep it, may not start it" latch both live in here
+	private readonly Dictionary<string, (Composite Definition, Fabric.CompositeState State)> _composed = new(StringComparer.OrdinalIgnoreCase);
+
 	private string _lastDecision = "not evaluated yet";
 	private readonly ConcurrentDictionary<string, BindStatusView> _bindStatus = new(StringComparer.OrdinalIgnoreCase);
 
@@ -129,9 +131,12 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 			reevaluate = true;
 		}
 
-		if (MotionActive(now) != _lastMotionActive) reevaluate = true;
-
-		if (reevaluate) Evaluate();
+		// The tick and readings must use the same lock: both write the composite latches.
+		lock (_evaluateGate)
+		{
+			if (Compose(now)) reevaluate = true;
+			if (reevaluate) Pass();
+		}
 	}
 
 	// ---------- inputs ----------
@@ -222,12 +227,11 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 	private void Pass()
 	{
 		DateTimeOffset now = DateTimeOffset.Now;
-		bool present = MotionActive(now);
-		_lastMotionActive = present;
 
-		effects.Observe(SensorIds.Presence, present ? 1 : 0);
 		effects.Observe(SensorIds.Night, Context == TimeContext.Night ? 1 : 0);
 		effects.Observe(SensorIds.Sleep, SleepMode ? 1 : 0);
+
+		Compose(now);
 
 		string[] live = [.. world.Binds.Select(bind => bind.Id)];
 		foreach (string stale in _bindStatus.Keys.Where(id => !live.Contains(id, StringComparer.OrdinalIgnoreCase)))
@@ -283,9 +287,50 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 
 	private string[] Managed => [.. world.Binds.Where(bind => bind.HoldsOnManualAction).Select(bind => bind.Device)];
 
-	private bool MotionActive(DateTimeOffset now) => AutomationRules.Present(
-		world.LastMotionAt, now, settings.Seconds(SettingKey.MotionTimeoutSeconds),
-		world.Reported, world.Sustained, _lastMotionActive);
+	/// Every composite worked out feeders first and written back as an ordinary reading, so a bind, a
+	/// warning, the mood and the model all read one number instead of each deriving its own.
+	/// Returns whether anything moved, which is what tells the tick to re-decide the binds
+	private bool Compose(DateTimeOffset now)
+	{
+		TimeSpan fallback = settings.Seconds(SettingKey.MotionTimeoutSeconds);
+		var moved = false;
+		IReadOnlyList<Composite> composites = world.Composites;
+		var live = composites.Select(composite => composite.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		foreach (string stale in _composed.Keys.Where(id => !live.Contains(id)).ToArray())
+		{
+			_composed.Remove(stale);
+			moved = true;
+		}
+
+		foreach (Composite composite in CompositeRules.InOrder(composites))
+		{
+			var previous = _composed.GetValueOrDefault(composite.Id);
+			Fabric.CompositeState was = previous.Definition == composite ? previous.State : default;
+			TimeSpan hold = composite.HoldSeconds is { } seconds ? TimeSpan.FromSeconds(seconds) : fallback;
+
+			Fabric.CompositeState state = CompositeRules.Evaluate(composite, was, hold, now, world.Read);
+			_composed[composite.Id] = (composite, state);
+
+			effects.Compute(composite.Id, state.High ? 1 : 0);
+
+			if (state.High != previous.State.High || previous.Definition != composite) moved = true;
+
+			// Motion schedules follow a new report of presence, including another PIR pulse during a
+			// hold. An unrelated composite (temperature, for example) must never report a person.
+			if (composite.Id.Equals(SensorIds.Presence, StringComparison.OrdinalIgnoreCase)
+				&& state.Opening && !was.Opening)
+				effects.Publish(new MotionDetected(now));
+		}
+
+		if (moved) effects.Publish(new CompositeReadingsChanged(now));
+		return moved;
+	}
+
+	/// The composite the house treats as "somebody is here". A convention, not a special case: rename
+	/// or delete it and the mood simply stops being told, like any other reading going away
+	private bool MotionActive() => _composed.GetValueOrDefault(SensorIds.Presence).State.High;
+
+	private DateTimeOffset? LastMotionAt => _composed.GetValueOrDefault(SensorIds.Presence).State.OpenedAt;
 
 	private bool Due(ref DateTimeOffset? deadline, DateTimeOffset now)
 	{
@@ -312,6 +357,7 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 		DateTimeOffset now = DateTimeOffset.Now;
 		bool enabled = Enabled;
 
+		lock (_evaluateGate)
 		lock (_gate)
 		{
 			DateTimeOffset? holdingUntil = null;
@@ -334,8 +380,8 @@ public sealed class AutomationEngine(SettingsStore settings, DayNightClock clock
 				sleep.EntryDueAt,
 				holdingUntil,
 				world.DesktopBusy,
-				MotionActive(now),
-				world.LastMotionAt,
+				MotionActive(),
+				LastMotionAt,
 				world.WarningActive,
 				world.SourcesOnline,
 				world.CriticalSourcesOnline);

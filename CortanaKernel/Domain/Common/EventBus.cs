@@ -13,33 +13,35 @@ public interface IEventBus
 
 public sealed class EventBus : IEventBus
 {
-	private readonly ConcurrentDictionary<Type, List<Delegate>> _handlers = new();
+	private readonly ConcurrentDictionary<Type, List<Action<IDomainEvent>>> _handlers = new();
 	private readonly List<Action<IDomainEvent>> _all = [];
 	private readonly Lock _gate = new();
 
 	public void Publish<TEvent>(TEvent domainEvent) where TEvent : IDomainEvent
 	{
-		Delegate[] typed;
+		Type type = domainEvent.GetType();
+		Action<IDomainEvent>[] typed;
 		Action<IDomainEvent>[] all;
 
 		lock (_gate)
 		{
-			typed = _handlers.TryGetValue(typeof(TEvent), out List<Delegate>? list) ? [.. list] : [];
+			typed = _handlers.TryGetValue(type, out List<Action<IDomainEvent>>? list) ? [.. list] : [];
 			all = [.. _all];
 		}
 
-		foreach (Delegate handler in typed) Invoke(() => ((Action<TEvent>)handler)(domainEvent), typeof(TEvent).Name);
-		foreach (Action<IDomainEvent> handler in all) Invoke(() => handler(domainEvent), typeof(TEvent).Name);
+		foreach (Action<IDomainEvent> handler in typed) Invoke(() => handler(domainEvent), type.Name);
+		foreach (Action<IDomainEvent> handler in all) Invoke(() => handler(domainEvent), type.Name);
 	}
 
 	public IDisposable Subscribe<TEvent>(Action<TEvent> handler) where TEvent : IDomainEvent
 	{
-		lock (_gate) _handlers.GetOrAdd(typeof(TEvent), _ => []).Add(handler);
+		Action<IDomainEvent> dispatch = fact => handler((TEvent)fact);
+		lock (_gate) _handlers.GetOrAdd(typeof(TEvent), _ => []).Add(dispatch);
 		return new Subscription(() =>
 		{
 			lock (_gate)
 			{
-				if (_handlers.TryGetValue(typeof(TEvent), out List<Delegate>? list)) list.Remove(handler);
+				if (_handlers.TryGetValue(typeof(TEvent), out List<Action<IDomainEvent>>? list)) list.Remove(dispatch);
 			}
 		});
 	}

@@ -119,6 +119,12 @@ everything that changes state; it subscribes to the bus and reacts
 single notification rather than a flood. This matters more than it sounds: the station reports every
 five seconds, and anything wired directly to the bus inherits that rate
 
+**Phone status uses Web Push, independently of the page's live connection.** `PushService` sends a
+changed status, restores it after an event overlay, and forces a refresh every five minutes even
+while sensors keep reporting. A new subscription forces an initial refresh; failed sends do not
+enter the status cache. Status and overlay sends are serialized. Push-service acceptance is not
+confirmation that the phone displayed an update; background delivery can still be delayed
+
 ## 5. The fabric: hardware, and what you make of it
 
 Nothing about the hardware is hard-coded, and there are two separate ideas that used to be one.
@@ -141,7 +147,8 @@ registered on it:
 ```
 VirtualDevice { Id, Name, IconOn, IconOff, Channels[] (source + channel), Pulse, PoweredBy, InStatus }
 VirtualSensor { Id, Name, IconHigh, IconLow, Source, Channel, Unit, Kind,
-                Min, Max, Offset, Presence, InStatus }
+                Min, Max, Offset, InStatus }
+Composite     { Id, Name, Inputs[] (sensor + condition + Starts), Mode, HoldSeconds, Icons, InStatus }
 ```
 
 Only a boolean sensor has two icons to draw; a number carries one and says the rest with its value.
@@ -194,6 +201,13 @@ and re-asserted on boot, because a GPIO output cannot be read back
 source, and the supply to cut is its `PoweredBy`. Wake-on-LAN and the shutdown-then-cut sequence hang
 off those two, not off the ids `computer` and `power`
 
+**Every route to the supply waits for shutdown.** A group such as `Room`, including one using a
+channel alias, follows the same shutdown sequence as the dedicated supply. The whole group stays
+unchanged until the desktop goes offline and its grace period elapses. Concurrent requests share
+that wait; a later overlapping `On` cancels the pending cutoff, though it cannot undo an OS shutdown
+already sent. Shutdown failures and timeouts leave power on. Relay failures are reported rather than
+announcing a successful switch
+
 **Channels are shared freely.** Several virtual devices may sit on the same channel, and one device
 may span several — a `Room` covering every relay, or curtains driven by two motors. Switching a device
 writes every channel it holds, and any other device sharing those channels has its state updated to
@@ -233,24 +247,46 @@ trigger is satisfied. That reproduces hand-written hysteresis for any device
 readings for the Pi. So "warn when the GPU passes 80 °C" is an ordinary warning, and nothing about it
 is special-cased
 
-**Presence is composed, not hardcoded.** Every sensor carries a `PresenceRole`, and the two roles are
-not the same evidence. A sensor that **Reports** — the PIR — says somebody is here. One that
-**Sustains** — the desktop's `at_desk` — says whoever is here has not left, which is why sitting still
-at the computer keeps the lamp on without the engine knowing what a desk is. Two motion sensors can
-still be split: one taking part in presence, one driving a fan through its own bind
+**Presence is not a feature.** It is a **composite**: a sensor Cortana works out from other sensors,
+which is the one kind of sensor no hardware can announce. It ships as one, and it is ordinary — rename
+it, delete it, or make five of them, and nothing downstream knows the difference.
 
-The distinction exists because a machine can be switched on from anywhere. A desk woken over the
-network is evidence that a machine booted and none at all that a person arrived, and the old single
-`FeedsPresence` bool could not say the difference — so wake-on-LAN from away lit the lamp
+```
+presence = motion (may start it)  OR  at_desk (holds only)     hold: the motion timeout
+```
 
-`AutomationRules.Present` is `reported || MotionActive(lastMotionAt, now, timeout) || (wasPresent &&
-sustained)`. Only a reporting sensor moves `LastMotionAt`, the window carries a momentary one such as
-the PIR, and the last clause is the latch: a sustaining sensor extends a presence that is already
-alive and can never start one. `AutomationEngine` holds `wasPresent` as `_lastMotionActive`, so the
-rule itself stays a function
+`CompositeRules.Evaluate` is `opens || within(hold) || (wasHigh && holds)`, three clauses that each
+earn their place:
 
-**The Kernel is a source as well** (`kernel`), publishing the composed `presence` so binds can
-reference it like any other reading
+- **`opens`** — something allowed to *start* it is true now
+- **`within(hold)`** — it started recently. This is what turns a PIR, which is high for a moment and
+  then gone, into a level a lamp can be bound to
+- **`wasHigh && holds`** — anything at all still holds it up. An input **without** `Starts` reaches
+  only this clause, which is why a desktop woken from the other side of the country keeps a presence
+  somebody else established and never announces one of its own
+
+A zone is not a concept; it is another composite over another PIR. "Anyone home" is a composite over
+those. `CompositeRules.InOrder` works out feeders first and `Cycles` refuses a composite that would
+end up reading itself, so nesting is safe.
+
+**The state is held in `AutomationEngine._composed`**: whether it was high, when it last opened,
+and whether its starting condition was high. That last bit preserves a motion event for each new
+PIR pulse even while presence is held. Only the `presence` composite reports those events; an
+unrelated temperature composite does not report a person. `Compose` runs on every pass *and* on the
+tick under the same evaluation lock, because a hold lapsing is a change nothing else would notice.
+Changes publish `CompositeReadingsChanged`, so warnings and clients also notice an expiry. Editing
+a definition resets its latch; deleting it clears the latch. A sensor used by another composite
+cannot be removed until its dependent composites are edited or removed.
+
+**Existing presence choices survive the upgrade.** `JsonFabricRepository` turns the old `presence`
+roles (and older `feedsPresence` booleans) into the default composite's inputs, preserving which ones
+may start it, its name, icons and status preference. Even an explicitly empty set stays empty. The
+next registration save writes the new format. Seeding refreshes only the built-in `kernel` source's
+channels; hardware announcements remain authoritative across restarts.
+
+**The Kernel is a source as well** (`kernel`), publishing `night` and `sleep` as ordinary readings.
+Composites are written straight into the fabric under their own id by `Fabric.Compute` — nothing
+announced them, so they need no channel, which is why creating one at runtime needs no source edit
 
 ### Warnings
 
@@ -318,10 +354,10 @@ boundary, the sleep entry delay, a daytime sleep, the sleep hold, device holds a
 One cheap tick is easier to reason about than six interacting timers, and every expiry is reachable
 from one place
 
-**Presence is composed, not measured.** Every sensor with a `PresenceRole` feeds it — the PIR
-**Reports**, the desk **Sustains** — and it lingers for `MotionTimeoutSeconds` after the last goes
-quiet. Only a reporting sensor moves `LastMotionAt`. `at_desk` requires a
-*positive* report of not-idle, never merely the absence of an idle signal: `IdleSeconds` is `-1` when
+**Presence is a composite, not a measurement.** It lingers for its hold — `MotionTimeoutSeconds`
+unless the composite names its own — after the last input goes quiet. `at_desk` feeds it as a
+holds-only input, and requires a *positive* report of not-idle, never merely the absence of an idle
+signal: `IdleSeconds` is `-1` when
 idle cannot be observed, and a `systemd-inhibit --what=idle` lock stops hypridle reporting, so
 treating silence as presence would pin the lamp on after leaving with the inhibitor set
 
@@ -391,11 +427,20 @@ sentences nobody is waiting on, and on a free tier the good family gets a handfu
 two of them should not go to small talk. When even the cheap family is spent, `Compose` falls back to
 its plain line rather than borrowing from the good one
 
-**Volition** is the one place she speaks unprompted. Deliberately almost empty: a persisted `Quiet`
-period, a once-daily greeting inside a window after `MorningHour`, a once-daily wrap-up at
-`WrapupHour`, and everything logged. Both go through `AiService.Compose(brief, fallback)`, which falls
-back to a plain line when no model answers, and both read `HistoryService.Digest` rather than naming a
-metric. The wrap-up is written as a `Day` memory and only *said* with probability `WrapupChance`
+**Volition** is the one place she speaks unprompted. `VolitionEnabled` is a persisted On/Off setting,
+**off by default**, and Off lasts until explicitly enabled. `MorningGreetingEnabled` is a separate
+opt-in switch, also off by default. The Core feature switches expose both. A greeting, when enabled,
+can run once inside the window after `MorningHour`; that clock window does not prove anybody woke up.
+
+**Quiet is a pause, not the feature switch.** `Quiet(1..1440)` persists a timed pause; `Quiet(0)` turns
+volition off indefinitely. Ending the pause never enables disabled volition. `/ai/quiet` reports both
+states, and clients receive updates when a pause changes.
+
+**A silent wrap-up costs no model request.** With `WrapupEnabled`, the daily numbers are still saved
+at `WrapupHour`, and a plain digest is kept as a `Day` memory when memory is enabled. Only if volition
+is on, Quiet and sleep are inactive, and the `WrapupChance` draw selects speech does it call
+`AiService.Compose`. The same gates are checked again after composition before publishing. Greetings
+and spoken wrap-ups use `HistoryService.Digest` and fall back to a plain line when no model answers.
 
 **Compose is handed no tools.** She is writing a line, not running the house, and given tools she uses
 them: the wrap-up that should have summarised a day called `Remember`, filed a permanent `Event`, and
@@ -468,10 +513,15 @@ readable and simply missing it. The day a column is added keeps its old header u
 
 ## 10. Testing
 
-There is no test project: the dashboard is how the system is exercised. The logic that most wants
-testing is written as pure functions — `AutomationRules`, `BindRules`, `MoodRules`, `ScheduleTiming`,
-`HistoryAnalysis`, `HistoryBaseline`, `HistoryCorrelation`, `VolitionRules`, `SettingsStore` — so it
-can be covered cheaply if that changes
+Build `Cortana.slnx` to compile the Kernel, every client and the Razor pages. There is no retained
+automated test project. Hardware and the installed PWA need validation on their actual hosts:
+
+- Volition stays off across a restart and an expired Quiet period; morning greetings remain opt-in.
+- Composite presence starts from reporting inputs, can be sustained by holding inputs, and expires.
+- `Room` off waits for a connected desktop to shut down and for the grace period; a later `On`
+  cancels the pending cutoff. A shutdown timeout leaves power on.
+- A newly subscribed phone receives status; event overlays return to status; updates recover after
+  reconnecting. Check delivery with the screen both on and off.
 
 The Kernel does check one thing at boot: it materialises the whole route graph and refuses to start if
 any endpoint signature is invalid, because that failure otherwise turns every request into a 500
@@ -495,3 +545,47 @@ any endpoint signature is invalid, because that failure otherwise turns every re
 - Only the GPU rail reports power; CPU package energy needs root on this kernel
 - `HistoryAnalysis.WorstPeriod` is O(n²) over the window. Fine for a few thousand samples
 - The Discord `/games` module needs `CORTANA_IGDB_*`; `yt-dlp` is required for anything YouTube
+
+---
+
+## 12. Decided on purpose
+
+These look like gaps and are not. Each was reached deliberately, and "fixing" one undoes a choice.
+
+- **A registration's id cannot be renamed.** History columns and binds key off it, so renaming one
+  orphans its past. A badly named sensor is delete-and-recreate, and loses its column
+- **Bind and warning *contents* are never migrated.** Editing somebody's triggers is presumptuous, so
+  a change to a shipped default only reaches fresh installs. It is not invisible: the bind and warning
+  lists flag which shipped ones have drifted and offer Reset
+- **`Fabric.Seed` is additive**, so deleting a shipped default brings it back on the next restart.
+  Acceptable while the model is still moving; tombstones if it ever becomes annoying
+- **Well-known ids are read as literals.** `pi_disk`, `pc_cpu`, `night`, `sleep` and `presence` are
+  looked up by their id wherever something needs that particular reading — the mood, the daily history
+  analysis, the engine's `MotionActive`. That is the convention, not a special case: delete or rename
+  one and whatever reads it simply stops being told, the same as any reading going away
+- **A composite may only *sustain* through an input without `Starts`.** An input that cannot start it
+  can never announce a person on its own. That is the contract, not a bug: the live level of a
+  starting input re-arms it on the next reading
+- **Telegram and Discord read; the dashboard configures.** The bots are deliberately switches and
+  readings — no registrations, binds, warnings or hardware settings. If a bot ever needs to configure
+  something, ask whether the assistant could do it instead
+- **Device state is restored when the Kernel restarts.** GPIO outputs cannot be read back, so what
+  was last written is re-asserted per channel from `Channels.json`
+- **Warning hysteresis is fixed at ×1.15 / ×0.9**, and `Below` triggers use `2 - margin`, which is
+  correct and unobvious
+
+### Traps that have cost a session each
+
+- **A Razor `string` parameter needs the `@`.** `Current="_tab"` passes the literal text `_tab`;
+  `Current="@_tab"` passes the field. Non-string parameters compile as expressions either way, which
+  is exactly what hides it. This silently broke tab swiping, the slide animation and the active-tab
+  highlight until the generated code was read
+- **`~/.config/cortana/CortanaKernel/Prompt.txt` shadows the shipped prompt.** Every improvement to
+  `CortanaLib/Storage/prompt.txt` is invisible while that file exists
+- **The two machines ship separately.** `cortana deploy kernel web` reaches the Pi; the desktop agent
+  needs `cortana service build && cortana service restart` locally. A fix in the working tree is not
+  a fix
+- **Bump `CACHE` in `service-worker.js` for any web asset change.** The fetch handler is cache-first
+  and ignores HTTP freshness, so an installed PWA keeps serving the old file indefinitely
+- **`AiService.Compose` must never be handed tools.** Asked for two sentences with the full tool set
+  in reach, she ran the house instead and stored her own tool-call narration as the day's summary

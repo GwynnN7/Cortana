@@ -37,7 +37,9 @@ public sealed class SettingsStore(ISettingsRepository repository)
 			new(SettingKey.NotesEnabled, "On", 0, 1, IsFlag: true),
 			new(SettingKey.MemoryEnabled, "On", 0, 1, IsFlag: true),
 			new(SettingKey.HistoryEnabled, "On", 0, 1, IsFlag: true),
-			new(SettingKey.WrapupEnabled, "On", 0, 1, IsFlag: true)
+			new(SettingKey.WrapupEnabled, "On", 0, 1, IsFlag: true),
+			new(SettingKey.VolitionEnabled, "Off", 0, 1, IsFlag: true),
+			new(SettingKey.MorningGreetingEnabled, "Off", 0, 1, IsFlag: true)
 		}.ToDictionary(definition => definition.Key);
 
 	private readonly Dictionary<SettingKey, string> _values = Initialise(repository);

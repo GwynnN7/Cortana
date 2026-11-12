@@ -138,6 +138,10 @@ warnings, schedules, memory, notes, settings and a chat window. Add it to your h
 behaves like an app, with one persistent notification showing the devices, warnings and readings you
 marked for it.
 
+Unprompted AI messages are off by default. On **Core**, **Volition** stays off until you enable it;
+**Morning greeting** is a separate opt-in switch. **Quiet** pauses speech temporarily. Silent daily
+wrap-ups keep a plain digest without spending an AI request.
+
 **Telegram** and **Discord** read the house and switch what switches — devices, sleep, automation,
 the features on the Core page, and commands to the desktop. They deliberately do not configure
 hardware or settings; that is the dashboard's job, and the AI can still reach everything.

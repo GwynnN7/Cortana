@@ -61,18 +61,16 @@ public static class AiEndpoints
 			.Access(ApiAccess.Sensitive).WithSummary("Make Cortana forget one thing");
 
 		group.MapGet("/quiet", (VolitionService volition, HttpRequest request) =>
-				ApiResults.Message(request, volition.State.QuietUntil is { } until && until > DateTimeOffset.Now
-					? $"Quiet until {until:HH:mm}"
-					: "Not quiet"))
+				ApiResults.Message(request, volition.Status))
 			.Access(ApiAccess.ReadOnly).WithSummary("Whether Cortana is holding her tongue, and until when");
 
 		group.MapPost("/quiet", (QuietRequest body, VolitionService volition, HttpRequest request) =>
 				ApiResults.From(request, volition.Quiet(body.Minutes)))
-			.Access(ApiAccess.Sensitive).WithSummary("Stop Cortana speaking unprompted for a while");
+			.Access(ApiAccess.Sensitive).WithSummary("Pause unprompted speech for 1–1440 minutes, or use 0 to disable volition until enabled");
 
 		group.MapDelete("/quiet", (VolitionService volition, HttpRequest request) =>
 				ApiResults.From(request, volition.Speak()))
-			.Access(ApiAccess.Sensitive).WithSummary("Let Cortana speak unprompted again");
+			.Access(ApiAccess.Sensitive).WithSummary("End a temporary quiet period without enabling disabled volition");
 
 		group.MapPost("/prompt", (PromptRequest body, AiService ai, HttpRequest request) => ApiResults.From(request, ai.SetPrompt(body.Prompt)))
 			.Access(ApiAccess.Sensitive).WithSummary("Replaces the system prompt");

@@ -36,7 +36,8 @@ Built, in rough order of how much they changed the system:
 | **Baselines** | median + MAD per hour-of-day, so "unusual" is computable rather than a fixed threshold |
 | **Memory** | what she knows about you, weighted, decaying, inspectable, trusted-only |
 | **Correlation** | room against desk, including the drift across the current session |
-| **Volition, seeded** | a persisted quiet period, a morning greeting, and a daily wrap-up said with probability *p* |
+| **Volition, seeded** | persistent opt-in switches for volition and morning greetings, a temporary quiet period, and a daily wrap-up that needs no model unless it will be spoken |
+| **Phone notifications** | a status line with temporary event overlays, periodic refresh and retry after send failures; Cortana's own messages use a separate tag |
 | **The fabric** | hardware announces channels as tags; devices and sensors are registered on top, and nothing names a lamp |
 | **Notes** | what you asked her to write down, separate from what she knows about you |
 | **Features** | twelve services with a real switch, honoured in the Kernel and reflected in the web |
@@ -45,8 +46,9 @@ What that unlocked: **every fact she states can now be computed rather than gues
 the room and the desk in the same rows, and what exists is whatever you registered rather than what
 was compiled in.
 
-What it did *not* unlock: she speaks unprompted twice a day at fixed hours and otherwise only when
-spoken to. Everything below is really about closing that gap without becoming a nuisance.
+What it did *not* unlock: the only unprompted occasions are fixed clock windows. Volition and morning
+greetings are now off by default, with persistent opt-in switches; silent daily digests need no model
+request. Everything below is about making unsolicited speech worth enabling without becoming a nuisance.
 
 ---
 
@@ -115,8 +117,9 @@ in sleep mode and motion, and the room data over those hours is already recorded
 ## 3. The daily digest — **mostly built**
 
 `HistoryService.Digest` reduces a window to plain lines — every sensor's range, every device's on-time,
-minutes per activity category, music — and the evening wrap-up turns that into a sentence, now stored
-as a `Day` memory that keeps a week, and sometimes said.
+minutes per activity category, music. The evening wrap-up keeps a plain summary without a model
+request; only an eligible spoken wrap-up asks the model to phrase it. With Memory enabled, the
+summary is also stored as a `Day` memory for the configured retention period.
 
 **Keeping the digests is done**, which was the part §2 wanted: `Days.json` holds a `DaySummary` per
 day, `POST /history/days` backfills from the CSVs already on disk, `Rhythm(metric)` compares today
@@ -230,9 +233,11 @@ This is downstream of §2 and §3 — without a model of normal, "curiosity" is 
 - **An hour × weekday heatmap** of activity on the dashboard. This *is* the §2 rhythm model, made
   visible, and the data is already there.
 - **Top games and top artists** over a window. Cheap, and quietly delightful.
-- **A separate push tag for her own messages.** Right now everything reuses the status overlay, so a
-  greeting replaces the status body for a few seconds and is easy to miss. Anything she says on her
-  own initiative should probably persist until dismissed.
+- **An Android companion.** A small native client for the status notification, device actions and
+  alerts, with the web dashboard kept for configuration. First test the corrected PWA on the phone;
+  treat screen-off freshness as a requirement to measure, not an assumed benefit of native code.
+  Show when status was last updated and offer a refresh action. This is an option, not a committed
+  replacement for the PWA.
 - **Pi self-observation.** Disk and temperature trends against their own baselines — she already has
   the machinery, nothing points it at her own host.
 - ~~**`ActivityDetail` has no UI.**~~ Done: the level rides on every activity update and is set from
@@ -253,7 +258,8 @@ Rules any unsolicited message must satisfy. Written down so they survive future 
 3. **Prefer the ambient channel.** Interrupt only when there is a deadline.
 4. **Never twice for one cause.** Dedupe by key, not by text.
 5. **Never during sleep.** No exceptions worth the trust it costs.
-6. **Trivially silenceable, and the silence persists.** (`Quiet` exists and is honoured.)
+6. **Trivially silenceable, and the silence persists.** Volition Off lasts until explicitly enabled;
+   timed `Quiet` is a separate pause, and morning greetings need their own opt-in.
 7. **Measured.** Every impulse logged with salience and outcome, or none of this can be tuned.
 
 The failure mode to design against is not "she said something wrong". It is "she said something true,

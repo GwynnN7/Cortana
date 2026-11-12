@@ -91,12 +91,12 @@ public sealed class CapabilityRegistry
 				new AiToolParameter("hours", "How many hours back to look, 1 to 720", AiParameterType.Integer, false)),
 
 			Management("Quiet",
-				"Stop yourself speaking unprompted for a while, when gwynn7 asks to be left alone. This does not silence answers to what he asks, only anything you would have said on your own.",
+				"Stop yourself speaking unprompted. Use minutes=0 when asked to disable volition permanently or until explicitly enabled; use 1–1440 for a temporary pause. This does not silence answers to questions.",
 				(arguments, _, _) => Task.FromResult(volition.Value.Quiet(arguments.Integer("minutes", 120)).Match(value => value, error => error)),
-				new AiToolParameter("minutes", "How long to stay quiet, 1 to 1440", AiParameterType.Integer, false)),
+				new AiToolParameter("minutes", "1 to 1440 for a temporary pause, 0 to disable until enabled", AiParameterType.Integer, false)),
 
 			Management("Unquiet",
-				"Undo a quiet period and allow yourself to speak unprompted again.",
+				"End a temporary quiet period. This does not enable disabled volition; use ChangeSetting with VolitionEnabled=On for that.",
 				(_, _, _) => Task.FromResult(volition.Value.Speak().Match(value => value, error => error))),
 
 			Management("Remember",

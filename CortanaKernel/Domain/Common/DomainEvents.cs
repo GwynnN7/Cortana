@@ -14,6 +14,8 @@ public sealed record MotionDetected(DateTimeOffset At) : IDomainEvent;
 
 public sealed record SensorReadingReceived(DateTimeOffset At) : IDomainEvent;
 
+public sealed record CompositeReadingsChanged(DateTimeOffset At) : IDomainEvent;
+
 public sealed record SensorAvailabilityChanged(bool Online, DateTimeOffset At) : IDomainEvent;
 
 public sealed record ComputerConnectionChanged(bool Connected, DateTimeOffset At) : IDomainEvent;
@@ -39,3 +41,5 @@ public sealed record ServiceStateChanged(ServiceId Service, bool Running, DateTi
 public sealed record NotificationRaised(NotificationEntry Entry, DateTimeOffset At) : IDomainEvent;
 
 public sealed record ConversationUpdated(string Conversation, DateTimeOffset At) : IDomainEvent;
+
+public sealed record VolitionChanged(DateTimeOffset At) : IDomainEvent;

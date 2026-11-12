@@ -10,7 +10,7 @@ public static class FabricDefaults
 		new(SourceIds.Raspberry, SourceKind.Host, ["pin23", "pin24", "pin25"], ["cpu", "cpu_temp", "ram", "disk"]),
 		new(SourceIds.Station, SourceKind.Station, [],
 			[SensorIds.Motion, SensorIds.Light, SensorIds.Temperature, SensorIds.Humidity, SensorIds.Co2, SensorIds.Tvoc, "air_temperature"]),
-		new(SourceIds.Kernel, SourceKind.Host, [], [SensorIds.Presence, SensorIds.Night, SensorIds.Sleep]),
+		new(SourceIds.Kernel, SourceKind.Host, [], [SensorIds.Night, SensorIds.Sleep]),
 		new(SourceIds.Computer, SourceKind.Computer, [DeviceIds.Computer],
 			["cpu", "cpu_temp", "gpu", "gpu_temp", "gpu_power", "ram", "disk", "at_desk", "locked"])
 	];
@@ -31,14 +31,13 @@ public static class FabricDefaults
 	],
 	[
 		new VirtualSensor(SensorIds.Motion, "Motion", SourceIds.Station, SensorIds.Motion, "", ReadingKind.Boolean, "💠", "🔮",
-			Presence: PresenceRole.Reports, InStatus: true),
+			InStatus: true),
 		new VirtualSensor(SensorIds.Light, "Light", SourceIds.Station, SensorIds.Light, " lux", ReadingKind.Number, "🔆", "🌑", Min: 0, Max: 1000),
 		new VirtualSensor(SensorIds.Temperature, "Temperature", SourceIds.Station, SensorIds.Temperature, "°C", ReadingKind.Number, "🔥", "🌡",
 			Min: 10, Max: 40, InStatus: true),
 		new VirtualSensor(SensorIds.Humidity, "Humidity", SourceIds.Station, SensorIds.Humidity, " %", ReadingKind.Number, "💦", "💧", Min: 0, Max: 100),
 		new VirtualSensor(SensorIds.Co2, "CO₂", SourceIds.Station, SensorIds.Co2, " ppm", ReadingKind.Number, "☁️", "🧪", Min: 400, Max: 2000),
 		new VirtualSensor(SensorIds.Tvoc, "TVOC", SourceIds.Station, SensorIds.Tvoc, " ppb", ReadingKind.Number, "☣️", "🦠", Min: 0, Max: 1000),
-		new VirtualSensor(SensorIds.Presence, "Presence", SourceIds.Kernel, SensorIds.Presence, "", ReadingKind.Boolean, "🚶", "🫥"),
 		new VirtualSensor(SensorIds.Night, "Night", SourceIds.Kernel, SensorIds.Night, "", ReadingKind.Boolean, "🌙", "☀️"),
 		new VirtualSensor(SensorIds.Sleep, "Sleep", SourceIds.Kernel, SensorIds.Sleep, "", ReadingKind.Boolean, "🛌", "👁"),
 		new VirtualSensor("pc_cpu", "CPU", SourceIds.Computer, "cpu", " %", ReadingKind.Number, "🔥", "🖥", Min: 0, Max: 100),
@@ -51,11 +50,18 @@ public static class FabricDefaults
 		new VirtualSensor("pi_cpu_temp", "CPU Temp", SourceIds.Raspberry, "cpu_temp", "°C", ReadingKind.Number, "🔥", "🌡", Min: 25, Max: 100),
 		new VirtualSensor("pi_ram", "RAM", SourceIds.Raspberry, "ram", " %", ReadingKind.Number, "🔥", "🧠", Min: 0, Max: 100),
 		new VirtualSensor("pi_disk", "Disk", SourceIds.Raspberry, "disk", " %", ReadingKind.Number, "🔥", "💾", Min: 0, Max: 100),
-		// The desk keeps presence alive while it is in use, but a machine can be woken from anywhere,
-		// so it never gets to announce that somebody is here
-		new VirtualSensor("at_desk", "Active", SourceIds.Computer, "at_desk", "", ReadingKind.Boolean, "🪑", "🚪",
-			Presence: PresenceRole.Sustains),
+		new VirtualSensor("at_desk", "Active", SourceIds.Computer, "at_desk", "", ReadingKind.Boolean, "🪑", "🚪"),
 		new VirtualSensor("locked", "LockScreen", SourceIds.Computer, "locked", "", ReadingKind.Boolean, "🔒", "🔓")
+	],
+	[
+		// Presence is not a built-in any more, it is the composite that happens to ship. Motion may
+		// announce somebody; the desk may only keep them, because a machine can be switched on from
+		// anywhere. Delete it, rename it, or add one per room - nothing downstream knows the difference
+		new Composite(SensorIds.Presence, "Presence",
+		[
+			new CompositeInput(SensorIds.Motion),
+			new CompositeInput("at_desk", Starts: false)
+		], InStatus: false)
 	]);
 
 	public static readonly IReadOnlyList<Warning> Warnings =
